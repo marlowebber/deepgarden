@@ -1,0 +1,3 @@
+/home/marlo/Documents/deepgarden/CMakeFiles/rebuild_cache.dir
+/home/marlo/Documents/deepgarden/CMakeFiles/edit_cache.dir
+/home/marlo/Documents/deepgarden/CMakeFiles/deepgarden.dir
