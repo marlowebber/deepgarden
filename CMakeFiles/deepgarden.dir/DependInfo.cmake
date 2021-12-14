@@ -4,6 +4,8 @@ set(CMAKE_DEPENDS_LANGUAGES
   )
 # The set of files for implicit dependencies of each language:
 set(CMAKE_DEPENDS_CHECK_CXX
+  "/home/marlo/Documents/deepgarden/src/deepgarden.cpp" "/home/marlo/Documents/deepgarden/CMakeFiles/deepgarden.dir/src/deepgarden.cpp.o"
+  "/home/marlo/Documents/deepgarden/src/deepgarden_graphics.cpp" "/home/marlo/Documents/deepgarden/CMakeFiles/deepgarden.dir/src/deepgarden_graphics.cpp.o"
   "/home/marlo/Documents/deepgarden/src/main.cpp" "/home/marlo/Documents/deepgarden/CMakeFiles/deepgarden.dir/src/main.cpp.o"
   )
 set(CMAKE_CXX_COMPILER_ID "GNU")

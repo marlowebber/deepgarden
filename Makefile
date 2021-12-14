@@ -123,6 +123,60 @@ deepgarden/fast:
 	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/build
 .PHONY : deepgarden/fast
 
+src/deepgarden.o: src/deepgarden.cpp.o
+
+.PHONY : src/deepgarden.o
+
+# target to build an object file
+src/deepgarden.cpp.o:
+	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/deepgarden.cpp.o
+.PHONY : src/deepgarden.cpp.o
+
+src/deepgarden.i: src/deepgarden.cpp.i
+
+.PHONY : src/deepgarden.i
+
+# target to preprocess a source file
+src/deepgarden.cpp.i:
+	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/deepgarden.cpp.i
+.PHONY : src/deepgarden.cpp.i
+
+src/deepgarden.s: src/deepgarden.cpp.s
+
+.PHONY : src/deepgarden.s
+
+# target to generate assembly for a file
+src/deepgarden.cpp.s:
+	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/deepgarden.cpp.s
+.PHONY : src/deepgarden.cpp.s
+
+src/deepgarden_graphics.o: src/deepgarden_graphics.cpp.o
+
+.PHONY : src/deepgarden_graphics.o
+
+# target to build an object file
+src/deepgarden_graphics.cpp.o:
+	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/deepgarden_graphics.cpp.o
+.PHONY : src/deepgarden_graphics.cpp.o
+
+src/deepgarden_graphics.i: src/deepgarden_graphics.cpp.i
+
+.PHONY : src/deepgarden_graphics.i
+
+# target to preprocess a source file
+src/deepgarden_graphics.cpp.i:
+	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/deepgarden_graphics.cpp.i
+.PHONY : src/deepgarden_graphics.cpp.i
+
+src/deepgarden_graphics.s: src/deepgarden_graphics.cpp.s
+
+.PHONY : src/deepgarden_graphics.s
+
+# target to generate assembly for a file
+src/deepgarden_graphics.cpp.s:
+	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/deepgarden_graphics.cpp.s
+.PHONY : src/deepgarden_graphics.cpp.s
+
 src/main.o: src/main.cpp.o
 
 .PHONY : src/main.o
@@ -159,6 +213,12 @@ help:
 	@echo "... rebuild_cache"
 	@echo "... edit_cache"
 	@echo "... deepgarden"
+	@echo "... src/deepgarden.o"
+	@echo "... src/deepgarden.i"
+	@echo "... src/deepgarden.s"
+	@echo "... src/deepgarden_graphics.o"
+	@echo "... src/deepgarden_graphics.i"
+	@echo "... src/deepgarden_graphics.s"
 	@echo "... src/main.o"
 	@echo "... src/main.i"
 	@echo "... src/main.s"

@@ -6,7 +6,13 @@
 
 #IncludeRegexTransform: 
 
-/home/marlo/Documents/deepgarden/src/main.cpp
+/home/marlo/Documents/deepgarden/src/deepgarden.cpp
+deepgarden.h
+/home/marlo/Documents/deepgarden/src/deepgarden.h
+deepgarden_graphics.h
+/home/marlo/Documents/deepgarden/src/deepgarden_graphics.h
+
+/home/marlo/Documents/deepgarden/src/deepgarden.h
 stdio.h
 -
 SDL.h
@@ -27,6 +33,10 @@ glm/gtc/matrix_transform.hpp
 -
 random
 -
+
+/home/marlo/Documents/deepgarden/src/deepgarden_graphics.h
+deepgarden.h
+/home/marlo/Documents/deepgarden/src/deepgarden.h
 
 /usr/local/include/SDL2/SDL.h
 SDL_main.h
