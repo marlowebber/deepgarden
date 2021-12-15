@@ -37,6 +37,7 @@ struct color
 #define MATERIAL_SAND          		  2  // 2^1, bit 1
 #define MATERIAL_LIFE          		  4  // 2^1, bit 1
 #define MATERIAL_STONE                8  // 2^1, bit 1
+#define MATERIAL_GOLD                16  // 2^1, bit 1
 
 
 float RNG();

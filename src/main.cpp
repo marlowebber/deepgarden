@@ -95,7 +95,7 @@ int main( int argc, char * argv[] )
 		if (!paused)
 		{
 			// the gameplay loop
-			deepgardenLoop();
+			// deepgardenLoop();
 		}
 
 		// graphics loop
