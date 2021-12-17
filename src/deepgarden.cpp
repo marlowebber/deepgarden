@@ -15,11 +15,11 @@ color goldColor = color(1.0f, 1.0f, 0.0f, 1.0f);
 
 unsigned int numberOfFieldsPerVertex = 6; /*  R, G, B, A, X, Y  */
 
-unsigned int cursorLimit = 0;
-unsigned int cursor_string = 0;
-unsigned int prevCursor_string = 0;
+// unsigned int creature->geneSize = 0;
+// unsigned int cursor_string = 0;
+// unsigned int prevCursor_string = 0;
 
-bool total_break = false; 			// used to return to recursion depth 0
+// bool total_break = false; 			// used to return to recursion depth 0
 unsigned int recursion_depth = 0;	// how many breakable sequences are applied right now. like the number indents to the left of this line of code
 
 std::list<unsigned int> identities;
@@ -95,22 +95,47 @@ struct lifeform
 	int energy;
 	std::string genes;
 
-	lifeform( std::string genes ) ;
+	unsigned int cursor_string;
+	unsigned int geneSize;
+	vec_u2 cursor_grid;
+	vec_u2 prevCursor_grid;
+	float accumulatedRotation ;
+	float accumulatedRotation_precomputedSin;
+	float accumulatedRotation_precomputedCos;
+
+	bool germinated;
+
+	lifeform(std::string a)
+	{
+		this->energy = 0;
+		this->genes = a;
+
+		this->cursor_string = 0;
+		this->cursor_grid 		= vec_u2(0, 0);
+		this->prevCursor_grid 	= vec_u2(0, 0);
+		this->accumulatedRotation  = 0;
+		this->accumulatedRotation_precomputedSin = sin(this->accumulatedRotation);
+		this->accumulatedRotation_precomputedCos = cos(this->accumulatedRotation);
+
+		this->germinated = false;
+
+		this->identity = newIdentity();
+	}
+
+
+	
 };
 
-lifeform::lifeform(std::string new_genes)
-{
-	this->energy = 0;
-	this->genes = new_genes;
-}
 
-std::vector<lifeform> creatures;
 
-vec_u2 cursor_grid 		= vec_u2(0, 0);
-vec_u2 prevCursor_grid 	= vec_u2(0, 0);
+
+std::list<lifeform> creatures;
+
+// vec_u2 cursor_grid 		= vec_u2(0, 0);
+// vec_u2 prevCursor_grid 	= vec_u2(0, 0);
 
 // variables keep track of the sequence and rotation states.
-unsigned int remainingSequence = 0;
+// unsigned int remainingSequence = 0;
 float accumulatedRotation = 0.0f;
 float accumulatedRotation_precomputedSin = sin(accumulatedRotation);
 float accumulatedRotation_precomputedCos = cos(accumulatedRotation);
@@ -316,11 +341,11 @@ std::list<vec_u2> EFLA_E(vec_u2 start, vec_u2 end)
 	return v;
 }
 
-int drawCharacter (std::string s)
+int drawCharacter (lifeform * creature)
 {
-	prevCursor_string = cursor_string;
+	// creature->prevCursor_string = creature->cursor_string;
 
-	char c = s[cursor_string];
+	char c = creature->genes[creature->cursor_string];
 
 	std::list<vec_u2> v;
 
@@ -329,16 +354,16 @@ int drawCharacter (std::string s)
 
 	case 'e': // extrude
 	{
-		cursor_string++; if (cursor_string > cursorLimit) {return -1;}
+		creature->cursor_string++; if (creature->cursor_string > creature->geneSize) {return -1;}
 
 	}
 
 	case 'b': // branch. a sequence that grows at an angle to the main trunk
 	{
-		cursor_string++; if (cursor_string > cursorLimit) {return -1;}
+		creature->cursor_string++; if (creature->cursor_string > creature->geneSize) {return -1;}
 
 		int numberModifier = 0;
-		while (!numberModifier) {	numberModifier = alphanumeric( s[cursor_string] ); cursor_string++; if (cursor_string > cursorLimit) {return -1;} }
+		while (!numberModifier) {	numberModifier = alphanumeric( creature->genes[creature->cursor_string] ); creature->cursor_string++; if (creature->cursor_string > creature->geneSize) {return -1;} }
 
 		float rotation = numberModifier;
 
@@ -346,19 +371,19 @@ int drawCharacter (std::string s)
 		float trunkRotation = accumulatedRotation;
 
 		// figure out new branch rotation
-		accumulatedRotation = accumulatedRotation + (rotation / 26.0f) * 2.0f * 3.14159f;
-		accumulatedRotation_precomputedSin = sin(accumulatedRotation);
-		accumulatedRotation_precomputedCos = cos(accumulatedRotation);
+		creature->accumulatedRotation = accumulatedRotation + (rotation / 26.0f) * 2.0f * 3.14159f;
+		creature->accumulatedRotation_precomputedSin = sin(accumulatedRotation);
+		creature->accumulatedRotation_precomputedCos = cos(accumulatedRotation);
 
 		// record old cursor position
-		vec_u2 old_cursorGrid = cursor_grid;
+		vec_u2 old_cursorGrid = creature->cursor_grid;
 
 		printf("branching. old rotation %f , new %f\n", trunkRotation, accumulatedRotation );
 
 		recursion_depth++;
 		while (1)
 		{
-			if ( drawCharacter(s) < 0)
+			if ( drawCharacter(creature) < 0)
 			{
 				break;
 			}
@@ -366,53 +391,53 @@ int drawCharacter (std::string s)
 		recursion_depth--;
 
 		// return to normal rotation
-		accumulatedRotation = trunkRotation;
-		accumulatedRotation_precomputedSin = sin(accumulatedRotation);
-		accumulatedRotation_precomputedCos = cos(accumulatedRotation);
+		creature->accumulatedRotation = trunkRotation;
+		creature->accumulatedRotation_precomputedSin = sin(accumulatedRotation);
+		creature->accumulatedRotation_precomputedCos = cos(accumulatedRotation);
 
 		// return to normal position
-		cursor_grid = old_cursorGrid;
+		creature->cursor_grid = old_cursorGrid;
 
 		break;
 	}
 
 	case 's': // sequence. a motif is repeated serially a number of times.
 	{
-		cursor_string++; if (cursor_string > cursorLimit) {return -1;}
+		creature->cursor_string++; if (creature->cursor_string > creature->geneSize) {return -1;}
 
 		printf("entering sequence");
 
 		// get number of times to repeat the sequence
 		int numberModifier = 0;
-		while (!numberModifier) {	numberModifier = alphanumeric( s[cursor_string] ); cursor_string++; if (cursor_string > cursorLimit) {return -1;} }
+		while (!numberModifier) {	numberModifier = alphanumeric( creature->genes[creature->cursor_string] ); creature->cursor_string++; if (creature->cursor_string > creature->geneSize) {return -1;} }
 
 		int repeats = numberModifier;
 
 		printf("repeats %u\n", repeats);
 
 		// the character after that is the next thing to be arrayed
-		cursor_string++; if (cursor_string > cursorLimit) {return -1;}
+		creature->cursor_string++; if (creature->cursor_string > creature->geneSize) {return -1;}
 
-		unsigned int sequenceOrigin = cursor_string;
+		unsigned int sequenceOrigin = creature->cursor_string;
 
 		recursion_depth ++;
 		for ( int i = 0; i < repeats; ++i)
 		{
 			while (1)
 			{
-				if ( drawCharacter(s) < 0)
+				if ( drawCharacter(creature) < 0)
 				{
 					break;
 				}
 			}
-			cursor_string = sequenceOrigin;
+			creature->cursor_string = sequenceOrigin;
 		}
 		recursion_depth--;
 		break;
 	}
 	case ' ': // break innermost array
 	{
-		cursor_string++; if (cursor_string > cursorLimit) {return -1;}
+		creature->cursor_string++; if (creature->cursor_string > creature->geneSize) {return -1;}
 
 		printf("ending array");
 
@@ -422,26 +447,26 @@ int drawCharacter (std::string s)
 
 	case 'c': // paint a circle at the cursor
 	{
-		cursor_string++; if (cursor_string > cursorLimit) {return -1;}
+		creature->cursor_string++; if (creature->cursor_string > creature->geneSize) {return -1;}
 
 		int numberModifier = 0;
-		while (!numberModifier) {	numberModifier = alphanumeric( s[cursor_string] ); cursor_string++; if (cursor_string > cursorLimit) {return -1;} }
+		while (!numberModifier) {	numberModifier = alphanumeric( creature->genes[creature->cursor_string] ); creature->cursor_string++; if (creature->cursor_string > creature->geneSize) {return -1;} }
 
 		// get the circle radius (the next number in the string.)
 		unsigned int radius = numberModifier;
 
 		// define the range of pixels you'll draw- so you don't have to navigate the entire, massive grid.
-		unsigned int drawingAreaLowerX = cursor_grid.x - radius;
-		unsigned int drawingAreaLowerY = cursor_grid.y - radius;
-		unsigned int drawingAreaUpperX = cursor_grid.x + radius;
-		unsigned int drawingAreaUpperY = cursor_grid.y + radius;
+		unsigned int drawingAreaLowerX = creature->cursor_grid.x - radius;
+		unsigned int drawingAreaLowerY = creature->cursor_grid.y - radius;
+		unsigned int drawingAreaUpperX = creature->cursor_grid.x + radius;
+		unsigned int drawingAreaUpperY = creature->cursor_grid.y + radius;
 
 		// raster a circle
 		for (unsigned int i = drawingAreaLowerX; i < drawingAreaUpperX; ++i)
 		{
 			for (unsigned int j = drawingAreaLowerY; j < drawingAreaUpperY; ++j)
 			{
-				if (  magnitude_int (  i - cursor_grid.x , j - cursor_grid.y )  < radius )
+				if (  magnitude_int (  i - creature->cursor_grid.x , j - creature->cursor_grid.y )  < radius )
 				{
 					v.push_back( vec_u2(i, j) );
 				}
@@ -454,18 +479,18 @@ int drawCharacter (std::string s)
 	case 'l':
 	{
 		// rasters a line, taking into account the accumulated rotation
-		cursor_string++; if (cursor_string > cursorLimit) {return -1;}
+		creature->cursor_string++; if (creature->cursor_string > creature->geneSize) {return -1;}
 
 		// set the previous x and y, which will be the start of the line
-		prevCursor_grid = cursor_grid;
+		creature->prevCursor_grid = creature->cursor_grid;
 
 		bool chosenSignX = false;
 		int signX = 1;
 
 		while (!chosenSignX)
 		{
-			cursor_string++; if (cursor_string > cursorLimit) {return -1;}
-			signX = alphanumeric( s[cursor_string]);
+			creature->cursor_string++; if (creature->cursor_string > creature->geneSize) {return -1;}
+			signX = alphanumeric( creature->genes[creature->cursor_string]);
 			if (signX > 13) { signX = 1; } else { signX = -1; }
 			chosenSignX = true;
 		}
@@ -475,8 +500,8 @@ int drawCharacter (std::string s)
 
 		while (!chosenSignY)
 		{
-			cursor_string++; if (cursor_string > cursorLimit) {return -1;}
-			signY = alphanumeric( s[cursor_string]);
+			creature->cursor_string++; if (creature->cursor_string > creature->geneSize) {return -1;}
+			signY = alphanumeric( creature->genes[creature->cursor_string]);
 			if (signY > 13) { signY = 1; } else { signY = -1; }
 			chosenSignY = true;
 		}
@@ -485,31 +510,31 @@ int drawCharacter (std::string s)
 
 		while (!numberModifier)
 		{
-			cursor_string++; if (cursor_string > cursorLimit) {return -1;}
-			numberModifier = alphanumeric( s[cursor_string] );
+			creature->cursor_string++; if (creature->cursor_string > creature->geneSize) {return -1;}
+			numberModifier = alphanumeric( creature->genes[creature->cursor_string] );
 		}
 
 		bool inRange = true;
 
-		if (cursor_grid.x + numberModifier  > sizeX && signX > 0)
+		if (creature->cursor_grid.x + numberModifier  > sizeX && signX > 0)
 		{
-			cursor_grid.x = sizeX - 1;
+			creature->cursor_grid.x = sizeX - 1;
 			inRange = false;
 		}
-		if (numberModifier > cursor_grid.x && signX < 0 )
+		if (numberModifier > creature->cursor_grid.x && signX < 0 )
 		{
-			cursor_grid.x = 0;
+			creature->cursor_grid.x = 0;
 			inRange = false;
 		}
 		if (inRange)
 		{
 			if (signX > 0)
 			{
-				cursor_grid.x += (numberModifier );
+				creature->cursor_grid.x += (numberModifier );
 			}
 			else
 			{
-				cursor_grid.x -= (numberModifier );
+				creature->cursor_grid.x -= (numberModifier );
 			}
 		}
 		printf("drawing a line\n");
@@ -520,19 +545,19 @@ int drawCharacter (std::string s)
 
 		while (!numberModifier)
 		{
-			cursor_string++; if (cursor_string > cursorLimit) {return -1;}
-			numberModifier = alphanumeric( s[cursor_string] );
+			creature->cursor_string++; if (creature->cursor_string > creature->geneSize) {return -1;}
+			numberModifier = alphanumeric( creature->genes[creature->cursor_string] );
 		}
 
 		inRange = true;
-		if (cursor_grid.y + numberModifier  > sizeY && signY > 0)
+		if (creature->cursor_grid.y + numberModifier  > sizeY && signY > 0)
 		{
-			cursor_grid.y = sizeY - 1;
+			creature->cursor_grid.y = sizeY - 1;
 			inRange = false;
 		}
-		if (numberModifier > cursor_grid.y && signY < 0 )
+		if (numberModifier > creature->cursor_grid.y && signY < 0 )
 		{
-			cursor_grid.y = 0;
+			creature->cursor_grid.y = 0;
 			inRange = false;
 		}
 
@@ -540,84 +565,106 @@ int drawCharacter (std::string s)
 		{
 			if (signY > 0)
 			{
-				cursor_grid.y += (numberModifier );
+				creature->cursor_grid.y += (numberModifier );
 			}
 			else
 			{
-				cursor_grid.y -= (numberModifier );
+				creature->cursor_grid.y -= (numberModifier );
 			}
 
 		}
 
-		printf("offset y: %i\n", numberModifier);
+		// printf("offset y: %i\n", numberModifier);
 
-		vec_f2 rotatedPoint = rotatePointPrecomputed( vec_f2(prevCursor_grid.x, prevCursor_grid.y),  accumulatedRotation_precomputedSin,  accumulatedRotation_precomputedCos, vec_f2(  cursor_grid.x, cursor_grid.y));
+		vec_f2 rotatedPoint = rotatePointPrecomputed( vec_f2(creature->prevCursor_grid.x, creature->prevCursor_grid.y),  accumulatedRotation_precomputedSin,  accumulatedRotation_precomputedCos, vec_f2(  creature->cursor_grid.x, creature->cursor_grid.y));
 
-		printf("rotatedPOint %f %f \n", rotatedPoint.x, rotatedPoint.y);
+		// printf("rotatedPOint %f %f \n", rotatedPoint.x, rotatedPoint.y);
 
-		if 		(rotatedPoint.x > 0 && rotatedPoint.x < sizeX - 1) 	{ cursor_grid.x = rotatedPoint.x;}
-		else if (rotatedPoint.x < 0) 								{ cursor_grid.x = 0;}
-		else if (rotatedPoint.x > sizeX - 1) 							{ cursor_grid.x = sizeX - 1; }
+		if 		(rotatedPoint.x > 0 && rotatedPoint.x < sizeX - 1) 	{ creature->cursor_grid.x = rotatedPoint.x;}
+		else if (rotatedPoint.x < 0) 								{ creature->cursor_grid.x = 0;}
+		else if (rotatedPoint.x > sizeX - 1) 							{ creature->cursor_grid.x = sizeX - 1; }
 
-		if 		(rotatedPoint.y > 0 && rotatedPoint.y < sizeY - 1) 	{ cursor_grid.y = rotatedPoint.y;}
-		else if (rotatedPoint.y < 0) 								{ cursor_grid.y = 0;}
-		else if (rotatedPoint.y > sizeY - 1) 							{ cursor_grid.y = sizeY - 1; }
+		if 		(rotatedPoint.y > 0 && rotatedPoint.y < sizeY - 1) 	{ creature->cursor_grid.y = rotatedPoint.y;}
+		else if (rotatedPoint.y < 0) 								{ creature->cursor_grid.y = 0;}
+		else if (rotatedPoint.y > sizeY - 1) 							{ creature->cursor_grid.y = sizeY - 1; }
 
-		v = EFLA_E( prevCursor_grid, cursor_grid);
+		v = EFLA_E( creature->prevCursor_grid, creature->cursor_grid);
 
 		break;
 	}
 
 	default:
 	{
-		cursor_string++; if (cursor_string > cursorLimit) {return -1;}
+		creature->cursor_string++; if (creature->cursor_string > creature->geneSize) {return -1;}
 	}
 
 	}
 
 	// paint in the points with material
+	unsigned int n_points = 0;
 	for (std::list<vec_u2>::iterator it = v.begin(); it != v.end(); ++it)
 	{
 		material_grid[it->x][it->y] = currentlyPaintingMaterial;
+		identity_grid[it->x][it->y] = creature->identity;
+		n_points ++;
 	}
+
+	creature->energy -= n_points;
 
 	return 0;
 }
 
-void drawFromSentence (std::string sentence, unsigned int startX, unsigned int startY)
+int drawNextSequence (lifeform * creature)
 {
-	if (sentence.length() <= 0)
+
+	int n_points = 0;
+
+	if (creature->genes.length() <= 0)
 	{
-		return;
+		return n_points;
 	}
 
-	cursorLimit = sentence.length() - 1;
+	creature->geneSize = creature->genes.length() - 1;
 
-	if (cursorLimit == 1)
+	if (creature->geneSize == 1)
 	{
-		return;
+		return n_points;
 	}
 
-	cursor_grid = vec_u2(startX, startY);
-
-	prevCursor_grid = cursor_grid;
-
-	// variables keep track of the sequence and rotation states.
-	unsigned int remainingSequence = 0;
-	float accumulatedRotation = 0.0f;
-
-	float colorCursorR = 0.0f;
-	float colorCursorG = 0.0f;
-	float colorCursorB = 0.0f;
-
-	unsigned int currentlyPaintingMaterial = MATERIAL_LIFE_SOLID;
-
-	cursor_string = 0; // keep track of the place in the string
-
-	for (unsigned int i = 0; i < cursorLimit ; i ++)
+	while (1)
 	{
-		drawCharacter (sentence );
+
+		int drawingPoints = drawCharacter(creature) ;
+
+		if (drawingPoints == -1)
+		{
+			break;
+		}
+		else 
+		{
+			n_points += drawingPoints;
+		}
 	}
+
+	return n_points;
+}
+
+void instantiateCreature(std::string sentence, unsigned int x, unsigned int y)
+{
+
+	lifeform creature = lifeform(sentence);
+
+
+	// place a seed at the coordinates
+	material_grid[x][y] = MATERIAL_LIFE_POWDER;
+	identity_grid[x][y] = creature.identity;
+
+	creatures.push_back(
+	    creature
+	);
+
+
+
 }
 
 void initialize ()
@@ -626,9 +673,19 @@ void initialize ()
 
 	material_grid[0][0] = MATERIAL_GOLD;
 
-	creatures.push_back(
-	    lifeform(exampleSentence)
-	);
+
+
+	for (unsigned int x = 0; x < sizeX; ++x)
+	{
+		for (unsigned int y = 0; y < 25; ++y)
+		{
+
+			material_grid[x][y] = MATERIAL_STONE;
+
+		}
+	}
+
+	instantiateCreature(exampleSentence, 100, 100);
 }
 
 void deepgardenGraphics()
@@ -691,8 +748,34 @@ void deepgardenGraphics()
 	postDraw();
 }
 
+
+lifeform * getCreatureByID( unsigned int id )
+{
+	for (std::list<lifeform>::iterator creature = creatures.begin(); creature != creatures.end(); ++creature)
+	{
+		if (creature->identity == id)
+		{
+			return &(*creature);
+
+		}
+
+	}
+
+	return nullptr;
+}
+
 void deepgardenLoop()
 {
+
+	// iterate creatures and grow them if appropriate
+	for (std::list<lifeform>::iterator creature = creatures.begin(); creature != creatures.end(); ++creature)
+	{
+		if (creature->energy > 0) 
+		{
+			creature->energy -= drawNextSequence ( &(*creature) );
+		}
+	}
+
 	// shine the lamp
 	unsigned int topRowIndex = sizeY - 2;
 	for (unsigned int x = 0; x < sizeX - 1; ++x)
@@ -720,6 +803,22 @@ void deepgardenLoop()
 					{
 						material_grid[x + i][y - 1] = MATERIAL_LIFE_POWDER;
 						material_grid[x][y] = MATERIAL_VACUUM;
+
+						// swap identity values of two cells
+						unsigned int temp_id = identity_grid[x + i][y - 1];
+						identity_grid[x + i][y - 1] = identity_grid[x][y];
+						identity_grid[x][y] = temp_id;
+
+					}
+
+					// begin to grow
+					else if ((material_grid[x + i][y - 1] & (MATERIAL_STONE)) == (MATERIAL_STONE))
+					{
+						lifeform * sprout = getCreatureByID(identity_grid[x][y]);
+						if (sprout != nullptr) 
+						{
+							sprout->germinated = true;
+						}
 					}
 				}
 			}
@@ -735,6 +834,12 @@ void deepgardenLoop()
 						{
 							material_grid[x + i][y + j] = MATERIAL_LIFE_POWDER;
 							material_grid[x][y] = MATERIAL_VACUUM;
+
+							// swap identity values of two cells
+							unsigned int temp_id = identity_grid[x + i][y + j];
+							identity_grid[x + i][y + j] = identity_grid[x][y];
+							identity_grid[x][y] = temp_id;
+
 						}
 					}
 				}
@@ -751,6 +856,11 @@ void deepgardenLoop()
 						{
 							material_grid[x + i][y + j] = MATERIAL_LIFE_GAS;
 							material_grid[x][y] = MATERIAL_VACUUM;
+
+							// swap identity values of two cells
+							unsigned int temp_id = identity_grid[x + i][y + j];
+							identity_grid[x + i][y + j] = identity_grid[x][y];
+							identity_grid[x][y] = temp_id;
 						}
 					}
 				}
@@ -769,6 +879,13 @@ void deepgardenLoop()
 				else
 				{
 					material_grid[x][y] = MATERIAL_VACUUM;
+
+					lifeform * fellOnThisThing = getCreatureByID(identity_grid[x][y - 1]);
+
+					if (fellOnThisThing != nullptr)
+					{
+						fellOnThisThing->energy++;
+					}
 				}
 			}
 		}
