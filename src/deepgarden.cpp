@@ -1,28 +1,57 @@
 #include "deepgarden.h"
 #include "deepgarden_graphics.h"
 
-
 static unsigned int material_grid[sizeX][sizeY];
 static unsigned int identity_grid[sizeX][sizeY];
-// static unsigned int color_grid_r
+static float color_grid_r[sizeX][sizeY];
+static float color_grid_g[sizeX][sizeY];
+static float color_grid_b[sizeX][sizeY];
 
-color sandColor = color(0.2f, 0.2f, 0.2f, 1.0f);
+color lightColor = color(1.0f, 1.0f, 1.0f, 1.0f);
 color emptyColor = color(0.05f, 0.05f, 0.05f, 1.0f);
 color lifeColor = color(0.2f, 0.05f, 0.4f, 1.0f);
 color stoneColor = color(0.5f, 0.5f, 0.5f, 1.0f);
-
 color goldColor = color(1.0f, 1.0f, 0.0f, 1.0f);
 
 unsigned int numberOfFieldsPerVertex = 6; /*  R, G, B, A, X, Y  */
 
 unsigned int cursorLimit = 0;
-
 unsigned int cursor_string = 0;
-
 unsigned int prevCursor_string = 0;
 
 bool total_break = false; 			// used to return to recursion depth 0
 unsigned int recursion_depth = 0;	// how many breakable sequences are applied right now. like the number indents to the left of this line of code
+
+std::list<unsigned int> identities;
+
+unsigned int newIdentity ()
+{
+	unsigned int identityCursor = 0;
+	while (true)
+	{
+		bool used = false;
+		for (std::list<unsigned int>::iterator it = identities.begin(); it != identities.end(); ++it)
+		{
+			if (identityCursor == *it)
+			{
+				used = true;
+			}
+		}
+
+		if (!used)
+		{
+			identities.push_back(identityCursor);
+			return identityCursor;
+		}
+		identityCursor++;
+	}
+	return identityCursor;
+}
+
+void retireIdentity (unsigned int identityToRetire)
+{
+	identities.remove (identityToRetire);
+}
 
 struct vec_u2
 {
@@ -33,9 +62,7 @@ struct vec_u2
 	{
 		this->x = a;
 		this->y = b;
-
 	}
-
 };
 
 struct vec_i2
@@ -47,9 +74,7 @@ struct vec_i2
 	{
 		this->x = a;
 		this->y = b;
-
 	}
-
 };
 
 struct vec_f2
@@ -61,9 +86,25 @@ struct vec_f2
 	{
 		this->x = a;
 		this->y = b;
-
 	}
 };
+
+struct lifeform
+{
+	unsigned int identity;
+	int energy;
+	std::string genes;
+
+	lifeform( std::string genes ) ;
+};
+
+lifeform::lifeform(std::string new_genes)
+{
+	this->energy = 0;
+	this->genes = new_genes;
+}
+
+std::vector<lifeform> creatures;
 
 vec_u2 cursor_grid 		= vec_u2(0, 0);
 vec_u2 prevCursor_grid 	= vec_u2(0, 0);
@@ -74,15 +115,7 @@ float accumulatedRotation = 0.0f;
 float accumulatedRotation_precomputedSin = sin(accumulatedRotation);
 float accumulatedRotation_precomputedCos = cos(accumulatedRotation);
 
-float colorCursorR = 0.0f;
-float colorCursorG = 0.0f;
-float colorCursorB = 0.0f;
-
-unsigned int currentlyPaintingMaterial = MATERIAL_SAND;
-
-
-
-
+unsigned int currentlyPaintingMaterial = MATERIAL_LIFE_SOLID;
 
 float RNG()
 {
@@ -91,10 +124,9 @@ float RNG()
 	return dis(e);
 }
 
-std::string lorem = " Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque viverra nulla eget fermentum commodo. Nullam ac ex at nisl finibus ultrices. Mauris aliquet elementum turpis, sit amet lobortis magna viverra sed. Proin dignissim hendrerit est, ut convallis dui suscipit sed. Nulla libero justo, euismod malesuada tempus nec, fringilla vel est. Pellentesque sed tellus a purus porttitor vulputate et at nunc. Donec non ipsum scelerisque, placerat sapien sit amet, fringilla est. Fusce pretium urna sit amet hendrerit ultrices. Morbi eget eleifend mi, non feugiat mauris. Praesent non condimentum ligula. Mauris consequat mi ac magna placerat pellentesque. Vestibulum non interdum enim, ac vehicula diam. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia curae; Aenean porta libero quis libero rutrum imperdiet. Curabitur vulputate feugiat odio non suscipit. Interdum et malesuada fames ac ante ipsum primis in faucibus. Vivamus erat magna, pulvinar sed felis non volutpat. ";
-
-
-std::string exampleSentence = "selnslslul lblotsanicol lest sstructura plantae csui insunltl lsemina. Pars asutem funlgslil quae ssporallls gignit corpuls fructisferum appellatur.";
+// std::string exampleSentence = " Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque viverra nulla eget fermentum commodo. Nullam ac ex at nisl finibus ultrices. Mauris aliquet elementum turpis, sit amet lobortis magna viverra sed. Proin dignissim hendrerit est, ut convallis dui suscipit sed. Nulla libero justo, euismod malesuada tempus nec, fringilla vel est. Pellentesque sed tellus a purus porttitor vulputate et at nunc. Donec non ipsum scelerisque, placerat sapien sit amet, fringilla est. Fusce pretium urna sit amet hendrerit ultrices. Morbi eget eleifend mi, non feugiat mauris. Praesent non condimentum ligula. Mauris consequat mi ac magna placerat pellentesque. Vestibulum non interdum enim, ac vehicula diam. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia curae; Aenean porta libero quis libero rutrum imperdiet. Curabitur vulputate feugiat odio non suscipit. Interdum et malesuada fames ac ante ipsum primis in faucibus. Vivamus erat magna, pulvinar sed felis non volutpat. ";
+// std::string exampleSentence = "we'cre off toc see the cwizard, cthe wonderful wizcard of oz! cbecause beccause becaucse becausce because, acll of the wocnderful things che does. do do cdod do do docd doo! ";
+std::string exampleSentence = "selnslslul lblotsancol lest sstructra plantae csui insnltl lsemina. Pars asutem fungslil quae ssporlls gignit corpuls fructsferum appellatur.";
 
 float magnitude_int( int x,  int y)
 {
@@ -102,15 +134,8 @@ float magnitude_int( int x,  int y)
 	return mag;
 }
 
-
 vec_f2 rotatePointPrecomputed( vec_f2 center, float s, float c, vec_f2 point)
 {
-	// float s = sin(angle);
-	// float c = cos(angle);
-
-	// vec_i2 center = vec_i2(ucenter.x, ucenter.y);
-	// vec_i2 point = vec_i2(upoint.x, upoint.y);
-
 	// translate point back to origin:
 	point.x -= center.x;
 	point.y -= center.y;
@@ -125,12 +150,9 @@ vec_f2 rotatePointPrecomputed( vec_f2 center, float s, float c, vec_f2 point)
 	return vec_f2(point.x, point.y);
 };
 
-
-
 // lookup table for character alphanumeric values
 int alphanumeric (char c)
 {
-
 	int val = 0;
 
 	switch (c)
@@ -198,52 +220,50 @@ int alphanumeric (char c)
 	case '7': { val = 7; break; }
 	case '8': { val = 8; break; }
 	case '9': { val = 9; break; }
-	case '0': { val = 0; break; }
+	// case '0': { val = 0; break; }
 
-		// case '`': { val = 1; break; }
-		// case '~': { val = 2; break; }
-		// case '!': { val = 3; break; }
-		// case '@': { val = 4; break; }
-		// case '#': { val = 5; break; }
-		// case '$': { val = 6; break; }
-		// case '%': { val = 7; break; }
-		// case '^': { val = 8; break; }
-		// case '&': { val = 9; break; }
-		// case '*': { val = 1; break; }
-		// case '(': { val = 2; break; }
-		// case ')': { val = 4; break; }
-		// case '-': { val = 8; break; }
-		// case '+': { val = 16; break; }
-		// case '[': { val = 32; break; }
-		// case ']': { val = 64; break; }
-		// case '{': { val = 128; break; }
-		// case '}': { val = 256; break; }
-		// case '|': { val = 1024; break; }
-		// case ';': { val = 32; break; }
-		// case ':': { val = 64; break; }
-		// case '<': { val = 128; break; }
-		// case '>': { val = 256; break; }
-		// case ',': { val = 1; break; }
-		// case '.': { val = 2; break; }
-		// case '/': { val = 1024; break; }
-		// case '?': { val = 4; break; }
+	case '`': { val = 1; break; }
+	case '~': { val = 2; break; }
+	case '!': { val = 3; break; }
+	case '@': { val = 4; break; }
+	case '#': { val = 5; break; }
+	case '$': { val = 6; break; }
+	case '%': { val = 7; break; }
+	case '^': { val = 8; break; }
+	case '&': { val = 9; break; }
+	case '*': { val = 10; break; }
+	case '(': { val = 11; break; }
+	case ')': { val = 12; break; }
+	case '-': { val = 13; break; }
+	case '+': { val = 14; break; }
+	case '[': { val = 15; break; }
+	case ']': { val = 16; break; }
+	case '{': { val = 17; break; }
+	case '}': { val = 18; break; }
+	case '|': { val = 19; break; }
+	case ';': { val = 20; break; }
+	case ':': { val = 21; break; }
+	case '<': { val = 22; break; }
+	case '>': { val = 23; break; }
+	case ',': { val = 24; break; }
+	case '.': { val = 25; break; }
+	case '/': { val = 26; break; }
+	case '?': { val = 27; break; }
 	}
 
 	return val;
-
 }
 
 // THE EXTREMELY FAST LINE ALGORITHM Variation E (Addition Fixed Point PreCalc Small Display)
 // Small Display (256x256) resolution.
-std::vector<vec_u2> EFLA_E(vec_u2 start, vec_u2 end)
+std::list<vec_u2> EFLA_E(vec_u2 start, vec_u2 end)
 {
-
 	int x  = start.x;
 	int y  = start.y;
 	int x2 = end.x;
 	int y2 = end.y;
 
-	std::vector<vec_u2> v;
+	std::list<vec_u2> v;
 
 	bool yLonger = false;
 	int shortLen = y2 - y;
@@ -294,38 +314,15 @@ std::vector<vec_u2> EFLA_E(vec_u2 start, vec_u2 end)
 	}
 
 	return v;
-
 }
-
-// int chooseSign() {
-
-// }
-
-// int chooseAlphanumeric() {
-
-// }
 
 int drawCharacter (std::string s)
 {
-	// if (total_break)
-	// {
-	// 	if (recursion_depth == 0)
-	// 	{
-	// 		total_break = false;
-	// 	}
-	// 	else {
-	// 		return -1;
-	// 	}
-
-	// }
-
 	prevCursor_string = cursor_string;
 
 	char c = s[cursor_string];
 
-	// printf("drawing character: %c\n", c);
-
-	// printf("cursor location: %u %u\n", cursor_grid.x , cursor_grid.y);
+	std::list<vec_u2> v;
 
 	switch (c)
 	{
@@ -345,9 +342,6 @@ int drawCharacter (std::string s)
 
 		float rotation = numberModifier;
 
-		// rotation =
-
-
 		// record trunk rotation
 		float trunkRotation = accumulatedRotation;
 
@@ -356,19 +350,14 @@ int drawCharacter (std::string s)
 		accumulatedRotation_precomputedSin = sin(accumulatedRotation);
 		accumulatedRotation_precomputedCos = cos(accumulatedRotation);
 
-
 		// record old cursor position
 		vec_u2 old_cursorGrid = cursor_grid;
-
 
 		printf("branching. old rotation %f , new %f\n", trunkRotation, accumulatedRotation );
 
 		recursion_depth++;
 		while (1)
 		{
-
-
-
 			if ( drawCharacter(s) < 0)
 			{
 				break;
@@ -376,29 +365,22 @@ int drawCharacter (std::string s)
 		}
 		recursion_depth--;
 
-
-
 		// return to normal rotation
 		accumulatedRotation = trunkRotation;
 		accumulatedRotation_precomputedSin = sin(accumulatedRotation);
 		accumulatedRotation_precomputedCos = cos(accumulatedRotation);
 
 		// return to normal position
-		 cursor_grid = old_cursorGrid;
-
-
+		cursor_grid = old_cursorGrid;
 
 		break;
 	}
-
 
 	case 's': // sequence. a motif is repeated serially a number of times.
 	{
 		cursor_string++; if (cursor_string > cursorLimit) {return -1;}
 
 		printf("entering sequence");
-
-		// cursor_string++; if (cursor_string > cursorLimit) {return -1;}
 
 		// get number of times to repeat the sequence
 		int numberModifier = 0;
@@ -416,29 +398,20 @@ int drawCharacter (std::string s)
 		recursion_depth ++;
 		for ( int i = 0; i < repeats; ++i)
 		{
-
 			while (1)
 			{
-
 				if ( drawCharacter(s) < 0)
 				{
 					break;
 				}
-
-
-
 			}
 			cursor_string = sequenceOrigin;
-
-
-
 		}
 		recursion_depth--;
 		break;
 	}
 	case ' ': // break innermost array
 	{
-
 		cursor_string++; if (cursor_string > cursorLimit) {return -1;}
 
 		printf("ending array");
@@ -447,15 +420,8 @@ int drawCharacter (std::string s)
 		break;
 	}
 
-	// case '.': // break totally and return to 0 level
-	// {
-	// 	total_break = true;
-	// 	break;
-	// }
-
 	case 'c': // paint a circle at the cursor
 	{
-
 		cursor_string++; if (cursor_string > cursorLimit) {return -1;}
 
 		int numberModifier = 0;
@@ -463,9 +429,6 @@ int drawCharacter (std::string s)
 
 		// get the circle radius (the next number in the string.)
 		unsigned int radius = numberModifier;
-
-		// make a list of integer cell addresses
-		std::vector<vec_u2> v;
 
 		// define the range of pixels you'll draw- so you don't have to navigate the entire, massive grid.
 		unsigned int drawingAreaLowerX = cursor_grid.x - radius;
@@ -478,18 +441,11 @@ int drawCharacter (std::string s)
 		{
 			for (unsigned int j = drawingAreaLowerY; j < drawingAreaUpperY; ++j)
 			{
-
 				if (  magnitude_int (  i - cursor_grid.x , j - cursor_grid.y )  < radius )
 				{
 					v.push_back( vec_u2(i, j) );
 				}
 			}
-		}
-
-		// paint in the points with material
-		for (std::vector<vec_u2>::iterator it = v.begin(); it != v.end(); ++it)
-		{
-			material_grid[it->x][it->y] = currentlyPaintingMaterial;
 		}
 
 		break;
@@ -502,9 +458,6 @@ int drawCharacter (std::string s)
 
 		// set the previous x and y, which will be the start of the line
 		prevCursor_grid = cursor_grid;
-
-		// read the endpoints in from file, and apply the rotation
-		// cursor_string++;
 
 		bool chosenSignX = false;
 		int signX = 1;
@@ -536,7 +489,6 @@ int drawCharacter (std::string s)
 			numberModifier = alphanumeric( s[cursor_string] );
 		}
 
-		// numberModifier = numberModifier * signX;
 		bool inRange = true;
 
 		if (cursor_grid.x + numberModifier  > sizeX && signX > 0)
@@ -597,47 +549,22 @@ int drawCharacter (std::string s)
 
 		}
 
-
-
-
-		// cursor_grid.y += numberModifier;
-
 		printf("offset y: %i\n", numberModifier);
 
 		vec_f2 rotatedPoint = rotatePointPrecomputed( vec_f2(prevCursor_grid.x, prevCursor_grid.y),  accumulatedRotation_precomputedSin,  accumulatedRotation_precomputedCos, vec_f2(  cursor_grid.x, cursor_grid.y));
-		
-		// vec_u2 rotatedPointAddress = vec_u2(rotatedPoint.x, rotatedPoint.y);
 
 		printf("rotatedPOint %f %f \n", rotatedPoint.x, rotatedPoint.y);
 
-		if 		(rotatedPoint.x > 0 && rotatedPoint.x < sizeX-1) 	{ cursor_grid.x = rotatedPoint.x;}
+		if 		(rotatedPoint.x > 0 && rotatedPoint.x < sizeX - 1) 	{ cursor_grid.x = rotatedPoint.x;}
 		else if (rotatedPoint.x < 0) 								{ cursor_grid.x = 0;}
-		else if (rotatedPoint.x > sizeX-1) 							{ cursor_grid.x = sizeX-1; }
+		else if (rotatedPoint.x > sizeX - 1) 							{ cursor_grid.x = sizeX - 1; }
 
-
-
-		if 		(rotatedPoint.y > 0 && rotatedPoint.y < sizeY-1) 	{ cursor_grid.y = rotatedPoint.y;}
+		if 		(rotatedPoint.y > 0 && rotatedPoint.y < sizeY - 1) 	{ cursor_grid.y = rotatedPoint.y;}
 		else if (rotatedPoint.y < 0) 								{ cursor_grid.y = 0;}
-		else if (rotatedPoint.y > sizeY-1) 							{ cursor_grid.y = sizeY-1; }
+		else if (rotatedPoint.y > sizeY - 1) 							{ cursor_grid.y = sizeY - 1; }
 
+		v = EFLA_E( prevCursor_grid, cursor_grid);
 
-		// if (rotatedPoint.y < sizeY-1) {cursor_grid.y = rotatedPoint.y;} else {cursor_grid.y = sizeY-1;}
-
-
-		
-		// cursor_grid.y = rotatedPoint.y;
-
-		// raster the line
-		std::vector<vec_u2> v = EFLA_E( prevCursor_grid, cursor_grid);
-
-		// fill the grid points with material
-		for (std::vector<vec_u2>::iterator it = v.begin(); it != v.end(); ++it)
-		{
-			if (it->x > 0 && it->x < sizeX && it->y > 0 && it->y < sizeY )
-			{
-				material_grid[it->x][it->y] = currentlyPaintingMaterial;
-			}
-		}
 		break;
 	}
 
@@ -648,16 +575,17 @@ int drawCharacter (std::string s)
 
 	}
 
-	// int cursordistance = cursor_string - prevCursor_string;
+	// paint in the points with material
+	for (std::list<vec_u2>::iterator it = v.begin(); it != v.end(); ++it)
+	{
+		material_grid[it->x][it->y] = currentlyPaintingMaterial;
+	}
 
 	return 0;
-
 }
-
 
 void drawFromSentence (std::string sentence, unsigned int startX, unsigned int startY)
 {
-
 	if (sentence.length() <= 0)
 	{
 		return;
@@ -674,9 +602,6 @@ void drawFromSentence (std::string sentence, unsigned int startX, unsigned int s
 
 	prevCursor_grid = cursor_grid;
 
-	// prev_x = startX; // moving cursor position from last turn
-	// prev_y = startY;
-
 	// variables keep track of the sequence and rotation states.
 	unsigned int remainingSequence = 0;
 	float accumulatedRotation = 0.0f;
@@ -685,133 +610,26 @@ void drawFromSentence (std::string sentence, unsigned int startX, unsigned int s
 	float colorCursorG = 0.0f;
 	float colorCursorB = 0.0f;
 
-	unsigned int currentlyPaintingMaterial = MATERIAL_SAND;
-
+	unsigned int currentlyPaintingMaterial = MATERIAL_LIFE_SOLID;
 
 	cursor_string = 0; // keep track of the place in the string
 
-	/**
-	 *
-	 *
-	 * RULES LIST
-	 *
-	 *
-	 *
-	 * // modifier commands
-	* s : sequence n times
-	* h : mirror horizontally
-	* v : mirror vertically
-	* ,  : break out of innermost array, sequence, or mirror structure.
-	* (space) or . : break out of all array, sequence, or mirror structures
-	* +  : plus separates numbers
-	* - : minus separates and inverts numbers
-	* o : rotate
-	*
-	* // drawing commands
-	* l : draw line (the next number is the x offset, the number after that is the y offset, the one after that is the thickness. A line is interpolated between them.)
-	* q : paint square (next number is radius)
-	* d : paint diamond
-	* c : paint circle (next number is radius)
-	* e : extrude, next number is direction (four cardinals + expand in all directions), number afterwards is amount of pixels
-	*
-	* // color commands
-	* r: next number is red component
-	* g: next number is green component
-	* b: next number is blue component
-	*
-	* // body commands
-	* f : fruit (a new seed is produced here)
-
-
-	 *
-	 *
-	 *
-	 *
-	 * */
-
-
-
-
 	for (unsigned int i = 0; i < cursorLimit ; i ++)
 	{
-
-		//
-		// void drawCharacter (std::string s, unsigned int * cursor)
 		drawCharacter (sentence );
-
-
 	}
-
 }
-
-
-
-
-
-void mutateSentence (std::string s) 
-{
-
-     unsigned int stringLength = s.length();
-
-     for (int i = 0; i < stringLength-1; ++i)
-     {
-     	
-
-
-     		// the three kinds of mutation
-     		// insert, delete, replace
-
-
-     		// insert
-     		if () 
-     		{
-
-     		}
-
-
-     }
-
-}
-
-
-
 
 void initialize ()
 {
 	memset( material_grid, MATERIAL_VACUUM, (sizeof(unsigned int) * sizeX * sizeY) );
 
-	// for (unsigned int x = 0; x < sizeX; ++x)
-	// {
-	// 	for (unsigned int y = 0; y < sizeY; ++y)
-	// 	{
-	// 		// if (RNG() > 0.5)
-	// 		// {
-	// 		// 	grid[x][y] = MATERIAL_SAND;
-	// 		// }
-	// 		// else
-	// 		// {
-	// 			// material_grid[x][y] = MATERIAL_VACUUM;
-	// 		// }
-
-	// 		// if (RNG() < 0.005)
-	// 		// {
-	// 		// 	grid[x][y] = MATERIAL_STONE;
-	// 		// }
-
-
-
-	// 	}
-	// }
-
-
 	material_grid[0][0] = MATERIAL_GOLD;
 
-
-	drawFromSentence (exampleSentence, sizeX/2, sizeY/2 );
-
+	creatures.push_back(
+	    lifeform(exampleSentence)
+	);
 }
-
-
 
 void deepgardenGraphics()
 {
@@ -830,17 +648,19 @@ void deepgardenGraphics()
 	unsigned int index_buffer_content = 0;
 	unsigned int index_buffer_data[nIndicesToUseThisTurn];
 
-	// prepareForWorldDraw();
-
 	for (unsigned int x = 0; x < sizeX; ++x)
 	{
 		for (unsigned int y = 0; y < sizeY; ++y)
 		{
 			color colorToUse = emptyColor;
 
-			if ((material_grid[x][y] & (MATERIAL_SAND))   == (MATERIAL_SAND))     {    colorToUse = sandColor;  }
+			if ((material_grid[x][y] & (MATERIAL_PHOTON))   == (MATERIAL_PHOTON))     {    colorToUse = lightColor;  }
 			if ((material_grid[x][y] & (MATERIAL_VACUUM)) == (MATERIAL_VACUUM))   {    colorToUse = emptyColor; }
-			if ((material_grid[x][y] & (MATERIAL_LIFE))   == (MATERIAL_LIFE))     {    colorToUse = lifeColor;  }
+			if ((material_grid[x][y] & (MATERIAL_LIFE_SOLID))   == (MATERIAL_LIFE_SOLID))     {    colorToUse = lifeColor;  }
+			if ((material_grid[x][y] & (MATERIAL_LIFE_POWDER))   == (MATERIAL_LIFE_POWDER))     {    colorToUse = lifeColor;  }
+			if ((material_grid[x][y] & (MATERIAL_LIFE_LIQUID))   == (MATERIAL_LIFE_LIQUID))     {    colorToUse = lifeColor;  }
+			if ((material_grid[x][y] & (MATERIAL_LIFE_GAS))   == (MATERIAL_LIFE_GAS))     {    colorToUse = lifeColor;  }
+
 			if ((material_grid[x][y] & (MATERIAL_STONE)) == (MATERIAL_STONE))    {    colorToUse = stoneColor; }
 			if ((material_grid[x][y] & (MATERIAL_GOLD)) == (MATERIAL_GOLD))    {    colorToUse = goldColor; }
 
@@ -873,53 +693,84 @@ void deepgardenGraphics()
 
 void deepgardenLoop()
 {
+	// shine the lamp
+	unsigned int topRowIndex = sizeY - 2;
+	for (unsigned int x = 0; x < sizeX - 1; ++x)
+	{
+		if (RNG() < 0.005)
+		{
+			material_grid[x][topRowIndex] = MATERIAL_PHOTON;
+		}
+	}
+
 	for (unsigned int x = 1; x < sizeX - 1; ++x)
 	{
 		for (unsigned int y = 1; y < sizeY - 1; ++y)
 		{
-			if ((material_grid[x][y] & (MATERIAL_SAND)) == (MATERIAL_SAND))
+			// move physical blocks on the material grid
+
+			// solids do not move
+
+			// movement instructions for POWDERS
+			if ((material_grid[x][y] & (MATERIAL_LIFE_POWDER)) == (MATERIAL_LIFE_POWDER))
 			{
-
-				if ((material_grid[x][y - 1] & (MATERIAL_VACUUM)) == (MATERIAL_VACUUM))
+				for (int i = -1; i < 2; ++i)
 				{
-					material_grid[x][y - 1] = MATERIAL_SAND;
-					material_grid[x][y] = MATERIAL_VACUUM;
-				}
-
-				else if ((material_grid[x - 1][y - 1] & (MATERIAL_VACUUM)) == (MATERIAL_VACUUM))
-				{
-					material_grid[x - 1][y - 1] = MATERIAL_SAND;
-					material_grid[x][y] = MATERIAL_VACUUM;
-				}
-
-				else if ((material_grid[x + 1][y - 1] & (MATERIAL_VACUUM)) == (MATERIAL_VACUUM))
-				{
-					material_grid[x + 1][y - 1] = MATERIAL_SAND;
-					material_grid[x][y] = MATERIAL_VACUUM;
+					if ((material_grid[x + i][y - 1] & (MATERIAL_VACUUM)) == (MATERIAL_VACUUM))
+					{
+						material_grid[x + i][y - 1] = MATERIAL_LIFE_POWDER;
+						material_grid[x][y] = MATERIAL_VACUUM;
+					}
 				}
 			}
 
-			// if ((grid[x][y] & (MATERIAL_LIFE)) == (MATERIAL_LIFE))
-			// {
+			// movement instructions for LIQUIDS
+			if ((material_grid[x][y] & (MATERIAL_LIFE_LIQUID)) == (MATERIAL_LIFE_LIQUID))
+			{
+				for (int i = -1; i < 2; ++i)
+				{
+					for (int j = -1; j < 1; ++j)
+					{
+						if ((material_grid[x + i][y + j] & (MATERIAL_VACUUM)) == (MATERIAL_VACUUM))
+						{
+							material_grid[x + i][y + j] = MATERIAL_LIFE_POWDER;
+							material_grid[x][y] = MATERIAL_VACUUM;
+						}
+					}
+				}
+			}
 
+			// movement instructions for GASES
+			if ((material_grid[x][y] & (MATERIAL_LIFE_GAS)) == (MATERIAL_LIFE_GAS))
+			{
+				for (int i = -1; i < 2; ++i)
+				{
+					for (int j = -1; j < 2; ++j)
+					{
+						if ((material_grid[x + i][y + j] & (MATERIAL_VACUUM)) == (MATERIAL_VACUUM))
+						{
+							material_grid[x + i][y + j] = MATERIAL_LIFE_GAS;
+							material_grid[x][y] = MATERIAL_VACUUM;
+						}
+					}
+				}
+			}
 
-			// 	if ((grid[x][y - 1] & (MATERIAL_VACUUM)) == (MATERIAL_VACUUM))
-			// 	{
-			// 		grid[x][y - 1]  = MATERIAL_LIFE;
-			// 	}
-
-			// 	else if ((grid[x + 1][y ] & (MATERIAL_VACUUM)) == (MATERIAL_VACUUM))
-			// 	{
-			// 		grid[x + 1][y ]  = MATERIAL_LIFE;
-			// 	}
-			// 	else if ((grid[x - 1][y] & (MATERIAL_VACUUM)) == (MATERIAL_VACUUM))
-			// 	{
-			// 		grid[x - 1][y ]  = MATERIAL_LIFE;
-			// 	}
-
-
-			// }
-
+			// movement instructions for PHOTONS
+			if ((material_grid[x][y] & (MATERIAL_PHOTON)) == (MATERIAL_PHOTON))
+			{
+				// move down towards the earth
+				if ((material_grid[x][y - 1] & (MATERIAL_VACUUM)) == (MATERIAL_VACUUM))
+				{
+					material_grid[x][y - 1] = MATERIAL_PHOTON;
+					material_grid[x][y] = MATERIAL_VACUUM;
+				}
+				// disappear if you hit something
+				else
+				{
+					material_grid[x][y] = MATERIAL_VACUUM;
+				}
+			}
 		}
 	}
 }

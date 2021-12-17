@@ -7,12 +7,14 @@
 #include <SDL_opengl.h>
 #include "SDL.h"
 #include <vector>
+#include <list>
 #include <string>
 #include <sstream>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 using namespace glm;
 #include <random>
+
 
 // #include "deepgarden.h"
 // #include "deepgarden_graphics.h"
@@ -34,10 +36,15 @@ struct color
 
 
 #define MATERIAL_VACUUM               1  // 2^0, bit 0
-#define MATERIAL_SAND          		  2  // 2^1, bit 1
-#define MATERIAL_LIFE          		  4  // 2^1, bit 1
-#define MATERIAL_STONE                8  // 2^1, bit 1
-#define MATERIAL_GOLD                16  // 2^1, bit 1
+#define MATERIAL_PHOTON          		  2  // 2^1, bit 1
+
+#define MATERIAL_LIFE_SOLID        	  4  // 2^1, bit 1
+#define MATERIAL_LIFE_POWDER		  8
+#define MATERIAL_LIFE_LIQUID		 16
+#define MATERIAL_LIFE_GAS		     32
+
+#define MATERIAL_STONE                64  // 2^1, bit 1
+#define MATERIAL_GOLD                128  // 2^1, bit 1
 
 
 float RNG();
