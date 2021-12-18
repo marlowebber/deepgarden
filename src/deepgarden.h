@@ -34,31 +34,29 @@ struct color
 };
 
 
-
+#define MATERIAL_VACUUM	1
 #define MATERIAL_PHOTON          		  2  // 2^1, bit 1
 
-#define MATERIAL_LIFE_SOLID        	  4  // 2^1, bit 1
-#define MATERIAL_LIFE_POWDER		  8
-#define MATERIAL_LIFE_LIQUID		 16
-#define MATERIAL_LIFE_GAS		     32
-
-#define MATERIAL_STONE                64  // 2^1, bit 1
-#define MATERIAL_GOLD                128  // 2^1, bit 1
-
+#define MATERIAL_IRON 4
+#define MATERIAL_STONE 8
+#define MATERIAL_OXYGEN 16
 
 
 #define PHASE_VACUUM 1
 #define PHASE_SOLID 2
-#define PHASE_LIQUID 4
-#define PHASE_GAS    8
-#define PHASE_LIGHT 16
+#define PHASE_POWDER 4
+#define PHASE_LIQUID 8
+#define PHASE_GAS    16
+#define PHASE_LIGHT 32
 
+#define DARK 1
+#define LIGHT 2
 
 float RNG();
 
 void initialize ();
 
+// void deepgardenLoop();
 void deepgardenLoop();
-void deepgardenGraphics();
 
 #endif

@@ -99,7 +99,7 @@ int main( int argc, char * argv[] )
 		// }
 
 		// graphics loop
-		deepgardenGraphics();
+		// deepgardenGraphics();
 
 
 

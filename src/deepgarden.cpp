@@ -1,20 +1,20 @@
 #include "deepgarden.h"
 #include "deepgarden_graphics.h"
 
-unsigned int totalSize = sizeX * sizeY;
-
+const unsigned int totalSize = sizeX * sizeY;
+// const unsigned int highestI
 
 static unsigned int material_grid[totalSize];
 static unsigned int phase_grid[totalSize];
 static unsigned int identity_grid[totalSize];
-static unsigned int temperature_grid[totalSize];
-
-
+static unsigned int light_grid[totalSize];
 
 color lightColor = color(1.0f, 1.0f, 1.0f, 1.0f);
 color emptyColor = color(0.05f, 0.05f, 0.05f, 1.0f);
 color lifeColor = color(0.2f, 0.05f, 0.4f, 1.0f);
 color stoneColor = color(0.5f, 0.5f, 0.5f, 1.0f);
+
+color sandColor = color(0.3f, 0.3f, 0.3f, 1.0f);
 color goldColor = color(1.0f, 1.0f, 0.0f, 1.0f);
 
 unsigned int numberOfFieldsPerVertex = 6; /*  R, G, B, A, X, Y  */
@@ -68,8 +68,8 @@ struct lifeform
 
 	unsigned int cursor_string;
 	unsigned int geneSize;
-	unsigned int cursor_grid;
-	unsigned int prevCursor_grid;
+	vec_u2 cursor_grid = vec_u2(0, 0);
+	vec_u2 prevCursor_grid = vec_u2(0, 0);
 	float accumulatedRotation ;
 	float accumulatedRotation_precomputedSin;
 	float accumulatedRotation_precomputedCos;
@@ -82,8 +82,8 @@ struct lifeform
 		this->genes = a;
 
 		this->cursor_string = 0;
-		this->cursor_grid 		= 0;
-		this->prevCursor_grid 	= 0;
+		// this->cursor_grid 		= 0;
+		// this->prevCursor_grid 	= 0;
 		this->accumulatedRotation  = 0;
 		this->accumulatedRotation_precomputedSin = sin(this->accumulatedRotation);
 		this->accumulatedRotation_precomputedCos = cos(this->accumulatedRotation);
@@ -107,7 +107,7 @@ float accumulatedRotation = 0.0f;
 float accumulatedRotation_precomputedSin = sin(accumulatedRotation);
 float accumulatedRotation_precomputedCos = cos(accumulatedRotation);
 
-unsigned int currentlyPaintingMaterial = MATERIAL_LIFE_SOLID;
+unsigned int currentlyPaintingMaterial = MATERIAL_STONE;
 
 // THE EXTREMELY FAST LINE ALGORITHM Variation E (Addition Fixed Point PreCalc Small Display)
 // Small Display (256x256) resolution.
@@ -406,13 +406,18 @@ int drawCharacter (lifeform * creature)
 	}
 	}
 
+	// printf("committing pixels to fofefe\n");
+
 	// paint in the points with material
 	unsigned int n_points = 0;
 	for (std::list<vec_u2>::iterator it = v.begin(); it != v.end(); ++it)
 	{
-		phase_grid[it->x][it->y] 	= PHASE_POWDER;
-		material_grid[it->x][it->y] = currentlyPaintingMaterial;
-		identity_grid[it->x][it->y] = creature->identity;
+
+		unsigned int i = (it->y * sizeX) + it->x;
+
+		phase_grid[i] 	= PHASE_SOLID;
+		material_grid[i] = currentlyPaintingMaterial;
+		identity_grid[i] = creature->identity;
 		n_points ++;
 	}
 
@@ -456,95 +461,125 @@ int drawNextSequence (lifeform * creature)
 	return n_points;
 }
 
+
+std::string randomSentence ()
+{
+	unsigned int randomSentenceLength = 256;
+
+	char bytes[randomSentenceLength];
+
+	for (unsigned int  i = 0; i < randomSentenceLength; ++i)
+	{
+		bytes[i] = 'a' + rand() % (26 + 1);
+		if (RNG() < 0.1)
+		{
+			bytes[i] = ' ';
+
+		}
+	}
+
+	return std::string(bytes);
+}
+
 void instantiateCreature(std::string sentence, unsigned int x, unsigned int y)
 {
+	printf("%s\n", sentence.c_str());
+
 	lifeform creature = lifeform(sentence);
 
+	unsigned int i = (y * sizeX) + x;
+
+
+
 	// place a seed at the coordinates
-	material_grid[x][y] = MATERIAL_LIFE_POWDER;
-	phase_grid   [x][y] = PHASE_POWDER;
-	identity_grid[x][y] = creature.identity;
+	material_grid[i] = MATERIAL_STONE;
+	phase_grid   [i] = PHASE_SOLID;
+	identity_grid[i] = creature.identity;
 
 	creatures.push_back(
 	    creature
 	);
+
+	creatures.back().cursor_grid = vec_u2(x, y);
 }
 
 void initialize ()
 {
-	// memset( phase_grid, MATERIAL_VACUUM, (sizeof(unsigned int) * sizeX * sizeY) );
 
-	// phase_grid[0] = MATERIAL_GOLD;
+	// https://stackoverflow.com/questions/9459035/why-does-rand-yield-the-same-sequence-of-numbers-on-every-run
+	srand((unsigned int)time(NULL));
 
-	// for (unsigned int x = 0; x < sizeX; ++x)
-	// {
-	// 	for (unsigned int y = 0; y < 25; ++y)
-	// 	{
-	// 		phase_grid[x][y] = MATERIAL_STONE;
-	// 	}
-	// }
+	memset( phase_grid, PHASE_VACUUM, (sizeof(unsigned int) * totalSize) );
+	memset( material_grid, MATERIAL_VACUUM, (sizeof(unsigned int) * totalSize) );
+	memset( identity_grid, 0x00, (sizeof(unsigned int) * totalSize) );
+	memset( light_grid, DARK, (sizeof(unsigned int) * totalSize) );
 
-	instantiateCreature(exampleSentence, 100, 100);
-}
-
-void deepgardenGraphics()
-{
-	preDraw();
-
-	unsigned int nVertsToRenderThisTurn = 4 * sizeX * sizeY;
-	unsigned int nIndicesToUseThisTurn 	= 5 * sizeX * sizeY;
-	long unsigned int totalNumberOfFields = nVertsToRenderThisTurn * numberOfFieldsPerVertex;
-
-	// Create the buffer.
-	unsigned int g_vertex_buffer_cursor = 0;
-
-	float * vertex_buffer_data  = new float[totalNumberOfFields];
-
-	unsigned int index_buffer_cursor = 0;
-	unsigned int index_buffer_content = 0;
-	unsigned int index_buffer_data[nIndicesToUseThisTurn];
-
-	for (unsigned int x = 0; x < sizeX; ++x)
+	for (int i = 10 * sizeX; i < 50 * sizeX; ++i)
 	{
-		for (unsigned int y = 0; y < sizeY; ++y)
+		if (RNG() < 0.5)
 		{
-			color colorToUse = emptyColor;
+			material_grid[i] = MATERIAL_IRON;
+			phase_grid[i] = PHASE_POWDER;
+		}
+		else {
+			// material_grid[i] = MATERIAL_OXYGEN;
+			// phase_grid[i] = PHASE_GAS;
 
-			// if ((phase_grid[x][y] & (MATERIAL_PHOTON))   == (MATERIAL_PHOTON))     {    colorToUse = lightColor;  }
-			// if ((phase_grid[x][y] & (MATERIAL_VACUUM)) == (MATERIAL_VACUUM))   {    colorToUse = emptyColor; }
-			// if ((phase_grid[x][y] & (MATERIAL_LIFE_SOLID))   == (MATERIAL_LIFE_SOLID))     {    colorToUse = lifeColor;  }
-			// if ((phase_grid[x][y] & (MATERIAL_LIFE_POWDER))   == (MATERIAL_LIFE_POWDER))     {    colorToUse = lifeColor;  }
-			// if ((phase_grid[x][y] & (MATERIAL_LIFE_LIQUID))   == (MATERIAL_LIFE_LIQUID))     {    colorToUse = lifeColor;  }
-			// if ((phase_grid[x][y] & (MATERIAL_LIFE_GAS))   == (MATERIAL_LIFE_GAS))     {    colorToUse = lifeColor;  }
-
-			// if ((phase_grid[x][y] & (MATERIAL_STONE)) == (MATERIAL_STONE))    {    colorToUse = stoneColor; }
-			// if ((phase_grid[x][y] & (MATERIAL_GOLD)) == (MATERIAL_GOLD))    {    colorToUse = goldColor; }
-
-			vertToBuffer ( vertex_buffer_data, &g_vertex_buffer_cursor, colorToUse , x + 1,  y);
-			advanceIndexBuffers(index_buffer_data, &index_buffer_content, &index_buffer_cursor);
-
-			vertToBuffer ( vertex_buffer_data, &g_vertex_buffer_cursor, colorToUse , x,  y);
-			advanceIndexBuffers(index_buffer_data, &index_buffer_content, &index_buffer_cursor);
-
-			vertToBuffer ( vertex_buffer_data, &g_vertex_buffer_cursor, colorToUse , x + 1,  y + 1);
-			advanceIndexBuffers(index_buffer_data, &index_buffer_content, &index_buffer_cursor);
-
-			vertToBuffer ( vertex_buffer_data, &g_vertex_buffer_cursor, colorToUse , x,  y + 1);
-			advanceIndexBuffers(index_buffer_data, &index_buffer_content, &index_buffer_cursor);
-
-			index_buffer_data[(index_buffer_cursor)] = 0xffff;
-			(index_buffer_cursor)++;
 		}
 	}
 
-	glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, vertex_buffer_data, GL_DYNAMIC_DRAW );
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int ) * nIndicesToUseThisTurn, index_buffer_data, GL_DYNAMIC_DRAW);
+	instantiateCreature(randomSentence(), 100, 100);
+}
 
-	glDrawElements( GL_TRIANGLE_STRIP, nIndicesToUseThisTurn, GL_UNSIGNED_INT, index_buffer_data );
 
-	delete [] vertex_buffer_data;
+void swap (unsigned int a, unsigned int b)
+{
+	unsigned int temp_phase = phase_grid[b];
+	phase_grid[b] = phase_grid[a];
+	phase_grid[a] = temp_phase;
 
-	postDraw();
+	unsigned int temp_id = identity_grid[b];
+	identity_grid[b] = identity_grid[a];
+	identity_grid[a] = temp_id;
+
+	unsigned int temp_mat = material_grid[b];
+	material_grid[b] = material_grid[a];
+	material_grid[a] = temp_mat;
+
+}
+
+void chemistry(unsigned int a, unsigned int b)
+{
+
+	// perform chemistry
+
+	switch (material_grid[a])
+	{
+	case MATERIAL_OXYGEN:
+	{
+
+		switch (material_grid[b])
+		{
+		case MATERIAL_IRON:
+			material_grid[b] = MATERIAL_STONE;
+			material_grid[a] = MATERIAL_VACUUM;
+			phase_grid[a] = PHASE_VACUUM;
+			identity_grid[a] = 0x00;
+
+			break;
+		}
+
+
+
+		break;
+	}
+
+
+
+	}
+
+
+
 }
 
 lifeform * getCreatureByID( unsigned int id )
@@ -559,87 +594,130 @@ lifeform * getCreatureByID( unsigned int id )
 	return nullptr;
 }
 
-void swap (unsigned int a, unsigned int b)
-{
-	unsigned int temp_phase = phase_grid[b];
-	phase_grid[b] = phase_grid[a];
-	phase_grid[a] = temp_phase;
 
-	unsigned int temp_id = identity_grid[b];
-	identity_grid[b] = identity_grid[a];
-	identity_grid[a] = temp_id;
-
-	unsigned int temp_mat = material_grid[b];
-	material_grid[b] = material_grid[a];
-	material_grid[a] = temp_id;
-
-}
 
 void deepgardenLoop()
 {
+	preDraw();
+
+	unsigned int nVertsToRenderThisTurn = 4 * totalSize;
+	unsigned int nIndicesToUseThisTurn 	= 5 * totalSize;
+	long unsigned int totalNumberOfFields = nVertsToRenderThisTurn * numberOfFieldsPerVertex;
+
+	// Create the buffer.
+	unsigned int g_vertex_buffer_cursor = 0;
+
+	float * vertex_buffer_data  = new float[totalNumberOfFields];
+
+	unsigned int index_buffer_cursor = 0;
+	unsigned int index_buffer_content = 0;
+	// unsigned int index_buffer_data[nIndicesToUseThisTurn];
+
+	unsigned int * index_buffer_data = new unsigned int[nIndicesToUseThisTurn];
+
+	unsigned int topRow = (sizeY - 1 ) * sizeX;
+	for (int i = topRow; i < totalSize; ++i)
+	{
+
+		if (RNG() < 0.005)
+		{
+
+			light_grid[i] = LIGHT;
+		}
+
+	}
 
 	// iterate creatures and grow them if appropriate
 	for (std::list<lifeform>::iterator creature = creatures.begin(); creature != creatures.end(); ++creature)
 	{
-		if (creature->energy > 0)
+		// printf("creeeaea | %i\n", creature->energy);
+		if (creature->energy >= 0)
 		{
 			creature->energy -= drawNextSequence ( &(*creature) );
 		}
+
+
 	}
+
 
 
 	for (unsigned int i = 0; i < totalSize; ++i)
 	{
 
 
+
+		unsigned int x = i % sizeX;
+		unsigned int y = i / sizeX;
+
+
 		unsigned int squareBelow = i - sizeX;
+
+		color colorToUse = emptyColor;
+
+		if ((material_grid[i] & (MATERIAL_PHOTON))   == (MATERIAL_PHOTON))     {    colorToUse = lightColor;  }
+		if ((material_grid[i] & (MATERIAL_VACUUM)) == (MATERIAL_VACUUM))   {    colorToUse = emptyColor; }
+		if ((material_grid[i] & (MATERIAL_STONE)) == (MATERIAL_STONE))    {    colorToUse = stoneColor; }
+		if ((material_grid[i] & (MATERIAL_IRON)) == (MATERIAL_IRON))    {    colorToUse = sandColor; }
+		if ((material_grid[i] & (MATERIAL_OXYGEN)) == (MATERIAL_OXYGEN))    {    colorToUse = lifeColor; }
+
+		if ((light_grid[i] & (LIGHT)) == (LIGHT))    {    colorToUse = lightColor; }
+
+
+
+
+
+
+		// for (unsigned int i = 0; i < totalSize; ++i)
+		// {
 
 		if ((phase_grid[i] & (PHASE_POWDER)) == (PHASE_POWDER))
 		{
-
-			unsigned int neighbours[] = {
+			unsigned int neighbours[] =
+			{
 				squareBelow + 1,
 				squareBelow,
 				squareBelow - 1
-			}
+			};
 
 			for (unsigned int j = 0; j < 3; ++j)
 			{
-				if ((phase_grid[neighbours[j]] & (PHASE_VACUUM)) == (PHASE_VACUUM))
+				unsigned int k = rand() % (2 + 1);
+				if (neighbours[k] > totalSize) {continue;}
+				if ((phase_grid[neighbours[k]] & (PHASE_VACUUM)) == (PHASE_VACUUM))
 				{
-					// phase_grid[neighbours[j]] = PHASE_POWDER;
-					// phase_grid[i] = PHASE_VACUUM;
-
-					swap(i, neighbours[j]);
-					break;
+					swap(i, neighbours[k]);
 				}
+
+				chemistry(i, neighbours[k]) ;
+				break;
 			}
-
-
 		}
 
 		// movement instructions for LIQUIDS
 		if ((phase_grid[i] & (PHASE_LIQUID)) == (PHASE_LIQUID))
 		{
-			unsigned int neighbours[] = {
+			unsigned int neighbours[] =
+			{
 				i - 1,
 				i + 1,
 				squareBelow + 1,
 				squareBelow,
 				squareBelow - 1
-			}
-
+			};
 
 			for (unsigned int j = 0; j < 5; ++j)
 			{
-				if ((phase_grid[neighbours[j]] & (PHASE_VACUUM)) == (PHASE_VACUUM))
+				unsigned int k = rand() % (4 + 1);
+				if (neighbours[k] > totalSize) {continue;}
+				if ((phase_grid[neighbours[k]] & (PHASE_VACUUM)) == (PHASE_VACUUM))
 				{
-					// phase_grid[neighbours[j]] = PHASE_LIQUID;
-					// phase_grid[i] = PHASE_VACUUM;
+					swap(i, neighbours[k]);
 
-					swap(i, neighbours[j]);
-					break;
 				}
+
+				chemistry(i, neighbours[k]) ;
+				break;
+
 			}
 		}
 
@@ -647,59 +725,197 @@ void deepgardenLoop()
 		if ((phase_grid[i] & (PHASE_GAS)) == (PHASE_GAS))
 		{
 			unsigned int squareAbove = i + sizeX;
-			unsigned int neighbours[] = {
-				squareAbove + 1,
-				squareAbove,
-				squareAbove - 1
+			unsigned int neighbours[] =
+			{
 				i - 1,
 				i + 1,
+				squareAbove + 1,
+				squareAbove,
+				squareAbove - 1,
 				squareBelow + 1,
 				squareBelow,
 				squareBelow - 1
-			}
-
+			};
 
 			for (unsigned int j = 0; j < 8; ++j)
 			{
-				if ((phase_grid[neighbours[j]] & (PHASE_VACUUM)) == (PHASE_VACUUM))
+				unsigned int k = rand() % (7 + 1);
+				if (neighbours[k] > totalSize) {continue;}
+				if ((phase_grid[neighbours[k]] & (PHASE_VACUUM)) == (PHASE_VACUUM))
 				{
+					swap(i, neighbours[k]);
 
-					if (RNG() < 0.125)
-					{
-						// phase_grid[neighbours[j]] = PHASE_GAS;
-						// phase_grid[i] = PHASE_VACUUM;
-
-						swap(i, neighbours[j]);
-						break;
-					}
 				}
+
+				chemistry(i, neighbours[k]) ;
+				break;
+
 			}
 		}
 
 
 
-		// // movement instructions for PHOTONS
-		// if ((phase_grid[i] & (PHASE_LIGHT)) == (PHASE_LIGHT))
-		// {
-		// 	// move down towards the earth
-		// 	if ((phase_grid[x][y - 1] & (PHASE_VACUUM)) == (PHASE_VACUUM))
-		// 	{
-		// 		phase_grid[x][y - 1] = PHASE_LIGHT;
-		// 		phase_grid[x][y] = PHASE_VACUUM;
-		// 	}
-		// 	// disappear if you hit something
-		// 	else
-		// 	{
-		// 		phase_grid[x][y] = PHASE_VACUUM;
+		// propagate light downwards.
 
-		// 		lifeform * fellOnThisThing = getCreatureByID(identity_grid[x][y - 1]);
+		if (squareBelow < totalSize)
+		{
 
-		// 		if (fellOnThisThing != nullptr)
-		// 		{
-		// 			fellOnThisThing->energy++;
-		// 		}
-		// 	}
-		// }
-		// }
+			if (light_grid[i] == LIGHT)
+			{
+
+
+
+
+				if ((material_grid[squareBelow] & (MATERIAL_VACUUM)) == (MATERIAL_VACUUM) )
+				{
+
+					unsigned int temp_light = light_grid[squareBelow];
+					light_grid[squareBelow] = light_grid[i];
+					light_grid[i] = temp_light;
+				}
+				else
+				{
+					if (identity_grid[squareBelow] != 0x00 )
+					{
+						lifeform * creature = getCreatureByID(identity_grid[squareBelow]);
+						if (creature != nullptr)
+						{
+							creature->energy ++;
+						}
+					}
+					light_grid[i] = DARK;
+				}
+
+
+
+
+
+
+			}
+
+
+
+
+		}
+
+
+
+
+		vertToBuffer ( vertex_buffer_data, &g_vertex_buffer_cursor, colorToUse , x + 1,  y);
+		advanceIndexBuffers(index_buffer_data, &index_buffer_content, &index_buffer_cursor);
+
+		vertToBuffer ( vertex_buffer_data, &g_vertex_buffer_cursor, colorToUse , x,  y);
+		advanceIndexBuffers(index_buffer_data, &index_buffer_content, &index_buffer_cursor);
+
+		vertToBuffer ( vertex_buffer_data, &g_vertex_buffer_cursor, colorToUse , x + 1,  y + 1);
+		advanceIndexBuffers(index_buffer_data, &index_buffer_content, &index_buffer_cursor);
+
+		vertToBuffer ( vertex_buffer_data, &g_vertex_buffer_cursor, colorToUse , x,  y + 1);
+		advanceIndexBuffers(index_buffer_data, &index_buffer_content, &index_buffer_cursor);
+
+		index_buffer_data[(index_buffer_cursor)] = 0xffff;
+		(index_buffer_cursor)++;
 	}
+
+	glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, vertex_buffer_data, GL_DYNAMIC_DRAW );
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int ) * nIndicesToUseThisTurn, index_buffer_data, GL_DYNAMIC_DRAW);
+
+	glDrawElements( GL_TRIANGLE_STRIP, nIndicesToUseThisTurn, GL_UNSIGNED_INT, index_buffer_data );
+
+	delete [] vertex_buffer_data;
+
+	delete [] index_buffer_data;
+
+	postDraw();
 }
+
+
+
+// void deepgardenLoop()
+// {
+
+// 	// iterate creatures and grow them if appropriate
+// 	for (std::list<lifeform>::iterator creature = creatures.begin(); creature != creatures.end(); ++creature)
+// 	{
+// 		if (creature->energy > 0)
+// 		{
+// 			creature->energy -= drawNextSequence ( &(*creature) );
+// 		}
+// 	}
+
+
+// 	for (unsigned int i = 0; i < totalSize; ++i)
+// 	{
+// 		unsigned int squareBelow = i - sizeX;
+
+// 		if ((phase_grid[i] & (PHASE_POWDER)) == (PHASE_POWDER))
+// 		{
+// 			unsigned int neighbours[] =
+// 			{
+// 				squareBelow + 1,
+// 				squareBelow,
+// 				squareBelow - 1
+// 			}
+
+// 			for (unsigned int j = 0; j < 3; ++j)
+// 			{
+// 				if ((phase_grid[neighbours[j]] & (PHASE_VACUUM)) == (PHASE_VACUUM))
+// 				{
+// 					swap(i, neighbours[j]);
+// 					break;
+// 				}
+// 			}
+// 		}
+
+// 		// movement instructions for LIQUIDS
+// 		if ((phase_grid[i] & (PHASE_LIQUID)) == (PHASE_LIQUID))
+// 		{
+// 			unsigned int neighbours[] =
+// 			{
+// 				i - 1,
+// 				i + 1,
+// 				squareBelow + 1,
+// 				squareBelow,
+// 				squareBelow - 1
+// 			}
+
+// 			for (unsigned int j = 0; j < 5; ++j)
+// 			{
+// 				if ((phase_grid[neighbours[j]] & (PHASE_VACUUM)) == (PHASE_VACUUM))
+// 				{
+// 					swap(i, neighbours[j]);
+// 					break;
+// 				}
+// 			}
+// 		}
+
+// 		// movement instructions for GASES
+// 		if ((phase_grid[i] & (PHASE_GAS)) == (PHASE_GAS))
+// 		{
+// 			unsigned int squareAbove = i + sizeX;
+// 			unsigned int neighbours[] =
+// 			{
+// 				squareAbove + 1,
+// 				squareAbove,
+// 				squareAbove - 1
+// 				i - 1,
+// 				i + 1,
+// 				squareBelow + 1,
+// 				squareBelow,
+// 				squareBelow - 1
+// 			}
+
+// 			for (unsigned int j = 0; j < 8; ++j)
+// 			{
+// 				if ((phase_grid[neighbours[j]] & (PHASE_VACUUM)) == (PHASE_VACUUM))
+// 				{
+// 					if (RNG() < 0.125)
+// 					{
+// 						swap(i, neighbours[j]);
+// 						break;
+// 					}
+// 				}
+// 			}
+// 		}
+// 	}
+// }
