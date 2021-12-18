@@ -20,12 +20,14 @@ enum Phases
 	powder,
 	liquid,
 	gas,
-	plasma
+	plasma,
+	photonic
 };
 
 enum Materials
 {
-	water
+	water,
+	light
 };
 
 struct Material
@@ -48,7 +50,9 @@ struct Material
 };
 
 // Color color_water = Color(0.0f, 0.2f, 1.0f, 1.0f);
-Material material_water = Material( water, 273, 373, Color(0.0f, 0.2f, 1.0f, 1.0f) );
+Material material_water  = Material( water, 273, 373, Color(0.0f, 0.2f, 1.0f, 1.0f) );
+Material material_light  = Material( light, 0, 0, Color(1.0f, 1.0f, 1.0f, 0.2f) );
+
 
 struct Cell
 {
@@ -58,33 +62,41 @@ struct Cell
 	bool powdered;
 	Phases phase()
 	{
-		if (this->temperature > this->material->melting)
-		{
-			if (this->temperature > this->material->boiling)
-			{
-				return gas;
-			}
-			else
-			{
-				return liquid;
-			}
 
-		}
+		if (this->material->boiling == 0) {return photonic;}
 		else
 		{
-			if (powdered)
+			if (this->temperature > this->material->melting)
 			{
-				return powder;
+				if (this->temperature > this->material->boiling)
+				{
+					return gas;
+				}
+				else
+				{
+					return liquid;
+				}
 
 			}
 			else
 			{
+				if (powdered)
+				{
+					return powder;
 
-				return solid;
+				}
+				else
+				{
+
+					return solid;
+
+				}
 
 			}
 
 		}
+
+
 	}
 
 	Color color()
@@ -99,13 +111,15 @@ struct Cell
 		this->owner = owner;
 		this->temperature = temperature;
 
+		this->powdered = false;
+
 
 	}
 };
 
 struct Plant
 {
-	uint energy;
+	int energy;
 	std::string genes;
 	std::list<Cell> cells;
 
@@ -446,12 +460,9 @@ void deepgardenLoop()
 	preDraw();
 
 
-	uint nVertsToRenderThisTurn = 4 * sizeX * sizeY;
-	uint nIndicesToUseThisTurn 	= 5 * sizeX * sizeY;
-
-	std::list<Plant>::iterator plant;
-
-	std::list<Cell>::iterator cell;
+	uint totalSize = sizeX * sizeY;
+	uint nVertsToRenderThisTurn = 4 * totalSize;
+	uint nIndicesToUseThisTurn 	= 5 * totalSize;
 
 	long unsigned int totalNumberOfFields = nVertsToRenderThisTurn * numberOfFieldsPerVertex;
 
@@ -464,19 +475,65 @@ void deepgardenLoop()
 	uint index_buffer_content = 0;
 	uint index_buffer_data[nIndicesToUseThisTurn];
 
+
+
+
+
+	std::list<Plant>::iterator plant;
+
+	std::list<Cell>::iterator cell;
 	std::list<Cell*>::iterator p_cell;
 
-	uint totalSize = sizeX * sizeY;
+
+	Plant gaia = Plant("");
 
 
-	drawCodon( &(garden.back()) );
+	// // shine the lamp
+	for (uint i = 0; i < sizeX; ++i)
+	{
+
+
+		grid[ ((sizeY - 1 )* sizeX) + i  ] .push_back(
+		    new Cell (&gaia, &material_light, roomTemperature)
+		);
+
+	}
+
+
+
+
+	for (plant = garden.begin(); plant != garden.end(); plant++)
+	{
+		if (plant->energy >= 0)
+		{
+
+			plant->energy -= drawCodon( &(*plant) );
+			printf("plant enene %i\n", plant->energy);
+
+		}
+	}
+
+
 
 
 	for (uint i = 0; i < totalSize ; i++)
 	{
 
+		uint x = i % sizeX;
+		uint y = i / sizeX;
 
-		// put game loop code here to achieve one loop pass per tick!
+		uint startOfThisRow = y * sizeX; // because y is an integer, this will neatly round it to the start of the row.
+		uint startOfNextRow = startOfThisRow + 1;
+
+		uint oneRowUp = i + sizeY;
+		uint oneRowDown = i - sizeY;
+
+
+
+
+
+
+
 
 
 
@@ -484,18 +541,150 @@ void deepgardenLoop()
 		Color colorToUse = black;
 
 
-
-		for (p_cell = grid[i].begin(); p_cell != grid[i].end(); p_cell++)
+		for (p_cell = grid[i].begin(); p_cell != grid[i].end(); )
 		{
 
-			colorToUse = (*p_cell)->color();  //Color(0.0f, 0.0f, 0.0f, 1.0f);
+
+			if (*p_cell != nullptr) {colorToUse = (*p_cell)->color();  //Color(0.0f, 0.0f, 0.0f, 1.0f);
+}
+			
+
+			// get material phase
+
+			Phases cellPhase = powder;//(*p_cell)->phase();
+			bool done = false;
+
+
+
+
+			switch (cellPhase)
+			{
+			case solid:
+			{
+				break;
+			}
+			case powder:
+			{
+
+				uint neighbours[] = 
+				{
+					( oneRowDown  + 1 ),
+					( oneRowDown     ),
+					( oneRowDown  - 1 )
+				};
+
+				for (uint i = 0; i < 3; i++)
+				{
+
+					if (neighbours[i] > totalSize) {continue;}
+					uint neighbourOccupied = grid[neighbours[i]].size();
+
+
+					if ( !neighbourOccupied)
+					{
+						grid[neighbours[i]].push_back( (*p_cell) ); //grid[i].remove( *p_cell );
+						*p_cell = nullptr;
+
+						done = true;
+						break;
+					}
+				}
+
+				break;
+			}
+			case liquid:
+			{
+				uint neighbours[] = {
+
+					( i + 1 ),
+					( i - 1 ),
+					( oneRowDown  + 1 ),
+					( oneRowDown     ),
+					( oneRowDown  - 1 )
+
+
+				};
+
+				for (uint i = 0; i < 5; i++)
+				{
+
+					if (neighbours[i] > totalSize) {continue;}
+					uint neighbourOccupied = grid[neighbours[i]].size();
+
+					if ( !neighbourOccupied)
+					{
+						// Cell * temp = grid[neighbour]; grid[neighbour] = grid[i]; grid[i] = temp; // swap two cells
+						grid[neighbours[i]].push_back( (*p_cell) ); //grid[i].remove( *p_cell);
+						*p_cell = nullptr;
+						done = true;
+						break;
+					}
+				}
+
+				break;
+			}
+			case gas:
+			{
+				uint neighbours[] = {
+
+					( i + 1 ),
+					( i - 1 ),
+					( oneRowDown  + 1 ),
+					( oneRowDown     ),
+					( oneRowDown  - 1 ),
+					( oneRowUp    + 1 ),
+					( oneRowUp       ),
+					( oneRowUp    - 1 ),
+
+
+				};
+
+				for (uint i = 0; i < 8; i++)
+				{
+
+					if (neighbours[i] > totalSize) {continue;}
+					uint neighbourOccupied = grid[neighbours[i]].size();
+
+					if ( !neighbourOccupied)
+					{
+						if (RNG() < 0.1)
+						{
+							// Cell * temp = grid[neighbour]; grid[neighbour] = grid[i]; grid[i] = temp; // swap two cells
+							grid[neighbours[i]].push_back( (*p_cell) );// grid[i].remove( *p_cell);
+							*p_cell = nullptr;
+							done = true;
+							break;
+						}
+					}
+				}
+				break;
+			}
+			case photonic:
+			{
+				// Cell * temp = grid[oneRowDown]; grid[oneRowDown] = grid[i]; grid[i] = temp; // swap two cells
+				grid[oneRowDown].push_back( (*p_cell) ); //grid[i].remove(* p_cell);
+				*p_cell = nullptr;
+				done = true;
+				break;
+			}
+			}
+			if (done) {break;}
+			// }
+
+			p_cell++;
+
+			// if (*p_cell == nullptr) 
+			// {
+				grid[i].remove(nullptr);
+
+			// }
+
+
+
 
 
 		}
 
-
-		uint x = i % sizeX;
-		uint y = i / sizeX;
 
 
 		vertToBuffer ( vertex_buffer_data, &g_vertex_buffer_cursor, colorToUse , x + 1,  y);
@@ -535,6 +724,8 @@ void instantiatePlant (std::string genes, uint x, uint y)
 	(garden.back()).cells.push_back(Cell(  &(garden.back()), &material_water, roomTemperature  ));
 
 	grid[(y * sizeX) + x].push_back( &( garden.back().cells.back() ) );
+
+	garden.back().cursor_grid = vec_u2(x, y);
 }
 
 
