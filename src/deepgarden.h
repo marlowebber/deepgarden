@@ -17,7 +17,7 @@ using namespace glm;
 
 
 // #include "deepgarden.h"
-// #include "deepgarden_graphics.h"
+#include "deepgarden_utilities.h"
 
 
 #define sizeX 1024
@@ -35,7 +35,6 @@ struct color
 
 
 
-#define MATERIAL_VACUUM               1  // 2^0, bit 0
 #define MATERIAL_PHOTON          		  2  // 2^1, bit 1
 
 #define MATERIAL_LIFE_SOLID        	  4  // 2^1, bit 1
@@ -45,6 +44,14 @@ struct color
 
 #define MATERIAL_STONE                64  // 2^1, bit 1
 #define MATERIAL_GOLD                128  // 2^1, bit 1
+
+
+
+#define PHASE_VACUUM 1
+#define PHASE_SOLID 2
+#define PHASE_LIQUID 4
+#define PHASE_GAS    8
+#define PHASE_LIGHT 16
 
 
 float RNG();

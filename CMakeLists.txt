@@ -30,6 +30,8 @@ set(SRCS
 #	src/deepsea_usertools.cpp
 #	src/deepsea_maps.h
 #	src/deepsea_maps.cpp
+	src/deepgarden_utilities.h
+	src/deepgarden_utilities.cpp
 	src/deepgarden.h
 	src/main.cpp
 	src/main.h

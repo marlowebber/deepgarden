@@ -35,10 +35,30 @@ glm/gtc/matrix_transform.hpp
 -
 random
 -
+deepgarden_utilities.h
+/home/marlo/Documents/deepgarden/src/deepgarden_utilities.h
+
+/home/marlo/Documents/deepgarden/src/deepgarden_graphics.cpp
+deepgarden.h
+/home/marlo/Documents/deepgarden/src/deepgarden.h
 
 /home/marlo/Documents/deepgarden/src/deepgarden_graphics.h
 deepgarden.h
 /home/marlo/Documents/deepgarden/src/deepgarden.h
+
+/home/marlo/Documents/deepgarden/src/deepgarden_utilities.cpp
+deepgarden.h
+/home/marlo/Documents/deepgarden/src/deepgarden.h
+
+/home/marlo/Documents/deepgarden/src/deepgarden_utilities.h
+deepgarden.h
+/home/marlo/Documents/deepgarden/src/deepgarden.h
+
+/home/marlo/Documents/deepgarden/src/main.cpp
+deepgarden.h
+/home/marlo/Documents/deepgarden/src/deepgarden.h
+deepgarden_graphics.h
+/home/marlo/Documents/deepgarden/src/deepgarden_graphics.h
 
 /usr/local/include/SDL2/SDL.h
 SDL_main.h
