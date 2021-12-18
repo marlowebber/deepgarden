@@ -29,7 +29,7 @@ using namespace glm;
 #define sizeY 256
 
 void initialize ();
+// void deepgardenLoop();
 void deepgardenLoop();
-void deepgardenGraphics();
 
 #endif

@@ -12,24 +12,25 @@ struct Color;
 uint roomTemperature = 294;
 
 
+Color black = Color(0.0f, 0.0f, 0.0f, 1.0f);
 
-
-enum Phases 
+enum Phases
 {
 	solid,
+	powder,
 	liquid,
 	gas,
 	plasma
 };
 
-enum Materials 
+enum Materials
 {
 	water
 };
 
-struct Material 
+struct Material
 {
-	
+
 	Materials material;
 
 	uint melting;
@@ -37,7 +38,7 @@ struct Material
 
 	Color color = Color(0.5f, 0.5f, 0.5f, 1.0f);
 
-	Material(Materials material, uint melting, uint boiling, Color color) 
+	Material(Materials material, uint melting, uint boiling, Color color)
 	{
 		this->material = material;
 		this->melting = melting;
@@ -46,38 +47,51 @@ struct Material
 	}
 };
 
+// Color color_water = Color(0.0f, 0.2f, 1.0f, 1.0f);
+Material material_water = Material( water, 273, 373, Color(0.0f, 0.2f, 1.0f, 1.0f) );
 
-Material material_water = Material( water, 273, 373, Color(0.0f, 0.1f, 0.6f, 0.5f) );
-
-struct Cell 
+struct Cell
 {
 	Plant * owner;
 	Material * material;
 	uint temperature;
-	Phases phase() 
+	bool powdered;
+	Phases phase()
 	{
-		if (this->temperature > this->material->melting) 
+		if (this->temperature > this->material->melting)
 		{
-			if (this->temperature > this->material->boiling) 
+			if (this->temperature > this->material->boiling)
 			{
 				return gas;
 			}
-			else 
+			else
 			{
 				return liquid;
 			}
 
 		}
-		else 
+		else
 		{
-			return solid;
+			if (powdered)
+			{
+				return powder;
+
+			}
+			else
+			{
+
+				return solid;
+
+			}
+
 		}
 	}
 
-	// Color color()
-	// {
-	// 	// return this->material-color;
-	// }
+	Color color()
+	{
+		return this->material->color;
+		// return Color(1.0f, 1.0f, 1.0f, 1.0f);
+	}
 
 	Cell(Plant * owner, Material * material, uint temperature)
 	{
@@ -89,25 +103,30 @@ struct Cell
 	}
 };
 
-struct Plant 
+struct Plant
 {
 	uint energy;
 	std::string genes;
-	std::vector<Cell> cells;
+	std::list<Cell> cells;
 
 	uint cursor_string;
 	uint genomeSize;
-	vec_u2 cursor_grid = vec_u2(0,0);
-	vec_u2 prevCursor_grid = vec_u2(0,0);
+	vec_u2 cursor_grid = vec_u2(0, 0);
+	vec_u2 prevCursor_grid = vec_u2(0, 0);
 
 	float accumulatedRotation;
 	float accumulatedRotation_precomputedCos;
 	float accumulatedRotation_precomputedSin;
 
-	Plant(std::string genes) 
+	Plant(std::string genes)
 	{
 		this->genes = genes;
+		this->genomeSize = genes.length();
+		this->cursor_string = 0;
 		this->energy = 0;
+		this->accumulatedRotation = 0;
+		this->accumulatedRotation_precomputedSin = sin(this->accumulatedRotation);
+		this->accumulatedRotation_precomputedCos = cos(this->accumulatedRotation);
 	}
 
 };
@@ -120,10 +139,18 @@ std::list <Plant> garden;
 // the game is run by scanning across the grid and animating each list of cells in turn.
 // this minimises costly neighbour-finding operations, and doesn't really have an impact on the speed of accessing the game model data.
 
-std::vector< std::vector< std::list<Cell*> > > grid;
+// static std::vector< std::vector< std::list<Cell*>>> grid = std::vector< std::vector< std::list<Cell*>>>();
+
+//https://stackoverflow.com/questions/17663186/initializing-a-two-dimensional-stdvector
+
+// ok instead let's make the grid one dimensional.
+
+// std::vector<std::vector< std::list<Cell*> > > grid(
+//     sizeX,
+//     std::vector<std::list<Cell*>>(sizeY)); // Defaults to zero initial value
 
 
-
+std::vector < std::list<Cell*> > grid ( (sizeX * sizeY));
 
 
 
@@ -250,6 +277,8 @@ int drawCharacter (Plant * plant)
 
 	case 'l':
 	{
+
+		// printf("nonginging" );
 		// rasters a line, taking into account the accumulated rotation
 		plant->cursor_string++; if (plant->cursor_string > plant->genomeSize) {return -1;}
 
@@ -362,15 +391,18 @@ int drawCharacter (Plant * plant)
 
 	// paint in the points with material
 	unsigned int n_points = 0;
-	for (std::list<vec_u2>::iterator it = v.begin(); it != v.end(); ++it)
+	for (std::list<vec_u2>::iterator it = v.begin(); it != v.end(); it++)
 	{
 		// Cell(Plant * owner, Material * material, uint temperature)
 		Cell newcell = Cell(plant, &material_water, roomTemperature);
 		plant->cells.push_back( newcell );
 
-		( grid[it->x][it->y] ).push_back(
-		 &(plant->cells.back() )
-		  );
+		// printf("mingingingin");
+
+
+		grid[ ((it->y * sizeX) + it->x) ] .push_back(
+		    &(plant->cells.back() )
+		);
 
 		n_points ++;
 	}
@@ -382,13 +414,45 @@ int drawCharacter (Plant * plant)
 
 
 
+uint drawCodon(Plant * plant)
+{
 
-void deepgardenGraphics()
+	uint energyCost = 0;
+
+	while (  true  )
+	{
+
+		int codonEnergy = drawCharacter(plant);
+
+		if (codonEnergy == -1)
+		{
+			break;
+		}
+		else
+		{
+			energyCost += codonEnergy;
+		}
+
+	}
+
+	return energyCost;
+
+}
+
+
+
+void deepgardenLoop()
 {
 	preDraw();
 
+
 	uint nVertsToRenderThisTurn = 4 * sizeX * sizeY;
 	uint nIndicesToUseThisTurn 	= 5 * sizeX * sizeY;
+
+	std::list<Plant>::iterator plant;
+
+	std::list<Cell>::iterator cell;
+
 	long unsigned int totalNumberOfFields = nVertsToRenderThisTurn * numberOfFieldsPerVertex;
 
 	// Create the buffer.
@@ -400,29 +464,57 @@ void deepgardenGraphics()
 	uint index_buffer_content = 0;
 	uint index_buffer_data[nIndicesToUseThisTurn];
 
+	std::list<Cell*>::iterator p_cell;
 
-	for (uint x = 0; x < sizeX; ++x)
+	uint totalSize = sizeX * sizeY;
+
+
+	drawCodon( &(garden.back()) );
+
+
+	for (uint i = 0; i < totalSize ; i++)
 	{
-		for (uint y = 0; y < sizeY; ++y)
+
+
+		// put game loop code here to achieve one loop pass per tick!
+
+
+
+
+		Color colorToUse = black;
+
+
+
+		for (p_cell = grid[i].begin(); p_cell != grid[i].end(); p_cell++)
 		{
-			Color colorToUse = Color(0.0f, 0.0f, 0.0f, 1.0f);
 
-			vertToBuffer ( vertex_buffer_data, &g_vertex_buffer_cursor, colorToUse , x + 1,  y);
-			advanceIndexBuffers(index_buffer_data, &index_buffer_content, &index_buffer_cursor);
+			colorToUse = (*p_cell)->color();  //Color(0.0f, 0.0f, 0.0f, 1.0f);
 
-			vertToBuffer ( vertex_buffer_data, &g_vertex_buffer_cursor, colorToUse , x,  y);
-			advanceIndexBuffers(index_buffer_data, &index_buffer_content, &index_buffer_cursor);
 
-			vertToBuffer ( vertex_buffer_data, &g_vertex_buffer_cursor, colorToUse , x + 1,  y + 1);
-			advanceIndexBuffers(index_buffer_data, &index_buffer_content, &index_buffer_cursor);
-
-			vertToBuffer ( vertex_buffer_data, &g_vertex_buffer_cursor, colorToUse , x,  y + 1);
-			advanceIndexBuffers(index_buffer_data, &index_buffer_content, &index_buffer_cursor);
-
-			index_buffer_data[(index_buffer_cursor)] = 0xffff;
-			(index_buffer_cursor)++;
 		}
+
+
+		uint x = i % sizeX;
+		uint y = i / sizeX;
+
+
+		vertToBuffer ( vertex_buffer_data, &g_vertex_buffer_cursor, colorToUse , x + 1,  y);
+		advanceIndexBuffers(index_buffer_data, &index_buffer_content, &index_buffer_cursor);
+
+		vertToBuffer ( vertex_buffer_data, &g_vertex_buffer_cursor, colorToUse , x,  y);
+		advanceIndexBuffers(index_buffer_data, &index_buffer_content, &index_buffer_cursor);
+
+		vertToBuffer ( vertex_buffer_data, &g_vertex_buffer_cursor, colorToUse , x + 1,  y + 1);
+		advanceIndexBuffers(index_buffer_data, &index_buffer_content, &index_buffer_cursor);
+
+		vertToBuffer ( vertex_buffer_data, &g_vertex_buffer_cursor, colorToUse , x,  y + 1);
+		advanceIndexBuffers(index_buffer_data, &index_buffer_content, &index_buffer_cursor);
+
+		index_buffer_data[(index_buffer_cursor)] = 0xffff;
+		(index_buffer_cursor)++;
+
 	}
+
 
 	glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, vertex_buffer_data, GL_DYNAMIC_DRAW );
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint ) * nIndicesToUseThisTurn, index_buffer_data, GL_DYNAMIC_DRAW);
@@ -435,14 +527,14 @@ void deepgardenGraphics()
 }
 
 // insert a viable seed into the world
-void instantiatePlant (std::string genes, uint x, uint y) 
+void instantiatePlant (std::string genes, uint x, uint y)
 {
 	// instantiate a plant
 	garden.push_back(Plant(genes));
 
 	(garden.back()).cells.push_back(Cell(  &(garden.back()), &material_water, roomTemperature  ));
 
-	grid[x][y].push_back( &( garden.back().cells.back() ) );
+	grid[(y * sizeX) + x].push_back( &( garden.back().cells.back() ) );
 }
 
 
@@ -450,7 +542,21 @@ void instantiatePlant (std::string genes, uint x, uint y)
 void initialize ()
 {
 
+	// uint totalSize = sizeX * sizeY;
+	// for (uint i = 0; i < totalSize; i++)
+	// {
 
+	// // 	// for (int y = 0; y < sizeY; y++)
+	// // 	// {
+
+	// // 	// 	// std::list<Cell*> newListOfBlarghs = std::list<Cell*>;
+	// 		grid[i] = *( new std::list<Cell*> );
+	// // 	// }
+
+	// }
+
+
+	instantiatePlant(exampleSentence, 100, 100);
 
 
 
@@ -458,25 +564,3 @@ void initialize ()
 
 
 
-void deepgardenLoop()
-{
-
-std::list<Cell*>::iterator cell;
-
-for (int x = 0; x < sizeX; ++x)
-{
-	for (int y = 0; y < sizeY; ++y)
-	{
-
-		for (cell = (grid[x][y]).begin(); cell != (grid[x][y]).end(); ++cell)
-		{
-			
-		}
-
-
-
-	}
-}
-
-
-}
