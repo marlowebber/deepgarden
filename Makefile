@@ -177,6 +177,33 @@ src/deepgarden_graphics.cpp.s:
 	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/deepgarden_graphics.cpp.s
 .PHONY : src/deepgarden_graphics.cpp.s
 
+src/deepgarden_utilities.o: src/deepgarden_utilities.cpp.o
+
+.PHONY : src/deepgarden_utilities.o
+
+# target to build an object file
+src/deepgarden_utilities.cpp.o:
+	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/deepgarden_utilities.cpp.o
+.PHONY : src/deepgarden_utilities.cpp.o
+
+src/deepgarden_utilities.i: src/deepgarden_utilities.cpp.i
+
+.PHONY : src/deepgarden_utilities.i
+
+# target to preprocess a source file
+src/deepgarden_utilities.cpp.i:
+	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/deepgarden_utilities.cpp.i
+.PHONY : src/deepgarden_utilities.cpp.i
+
+src/deepgarden_utilities.s: src/deepgarden_utilities.cpp.s
+
+.PHONY : src/deepgarden_utilities.s
+
+# target to generate assembly for a file
+src/deepgarden_utilities.cpp.s:
+	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/deepgarden_utilities.cpp.s
+.PHONY : src/deepgarden_utilities.cpp.s
+
 src/main.o: src/main.cpp.o
 
 .PHONY : src/main.o
@@ -219,6 +246,9 @@ help:
 	@echo "... src/deepgarden_graphics.o"
 	@echo "... src/deepgarden_graphics.i"
 	@echo "... src/deepgarden_graphics.s"
+	@echo "... src/deepgarden_utilities.o"
+	@echo "... src/deepgarden_utilities.i"
+	@echo "... src/deepgarden_utilities.s"
 	@echo "... src/main.o"
 	@echo "... src/main.i"
 	@echo "... src/main.s"

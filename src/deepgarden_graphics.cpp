@@ -5,9 +5,9 @@ float viewPanX = 0.0f;
 float viewPanY = 0.0f;
 
 
-static const unsigned int nominalFramerate = 60;
-static const unsigned int width = 1920;
-static const unsigned int height = 1080;
+static const uint nominalFramerate = 60;
+static const uint width = 1920;
+static const uint height = 1080;
 
 
 float viewZoomSetpoint = 1000.0f;
@@ -24,14 +24,6 @@ GLuint vao, vbo;
 GLuint IndexBufferId;
 
 
-
-color::color(float r, float g, float b, float a)
-{
-	this->r = r;
-	this->g = g;
-	this->b = b;
-	this->a = a;
-}
 
 
 static const char * vertex_shader =
@@ -225,7 +217,7 @@ void cleanupAfterWorldDraw ()
 }
 
 
-void vertToBuffer (GLfloat * vertex_buffer_data, unsigned int * cursor, color vert_color, unsigned int x, unsigned int y)
+void vertToBuffer (GLfloat * vertex_buffer_data, uint * cursor, Color vert_color, uint x, uint y)
 {
 	float floatx = x;
 	float floaty = y;
@@ -243,7 +235,7 @@ void vertToBuffer (GLfloat * vertex_buffer_data, unsigned int * cursor, color ve
 
 
 
-void advanceIndexBuffers (unsigned int * index_buffer_data, unsigned int * index_buffer_content, unsigned int * index_buffer_cursor)
+void advanceIndexBuffers (uint * index_buffer_data, uint * index_buffer_content, uint * index_buffer_cursor)
 {
 	index_buffer_data[(*index_buffer_cursor)] = (*index_buffer_content);
 	(*index_buffer_cursor)++;

@@ -10,16 +10,16 @@ extern float viewPanSetpointY;
 
 void setupGraphics() ;
 void shutdownGraphics() ;
-void draw( unsigned int ** grid );
+void draw( uint ** grid );
 
 void preDraw() ;
 void postDraw();
 
 
-void vertToBuffer (GLfloat * vertex_buffer_data, unsigned int * cursor, color vert_color, unsigned int x, unsigned int y);
+void vertToBuffer (GLfloat * vertex_buffer_data, uint * cursor, Color vert_color, uint x, uint y);
 
 
-void advanceIndexBuffers (unsigned int * index_buffer_data, unsigned int * index_buffer_content, unsigned int * index_buffer_cursor);
+void advanceIndexBuffers (uint * index_buffer_data, uint * index_buffer_content, uint * index_buffer_cursor);
 
 
 

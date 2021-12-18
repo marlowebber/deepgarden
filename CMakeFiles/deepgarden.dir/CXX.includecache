@@ -21,6 +21,8 @@ SDL_opengl.h
 -
 SDL.h
 /home/marlo/Documents/deepgarden/src/SDL.h
+random
+-
 vector
 -
 list
@@ -33,10 +35,18 @@ glm/glm.hpp
 -
 glm/gtc/matrix_transform.hpp
 -
-random
--
+deepgarden_utilities.h
+/home/marlo/Documents/deepgarden/src/deepgarden_utilities.h
 
 /home/marlo/Documents/deepgarden/src/deepgarden_graphics.h
+deepgarden.h
+/home/marlo/Documents/deepgarden/src/deepgarden.h
+
+/home/marlo/Documents/deepgarden/src/deepgarden_utilities.h
+list
+-
+random
+-
 deepgarden.h
 /home/marlo/Documents/deepgarden/src/deepgarden.h
 
