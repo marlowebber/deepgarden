@@ -31,7 +31,7 @@ std::string exampleSentence = "selnslslul lblotsancol lest sstructra plantae csu
 
 unsigned int newIdentity ()
 {
-	unsigned int identityCursor = 0;
+	unsigned int identityCursor = 1; // zero is reserved
 	while (true)
 	{
 		bool used = false;
@@ -171,6 +171,92 @@ std::list<vec_u2> EFLA_E(vec_u2 start, vec_u2 end)
 	return v;
 }
 
+std::string randomSentence ()
+{
+	unsigned int randomSentenceLength = 256;
+
+	char bytes[randomSentenceLength];
+
+	for (unsigned int  i = 0; i < randomSentenceLength; ++i)
+	{
+		bytes[i] = 'a' + rand() % (26 + 1);
+		if (RNG() < 0.1)
+		{
+			bytes[i] = ' ';
+
+		}
+	}
+
+	return std::string(bytes);
+}
+
+
+std::string mutateSentence ( std::string  mutableString)
+{
+
+	std::string output = std::string("");
+
+	unsigned int n = mutableString.length();
+
+	for (unsigned int i = 0; i < n; ++i)
+	{
+
+		char c = mutableString.c_str()[i];
+
+		if (RNG() < 0.01)
+		{
+
+			if (RNG() < 0.5)
+			{
+
+				// printf("memem\n");	
+				c = c + 1;
+
+			}
+			else {
+
+
+				c = c - 1;
+
+				// output = output + std::string(c);
+
+			}
+
+		}
+
+
+		output = output + c;
+	}
+
+	return output;
+
+}
+
+void instantiateCreature(std::string sentence, unsigned int x, unsigned int y)
+{
+	printf("%s\n", sentence.c_str());
+
+	lifeform creature = lifeform(sentence);
+
+	unsigned int i = (y * sizeX) + x;
+
+
+	creature.energy = -1;
+	creature.germinated = false;
+
+	// place a seed at the coordinates
+	material_grid[i] = MATERIAL_STONE;
+	phase_grid   [i] = PHASE_LIQUID;
+	identity_grid[i] = creature.identity;
+
+	creatures.push_back(
+	    creature
+	);
+
+	creatures.back().cursor_grid = vec_u2(x, y);
+}
+
+
 int drawCharacter (lifeform * creature)
 {
 	char c = creature->genes[creature->cursor_string];
@@ -259,6 +345,21 @@ int drawCharacter (lifeform * creature)
 
 		return -1;
 		break;
+	}
+
+	case 'g': // make a seed
+	{
+
+		creature->cursor_string++; if (creature->cursor_string > creature->geneSize) {return -1;}
+
+
+
+
+
+		instantiateCreature( mutateSentence ( creature->genes) , creature->cursor_grid.x, creature->cursor_grid.y);
+
+		break;
+
 	}
 
 	case 'c': // paint a circle at the cursor
@@ -462,46 +563,6 @@ int drawNextSequence (lifeform * creature)
 }
 
 
-std::string randomSentence ()
-{
-	unsigned int randomSentenceLength = 256;
-
-	char bytes[randomSentenceLength];
-
-	for (unsigned int  i = 0; i < randomSentenceLength; ++i)
-	{
-		bytes[i] = 'a' + rand() % (26 + 1);
-		if (RNG() < 0.1)
-		{
-			bytes[i] = ' ';
-
-		}
-	}
-
-	return std::string(bytes);
-}
-
-void instantiateCreature(std::string sentence, unsigned int x, unsigned int y)
-{
-	printf("%s\n", sentence.c_str());
-
-	lifeform creature = lifeform(sentence);
-
-	unsigned int i = (y * sizeX) + x;
-
-
-
-	// place a seed at the coordinates
-	material_grid[i] = MATERIAL_STONE;
-	phase_grid   [i] = PHASE_SOLID;
-	identity_grid[i] = creature.identity;
-
-	creatures.push_back(
-	    creature
-	);
-
-	creatures.back().cursor_grid = vec_u2(x, y);
-}
 
 void initialize ()
 {
@@ -548,10 +609,45 @@ void swap (unsigned int a, unsigned int b)
 
 }
 
+lifeform * getCreatureByID( unsigned int id )
+{
+	for (std::list<lifeform>::iterator creature = creatures.begin(); creature != creatures.end(); ++creature)
+	{
+		if (creature->identity == id)
+		{
+			return &(*creature);
+		}
+	}
+	return nullptr;
+}
+
+
+
 void chemistry(unsigned int a, unsigned int b)
 {
 
 	// perform chemistry
+
+	if (identity_grid[a] ) {
+		if (material_grid[b] != MATERIAL_VACUUM)
+		{
+			if (identity_grid[a] != 0x00 )
+			{
+				lifeform * creature = getCreatureByID(identity_grid[a]);
+				if (creature != nullptr)
+				{
+
+					unsigned int x = a % sizeX;
+					unsigned int y = a / sizeX;
+					creature->cursor_grid = vec_u2(x, y);
+
+					creature->germinated = true;
+					creature->energy = 0;
+				}
+			}
+		}
+	}
+
 
 	switch (material_grid[a])
 	{
@@ -580,18 +676,6 @@ void chemistry(unsigned int a, unsigned int b)
 
 
 
-}
-
-lifeform * getCreatureByID( unsigned int id )
-{
-	for (std::list<lifeform>::iterator creature = creatures.begin(); creature != creatures.end(); ++creature)
-	{
-		if (creature->identity == id)
-		{
-			return &(*creature);
-		}
-	}
-	return nullptr;
 }
 
 
@@ -780,7 +864,7 @@ void deepgardenLoop()
 						lifeform * creature = getCreatureByID(identity_grid[squareBelow]);
 						if (creature != nullptr)
 						{
-							creature->energy ++;
+							creature->energy += 100;
 						}
 					}
 					light_grid[i] = DARK;
