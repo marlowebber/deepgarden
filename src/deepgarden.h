@@ -40,6 +40,7 @@ struct color
 #define MATERIAL_IRON 4
 #define MATERIAL_STONE 8
 #define MATERIAL_OXYGEN 16
+#define MATERIAL_GOLD 32
 
 
 #define PHASE_VACUUM 1

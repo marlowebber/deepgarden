@@ -21,7 +21,8 @@ unsigned int numberOfFieldsPerVertex = 6; /*  R, G, B, A, X, Y  */
 
 std::list<unsigned int> identities;
 
-
+unsigned int recursion_level = 0;
+unsigned int recursion_limit = 5;
 
 // std::string exampleSentence = " Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque viverra nulla eget fermentum commodo. Nullam ac ex at nisl finibus ultrices. Mauris aliquet elementum turpis, sit amet lobortis magna viverra sed. Proin dignissim hendrerit est, ut convallis dui suscipit sed. Nulla libero justo, euismod malesuada tempus nec, fringilla vel est. Pellentesque sed tellus a purus porttitor vulputate et at nunc. Donec non ipsum scelerisque, placerat sapien sit amet, fringilla est. Fusce pretium urna sit amet hendrerit ultrices. Morbi eget eleifend mi, non feugiat mauris. Praesent non condimentum ligula. Mauris consequat mi ac magna placerat pellentesque. Vestibulum non interdum enim, ac vehicula diam. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia curae; Aenean porta libero quis libero rutrum imperdiet. Curabitur vulputate feugiat odio non suscipit. Interdum et malesuada fames ac ante ipsum primis in faucibus. Vivamus erat magna, pulvinar sed felis non volutpat. ";
 // std::string exampleSentence = "we'cre off toc see the cwizard, cthe wonderful wizcard of oz! cbecause beccause becaucse becausce because, acll of the wocnderful things che does. do do cdod do do docd doo! ";
@@ -63,6 +64,8 @@ void retireIdentity (unsigned int identityToRetire)
 struct lifeform
 {
 	unsigned int identity;
+	unsigned int parent_id;
+
 	int energy;
 	std::string genes;
 
@@ -73,6 +76,8 @@ struct lifeform
 	float accumulatedRotation ;
 	float accumulatedRotation_precomputedSin;
 	float accumulatedRotation_precomputedCos;
+
+	vec_u2 origin = vec_u2(0, 0);
 
 	bool germinated;
 
@@ -209,7 +214,7 @@ std::string mutateSentence ( std::string  mutableString)
 			if (RNG() < 0.5)
 			{
 
-				// printf("memem\n");	
+				// printf("memem\n");
 				c = c + 1;
 
 			}
@@ -245,7 +250,7 @@ void instantiateCreature(std::string sentence, unsigned int x, unsigned int y)
 	creature.germinated = false;
 
 	// place a seed at the coordinates
-	material_grid[i] = MATERIAL_STONE;
+	material_grid[i] = MATERIAL_GOLD;
 	phase_grid   [i] = PHASE_LIQUID;
 	identity_grid[i] = creature.identity;
 
@@ -259,6 +264,12 @@ void instantiateCreature(std::string sentence, unsigned int x, unsigned int y)
 
 int drawCharacter (lifeform * creature)
 {
+
+	if (recursion_level > recursion_limit)
+	{
+		return -1;
+	}
+
 	char c = creature->genes[creature->cursor_string];
 
 	std::list<vec_u2> v;
@@ -276,6 +287,8 @@ int drawCharacter (lifeform * creature)
 	{
 		creature->cursor_string++; if (creature->cursor_string > creature->geneSize) {return -1;}
 
+
+
 		int numberModifier = 0;
 		while (!numberModifier) {	numberModifier = alphanumeric( creature->genes[creature->cursor_string] ); creature->cursor_string++; if (creature->cursor_string > creature->geneSize) {return -1;} }
 
@@ -292,6 +305,7 @@ int drawCharacter (lifeform * creature)
 		// record old cursor position
 		vec_u2 old_cursorGrid = creature->cursor_grid;
 
+		recursion_level++;
 		while (1)
 		{
 			if ( drawCharacter(creature) < 0)
@@ -299,6 +313,7 @@ int drawCharacter (lifeform * creature)
 				break;
 			}
 		}
+		recursion_level--;
 
 		// return to normal rotation
 		creature->accumulatedRotation = trunkRotation;
@@ -326,6 +341,7 @@ int drawCharacter (lifeform * creature)
 
 		unsigned int sequenceOrigin = creature->cursor_string;
 
+		recursion_level++;
 		for ( int i = 0; i < repeats; ++i)
 		{
 			while (1)
@@ -338,6 +354,7 @@ int drawCharacter (lifeform * creature)
 			creature->cursor_string = sequenceOrigin;
 		}
 		break;
+		recursion_level--;
 	}
 	case ' ': // break innermost array
 	{
@@ -347,6 +364,14 @@ int drawCharacter (lifeform * creature)
 		break;
 	}
 
+	case '.': // break array and return cursor to origin
+		creature->cursor_string++; if (creature->cursor_string > creature->geneSize) {return -1;}
+
+		creature->cursor_grid = creature->origin;
+
+		return -1;
+		break;
+
 	case 'g': // make a seed
 	{
 
@@ -354,6 +379,7 @@ int drawCharacter (lifeform * creature)
 
 
 
+// unsigned int currentlyPaintingMaterial = MATERIAL_STONE;
 
 
 		instantiateCreature( mutateSentence ( creature->genes) , creature->cursor_grid.x, creature->cursor_grid.y);
@@ -419,7 +445,10 @@ int drawCharacter (lifeform * creature)
 		{
 			creature->cursor_string++; if (creature->cursor_string > creature->geneSize) {return -1;}
 			signY = alphanumeric( creature->genes[creature->cursor_string]);
-			if (signY > 13) { signY = 1; } else { signY = -1; }
+			if (signY > 13) { signY = 1; } 
+			else { 
+				signY = 1; // signY = -1; // i made it this way so the plants always grow up. instead of into the ground.
+				 }
 			chosenSignY = true;
 		}
 
@@ -631,20 +660,26 @@ void chemistry(unsigned int a, unsigned int b)
 	if (identity_grid[a] ) {
 		if (material_grid[b] != MATERIAL_VACUUM)
 		{
-			if (identity_grid[a] != 0x00 )
+			// if (identity_grid[] != 0x00 )
+			// {
+			lifeform * creature = getCreatureByID(identity_grid[a]);
+			if (creature != nullptr)
 			{
-				lifeform * creature = getCreatureByID(identity_grid[a]);
-				if (creature != nullptr)
-				{
 
+				if (identity_grid[b] != creature->parent_id)
+				{
 					unsigned int x = a % sizeX;
 					unsigned int y = a / sizeX;
 					creature->cursor_grid = vec_u2(x, y);
+					creature->origin = vec_u2(x, y);
 
 					creature->germinated = true;
 					creature->energy = 0;
 				}
+
+
 			}
+			// }
 		}
 	}
 
@@ -743,6 +778,7 @@ void deepgardenLoop()
 		if ((material_grid[i] & (MATERIAL_STONE)) == (MATERIAL_STONE))    {    colorToUse = stoneColor; }
 		if ((material_grid[i] & (MATERIAL_IRON)) == (MATERIAL_IRON))    {    colorToUse = sandColor; }
 		if ((material_grid[i] & (MATERIAL_OXYGEN)) == (MATERIAL_OXYGEN))    {    colorToUse = lifeColor; }
+		if ((material_grid[i] & (MATERIAL_GOLD)) == (MATERIAL_GOLD))    {    colorToUse = goldColor; }
 
 		if ((light_grid[i] & (LIGHT)) == (LIGHT))    {    colorToUse = lightColor; }
 
