@@ -11,6 +11,8 @@ deepgarden.h
 /home/marlo/Documents/deepgarden/src/deepgarden.h
 deepgarden_graphics.h
 /home/marlo/Documents/deepgarden/src/deepgarden_graphics.h
+boost/thread.hpp
+-
 
 /home/marlo/Documents/deepgarden/src/deepgarden.h
 stdio.h

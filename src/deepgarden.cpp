@@ -1,6 +1,8 @@
 #include "deepgarden.h"
 #include "deepgarden_graphics.h"
 
+#include <boost/thread.hpp>
+
 const unsigned int totalSize = sizeX * sizeY;
 // const unsigned int highestI
 
