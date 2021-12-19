@@ -5,9 +5,9 @@ float viewPanX = 0.0f;
 float viewPanY = 0.0f;
 
 
-static const unsigned int nominalFramerate = 60;
-static const unsigned int width = 1920;
-static const unsigned int height = 1080;
+const unsigned int nominalFramerate = 60;
+const unsigned int width = 1920;
+const unsigned int height = 1080;
 
 
 float viewZoomSetpoint = 1000.0f;
@@ -102,6 +102,9 @@ void shutdownGraphics()
 
 void setupGraphics()
 {
+
+
+	// glPointSize(3);    
 
 	// Setup the game window with SDL2
 	SDL_Init( SDL_INIT_VIDEO );

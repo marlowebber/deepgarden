@@ -130,8 +130,10 @@ deepgarden: /usr/lib/x86_64-linux-gnu/libOpenGL.so
 deepgarden: /usr/lib/x86_64-linux-gnu/libGLX.so
 deepgarden: /usr/lib/x86_64-linux-gnu/libGLU.so
 deepgarden: /usr/lib/x86_64-linux-gnu/libboost_filesystem.so.1.71.0
+deepgarden: /usr/lib/x86_64-linux-gnu/libboost_thread.so.1.71.0
 deepgarden: /usr/lib/gcc/x86_64-linux-gnu/9/libgomp.so
 deepgarden: /usr/lib/x86_64-linux-gnu/libpthread.so
+deepgarden: /usr/lib/x86_64-linux-gnu/libboost_atomic.so.1.71.0
 deepgarden: CMakeFiles/deepgarden.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/marlo/Documents/deepgarden/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Linking CXX executable deepgarden"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/deepgarden.dir/link.txt --verbose=$(VERBOSE)

@@ -15,12 +15,14 @@
 using namespace glm;
 #include <random>
 
+#include <boost/thread.hpp>
+
 
 // #include "deepgarden.h"
 #include "deepgarden_utilities.h"
 
 
-#define sizeX 1024
+#define sizeX 2048
 #define sizeY 256
 
 struct color
@@ -50,14 +52,19 @@ struct color
 #define PHASE_GAS    16
 #define PHASE_LIGHT 32
 
-#define DARK 1
-#define LIGHT 2
+#define DARK 0
+#define LIGHT 1
 
 float RNG();
 
 void initialize ();
 
-// void deepgardenLoop();
-void deepgardenLoop();
+
+void thread_graphics () ;
+void thread_physics ();
+void thread_chemistry ();
+void thread_optics ();
+void thread_particledrawing ();
+
 
 #endif

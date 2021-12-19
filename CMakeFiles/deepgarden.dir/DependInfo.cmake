@@ -14,7 +14,9 @@ set(CMAKE_CXX_COMPILER_ID "GNU")
 # Preprocessor definitions for this target.
 set(CMAKE_TARGET_DEFINITIONS_CXX
   "BOOST_ALL_NO_LIB"
+  "BOOST_ATOMIC_DYN_LINK"
   "BOOST_FILESYSTEM_DYN_LINK"
+  "BOOST_THREAD_DYN_LINK"
   )
 
 # The include file search paths:

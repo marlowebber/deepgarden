@@ -6,14 +6,6 @@
 
 #IncludeRegexTransform: 
 
-/home/marlo/Documents/deepgarden/src/deepgarden.cpp
-deepgarden.h
-/home/marlo/Documents/deepgarden/src/deepgarden.h
-deepgarden_graphics.h
-/home/marlo/Documents/deepgarden/src/deepgarden_graphics.h
-boost/thread.hpp
--
-
 /home/marlo/Documents/deepgarden/src/deepgarden.h
 stdio.h
 -
@@ -37,10 +29,12 @@ glm/gtc/matrix_transform.hpp
 -
 random
 -
+boost/thread.hpp
+-
 deepgarden_utilities.h
 /home/marlo/Documents/deepgarden/src/deepgarden_utilities.h
 
-/home/marlo/Documents/deepgarden/src/deepgarden_graphics.h
+/home/marlo/Documents/deepgarden/src/deepgarden_graphics.cpp
 deepgarden.h
 /home/marlo/Documents/deepgarden/src/deepgarden.h
 
