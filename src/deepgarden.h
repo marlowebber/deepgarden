@@ -22,7 +22,7 @@ using namespace glm;
 #include "deepgarden_utilities.h"
 
 
-#define sizeX 2048
+#define sizeX 16384
 #define sizeY 256
 
 struct color

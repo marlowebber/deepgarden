@@ -2,6 +2,10 @@
 #include "deepgarden_graphics.h"
 
 
+#include <ctime>
+#include <chrono>
+#include <iostream>
+
 
 bool paused = false;
 bool flagQuit = false;
@@ -109,10 +113,11 @@ int main( int argc, char * argv[] )
 
 
 
+
 		boost::thread t2{ thread_physics };
 		// printf("started t2\n");
 
-		boost::thread t3{ thread_chemistry };
+		// boost::thread t3{ thread_chemistry };
 		// printf("started t3\n");
 
 		boost::thread t4{ thread_optics };
@@ -123,7 +128,9 @@ int main( int argc, char * argv[] )
 		// printf("started t6\n");
 
 		// graphics only seems to work in this thread, so we can just say that's what this thread is for.
+
 		thread_graphics();
+
 
 
 // 		t1.join();
@@ -132,12 +139,12 @@ int main( int argc, char * argv[] )
 		t2.join();
 // printf("joined t2\n");
 
-		t3.join();
+		// t3.join();
 
 // printf("joined t3\n");
 
 		t4.join();
-// 
+//
 // printf("joined t4\n");
 
 		// t5.join();
@@ -147,7 +154,7 @@ int main( int argc, char * argv[] )
 
 
 
-		
+
 		// // thread_physics();
 		// thread_interface();
 

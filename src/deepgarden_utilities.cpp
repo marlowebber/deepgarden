@@ -152,3 +152,20 @@ float magnitude_int( int x,  int y)
 	return mag;
 }
 
+
+
+// template <typename U = uint64_t> class RandomizerWithSentinelShift {
+//   public:
+//     template <typename Rng> bool operator()(Rng &rng) {
+//         if (UNLIKELY(1 == m_rand)) {
+//             m_rand = std::uniform_int_distribution<U>{}(rng) | s_mask_left1;
+//         }
+//         bool const ret = m_rand & 1;
+//         m_rand >>= 1;
+//         return ret;
+//     }
+
+//   private:
+//     static constexpr const U s_mask_left1 = U(1) << (sizeof(U) * 8 - 1);
+//     U m_rand = 1;
+// };

@@ -34,4 +34,7 @@ float RNG();
 
 float magnitude_int( int x,  int y);
 
+
+template <typename U = uint64_t> class RandomizerWithSentinelShift ;
+
 #endif

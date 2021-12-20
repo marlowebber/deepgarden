@@ -1,21 +1,34 @@
 #include "deepgarden.h"
 #include "deepgarden_graphics.h"
 
+
+#include <ctime>
+#include <chrono>
+#include <iostream>
+
+#define THREAD_TIMING
+#define RENDERING_THREADS 4
+
 const unsigned int totalSize = sizeX * sizeY;
 // const unsigned int highestI
+
+
+const unsigned int numberOfFieldsPerVertex = 6; /*  R, G, B, A, X, Y  */
+float colorGrid[totalSize * numberOfFieldsPerVertex ];
+
 
 unsigned int material_grid[totalSize];
 unsigned int phase_grid[totalSize];
 unsigned int identity_grid[totalSize];
 unsigned int light_grid[totalSize];
+bool diffs_grid[totalSize];
 
 const color lightColor = color(1.0f, 1.0f, 1.0f, 1.0f);
 const color emptyColor = color(0.05f, 0.05f, 0.05f, 1.0f);
-const color lifeColor = color(0.2f, 0.05f, 0.4f, 1.0f);
+const color lifeColor =  color(0.2f, 0.05f, 0.4f, 1.0f);
 const color stoneColor = color(0.5f, 0.5f, 0.5f, 1.0f);
-const color sandColor = color(0.3f, 0.3f, 0.3f, 1.0f);
-const color goldColor = color(1.0f, 1.0f, 0.0f, 1.0f);
-const unsigned int numberOfFieldsPerVertex = 6; /*  R, G, B, A, X, Y  */
+const color sandColor =  color(0.3f, 0.3f, 0.3f, 1.0f);
+const color goldColor =  color(1.0f, 1.0f, 0.0f, 1.0f);
 
 std::list<unsigned int> identities;
 
@@ -601,20 +614,53 @@ void initialize ()
 	memset( material_grid, MATERIAL_VACUUM, (sizeof(unsigned int) * totalSize) );
 	memset( identity_grid, 0x00, (sizeof(unsigned int) * totalSize) );
 	memset( light_grid, 0x00, (sizeof(unsigned int) * totalSize) );
+	memset( diffs_grid, true, (sizeof(bool) * totalSize) );
+	memset ( colorGrid, 0x00, sizeof(float ) * numberOfFieldsPerVertex * totalSize );
 
-	for (int i = 10 * sizeX; i < 50 * sizeX; ++i)
+
+	// setup the x and y positions in the color grid. these never change so you can just calculate them once.
+	unsigned int x = 0;
+	unsigned int y = 0;
+	for (unsigned int i = 0; i < totalSize; ++i)
 	{
-		if (RNG() < 0.5)
-		{
-			material_grid[i] = MATERIAL_IRON;
-			phase_grid[i] = PHASE_POWDER;
-		}
-		else {
-			material_grid[i] = MATERIAL_OXYGEN;
-			phase_grid[i] = PHASE_GAS;
+		x = i % sizeX;
+		if (!x) { y = i / sizeX; }
 
+		float fx = x;
+		float fy = y;
+
+
+
+		// RGBA color occupies the first 4 places.
+		// also, initialize the color alpha to 1.
+		colorGrid[ (i * numberOfFieldsPerVertex) + 3] = 1.0f;
+		colorGrid[ (i * numberOfFieldsPerVertex) + 4] = fx;
+		colorGrid[ (i * numberOfFieldsPerVertex) + 5] = fy;
+
+
+		// sprinkle some material on it to make a default scene.
+		if (i > (10 * sizeX) && i < (50 * sizeX))
+		{
+			if (RNG() < 0.5)
+			{
+				material_grid[i] = MATERIAL_IRON;
+				phase_grid[i] = PHASE_POWDER;
+				memcpy(&colorGrid[i * numberOfFieldsPerVertex], &sandColor, 16  );
+			}
+			else {
+				material_grid[i] = MATERIAL_OXYGEN;
+				phase_grid[i] = PHASE_GAS;
+				memcpy(&colorGrid[i * numberOfFieldsPerVertex], &lifeColor, 16  );
+			}
 		}
+
 	}
+
+
+
+
+
+
 
 	//instantiateCreature(randomSentence(), 100, 100);
 }
@@ -634,6 +680,16 @@ void swap (unsigned int a, unsigned int b)
 	material_grid[b] = material_grid[a];
 	material_grid[a] = temp_mat;
 
+	float temp_color[4];
+	unsigned int a_offset = (a * numberOfFieldsPerVertex);
+	unsigned int b_offset = (b * numberOfFieldsPerVertex);
+	memcpy( temp_color, &colorGrid[ b_offset ] , 16 ); // 4x floats of 4 bytes each
+	memcpy( &colorGrid[ b_offset], &colorGrid[ a_offset] , 16 );
+	memcpy( &colorGrid[ a_offset ], temp_color, 16 );
+
+	// diffs_grid[a] = true;
+	// diffs_grid[b] = true;
+
 }
 
 lifeform * getCreatureByID( unsigned int id )
@@ -650,7 +706,7 @@ lifeform * getCreatureByID( unsigned int id )
 
 
 
-void chemistry(unsigned int a, unsigned int b)
+bool chemistry(unsigned int a, unsigned int b)
 {
 	// perform chemistry
 	if (identity_grid[a] )
@@ -686,7 +742,7 @@ void chemistry(unsigned int a, unsigned int b)
 			material_grid[a] = MATERIAL_VACUUM;
 			phase_grid[a] = PHASE_VACUUM;
 			identity_grid[a] = 0x00;
-			return;
+			return true;
 		}
 
 
@@ -698,7 +754,7 @@ void chemistry(unsigned int a, unsigned int b)
 
 	}
 
-
+	return false;
 
 }
 
@@ -721,9 +777,14 @@ void thread_particledrawing ()
 
 void thread_optics ()
 {
+
+#ifdef THREAD_TIMING
+	auto start = std::chrono::steady_clock::now();
+#endif
+
 	// unsigned int lightLimit = (sizeY - 1 ) * sizeX;
 	unsigned int lightRow = totalSize - sizeX;  // by having the light start from the second-to-top row, we can avoid checking to see if the loop index is out of bounds later on, which adds up to a huge saving.
-	
+
 
 	for (int i = lightRow; i < totalSize; ++i)
 	{
@@ -740,7 +801,7 @@ void thread_optics ()
 		// if (squareBelow < totalSize)
 		// {
 
-		
+
 
 
 		if (light_grid[i])
@@ -761,148 +822,230 @@ void thread_optics ()
 
 
 			}
-			
+
 
 
 		}
 
 
-			unsigned int squareBelow = i - sizeX;
-			unsigned int temp_light = light_grid[squareBelow];
-				light_grid[squareBelow] = light_grid[i];
-				light_grid[i] = temp_light;
+		unsigned int squareBelow = i - sizeX;
+		unsigned int temp_light = light_grid[squareBelow];
+		light_grid[squareBelow] = light_grid[i];
+		light_grid[i] = temp_light;
 
 
 		// }
 	}
+
+#ifdef THREAD_TIMING
+	auto end = std::chrono::steady_clock::now();
+	auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+	std::cout << "thread_optics " << elapsed.count() << " microseconds." << std::endl;
+#endif
+}
+
+// return a random integer in the range. It is inclusive of both end values.
+unsigned int randomIntegerInRange (unsigned int from, unsigned int to)
+{
+	return from + ( std::rand() % ( to - from + 1 ) );
 }
 
 void thread_physics ()
 {
+#ifdef THREAD_TIMING
+	auto start = std::chrono::steady_clock::now();
+#endif
+
+
 	for (unsigned int i = 0; i < totalSize; ++i)
 	{
 
-		unsigned int squareBelow = i - sizeX;
-		// unsigned int squareAbove = i + sizeX;
-
-
-		if ((phase_grid[i] & (PHASE_POWDER)) == (PHASE_POWDER))
+		if (true)
 		{
-			unsigned int neighbours[] =
-			{
-				squareBelow + 1,
-				squareBelow,
-				squareBelow - 1
-			};
 
-			for (unsigned int j = 0; j < 1; ++j) // instead of checking all of them every turn, you can check half or less and it doesn't make a difference for gameplay.
-			{
-				unsigned int k = rand() % (2 + 1);
-				if (neighbours[k] > totalSize) {continue;}
-				if ((phase_grid[neighbours[k]] & (PHASE_VACUUM)) == (PHASE_VACUUM))
-				{
-					swap(i, neighbours[k]);
-				}
-
-				// chemistry(i, neighbours[k]) ;
-				break;
-			}
-		}
-
-		// movement instructions for LIQUIDS
-		else if ((phase_grid[i] & (PHASE_LIQUID)) == (PHASE_LIQUID))
-		{
-			unsigned int neighbours[] =
-			{
-				i - 1,
-				i + 1,
-				squareBelow + 1,
-				squareBelow,
-				squareBelow - 1
-			};
-
-			for (unsigned int j = 0; j < 2; ++j)
-			{
-				unsigned int k = rand() % (4 + 1);
-				if (neighbours[k] > totalSize) {continue;}
-				if ((phase_grid[neighbours[k]] & (PHASE_VACUUM)) == (PHASE_VACUUM))
-				{
-					swap(i, neighbours[k]);
-				}
-
-				// chemistry(i, neighbours[k]) ;
-				break;
-
-			}
-		}
-
-		// movement instructions for GASES
-		else if ((phase_grid[i] & (PHASE_GAS)) == (PHASE_GAS))
-		{
+			unsigned int squareBelow = i - sizeX;
 			unsigned int squareAbove = i + sizeX;
+
 			unsigned int neighbours[] =
 			{
 				i - 1,
 				i + 1,
+				squareBelow + 1,
+				squareBelow,
+				squareBelow - 1,
 				squareAbove + 1,
 				squareAbove,
-				squareAbove - 1,
-				squareBelow + 1,
-				squareBelow,
-				squareBelow - 1
+				squareAbove - 1
+
 			};
 
-			for (unsigned int j = 0; j < 4; ++j)
+
+			// bool did_anything = false;
+
+			if ((phase_grid[i] & (PHASE_POWDER)) == (PHASE_POWDER))
 			{
-				unsigned int k = rand() % (7 + 1);
-				if (neighbours[k] > totalSize) {continue;}
-				if ((phase_grid[neighbours[k]] & (PHASE_VACUUM)) == (PHASE_VACUUM))
+				// unsigned int neighbours[] =
+				// {
+				// 	squareBelow + 1,
+				// 	squareBelow,
+				// 	squareBelow - 1
+				// };
+
+				for (unsigned int k = 2; k < 5; ++k) // instead of checking all of them every turn, you can check half or less and it doesn't make a difference for gameplay.
 				{
-					swap(i, neighbours[k]);
+					// unsigned int k = rand() % (3 + 2); // it's a powder, only check 2th to 4th place in the neighbours array.
+
+					// unsigned int k = randomIntegerInRange(2, 4);
+					if (neighbours[k] > totalSize) {continue;}
+					// if (
+					chemistry(i, neighbours[k]);
+					// ) {did_anything = true;}
+
+					if ((phase_grid[neighbours[k]] & (PHASE_VACUUM)) == (PHASE_VACUUM))
+					{
+						swap(i, neighbours[k]);
+						// did_anything = true;
+					}
+
+
+					// if (did_anything) {diffs_grid[neighbours[k]] =true; }
+
+					// chemistry(i, neighbours[k]) ;
+					break;
+				}
+			}
+
+			// movement instructions for LIQUIDS
+			else if ((phase_grid[i] & (PHASE_LIQUID)) == (PHASE_LIQUID))
+			{
+				// unsigned int neighbours[] =
+				// {
+				// 	i - 1,
+				// 	i + 1,
+				// 	squareBelow + 1,
+				// 	squareBelow,
+				// 	squareBelow - 1
+				// };
+
+				for (unsigned int k = 0; k < 5; ++k)
+				{
+					// unsigned int k = rand() % (4 + 1);
+					// unsigned int k = randomIntegerInRange(0, 4);
+					if (neighbours[k] > totalSize) {continue;}
+
+					// if (
+					chemistry(i, neighbours[k]) ;
+					// ) {did_anything = true;}
+					if ((phase_grid[neighbours[k]] & (PHASE_VACUUM)) == (PHASE_VACUUM))
+					{
+						swap(i, neighbours[k]);
+						// chemistry(i, neighbours[k]) ;
+						// did_anything = true;
+						// diffs_grid[neighbours[k]]=true;
+						// diffs_grid[i]=true;
+					}
+
+
+					// if (did_anything) {diffs_grid[neighbours[k]] =true; }
+
+					// chemistry(i, neighbours[k]) ;
+					break;
 
 				}
-
-				// chemistry(i, neighbours[k]) ;
-				break;
 			}
+
+			// movement instructions for GASES
+			else if ((phase_grid[i] & (PHASE_GAS)) == (PHASE_GAS))
+			{
+				// unsigned int squareAbove = i + sizeX;
+				// unsigned int neighbours[] =
+				// {
+				// 	i - 1,
+				// 	i + 1,
+				// 	squareBelow + 1,
+				// 	squareBelow,
+				// 	squareBelow - 1
+				// 	squareAbove + 1,
+				// 	squareAbove,
+				// 	squareAbove - 1,
+
+				// };
+
+				for (unsigned int k = 0; k < 8; ++k)
+				{
+					// unsigned int k = rand() % (7 + 1);
+					// unsigned int k = randomIntegerInRange(0, 7);
+					if (neighbours[k] > totalSize) {continue;}
+
+					// if (
+					chemistry(i, neighbours[k]);
+					// ) {did_anything = true;}
+					if ((phase_grid[neighbours[k]] & (PHASE_VACUUM)) == (PHASE_VACUUM))
+					{
+						swap(i, neighbours[k]);
+						// chemistry(i, neighbours[k]) ;
+						// did_anything = true;
+					}
+
+					// if (did_anything) {diffs_grid[neighbours[k]] =true; }
+
+					// chemistry(i, neighbours[k]) ;
+					break;
+				}
+			}
+
+			// if (!did_anything)
+			// {
+			// 	diffs_grid[i] = false;
+			// }
+
 		}
 	}
+
+#ifdef THREAD_TIMING
+	auto end = std::chrono::steady_clock::now();
+	auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+	std::cout << "thread_physics " << elapsed.count() << " microseconds." << std::endl;
+#endif
 }
 
 
 
-void thread_chemistry ()
-{
+// void thread_chemistry ()
+// {
 
-	for (unsigned int i = 0; i < totalSize; ++i)
-	{
+// 	for (unsigned int i = 0; i < totalSize; ++i)
+// 	{
 
-		unsigned int squareBelow = i - sizeX;
-		unsigned int squareAbove = i + sizeX;
+// 		if (diffs_grid[i])
+// 		{
+// 			unsigned int squareBelow = i - sizeX;
+// 			unsigned int squareAbove = i + sizeX;
 
-		// in the particle motion, i believe it is necessary to randomise the order neighbours are interacted with, because it does not look natural otherwise.
-		// here for the sake of speed i am not using randomness, i hope it will not lead to bad effects.
-		// instead, the neighbours are presented in order of their proximity to the cell.
-		unsigned int neighbours[] =
-		{
-			squareBelow,
-			i - 1,
-			i + 1,
-			squareBelow + 1,
-			squareBelow - 1,
-			squareAbove + 1,
-			squareAbove,
-			squareAbove - 1,
-		};
+// 			// in the particle motion, i believe it is necessary to randomise the order neighbours are interacted with, because it does not look natural otherwise.
+// 			// here for the sake of speed i am not using randomness, i hope it will not lead to bad effects.
+// 			// instead, the neighbours are presented in order of their proximity to the cell.
+// 			unsigned int neighbours[] =
+// 			{
+// 				squareBelow,
+// 				i - 1,
+// 				i + 1,
+// 				squareBelow + 1,
+// 				squareBelow - 1,
+// 				squareAbove + 1,
+// 				squareAbove,
+// 				squareAbove - 1,
+// 			};
 
-		for (unsigned int k = 0; k < 8; ++k)
-		{
-			if (neighbours[k] > totalSize) {continue;}
-			chemistry(i, neighbours[k]) ;
-			break;
-		}
-	}
-}
+// 			for (unsigned int k = 0; k < 8; ++k)
+// 			{
+// 				if (neighbours[k] > totalSize) {continue;}
+// 				chemistry(i, neighbours[k]) ;
+// 				break;
+// 			}
+// 		}
+// 	}
+// }
 
 
 
@@ -922,44 +1065,69 @@ void chooseColor ( color * colorToUse, unsigned int index )
 }
 
 
+void draw_sector (unsigned int from, unsigned int to, float * vertex_buffer_data)
+{
+	unsigned int x = from % sizeX;
+	unsigned int y = from / sizeX;
+
+	unsigned int g_vertex_buffer_cursor = from;
+
+	for (unsigned int i = from; i < to; ++i)
+	{
+		// if (diffs_grid[i])
+		// {
+		x = i % sizeX;
+		if (!x) { y = i / sizeX; }
+
+		color colorToUse = emptyColor;
+
+		chooseColor ( &colorToUse, i ) ;
+
+		vertToBuffer ( vertex_buffer_data, &g_vertex_buffer_cursor, colorToUse, x,  y);
+
+		// }
+	}
+}
+
 void thread_graphics()
 {
+#ifdef THREAD_TIMING
+	auto start = std::chrono::steady_clock::now();
+#endif
 	preDraw();
 
 
 	unsigned int nVertsToRenderThisTurn = 1 * totalSize;
 	long unsigned int totalNumberOfFields = nVertsToRenderThisTurn * numberOfFieldsPerVertex;
 
-	// Create the buffer.
-	unsigned int g_vertex_buffer_cursor = 0;
-
-	float * vertex_buffer_data  = new float[totalNumberOfFields];
-
-	for (unsigned int i = 0; i < totalSize; ++i)
-	{
-		unsigned int x = i % sizeX;
-		unsigned int y = i / sizeX;
-
-		color colorToUse = emptyColor;
-
-		chooseColor ( &colorToUse, i ) ;
+	// float * vertex_buffer_data  = new float[totalNumberOfFields];
 
 
-		// vertToBuffer ( vertex_buffer_data, &g_vertex_buffer_cursor, colorToUse , x + 1,  y);
-		vertToBuffer ( vertex_buffer_data, &g_vertex_buffer_cursor, colorToUse , x,  y);
-		// vertToBuffer ( vertex_buffer_data, &g_vertex_buffer_cursor, colorToUse , x + 1,  y + 1);
-		// vertToBuffer ( vertex_buffer_data, &g_vertex_buffer_cursor, colorToUse , x,  y + 1);
 
-		// vertToBuffer ( vertex_buffer_data, &g_vertex_buffer_cursor, colorToUse , x,  y + 1);
+	// boost::thread t7{ draw_sector, 0 									, totalSize, vertex_buffer_data};
+	// boost::thread t8{ draw_sector, ( nVertsToRenderThisTurn * 0.25 ) 	, ( nVertsToRenderThisTurn * 0.5  )  , vertex_buffer_data};
+	// // boost::thread t9{ draw_sector, ( nVertsToRenderThisTurn * 0.5  ) 	, ( nVertsToRenderThisTurn * 0.75 )  , vertex_buffer_data};
+	// boost::thread t10{ draw_sector, ( nVertsToRenderThisTurn * 0.75 ) , ( nVertsToRenderThisTurn  )        , vertex_buffer_data};
 
-	}
 
-	glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, vertex_buffer_data, GL_DYNAMIC_DRAW );
+	// t7.join();
+	// t8.join();
+	// t9.join();
+	// t10.join();
+
+
+	glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, colorGrid, GL_DYNAMIC_DRAW );
 	glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
 
-	delete [] vertex_buffer_data;
+	// delete [] vertex_buffer_data;
 
 	postDraw();
+
+#ifdef THREAD_TIMING
+	auto end = std::chrono::steady_clock::now();
+	auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+	std::cout << "thread_graphics " << elapsed.count() << " microseconds." << std::endl;
+#endif
 }
 
 
