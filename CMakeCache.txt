@@ -148,7 +148,7 @@ CMAKE_PROJECT_DESCRIPTION:STATIC=
 CMAKE_PROJECT_HOMEPAGE_URL:STATIC=
 
 //Value Computed by CMake
-CMAKE_PROJECT_NAME:STATIC=deepgarden
+CMAKE_PROJECT_NAME:STATIC=game
 
 //Path to a program.
 CMAKE_RANLIB:FILEPATH=/usr/bin/ranlib
@@ -280,6 +280,12 @@ deepsea_BINARY_DIR:STATIC=/home/marlo/Documents/deepgarden
 
 //Value Computed by CMake
 deepsea_SOURCE_DIR:STATIC=/home/marlo/Documents/deepgarden
+
+//Value Computed by CMake
+game_BINARY_DIR:STATIC=/home/marlo/Documents/deepgarden
+
+//Value Computed by CMake
+game_SOURCE_DIR:STATIC=/home/marlo/Documents/deepgarden
 
 
 ########################

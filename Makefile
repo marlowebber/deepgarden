@@ -123,86 +123,59 @@ deepgarden/fast:
 	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/build
 .PHONY : deepgarden/fast
 
-src/deepgarden.o: src/deepgarden.cpp.o
+src/game.o: src/game.cpp.o
 
-.PHONY : src/deepgarden.o
-
-# target to build an object file
-src/deepgarden.cpp.o:
-	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/deepgarden.cpp.o
-.PHONY : src/deepgarden.cpp.o
-
-src/deepgarden.i: src/deepgarden.cpp.i
-
-.PHONY : src/deepgarden.i
-
-# target to preprocess a source file
-src/deepgarden.cpp.i:
-	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/deepgarden.cpp.i
-.PHONY : src/deepgarden.cpp.i
-
-src/deepgarden.s: src/deepgarden.cpp.s
-
-.PHONY : src/deepgarden.s
-
-# target to generate assembly for a file
-src/deepgarden.cpp.s:
-	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/deepgarden.cpp.s
-.PHONY : src/deepgarden.cpp.s
-
-src/deepgarden_graphics.o: src/deepgarden_graphics.cpp.o
-
-.PHONY : src/deepgarden_graphics.o
+.PHONY : src/game.o
 
 # target to build an object file
-src/deepgarden_graphics.cpp.o:
-	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/deepgarden_graphics.cpp.o
-.PHONY : src/deepgarden_graphics.cpp.o
+src/game.cpp.o:
+	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/game.cpp.o
+.PHONY : src/game.cpp.o
 
-src/deepgarden_graphics.i: src/deepgarden_graphics.cpp.i
+src/game.i: src/game.cpp.i
 
-.PHONY : src/deepgarden_graphics.i
+.PHONY : src/game.i
 
 # target to preprocess a source file
-src/deepgarden_graphics.cpp.i:
-	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/deepgarden_graphics.cpp.i
-.PHONY : src/deepgarden_graphics.cpp.i
+src/game.cpp.i:
+	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/game.cpp.i
+.PHONY : src/game.cpp.i
 
-src/deepgarden_graphics.s: src/deepgarden_graphics.cpp.s
+src/game.s: src/game.cpp.s
 
-.PHONY : src/deepgarden_graphics.s
+.PHONY : src/game.s
 
 # target to generate assembly for a file
-src/deepgarden_graphics.cpp.s:
-	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/deepgarden_graphics.cpp.s
-.PHONY : src/deepgarden_graphics.cpp.s
+src/game.cpp.s:
+	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/game.cpp.s
+.PHONY : src/game.cpp.s
 
-src/deepgarden_utilities.o: src/deepgarden_utilities.cpp.o
+src/graphics.o: src/graphics.cpp.o
 
-.PHONY : src/deepgarden_utilities.o
+.PHONY : src/graphics.o
 
 # target to build an object file
-src/deepgarden_utilities.cpp.o:
-	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/deepgarden_utilities.cpp.o
-.PHONY : src/deepgarden_utilities.cpp.o
+src/graphics.cpp.o:
+	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/graphics.cpp.o
+.PHONY : src/graphics.cpp.o
 
-src/deepgarden_utilities.i: src/deepgarden_utilities.cpp.i
+src/graphics.i: src/graphics.cpp.i
 
-.PHONY : src/deepgarden_utilities.i
+.PHONY : src/graphics.i
 
 # target to preprocess a source file
-src/deepgarden_utilities.cpp.i:
-	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/deepgarden_utilities.cpp.i
-.PHONY : src/deepgarden_utilities.cpp.i
+src/graphics.cpp.i:
+	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/graphics.cpp.i
+.PHONY : src/graphics.cpp.i
 
-src/deepgarden_utilities.s: src/deepgarden_utilities.cpp.s
+src/graphics.s: src/graphics.cpp.s
 
-.PHONY : src/deepgarden_utilities.s
+.PHONY : src/graphics.s
 
 # target to generate assembly for a file
-src/deepgarden_utilities.cpp.s:
-	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/deepgarden_utilities.cpp.s
-.PHONY : src/deepgarden_utilities.cpp.s
+src/graphics.cpp.s:
+	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/graphics.cpp.s
+.PHONY : src/graphics.cpp.s
 
 src/main.o: src/main.cpp.o
 
@@ -231,6 +204,33 @@ src/main.cpp.s:
 	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/main.cpp.s
 .PHONY : src/main.cpp.s
 
+src/utilities.o: src/utilities.cpp.o
+
+.PHONY : src/utilities.o
+
+# target to build an object file
+src/utilities.cpp.o:
+	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/utilities.cpp.o
+.PHONY : src/utilities.cpp.o
+
+src/utilities.i: src/utilities.cpp.i
+
+.PHONY : src/utilities.i
+
+# target to preprocess a source file
+src/utilities.cpp.i:
+	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/utilities.cpp.i
+.PHONY : src/utilities.cpp.i
+
+src/utilities.s: src/utilities.cpp.s
+
+.PHONY : src/utilities.s
+
+# target to generate assembly for a file
+src/utilities.cpp.s:
+	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/utilities.cpp.s
+.PHONY : src/utilities.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -240,18 +240,18 @@ help:
 	@echo "... rebuild_cache"
 	@echo "... edit_cache"
 	@echo "... deepgarden"
-	@echo "... src/deepgarden.o"
-	@echo "... src/deepgarden.i"
-	@echo "... src/deepgarden.s"
-	@echo "... src/deepgarden_graphics.o"
-	@echo "... src/deepgarden_graphics.i"
-	@echo "... src/deepgarden_graphics.s"
-	@echo "... src/deepgarden_utilities.o"
-	@echo "... src/deepgarden_utilities.i"
-	@echo "... src/deepgarden_utilities.s"
+	@echo "... src/game.o"
+	@echo "... src/game.i"
+	@echo "... src/game.s"
+	@echo "... src/graphics.o"
+	@echo "... src/graphics.i"
+	@echo "... src/graphics.s"
 	@echo "... src/main.o"
 	@echo "... src/main.i"
 	@echo "... src/main.s"
+	@echo "... src/utilities.o"
+	@echo "... src/utilities.i"
+	@echo "... src/utilities.s"
 .PHONY : help
 
 

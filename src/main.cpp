@@ -1,26 +1,19 @@
-#include "deepgarden.h"
-#include "deepgarden_graphics.h"
-
+#include "game.h"
+#include "graphics.h"
 
 #include <ctime>
 #include <chrono>
 #include <iostream>
 
-
 bool paused = false;
 bool flagQuit = false;
-
 
 int mouseX;
 int mouseY;
 
 float panSpeed = 0.5f;
 
-
 unsigned int pixelSize = 3;
-
-
-
 
 void quit ()
 {
@@ -33,7 +26,6 @@ void togglePause ()
 {
 	paused = !paused;
 }
-
 
 void thread_interface()
 {
@@ -62,15 +54,9 @@ void thread_interface()
 				break;
 			case SDLK_EQUALS:
 				viewZoomSetpoint = viewZoomSetpoint * 0.9f;
-				// pixelSize = 3/viewZoomSetpoint ;
-				//  setPointSize (pixelSize) ;
-
 				break;
 			case SDLK_MINUS:
 				viewZoomSetpoint = viewZoomSetpoint * 1.1f;
-				// pixelSize = 3/viewZoomSetpoint ;
-				//  setPointSize (pixelSize) ;
-
 				break;
 			case SDLK_p:
 				togglePause();
@@ -97,84 +83,31 @@ void thread_interface()
 	}
 }
 
-
-
 int main( int argc, char * argv[] )
 {
-
 	setupGraphics();
-
-
 	initialize();
 
 	for ( ;; )
 	{
-
-
 		// start all the threads and then wait for them to finish.
 		// start threads in order of chunkiest to least chunky.
 
-		// boost::thread t1{ thread_graphics };
-		// printf("started t1\n");
+		// you can start your threads like this:
+		boost::thread t2{ thread_game }; 
 
-
-
-		boost::thread t99{ thread_temperature };
-
-		boost::thread t2{ thread_physics };
-		// printf("started t2\n");
-
-		// boost::thread t3{ thread_chemistry };
-		// printf("started t3\n");
-
-		boost::thread t4{ thread_optics };
-		// printf("started t4\n");
-
-		// boost::thread t5{ thread_particledrawing };
-		boost::thread t6{ thread_interface };
-		// printf("started t6\n");
-
-		// graphics only seems to work in this thread, so we can just say that's what this thread is for.
-
+		
+		// graphics only works in this thread, because it is the one the SDL context was created in.
 		thread_graphics();
 
-
-
-// 		t1.join();
-// printf("joined t1\n");
-
-		t2.join();
-// printf("joined t2\n");
-
-		// t3.join();
-
-// printf("joined t3\n");
-
-		t4.join();
-//
-// printf("joined t4\n");
-
-		// t5.join();
-		t6.join();
-
-// printf("joined t6\n");
-		t99.join();
-
-
-
-		// // thread_physics();
-		// thread_interface();
-
-
+		// you can have this thread wait for another to end by saying:
+		t2.join(); 
 
 		if (flagQuit)
 		{
 			flagQuit = false;
 			return 0;
 		}
-
-
-
 	}
 
 	return 0;

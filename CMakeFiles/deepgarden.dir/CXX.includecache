@@ -6,11 +6,11 @@
 
 #IncludeRegexTransform: 
 
-/home/marlo/Documents/deepgarden/src/deepgarden.cpp
-deepgarden.h
-/home/marlo/Documents/deepgarden/src/deepgarden.h
-deepgarden_graphics.h
-/home/marlo/Documents/deepgarden/src/deepgarden_graphics.h
+/home/marlo/Documents/deepgarden/src/game.cpp
+game.h
+/home/marlo/Documents/deepgarden/src/game.h
+graphics.h
+/home/marlo/Documents/deepgarden/src/graphics.h
 ctime
 -
 chrono
@@ -18,7 +18,7 @@ chrono
 iostream
 -
 
-/home/marlo/Documents/deepgarden/src/deepgarden.h
+/home/marlo/Documents/deepgarden/src/game.h
 stdio.h
 -
 SDL.h
@@ -43,16 +43,36 @@ random
 -
 boost/thread.hpp
 -
-deepgarden_utilities.h
-/home/marlo/Documents/deepgarden/src/deepgarden_utilities.h
+utilities.h
+/home/marlo/Documents/deepgarden/src/utilities.h
 
-/home/marlo/Documents/deepgarden/src/deepgarden_graphics.h
-deepgarden.h
-/home/marlo/Documents/deepgarden/src/deepgarden.h
+/home/marlo/Documents/deepgarden/src/graphics.cpp
+game.h
+/home/marlo/Documents/deepgarden/src/game.h
 
-/home/marlo/Documents/deepgarden/src/deepgarden_utilities.h
-deepgarden.h
-/home/marlo/Documents/deepgarden/src/deepgarden.h
+/home/marlo/Documents/deepgarden/src/graphics.h
+game.h
+/home/marlo/Documents/deepgarden/src/game.h
+
+/home/marlo/Documents/deepgarden/src/main.cpp
+game.h
+/home/marlo/Documents/deepgarden/src/game.h
+graphics.h
+/home/marlo/Documents/deepgarden/src/graphics.h
+ctime
+-
+chrono
+-
+iostream
+-
+
+/home/marlo/Documents/deepgarden/src/utilities.cpp
+utilities.h
+/home/marlo/Documents/deepgarden/src/utilities.h
+
+/home/marlo/Documents/deepgarden/src/utilities.h
+game.h
+/home/marlo/Documents/deepgarden/src/game.h
 
 /usr/local/include/SDL2/SDL.h
 SDL_main.h

@@ -4,10 +4,10 @@ set(CMAKE_DEPENDS_LANGUAGES
   )
 # The set of files for implicit dependencies of each language:
 set(CMAKE_DEPENDS_CHECK_CXX
-  "/home/marlo/Documents/deepgarden/src/deepgarden.cpp" "/home/marlo/Documents/deepgarden/CMakeFiles/deepgarden.dir/src/deepgarden.cpp.o"
-  "/home/marlo/Documents/deepgarden/src/deepgarden_graphics.cpp" "/home/marlo/Documents/deepgarden/CMakeFiles/deepgarden.dir/src/deepgarden_graphics.cpp.o"
-  "/home/marlo/Documents/deepgarden/src/deepgarden_utilities.cpp" "/home/marlo/Documents/deepgarden/CMakeFiles/deepgarden.dir/src/deepgarden_utilities.cpp.o"
+  "/home/marlo/Documents/deepgarden/src/game.cpp" "/home/marlo/Documents/deepgarden/CMakeFiles/deepgarden.dir/src/game.cpp.o"
+  "/home/marlo/Documents/deepgarden/src/graphics.cpp" "/home/marlo/Documents/deepgarden/CMakeFiles/deepgarden.dir/src/graphics.cpp.o"
   "/home/marlo/Documents/deepgarden/src/main.cpp" "/home/marlo/Documents/deepgarden/CMakeFiles/deepgarden.dir/src/main.cpp.o"
+  "/home/marlo/Documents/deepgarden/src/utilities.cpp" "/home/marlo/Documents/deepgarden/CMakeFiles/deepgarden.dir/src/utilities.cpp.o"
   )
 set(CMAKE_CXX_COMPILER_ID "GNU")
 
@@ -21,6 +21,7 @@ set(CMAKE_TARGET_DEFINITIONS_CXX
 
 # The include file search paths:
 set(CMAKE_CXX_TARGET_INCLUDE_PATH
+  "box2d/include/box2d"
   "/usr/local/include/SDL2"
   )
 
