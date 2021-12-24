@@ -17,7 +17,7 @@ int mouseY;
 float panSpeed = 0.5f;
 
 
-
+unsigned int pixelSize = 3;
 
 
 
@@ -62,9 +62,15 @@ void thread_interface()
 				break;
 			case SDLK_EQUALS:
 				viewZoomSetpoint = viewZoomSetpoint * 0.9f;
+				// pixelSize = 3/viewZoomSetpoint ;
+				//  setPointSize (pixelSize) ;
+
 				break;
 			case SDLK_MINUS:
 				viewZoomSetpoint = viewZoomSetpoint * 1.1f;
+				// pixelSize = 3/viewZoomSetpoint ;
+				//  setPointSize (pixelSize) ;
+
 				break;
 			case SDLK_p:
 				togglePause();
@@ -113,6 +119,7 @@ int main( int argc, char * argv[] )
 
 
 
+		boost::thread t99{ thread_temperature };
 
 		boost::thread t2{ thread_physics };
 		// printf("started t2\n");
@@ -151,7 +158,7 @@ int main( int argc, char * argv[] )
 		t6.join();
 
 // printf("joined t6\n");
-
+		t99.join();
 
 
 

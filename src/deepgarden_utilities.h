@@ -35,6 +35,11 @@ float RNG();
 float magnitude_int( int x,  int y);
 
 
-template <typename U = uint64_t> class RandomizerWithSentinelShift ;
+// inline uint8_t extremelyFastRandomByte();
+
+void setupExtremelyFastNumberGenerators();
+ uint16_t extremelyFastNumberInRange(uint16_t from, uint16_t to);
+
+ uint16_t extremelyFastNumberFromZeroTo( uint16_t to);
 
 #endif

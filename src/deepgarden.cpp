@@ -6,6 +6,8 @@
 #include <chrono>
 #include <iostream>
 
+// using namespace std::tr1;
+
 #define THREAD_TIMING
 #define RENDERING_THREADS 4
 
@@ -21,14 +23,30 @@ unsigned int material_grid[totalSize];
 unsigned int phase_grid[totalSize];
 unsigned int identity_grid[totalSize];
 unsigned int light_grid[totalSize];
-bool diffs_grid[totalSize];
+unsigned int temperature_grid[totalSize];
 
-const color lightColor = color(1.0f, 1.0f, 1.0f, 1.0f);
-const color emptyColor = color(0.05f, 0.05f, 0.05f, 1.0f);
-const color lifeColor =  color(0.2f, 0.05f, 0.4f, 1.0f);
-const color stoneColor = color(0.5f, 0.5f, 0.5f, 1.0f);
-const color sandColor =  color(0.3f, 0.3f, 0.3f, 1.0f);
-const color goldColor =  color(1.0f, 1.0f, 0.0f, 1.0f);
+// const color lightColor = color(1.0f, 1.0f, 1.0f, 1.0f);
+// const color emptyColor = color(0.05f, 0.05f, 0.05f, 1.0f);
+// const color lifeColor =  color(0.2f, 0.05f, 0.4f, 1.0f);
+// const color stoneColor = color(0.5f, 0.5f, 0.5f, 1.0f);
+// const color sandColor =  color(0.3f, 0.3f, 0.3f, 1.0f);
+// const color goldColor =  color(1.0f, 1.0f, 0.0f, 1.0f);
+
+// const color waterColor =  color(0.1f, 0.4f, 0.8f, 1.0f);
+
+
+const Color color_lightblue = Color( 0.1f, 0.3f, 0.65f, 1.0f );
+const Color color_yellow    = Color( 1.0f, 1.0f, 0.0f, 1.0f );
+const Color color_lightgrey = Color( 0.75f, 0.75f, 0.75f, 1.0f );
+const Color color_grey      = Color( 0.50f, 0.50f, 0.50f, 1.0f );
+const Color color_darkgrey  = Color( 0.25f, 0.25f, 0.25f, 1.0f );
+const Color color_black     = Color( 0.0f, 0.0f, 0.0f, 1.0f );
+
+
+
+
+int wind = 0;
+
 
 std::list<unsigned int> identities;
 
@@ -40,6 +58,19 @@ const unsigned int recursion_limit = 5;
 std::string exampleSentence = "selnslslul lblotsancol lest sstructra plantae csui insnltl lsemina. Pars asutem fungslil quae ssporlls gignit corpuls fructsferum appellatur.";
 
 
+// bool fastRandom()
+// {
+
+// }
+
+
+// void setupFastRandoms()
+// {
+
+
+
+
+// }
 
 unsigned int newIdentity ()
 {
@@ -607,14 +638,20 @@ int drawNextSequence (lifeform * creature)
 void initialize ()
 {
 
+	setupExtremelyFastNumberGenerators();
 	// https://stackoverflow.com/questions/9459035/why-does-rand-yield-the-same-sequence-of-numbers-on-every-run
 	srand((unsigned int)time(NULL));
+
+
+// setupFastRandoms() ;
 
 	memset( phase_grid, PHASE_VACUUM, (sizeof(unsigned int) * totalSize) );
 	memset( material_grid, MATERIAL_VACUUM, (sizeof(unsigned int) * totalSize) );
 	memset( identity_grid, 0x00, (sizeof(unsigned int) * totalSize) );
 	memset( light_grid, 0x00, (sizeof(unsigned int) * totalSize) );
-	memset( diffs_grid, true, (sizeof(bool) * totalSize) );
+	// memset( diffs_grid, true, (sizeof(bool) * totalSize) );
+
+	memset( temperature_grid, 0x150, (sizeof(unsigned int) * totalSize) );
 	memset ( colorGrid, 0x00, sizeof(float ) * numberOfFieldsPerVertex * totalSize );
 
 
@@ -643,15 +680,31 @@ void initialize ()
 		{
 			if (RNG() < 0.5)
 			{
-				material_grid[i] = MATERIAL_IRON;
+				material_grid[i] = MATERIAL_QUARTZ;
 				phase_grid[i] = PHASE_POWDER;
-				memcpy(&colorGrid[i * numberOfFieldsPerVertex], &sandColor, 16  );
+				memcpy(&colorGrid[i * numberOfFieldsPerVertex], &color_lightgrey, 16  );
 			}
-			else {
-				material_grid[i] = MATERIAL_OXYGEN;
-				phase_grid[i] = PHASE_GAS;
-				memcpy(&colorGrid[i * numberOfFieldsPerVertex], &lifeColor, 16  );
+			// else {
+			// 	material_grid[i] = MATERIAL_OXYGEN;
+			// 	phase_grid[i] = PHASE_GAS;
+			// 	memcpy(&colorGrid[i * numberOfFieldsPerVertex], &lifeColor, 16  );
+			// }
+		}
+
+		// sprinkle some material on it to make a default scene.
+		if (i > (50 * sizeX) && i < (60 * sizeX))
+		{
+			if (RNG() < 0.5)
+			{
+				material_grid[i] = MATERIAL_WATER;
+				phase_grid[i] = PHASE_LIQUID;
+				memcpy(&colorGrid[i * numberOfFieldsPerVertex], &color_lightblue, 16  );
 			}
+			// else {
+			// 	material_grid[i] = MATERIAL_OXYGEN;
+			// 	phase_grid[i] = PHASE_GAS;
+			// 	memcpy(&colorGrid[i * numberOfFieldsPerVertex], &lifeColor, 16  );
+			// }
 		}
 
 	}
@@ -690,6 +743,19 @@ void swap (unsigned int a, unsigned int b)
 	// diffs_grid[a] = true;
 	// diffs_grid[b] = true;
 
+
+
+	// // exchange temperature of the two particles
+	// unsigned int combinedTemp = (temperature_grid[a] + temperature_grid[b])/2;
+	// temperature_grid[a] = combinedTemp;
+	// temperature_grid[b] = combinedTemp;
+
+
+	unsigned int temp_temp = temperature_grid[b];
+	temperature_grid[b] = temperature_grid[a];
+	temperature_grid[a] = temp_temp;
+
+
 }
 
 lifeform * getCreatureByID( unsigned int id )
@@ -706,57 +772,57 @@ lifeform * getCreatureByID( unsigned int id )
 
 
 
-bool chemistry(unsigned int a, unsigned int b)
-{
-	// perform chemistry
-	if (identity_grid[a] )
-	{
-		if (material_grid[b] != MATERIAL_VACUUM)
-		{
-			lifeform * creature = getCreatureByID(identity_grid[a]);
-			if (creature != nullptr)
-			{
-				if (identity_grid[b] != creature->parent_id)
-				{
-					unsigned int x = a % sizeX;
-					unsigned int y = a / sizeX;
-					creature->cursor_grid = vec_u2(x, y);
-					creature->origin = vec_u2(x, y);
-					creature->germinated = true;
-					creature->energy = 0;
-				}
-			}
-		}
-	}
+// bool chemistry(unsigned int a, unsigned int b)
+// {
+// 	// perform chemistry
+// 	if (identity_grid[a] )
+// 	{
+// 		if (material_grid[b] != MATERIAL_VACUUM)
+// 		{
+// 			lifeform * creature = getCreatureByID(identity_grid[a]);
+// 			if (creature != nullptr)
+// 			{
+// 				if (identity_grid[b] != creature->parent_id)
+// 				{
+// 					unsigned int x = a % sizeX;
+// 					unsigned int y = a / sizeX;
+// 					creature->cursor_grid = vec_u2(x, y);
+// 					creature->origin = vec_u2(x, y);
+// 					creature->germinated = true;
+// 					creature->energy = 0;
+// 				}
+// 			}
+// 		}
+// 	}
 
 
-	switch (material_grid[a])
-	{
-	case MATERIAL_OXYGEN:
-	{
+// 	switch (material_grid[a])
+// 	{
+// 	case MATERIAL_OXYGEN:
+// 	{
 
-		switch (material_grid[b])
-		{
-		case MATERIAL_IRON:
-			material_grid[b] = MATERIAL_STONE;
-			material_grid[a] = MATERIAL_VACUUM;
-			phase_grid[a] = PHASE_VACUUM;
-			identity_grid[a] = 0x00;
-			return true;
-		}
-
-
-
-		break;
-	}
+// 		switch (material_grid[b])
+// 		{
+// 		case MATERIAL_IRON:
+// 			material_grid[b] = MATERIAL_STONE;
+// 			material_grid[a] = MATERIAL_VACUUM;
+// 			phase_grid[a] = PHASE_VACUUM;
+// 			identity_grid[a] = 0x00;
+// 			return true;
+// 		}
 
 
 
-	}
+// 		break;
+// 	}
 
-	return false;
 
-}
+
+// 	}
+
+// 	return false;
+
+// }
 
 
 
@@ -774,6 +840,116 @@ void thread_particledrawing ()
 		}
 	}
 }
+
+
+
+
+
+
+void thread_temperature ()
+{
+#ifdef THREAD_TIMING
+	auto start = std::chrono::steady_clock::now();
+#endif
+
+	for (unsigned int i = sizeX; i < totalSize; ++i)
+	{
+
+		if (material_grid[i] == MATERIAL_WATER)
+		{
+			if (temperature_grid[i] > 273 )
+			{
+				if (temperature_grid[i] > 373)
+				{
+					phase_grid[i] = PHASE_GAS;
+				}
+				else
+				{
+					phase_grid[i] = PHASE_LIQUID;
+				}
+			}
+			else
+			{
+				phase_grid[i] = PHASE_POWDER;
+			}
+		}
+
+		else if (material_grid[i] == MATERIAL_QUARTZ)
+		{
+			if (temperature_grid[i] > 600 )
+			{
+				if (temperature_grid[i] > 2330)
+				{
+					phase_grid[i] = PHASE_GAS;
+				}
+				else
+				{
+					phase_grid[i] = PHASE_LIQUID;
+				}
+			}
+			else
+			{
+				phase_grid[i] = PHASE_POWDER;
+			}
+		}
+
+
+		else if (material_grid[i] == MATERIAL_AMPHIBOLE)
+		{
+			if (temperature_grid[i] > 800 )
+			{
+				if (temperature_grid[i] > 2330)
+				{
+					phase_grid[i] = PHASE_GAS;
+				}
+				else
+				{
+					phase_grid[i] = PHASE_LIQUID;
+				}
+			}
+			else
+			{
+				phase_grid[i] = PHASE_POWDER;
+			}
+		}
+
+		else if (material_grid[i] == MATERIAL_OLIVINE)
+		{
+			if (temperature_grid[i] > 1000 )
+			{
+				if (temperature_grid[i] > 2330)
+				{
+					phase_grid[i] = PHASE_GAS;
+				}
+				else
+				{
+					phase_grid[i] = PHASE_LIQUID;
+				}
+			}
+			else
+			{
+				phase_grid[i] = PHASE_POWDER;
+			}
+		}
+
+
+
+
+
+
+
+	}
+
+
+#ifdef THREAD_TIMING
+	auto end = std::chrono::steady_clock::now();
+	auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+	std::cout << "thread_temperature " << elapsed.count() << " microseconds." << std::endl;
+#endif
+}
+
+
+
 
 void thread_optics ()
 {
@@ -796,12 +972,13 @@ void thread_optics ()
 
 	// propagate light downwards.
 
+
+	// memcpy( &light_grid[0], &light_grid[sizeX],  (sizeof(unsigned int) * (totalSize-sizeX) ) );
+
+
+
 	for (unsigned int i = sizeX; i < totalSize; ++i)
 	{
-		// if (squareBelow < totalSize)
-		// {
-
-
 
 
 		if (light_grid[i])
@@ -824,6 +1001,19 @@ void thread_optics ()
 			}
 
 
+			// it's cool that light can evaporate water, but it should be based on vapor pressure / heat instead
+			// if ((phase_grid[i] & (PHASE_LIQUID)) == (PHASE_LIQUID) )
+			// {
+
+			// 	if (material_grid[i] == MATERIAL_WATER )
+			// 	{
+			// 		light_grid[i] = 0x00;
+			// 		phase_grid[i] = PHASE_GAS;
+
+			// 	}
+
+			// }
+
 
 		}
 
@@ -834,7 +1024,6 @@ void thread_optics ()
 		light_grid[i] = temp_light;
 
 
-		// }
 	}
 
 #ifdef THREAD_TIMING
@@ -850,163 +1039,147 @@ unsigned int randomIntegerInRange (unsigned int from, unsigned int to)
 	return from + ( std::rand() % ( to - from + 1 ) );
 }
 
-void thread_physics ()
+
+
+void physics_sector (unsigned int from, unsigned int to)
 {
 #ifdef THREAD_TIMING
 	auto start = std::chrono::steady_clock::now();
 #endif
 
 
-	for (unsigned int i = 0; i < totalSize; ++i)
+
+	for (unsigned int i = from; i < to; ++i)
 	{
 
-		if (true)
+		// if (true)
+		// {
+
+		unsigned int squareBelow = i - sizeX;
+
+		if ((phase_grid[i] & (PHASE_POWDER)) == (PHASE_POWDER))
 		{
-
-			unsigned int squareBelow = i - sizeX;
-			unsigned int squareAbove = i + sizeX;
-
 			unsigned int neighbours[] =
 			{
-				i - 1,
-				i + 1,
-				squareBelow + 1,
-				squareBelow,
 				squareBelow - 1,
-				squareAbove + 1,
-				squareAbove,
-				squareAbove - 1
-
+				squareBelow,
+				squareBelow + 1
 			};
 
 
-			// bool did_anything = false;
 
-			if ((phase_grid[i] & (PHASE_POWDER)) == (PHASE_POWDER))
+			for (uint8_t k = 0; k < 1; ++k) // instead of checking all of them every turn, you can check half or less and it doesn't make a difference for gameplay.
 			{
-				// unsigned int neighbours[] =
-				// {
-				// 	squareBelow + 1,
-				// 	squareBelow,
-				// 	squareBelow - 1
-				// };
-
-				for (unsigned int k = 2; k < 5; ++k) // instead of checking all of them every turn, you can check half or less and it doesn't make a difference for gameplay.
+				uint8_t index = extremelyFastNumberFromZeroTo(2);
+				// chemistry(i, neighbours[index]);
+				if ((phase_grid[neighbours[index]] & (PHASE_VACUUM)) == (PHASE_VACUUM))
 				{
-					// unsigned int k = rand() % (3 + 2); // it's a powder, only check 2th to 4th place in the neighbours array.
+					swap(i, neighbours[index]);
+				}
+			}
+		}
 
-					// unsigned int k = randomIntegerInRange(2, 4);
-					if (neighbours[k] > totalSize) {continue;}
-					// if (
-					chemistry(i, neighbours[k]);
-					// ) {did_anything = true;}
+		// movement instructions for LIQUIDS
+		else if ((phase_grid[i] & (PHASE_LIQUID)) == (PHASE_LIQUID))
+		{
+			unsigned int neighbours[] =
+			{
+				squareBelow - 1,
+				squareBelow,
+				squareBelow + 1,
+				i - 1,
+				i + 1
+			};
 
-					if ((phase_grid[neighbours[k]] & (PHASE_VACUUM)) == (PHASE_VACUUM))
-					{
-						swap(i, neighbours[k]);
-						// did_anything = true;
-					}
+			for (uint8_t k = 0; k < 2; ++k)
+			{
+				uint8_t index = extremelyFastNumberFromZeroTo(4);
+				// chemistry(i, neighbours[index]) ;
+				if ((phase_grid[neighbours[index]] & (PHASE_VACUUM)) == (PHASE_VACUUM))
+				{
+					swap(i, neighbours[index]);
+				}
+			}
+		}
 
+		// movement instructions for GASES
+		else if ((phase_grid[i] & (PHASE_GAS)) == (PHASE_GAS))
+		{
+			unsigned int squareAbove = i + sizeX;
+			unsigned int neighbours[] =
+			{
+				squareBelow - 1,
+				squareBelow,
+				squareBelow + 1,
+				i - 1,
+				i + 1,
+				squareAbove - 1,
+				squareAbove,
+				squareAbove + 1
+			};
 
-					// if (did_anything) {diffs_grid[neighbours[k]] =true; }
-
-					// chemistry(i, neighbours[k]) ;
-					break;
+			for (uint8_t j = 0; j < 3; ++j)
+			{
+				uint8_t index = extremelyFastNumberFromZeroTo(7);
+				// printf("index %u\n", index);
+				// chemistry(i, neighbours[index]);
+				if ((phase_grid[neighbours[index]] & (PHASE_VACUUM)) == (PHASE_VACUUM))
+				{
+					swap(i, neighbours[index]);
 				}
 			}
 
-			// movement instructions for LIQUIDS
-			else if ((phase_grid[i] & (PHASE_LIQUID)) == (PHASE_LIQUID))
-			{
-				// unsigned int neighbours[] =
-				// {
-				// 	i - 1,
-				// 	i + 1,
-				// 	squareBelow + 1,
-				// 	squareBelow,
-				// 	squareBelow - 1
-				// };
-
-				for (unsigned int k = 0; k < 5; ++k)
-				{
-					// unsigned int k = rand() % (4 + 1);
-					// unsigned int k = randomIntegerInRange(0, 4);
-					if (neighbours[k] > totalSize) {continue;}
-
-					// if (
-					chemistry(i, neighbours[k]) ;
-					// ) {did_anything = true;}
-					if ((phase_grid[neighbours[k]] & (PHASE_VACUUM)) == (PHASE_VACUUM))
-					{
-						swap(i, neighbours[k]);
-						// chemistry(i, neighbours[k]) ;
-						// did_anything = true;
-						// diffs_grid[neighbours[k]]=true;
-						// diffs_grid[i]=true;
-					}
-
-
-					// if (did_anything) {diffs_grid[neighbours[k]] =true; }
-
-					// chemistry(i, neighbours[k]) ;
-					break;
-
-				}
-			}
-
-			// movement instructions for GASES
-			else if ((phase_grid[i] & (PHASE_GAS)) == (PHASE_GAS))
-			{
-				// unsigned int squareAbove = i + sizeX;
-				// unsigned int neighbours[] =
-				// {
-				// 	i - 1,
-				// 	i + 1,
-				// 	squareBelow + 1,
-				// 	squareBelow,
-				// 	squareBelow - 1
-				// 	squareAbove + 1,
-				// 	squareAbove,
-				// 	squareAbove - 1,
-
-				// };
-
-				for (unsigned int k = 0; k < 8; ++k)
-				{
-					// unsigned int k = rand() % (7 + 1);
-					// unsigned int k = randomIntegerInRange(0, 7);
-					if (neighbours[k] > totalSize) {continue;}
-
-					// if (
-					chemistry(i, neighbours[k]);
-					// ) {did_anything = true;}
-					if ((phase_grid[neighbours[k]] & (PHASE_VACUUM)) == (PHASE_VACUUM))
-					{
-						swap(i, neighbours[k]);
-						// chemistry(i, neighbours[k]) ;
-						// did_anything = true;
-					}
-
-					// if (did_anything) {diffs_grid[neighbours[k]] =true; }
-
-					// chemistry(i, neighbours[k]) ;
-					break;
-				}
-			}
-
-			// if (!did_anything)
+			// unsigned int windex = i + wind;
+			// if ((phase_grid[windex] & (PHASE_VACUUM)) == (PHASE_VACUUM))
 			// {
-			// 	diffs_grid[i] = false;
+			// 	swap(i, neighbours[index]);
 			// }
 
 		}
+		// }
 	}
-
 #ifdef THREAD_TIMING
 	auto end = std::chrono::steady_clock::now();
 	auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-	std::cout << "thread_physics " << elapsed.count() << " microseconds." << std::endl;
+	std::cout << "thread_physics_sector " << elapsed.count() << " microseconds." << std::endl;
 #endif
+}
+
+
+void thread_physics ()
+{
+
+	// calculate wind changing direction
+
+
+	uint16_t windChange = extremelyFastNumberFromZeroTo(100);
+
+	if (!windChange)
+	{
+		uint16_t windRand =  extremelyFastNumberFromZeroTo( 2);
+		wind = windRand - 1;
+	}
+
+
+
+
+
+	unsigned int quad1 = totalSize / 4;
+	unsigned int quad2 = totalSize / 2;
+	unsigned int quad3 = (totalSize / 4) * 3;
+
+
+	boost::thread t11{ physics_sector, (sizeX + 1), quad1 };
+	boost::thread t12{ physics_sector, (quad1 + 1), quad2 };
+	boost::thread t13{ physics_sector, (quad2 + 1), quad3 };
+	boost::thread t14{ physics_sector, (quad3 + 1), (totalSize - sizeX - 1) };
+
+// physics_sector (unsigned int from, unsigned int to)
+
+	t11.join();
+	t12.join();
+	t13.join();
+	t14.join();
 }
 
 
@@ -1014,34 +1187,83 @@ void thread_physics ()
 // void thread_chemistry ()
 // {
 
-// 	for (unsigned int i = 0; i < totalSize; ++i)
+
+// 	for (unsigned int i = sizeX + 1; i < totalSize - sizeX - 1; ++i)
 // 	{
 
-// 		if (diffs_grid[i])
+// 		if (true)
 // 		{
+
 // 			unsigned int squareBelow = i - sizeX;
-// 			unsigned int squareAbove = i + sizeX;
 
-// 			// in the particle motion, i believe it is necessary to randomise the order neighbours are interacted with, because it does not look natural otherwise.
-// 			// here for the sake of speed i am not using randomness, i hope it will not lead to bad effects.
-// 			// instead, the neighbours are presented in order of their proximity to the cell.
-// 			unsigned int neighbours[] =
+// 			if ((phase_grid[i] & (PHASE_POWDER)) == (PHASE_POWDER))
 // 			{
-// 				squareBelow,
-// 				i - 1,
-// 				i + 1,
-// 				squareBelow + 1,
-// 				squareBelow - 1,
-// 				squareAbove + 1,
-// 				squareAbove,
-// 				squareAbove - 1,
-// 			};
+// 				unsigned int neighbours[] =
+// 				{
+// 					squareBelow - 1,
+// 					squareBelow,
+// 					squareBelow + 1
+// 				};
 
-// 			for (unsigned int k = 0; k < 8; ++k)
+// 				for (uint8_t k = 0; k < 1; ++k) // instead of checking all of them every turn, you can check half or less and it doesn't make a difference for gameplay.
+// 				{
+// 					uint8_t index = extremelyFastNumberFromZeroTo(2);
+// 					chemistry(i, neighbours[index]);
+// 					if ((phase_grid[neighbours[index]] & (PHASE_VACUUM)) == (PHASE_VACUUM))
+// 					{
+// 						swap(i, neighbours[index]);
+// 					}
+// 				}
+// 			}
+
+// 			// movement instructions for LIQUIDS
+// 			else if ((phase_grid[i] & (PHASE_LIQUID)) == (PHASE_LIQUID))
 // 			{
-// 				if (neighbours[k] > totalSize) {continue;}
-// 				chemistry(i, neighbours[k]) ;
-// 				break;
+// 				unsigned int neighbours[] =
+// 				{
+// 					squareBelow - 1,
+// 					squareBelow,
+// 					squareBelow + 1,
+// 					i - 1,
+// 					i + 1
+// 				};
+
+// 				for (uint8_t k = 0; k < 2; ++k)
+// 				{
+// 					uint8_t index = extremelyFastNumberFromZeroTo(4);
+// 					chemistry(i, neighbours[index]) ;
+// 					if ((phase_grid[neighbours[index]] & (PHASE_VACUUM)) == (PHASE_VACUUM))
+// 					{
+// 						swap(i, neighbours[index]);
+// 					}
+// 				}
+// 			}
+
+// 			// movement instructions for GASES
+// 			else if ((phase_grid[i] & (PHASE_GAS)) == (PHASE_GAS))
+// 			{
+// 				unsigned int squareAbove = i + sizeX;
+// 				unsigned int neighbours[] =
+// 				{
+// 					squareBelow - 1,
+// 					squareBelow,
+// 					squareBelow + 1,
+// 					i - 1,
+// 					i + 1,
+// 					squareAbove - 1,
+// 					squareAbove,
+// 					squareAbove + 1
+// 				};
+
+// 				for (uint8_t j = 0; j < 3; ++j)
+// 				{
+// 					uint8_t index = extremelyFastNumberFromZeroTo(7);
+// 					chemistry(i, neighbours[index]);
+// 					if ((phase_grid[neighbours[index]] & (PHASE_VACUUM)) == (PHASE_VACUUM))
+// 					{
+// 						swap(i, neighbours[index]);
+// 					}
+// 				}
 // 			}
 // 		}
 // 	}
@@ -1049,45 +1271,58 @@ void thread_physics ()
 
 
 
-void chooseColor ( color * colorToUse, unsigned int index )
+void chooseColor ( Color * colorToUse, unsigned int index )
 {
 
 
-	if ((light_grid[index] & (LIGHT)) == (LIGHT))    {    *colorToUse = lightColor; return; }
+	if ((material_grid[index] & (MATERIAL_VACUUM))     == (MATERIAL_VACUUM))       {    *colorToUse = color_black;  return; }
+
+	if ((material_grid[index] & (MATERIAL_WATER))      == (MATERIAL_WATER))       {    *colorToUse = color_lightblue;  return; }
+
+	if ((material_grid[index] & (MATERIAL_QUARTZ))     == (MATERIAL_QUARTZ))       {    *colorToUse = color_lightgrey;  return; }
+	if ((material_grid[index] & (MATERIAL_AMPHIBOLE))  == (MATERIAL_AMPHIBOLE))       {    *colorToUse = color_grey;  return; }
+	if ((material_grid[index] & (MATERIAL_OLIVINE))    == (MATERIAL_OLIVINE))       {    *colorToUse = color_darkgrey;  return; }
 
 
-	if ((material_grid[index] & (MATERIAL_OXYGEN))   == (MATERIAL_OXYGEN))     {    *colorToUse = lifeColor;  return; }
-	if ((material_grid[index] & (MATERIAL_IRON))     == (MATERIAL_IRON))       {    *colorToUse = sandColor;  return; }
-	if ((material_grid[index] & (MATERIAL_STONE))    == (MATERIAL_STONE))      {    *colorToUse = stoneColor; return; }
-	if ((material_grid[index] & (MATERIAL_GOLD))     == (MATERIAL_GOLD))       {    *colorToUse = goldColor;  return; }
+
+	if ((material_grid[index] & (MATERIAL_GOLD))       == (MATERIAL_GOLD))       {    *colorToUse = color_yellow;  return; }
 
 
 }
 
 
-void draw_sector (unsigned int from, unsigned int to, float * vertex_buffer_data)
+// void draw_sector (unsigned int from, unsigned int to, float * vertex_buffer_data)
+// {
+// 	unsigned int x = from % sizeX;
+// 	unsigned int y = from / sizeX;
+
+// 	unsigned int g_vertex_buffer_cursor = from;
+
+// 	for (unsigned int i = from; i < to; ++i)
+// 	{
+// 		// if (diffs_grid[i])
+// 		// {
+// 		x = i % sizeX;
+// 		if (!x) { y = i / sizeX; }
+
+// 		Color colorToUse = emptyColor;
+
+// 		chooseColor ( &colorToUse, i ) ;
+
+// 		vertToBuffer ( vertex_buffer_data, &g_vertex_buffer_cursor, colorToUse, x,  y);
+
+// 		// }
+// 	}
+// }
+
+
+
+void setPointSize (unsigned int pointSize)
 {
-	unsigned int x = from % sizeX;
-	unsigned int y = from / sizeX;
 
-	unsigned int g_vertex_buffer_cursor = from;
-
-	for (unsigned int i = from; i < to; ++i)
-	{
-		// if (diffs_grid[i])
-		// {
-		x = i % sizeX;
-		if (!x) { y = i / sizeX; }
-
-		color colorToUse = emptyColor;
-
-		chooseColor ( &colorToUse, i ) ;
-
-		vertToBuffer ( vertex_buffer_data, &g_vertex_buffer_cursor, colorToUse, x,  y);
-
-		// }
-	}
+	glPointSize(pointSize);
 }
+
 
 void thread_graphics()
 {
@@ -1095,6 +1330,7 @@ void thread_graphics()
 	auto start = std::chrono::steady_clock::now();
 #endif
 	preDraw();
+
 
 
 	unsigned int nVertsToRenderThisTurn = 1 * totalSize;

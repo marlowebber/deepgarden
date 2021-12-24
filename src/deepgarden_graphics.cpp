@@ -25,7 +25,7 @@ GLuint IndexBufferId;
 
 
 
-color::color(float r, float g, float b, float a)
+Color::Color(float r, float g, float b, float a)
 {
 	this->r = r;
 	this->g = g;
@@ -44,6 +44,10 @@ static const char * vertex_shader =
     "    v_color = i_color;\n"
     "    gl_Position = u_projection_matrix * vec4( i_position, 0.0, 1.0 );\n"
     "}\n";
+
+// static const char * geometry_shader =
+
+
 
 static const char * fragment_shader =
     "#version 130\n"
@@ -140,6 +144,7 @@ void setupGraphics()
 	 * */
 
 	vs = glCreateShader( GL_VERTEX_SHADER );
+	// gs = glCreateShader( GL_GEOMETRY_SHADER );
 	fs = glCreateShader( GL_FRAGMENT_SHADER );
 
 	int length = strlen( vertex_shader );
@@ -153,6 +158,22 @@ void setupGraphics()
 		fprintf( stderr, "vertex shader compilation failed\n" );
 	}
 
+
+
+	//  length = strlen( geometry_shader );
+	// glShaderSource( gs, 1, ( const GLchar ** )&geometry_shader, &length );
+	// glCompileShader( gs );
+
+	// GLint status;
+	// glGetShaderiv( gs, GL_COMPILE_STATUS, &status );
+	// if ( status == GL_FALSE )
+	// {
+	// 	fprintf( stderr, "geometry shader compilation failed\n" );
+	// }
+
+
+
+
 	length = strlen( fragment_shader );
 	glShaderSource( fs, 1, ( const GLchar ** )&fragment_shader, &length );
 	glCompileShader( fs );
@@ -165,6 +186,7 @@ void setupGraphics()
 
 	program = glCreateProgram();
 	glAttachShader( program, vs );
+	// glAttachShader( program, gs );
 	glAttachShader( program, fs );
 
 	glBindAttribLocation( program, attrib_position, "i_position" );
@@ -183,7 +205,7 @@ void setupGraphics()
 
 	glUseProgram( program );
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IndexBufferId);
-	
+
 	glBindVertexArray( vao );
 	glBindBuffer( GL_ARRAY_BUFFER, vbo );
 
@@ -198,6 +220,9 @@ void setupGraphics()
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+	
+	glPointSize(3);    
 }
 
 void prepareForWorldDraw ()
@@ -208,6 +233,10 @@ void prepareForWorldDraw ()
 	// glEnableVertexAttribArray( attrib_color );
 	// glVertexAttribPointer( attrib_color, 4, GL_FLOAT, GL_FALSE, sizeof( float ) * 6, 0 );
 	// glVertexAttribPointer( attrib_position, 2, GL_FLOAT, GL_FALSE, sizeof( float ) * 6, ( void * )(4 * sizeof(float)) );
+
+
+// unsigned int zoomInt = viewZoom;
+
 
 	// mat4x4_ortho( t_mat4x4 out, float left, float right, float bottom, float top, float znear, float zfar )
 	mat4x4_ortho(
@@ -231,7 +260,7 @@ void prepareForWorldDraw ()
 // }
 
 const unsigned int floats_per_color = 16;
-void vertToBuffer (GLfloat * vertex_buffer_data, unsigned int * cursor, color vert_color, unsigned int x, unsigned int y)
+void vertToBuffer (GLfloat * vertex_buffer_data, unsigned int * cursor, Color vert_color, unsigned int x, unsigned int y)
 {
 	float floatx = x;
 	float floaty = y;

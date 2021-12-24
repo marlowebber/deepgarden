@@ -1,22 +1,25 @@
 #include "deepgarden.h"
 
-	vec_u2::vec_u2(unsigned int a, unsigned int b)
-	{
-		this->x = a;
-		this->y = b;
-	}
+//https://github.com/edrosten/8bit_rng/blob/master/rng-4261412736.c
+uint16_t x, y, z, a;
 
-	vec_i2::vec_i2( int a,  int b)
-	{
-		this->x = a;
-		this->y = b;
-	}
+vec_u2::vec_u2(unsigned int a, unsigned int b)
+{
+	this->x = a;
+	this->y = b;
+}
 
-	vec_f2::vec_f2( float a,  float b)
-	{
-		this->x = a;
-		this->y = b;
-	}
+vec_i2::vec_i2( int a,  int b)
+{
+	this->x = a;
+	this->y = b;
+}
+
+vec_f2::vec_f2( float a,  float b)
+{
+	this->x = a;
+	this->y = b;
+}
 
 vec_f2 rotatePointPrecomputed( vec_f2 center, float s, float c, vec_f2 point)
 {
@@ -169,3 +172,36 @@ float magnitude_int( int x,  int y)
 //     static constexpr const U s_mask_left1 = U(1) << (sizeof(U) * 8 - 1);
 //     U m_rand = 1;
 // };
+
+
+ inline uint16_t extremelyFastRandomByte()
+{
+	// it used to be an actual byte, but that makes it eventually run out of randomness and always choose the same number!!
+	// mask off the top 8 if you really need a byte.
+	uint16_t t = x ^ (x << 8);
+	x = y;
+	y = z;
+	z = a;
+	a = z ^ t ^ ( z >> 1) ^ (t << 1);
+
+	return a;
+}
+
+ uint16_t extremelyFastNumberInRange(uint16_t from, uint16_t to)
+{
+	return from + ( extremelyFastRandomByte() % ( to - from + 1 ) );
+}
+
+ uint16_t extremelyFastNumberFromZeroTo( uint16_t to)
+{
+	return( extremelyFastRandomByte() % ( to + 1 ) );
+}
+
+
+void setupExtremelyFastNumberGenerators()
+{
+	x = 0;
+	y = 0;
+	z = 0;
+	a = 1;
+}

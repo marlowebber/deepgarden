@@ -25,14 +25,14 @@ using namespace glm;
 #define sizeX 16384
 #define sizeY 256
 
-struct color
+struct Color
 {
 	float r;
 	float g;
 	float b;
 	float a;
 
-	color(float r, float g, float b, float a);
+	Color(float r, float g, float b, float a);
 };
 
 
@@ -43,7 +43,10 @@ struct color
 #define MATERIAL_STONE 8
 #define MATERIAL_OXYGEN 16
 #define MATERIAL_GOLD 32
-
+#define MATERIAL_WATER 64
+#define MATERIAL_QUARTZ 128
+#define MATERIAL_AMPHIBOLE 256
+#define MATERIAL_OLIVINE 512
 
 #define PHASE_VACUUM 1
 #define PHASE_SOLID 2
@@ -60,6 +63,8 @@ float RNG();
 void initialize ();
 
 
+void setPointSize (unsigned int pointSize) ;
+
 void thread_graphics () ;
 void thread_physics ();
 void thread_chemistry ();
@@ -67,4 +72,5 @@ void thread_optics ();
 void thread_particledrawing ();
 
 
+void thread_temperature ();
 #endif
