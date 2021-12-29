@@ -9,16 +9,19 @@ std::string exampleTextCapture = std::string("exampleText");
 
 unsigned long int ticks = 0;
 
+float thicknessCursor = 1.0f;
+float lengthCursor = 1.0f;;
+float angleCursor = 0.0f;;
+b2Color colorCursor = b2Color(0.0f, 0.0f, 0.0f, 1.0f);
 
-class Branch: public PhysicalObject
+b2Vec2 worldPositionCursor = b2Vec2(0.0f, 0.0f);
+
+
+struct Branch
 {
-public:
 	float energyValue;
 
 	b2Color color;
-	float rootThickness;
-	float tipThickness;
-	float length;
 	float naturalAngle;
 
 	std::list<Branch> branches;
@@ -27,8 +30,47 @@ public:
 
 	unsigned int capturedLight;
 
-	Branch();
+	std::vector<b2Vec2> vertices =//
+	{
+		b2Vec2( +1.0f ,  -1.0f), //b2Vec2 rootVertexA =
+		b2Vec2( -1.0f ,  -1.0f), // b2Vec2 rootVertexB =
+		b2Vec2( -1.0f ,  +1.0f), //b2Vec2 tipVertexA =
+		b2Vec2( +1.0f ,  +1.0f) // b2Vec2 tipVertexB =
+	};
+
+	PhysicalObject object = PhysicalObject(  vertices, false);
+
+	// Branch();
+
+	Branch()
+	{
+
+		this-> energyValue = thicknessCursor * lengthCursor;
+
+		this->color = color;
+		this->naturalAngle  = angleCursor;
+
+		this-> branches = std::list<Branch>();
+
+		this-> ready = true;
+
+		this->capturedLight = 0;
+
+		this-> vertices = {
+			b2Vec2( + (thicknessCursor / 2),  -(lengthCursor / 2)),
+			b2Vec2( - (thicknessCursor / 2),  -(lengthCursor / 2)),
+			b2Vec2( - (thicknessCursor / 2),  +(lengthCursor / 2)),
+			b2Vec2( + (thicknessCursor / 2),  +(lengthCursor / 2))
+		};
+
+
+		this->object = PhysicalObject(this->vertices, false);
+
+	}
+
 };
+
+Branch * lastTouchedBranch = nullptr;
 
 
 struct Tree
@@ -47,116 +89,120 @@ struct Tree
 
 
 	uint geneCursor;
-	float thicknessCursor;
-	float angleCursor;
-	b2Color colorCursor;
 
-	Tree();
-
-
-}
-
-Branch::Branch(float rootThickness, float tipThickness, float length, float angle, b2Color color)
-{
-
-	this-> energyValue = ((rootThickness + tipThickness) / 2) * length;
-
-	this->color = color;
-	this->rootThickness = rootThickness;
-	this->tipThickness  = tipThickness;
-	this->length        = length;
-	this->naturalAngle  = angle;
-
-	this-> branches = std::list<Branch>();
-
-	this-> ready = true;
-
-	this->capturedLight = 0;
-
-}
-
-Tree::Tree(std::string genes)
-{
+	// Tree();
+	Tree(std::string genes)
+	{
 
 
-	this-> energyStored = 0;
+		this-> energyStored = 1;
 
-	this-> genes = genes;
+		this-> genes = genes;
 
-	this-> lastReproduced = ticks;
+		printf("new tree: %s\n", genes.c_str());
 
-	this-> ready = true;
+		this-> lastReproduced = ticks;
+
+		this-> ready = true;
 
 
-	this->  branches = std::list<Branch>();
+		this->  branches = std::list<Branch>();
 
 
-	this-> geneCursor = 0;
-	this-> thicknessCursor = 0.1f;
-	this-> angleCursor = 0.0f;
-	this->colorCursor = b2Color(0.0f, 0.0f, 0.0f);
+		this-> geneCursor = 0;
 
 
 
-}
+	}
+
+
+};
+
+
+
 
 // return 1 indicates the sequence should break. return 0 means it should continue.
 int grow( Tree * tree , Branch * growingBranch)
 {
 
-	if (tree->energyStored > 0)
+	// printf()
+	if (tree->geneCursor < tree->genes.length() )
 	{
 
 
 
-		switch (tree->genes[geneCursor])
+		switch (tree->genes[tree->geneCursor])
 		{
 
+
+		case '.':
+		{
+			printf("break sequence\n");
+			return 1;
+			break;
+		}
+		case ' ':
+		{
+
+			printf("break sequence\n");
+			return 1;
+			break;
+		}
 		case 'a':
 		{
 			// array n times end-to-end.
-			geneCursor++;
-			int arrayN = alphanumeric( tree->genes[geneCursor] );
 
-			float tempThicknessCursor = tree->thicknessCursor;
-			float tempLengthCursor    = tree->lengthCursor;
-			float tempAngleCursor     = tree->angleCursor;
-			b2Color tempColorCursor   = tree->colorCursor;
+			// int arrayN = alphanumeric( tree->genes[tree->geneCursor] );
 
-			for (int i = 0; i < arrayN; ++i)
-			{
-				while (!grow()) { ; }
-			}
+			// // the segment shape parameters are reset, but angle and position are allowed to accumulate.
+			// float tempThicknessCursor = thicknessCursor;
+			// float tempLengthCursor    = lengthCursor;
+			// b2Color tempColorCursor   = colorCursor;
 
-			tree->thicknessCursor = tempThicknessCursor;
-			tree->lengthCursor = tempLengthCursor;
-			tree->angleCursor = tempAngleCursor;
-			tree->colorCursor = tempColorCursor;
+			// for (int i = 0; i < arrayN; ++i)
+			// {
+			// 	while (!grow( tree, lastTouchedBranch )) { ; }
+			// }
+
+			// thicknessCursor = tempThicknessCursor;
+			// lengthCursor = tempLengthCursor;
+			// colorCursor = tempColorCursor;
 
 
 			break;
 		}
 		case 'b':
 		{
-			// array n times around the parent.
+			// array n times in an even circular radiation.
 
-			// array n times end-to-end.
-			geneCursor++;
-			int arrayN = alphanumeric( tree->genes[geneCursor] );
+			// int arrayN = alphanumeric( tree->genes[tree->geneCursor] );
 
-			float tempThicknessCursor = tree->thicknessCursor;
-			float tempLengthCursor    = tree->lengthCursor;
-			float tempAngleCursor     = tree->angleCursor;
-			b2Color tempColorCursor   = tree->colorCursor;
+			// float radiateAngle = (2 * const_pi) / arrayN;
 
-			for (int i = 0; i < arrayN; ++i)
-			{
-				while (!grow()) { ; }
-				tree->thicknessCursor = tempThicknessCursor;
-				tree->lengthCursor = tempLengthCursor;
-				tree->angleCursor = tempAngleCursor;
-				tree->colorCursor = tempColorCursor;
-			}
+			// float tempThicknessCursor = thicknessCursor;
+			// float tempLengthCursor    = lengthCursor;
+			// float tempAngleCursor     = angleCursor;
+			// b2Color tempColorCursor   = colorCursor;
+			// b2Vec2 tempWorldPositionCursor = worldPositionCursor;
+
+			// for (int i = 0; i < arrayN; ++i)
+			// {
+			// 	while (!grow( tree, growingBranch )) { ; }
+			// 	thicknessCursor = tempThicknessCursor;
+			// 	lengthCursor = tempLengthCursor;
+			// 	angleCursor = tempAngleCursor + (i  * radiateAngle);
+			// 	colorCursor = tempColorCursor;
+			// 	worldPositionCursor  = tempWorldPositionCursor;
+
+			// }
+
+
+			// thicknessCursor = tempThicknessCursor;
+			// lengthCursor = tempLengthCursor;
+			// angleCursor = tempAngleCursor;
+			// colorCursor = tempColorCursor;
+			// worldPositionCursor  = tempWorldPositionCursor;
+
 
 
 			break;
@@ -164,29 +210,25 @@ int grow( Tree * tree , Branch * growingBranch)
 		case 'c':
 		{
 			// fractal: array n times end-to-end with accumulating scale.
-			geneCursor++;
-			int arrayN = alphanumeric( tree->genes[geneCursor] );
 
-			geneCursor++;
-			float fractalScale = ( alphanumeric( tree->genes[geneCursor] ) ) / 13;
+			// int arrayN = alphanumeric( tree->genes[tree->geneCursor] );
 
-			float tempThicknessCursor = tree->thicknessCursor;
-			float tempLengthCursor    = tree->lengthCursor;
-			float tempAngleCursor     = tree->angleCursor;
-			b2Color tempColorCursor   = tree->colorCursor;
+			// tree->geneCursor++;
+			// float fractalScale = ( alphanumeric( tree->genes[tree->geneCursor] ) ) / 13;
 
-			for (int i = 0; i < arrayN; ++i)
-			{
-				while (!grow()) { ; }
+			// float tempThicknessCursor = thicknessCursor;
+			// float tempLengthCursor    = lengthCursor;
 
-				tree->thicknessCursor = tree->thicknessCursor * fractalScale;
-				tree->lengthCursor    = tree->lengthCursor * fractalScale;
-			}
+			// for (int i = 0; i < arrayN; ++i)
+			// {
+			// 	while (!grow(tree, lastTouchedBranch)) { ; }
 
-			tree->thicknessCursor = tempThicknessCursor;
-			tree->lengthCursor = tempLengthCursor;
-			tree->angleCursor = tempAngleCursor;
-			tree->colorCursor = tempColorCursor;
+			// 	thicknessCursor = thicknessCursor * fractalScale;
+			// 	lengthCursor    = lengthCursor * fractalScale;
+			// }
+
+			// thicknessCursor = tempThicknessCursor;
+			// lengthCursor = tempLengthCursor;
 
 			break;
 		}
@@ -195,34 +237,85 @@ int grow( Tree * tree , Branch * growingBranch)
 			// draw a branch.
 
 
-
-			b2Vec2 vertices[] = {
-				b2Vec2( + (tree->thicknessCursor / 2),  -(tree->lengthCursor / 2)),
-				b2Vec2(- (tree->thicknessCursor / 2),  -(tree->lengthCursor / 2)),
-				b2Vec2( - (tree->thicknessCursor / 2),  +(tree->lengthCursor / 2)),
-				b2Vec2(+ (tree->thicknessCursor / 2),  +(tree->lengthCursor / 2))
-			};
+			// tree->geneCursor++;
+			printf("draw a branch\n");
 
 
+			growingBranch->branches.push_back( Branch() );
 
-			growingBranch.push_back( Branch( tree->thicknessCursor, tree->thicknessCursor, tree->lengthCursor, tree->angleCursor, tree->colorCursor) );
 
-			addToWorld(tree->branches.back());
+			b2Vec2 newBranchPosition = b2Vec2(
+
+			                               worldPositionCursor.x + ((lengthCursor / 2) * cos(angleCursor))
+			                               ,
+
+			                               worldPositionCursor.y + ((lengthCursor / 2) * sin(angleCursor))
+			                           );
+
+
+			Branch * newBranch = &(growingBranch->branches.back());
+			addToWorld( &(growingBranch->branches.back().object), newBranchPosition , angleCursor  );
+
+			
+
+			// the world cursor is moved from the root to the tip position
+
+			worldPositionCursor = b2Vec2(
+			                          worldPositionCursor.x + (lengthCursor * cos(angleCursor))
+			                          ,
+
+			                          worldPositionCursor.y + (lengthCursor * sin(angleCursor))
+			                      );
+
+
+			tree->energyStored -= lengthCursor * thicknessCursor;
+
+
+			if (
+			    growingBranch != nullptr &&
+			    lastTouchedBranch != nullptr 
+			)
+			{
+				if (
+				    growingBranch != newBranch
+				)
+				{
+
+					if (
+					    growingBranch->object.p_body != nullptr &&
+					    lastTouchedBranch->object.p_body != nullptr 
+					)
+					{
+
+						printf("create joint\n");
+						b2RevoluteJointDef jointDef =  b2RevoluteJointDef();
+						jointDef.collideConnected = false; // this means that limb segments dont collide with their children
+						jointDef.bodyA = growingBranch->object.p_body;
+						jointDef.bodyB = newBranch->object.p_body;
+						jointDef.localAnchorA = b2Vec2( 0.0f,   -1 * (lengthCursor / 2) );
+						jointDef.localAnchorB = b2Vec2( 0.0f,   1 * (lengthCursor / 2) );
+
+						m_world->CreateJoint( &(jointDef) );
+
+					}
+				}
+			}
 
 			break;
 		}
 		case 'e':
 		{
 			// break array or sequence
+			printf("break sequence\n");
 			return 1;
 			break;
 		}
 		case 'f':
 		{
 			// add cumulative angle
-
-			geneCursor++;
-			tree->angleCursor += alphanumeric( tree->genes[geneCursor] );
+//
+			// tree->geneCursor++;
+			// angleCursor += alphanumeric( tree->genes[tree->geneCursor] );
 			break;
 
 		}
@@ -230,8 +323,8 @@ int grow( Tree * tree , Branch * growingBranch)
 		{
 			// reset cumulative angle to
 
-			geneCursor++;
-			tree->angleCursor = alphanumeric( tree->genes[geneCursor] );
+			// tree->geneCursor++;
+			// angleCursor = alphanumeric( tree->genes[tree->geneCursor] );
 			break;
 
 		}
@@ -245,62 +338,68 @@ int grow( Tree * tree , Branch * growingBranch)
 		case 'i':
 		{
 			// reset length cursor
-			geneCursor++;
-			tree->lengthCursor = alphanumeric(tree->genes[geneCursor] );
+			// tree->geneCursor++;
+			// lengthCursor = alphanumeric(tree->genes[tree->geneCursor] );
 			break;
 
 		}
 		case 'j':
 		{
 			// reset thickness cursor
-			geneCursor++;
-			tree->thicknessCursor = alphanumeric(tree->genes[geneCursor] );
+			// tree->geneCursor++;
+			// thicknessCursor = alphanumeric(tree->genes[tree->geneCursor] );
 			break;
 
 		}
 
-		case 'k':
+			// case 'k':
+			// {
+			// 	// add red component
+			// 	// tree->geneCursor++;
+			// 	// tree->thicknessCursor = alphanumeric(tree->genes[geneCursor] );
+			// 	break;
+
+			// }
+
+
+
+			// case 'l':
+			// {
+			// 	// add green component
+			// 	// tree->geneCursor++;
+			// 	// tree->thicknessCursor = alphanumeric(tree->genes[geneCursor] );
+			// 	break;
+
+			// }
+
+
+
+
+			// case 'm':
+			// {
+			// 	// add blue component
+			// 	tree->geneCursor++;
+			// 	// tree->thicknessCursor = alphanumeric(tree->genes[geneCursor] );
+			// 	break;
+
+			// }
+
+
+
+
+
+
+
+
+
+		}
+		// tree->geneCursor++;
+		tree->geneCursor++;
+
+		if (tree->geneCursor > tree->genes.length() )
 		{
-			// add red component
-			geneCursor++;
-			// tree->thicknessCursor = alphanumeric(tree->genes[geneCursor] );
-			break;
-
+			return 1;
 		}
-
-
-
-		case 'l':
-		{
-			// add green component
-			geneCursor++;
-			// tree->thicknessCursor = alphanumeric(tree->genes[geneCursor] );
-			break;
-
-		}
-
-
-
-
-		case 'm':
-		{
-			// add blue component
-			geneCursor++;
-			// tree->thicknessCursor = alphanumeric(tree->genes[geneCursor] );
-			break;
-
-		}
-
-
-
-
-
-
-
-
-
-		}
-		geneCursor++;
 
 
 
@@ -312,12 +411,53 @@ int grow( Tree * tree , Branch * growingBranch)
 }
 
 
-void sprout () {
+// void sprout ()
+// {
+
+// }
+
+std::list<Tree> garden;
+
+void instantiateSeed (std::string genes)
+{
+
+
+
+	garden.push_back(  Tree(genes)  );
+
+	Tree * tree = &(garden.back()) ;
+
+	// tree->geneCursor++;
+	// angleCursor = alphanumeric( tree->genes[tree->geneCursor] );
+
+	// tree->geneCursor++;
+	// lengthCursor = alphanumeric( tree->genes[tree->geneCursor] );
+
+	// tree->geneCursor++;
+	// thicknessCursor = alphanumeric( tree->genes[tree->geneCursor] );
+
+
+	tree->branches.push_back( Branch() );
+
+
+	b2Vec2 newBranchPosition = b2Vec2(
+
+	                               worldPositionCursor.x + ((lengthCursor / 2) * cos(angleCursor))
+	                               ,
+
+	                               worldPositionCursor.y + ((lengthCursor / 2) * sin(angleCursor))
+	                           );
+
+
+	addToWorld( &(tree->branches.back().object), newBranchPosition , angleCursor  );
+
+	lastTouchedBranch = &(tree->branches.back());
+
 
 }
 
 
-std::list<Tree> garden;
+
 
 
 
@@ -340,7 +480,7 @@ void rebuildMenus ()
 
 void initializeGame ()
 {
-	// float exampleBoxSize = 10.0f;
+	float exampleBoxSize = 10.0f;
 	// std::vector<b2Vec2> exampleBoxVertices =
 	// {
 	// 	b2Vec2( +1 * exampleBoxSize ,  -1 * exampleBoxSize), //b2Vec2 rootVertexA =
@@ -357,11 +497,25 @@ void initializeGame ()
 		b2Vec2( -100 * exampleBoxSize ,  +1 * exampleBoxSize), //b2Vec2 tipVertexA =
 		b2Vec2( +100 * exampleBoxSize ,  +1 * exampleBoxSize) // b2Vec2 tipVertexB =
 	};
-	addToWorld( PhysicalObject(exampleBox2Vertices, true) , b2Vec2(0.0f, -20.0f), 0.0f );
+	addToWorld( new PhysicalObject(exampleBox2Vertices, true) , b2Vec2(0.0f, -20.0f), 0.0f );
+
+
+	std::string exampleSentence = std::string("ddd");
+
+
+	instantiateSeed(exampleSentence);
+
+
 }
 
 void threadGame()
 {
+
+	std::list<Tree>::iterator tree;
+	for (tree = garden.begin(); tree != garden.end(); ++tree)
+	{
+		grow( &(*tree), &(tree->branches.back()));
+	}
 
 
 	ticks++;
@@ -374,10 +528,10 @@ void gameGraphics()
 	unsigned int nVertsToRenderThisTurn = 0;
 	unsigned int nIndicesToUseThisTurn = 0;
 
-	std::list<PhysicalObject>::iterator object;
+	std::list<PhysicalObject*>::iterator object;
 	for (object = physicalObjects.begin(); object !=  physicalObjects.end(); ++object)
 	{
-		unsigned int nObjectVerts = object->vertices.size();
+		unsigned int nObjectVerts = (*object)->vertices.size();
 		nVertsToRenderThisTurn += nObjectVerts;
 		nIndicesToUseThisTurn  += nObjectVerts + 1;
 	}
@@ -393,22 +547,22 @@ void gameGraphics()
 	for (object = physicalObjects.begin(); object !=  physicalObjects.end(); ++object)
 	{
 
-		b2Vec2 bodyPosition = object->p_body->GetWorldCenter();
-		float bodyAngle = object->p_body->GetAngle();
+		b2Vec2 bodyPosition = (*object)->p_body->GetWorldCenter();
+		float bodyAngle = (*object)->p_body->GetAngle();
 		float bodyAngleSin = sin(bodyAngle);
 		float bodyAngleCos = cos(bodyAngle);
 
 		std::vector<b2Vec2>::iterator vert;
-		for (vert = std::begin(object->vertices); vert !=  std::end(object->vertices); ++vert)
+		for (vert = std::begin((*object)->vertices); vert !=  std::end((*object)->vertices); ++vert)
 		{
 			// add the position and rotation of the game-world object that the vertex belongs to.
 			b2Vec2 rotatedPoint = b2Vec2(   vert->x + bodyPosition.x, vert->y + bodyPosition.y   );
 			rotatedPoint = b2RotatePointPrecomputed( bodyPosition, bodyAngleSin, bodyAngleCos, rotatedPoint);
 
-			vertex_buffer_data[(vertex_buffer_cursor) + 0] = object->color.r;
-			vertex_buffer_data[(vertex_buffer_cursor) + 1] = object->color.g;
-			vertex_buffer_data[(vertex_buffer_cursor) + 2] = object->color.b;
-			vertex_buffer_data[(vertex_buffer_cursor) + 3] = object->color.a;
+			vertex_buffer_data[(vertex_buffer_cursor) + 0] = (*object)->color.r;
+			vertex_buffer_data[(vertex_buffer_cursor) + 1] = (*object)->color.g;
+			vertex_buffer_data[(vertex_buffer_cursor) + 2] = (*object)->color.b;
+			vertex_buffer_data[(vertex_buffer_cursor) + 3] = (*object)->color.a;
 			vertex_buffer_data[(vertex_buffer_cursor) + 4] = rotatedPoint.x;
 			vertex_buffer_data[(vertex_buffer_cursor) + 5] = rotatedPoint.y ;
 			(vertex_buffer_cursor) += 6;

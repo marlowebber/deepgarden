@@ -37,6 +37,8 @@ using namespace glm;
 // extern b2MouseJoint* m_mouseJoint;
 
 
+extern b2World * m_world;
+
 class PhysicalObject
 {
 public:
@@ -56,7 +58,7 @@ public:
 
 
 extern std::list<b2Body* > rayContacts;
-extern std::list<PhysicalObject> physicalObjects;
+extern std::list<PhysicalObject*> physicalObjects;
 
 void initializePhysics ();
 
@@ -77,7 +79,7 @@ void exampleMenuCallback(void * userData);
 int checkClickObjects (b2Vec2 worldClick);
 
 
-void addToWorld(PhysicalObject object, b2Vec2 position, float angle);
+void addToWorld(PhysicalObject * object, b2Vec2 position, float angle);
 
 void deleteFromWorld (PhysicalObject * object);
 

@@ -4,7 +4,7 @@
 #include "physics.h"
 #include <box2d.h>
 
-extern const float pi;
+extern const float const_pi;
 
 struct vec_u2
 {

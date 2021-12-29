@@ -3,7 +3,7 @@
 //https://github.com/edrosten/8bit_rng/blob/master/rng-4261412736.c
 uint16_t x, y, z, a;
 
-const float pi = 3.14159f;
+const float const_pi = 3.14159f;
 
 vec_u2::vec_u2(unsigned int a, unsigned int b)
 {

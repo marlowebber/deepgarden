@@ -126,21 +126,21 @@ void initMouseJointWithBody (b2Vec2 p, b2Body * body)
 	}
 
 std::list<b2Body* > rayContacts;
-std::list<PhysicalObject> physicalObjects;
+std::list<PhysicalObject*> physicalObjects;
 
 int checkClickObjects (b2Vec2 worldClick)
 {
 
 
 	printf("testing world position %f %f\n", worldClick.x, worldClick.y);
-	std::list<PhysicalObject>::iterator object;
+	std::list<PhysicalObject*>::iterator object;
 	for (object = physicalObjects.begin(); object !=  physicalObjects.end(); ++object)
 	{
 
-		if (object->p_fixture->TestPoint( worldClick) )
+		if ((*object)->p_fixture->TestPoint( worldClick) )
 		{
 
-			initMouseJointWithBody (worldClick, object->p_body);
+			initMouseJointWithBody (worldClick, (*object)->p_body);
 			return 1;
 		}
 
@@ -232,17 +232,19 @@ void shine (b2Vec2 p1, b2Vec2 p2)
 	}
 }
 
-void addToWorld(PhysicalObject object, b2Vec2 position, float angle)
+void  addToWorld(PhysicalObject * object, b2Vec2 position, float angle)
 {
 	physicalObjects.push_back( object  );
-	PhysicalObject * pushedObject = &(physicalObjects.back());
-	pushedObject->p_body = m_world->CreateBody( &(pushedObject->bodyDef) );
+	// PhysicalObject * pushedObject = &(physicalObjects.back());
+	object->p_body = m_world->CreateBody( &(object->bodyDef) );
 
-	pushedObject->p_fixture = pushedObject->p_body->CreateFixture(&(pushedObject->shape), 1.2f);	// this endows the shape with mass and is what adds it to the physical world.
+	object->p_fixture = object->p_body->CreateFixture(&(object->shape), 1.2f);	// this endows the shape with mass and is what adds it to the physical world.
 
-	pushedObject->p_body ->SetTransform(position, angle);
+	object->p_body ->SetTransform(position, angle);
 
-	pushedObject->flagReady = true;
+	object->flagReady = true;
+
+	// return pushedObject;
 }
 
 void deleteFromWorld (PhysicalObject * object)
