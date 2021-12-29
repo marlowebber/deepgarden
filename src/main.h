@@ -1,6 +1,12 @@
-#ifndef DEEPGARDEN_MAIN_H
-#define DEEPGARDEN_MAIN_H
+#ifndef MAIN_H
+#define MAIN_H
 
-#include "game.h"
+#include "physics.h"
+
+
+extern int mouseX;
+extern int mouseY;
+
+void threadInterface();
 
 #endif

@@ -1,38 +1,13 @@
-#ifndef DEEPGARDEN_H
-#define DEEPGARDEN_H
 
-#define GL_GLEXT_PROTOTYPES
-#include <stdio.h>
-#include <SDL.h>
-#include <SDL_opengl.h>
-#include "SDL.h"
-#include <vector>
-#include <list>
-#include <string>
-#include <sstream>
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-using namespace glm;
-#include <random>
+#include "physics.h"
 
-#include <boost/thread.hpp>
+void initializeGame ();
 
-#include "utilities.h"
 
-struct Color
-{
-	float r;
-	float g;
-	float b;
-	float a;
+void rebuildMenus ();
 
-	Color(float r, float g, float b, float a);
-};
 
-void initialize ();
+void threadGame();
 
-void thread_game () ;
 
-void thread_graphics () ;
-
-#endif
+void gameGraphics() ;

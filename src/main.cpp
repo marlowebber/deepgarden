@@ -1,23 +1,24 @@
-#include "game.h"
-#include "graphics.h"
-
 #include <ctime>
 #include <chrono>
 #include <iostream>
+
+#include "physics.h"
+#include "graphics.h"
+#include "menus.h"
 
 bool paused = false;
 bool flagQuit = false;
 
 int mouseX;
 int mouseY;
+b2Vec2 worldMousePos;
 
 float panSpeed = 0.5f;
-
-unsigned int pixelSize = 3;
 
 void quit ()
 {
 	shutdownGraphics();
+	cleanupText2D();
 	SDL_Quit();
 	flagQuit = true;
 }
@@ -27,8 +28,13 @@ void togglePause ()
 	paused = !paused;
 }
 
-void thread_interface()
+void threadInterface()
 {
+
+#ifdef THREAD_TIMING
+	auto start = std::chrono::steady_clock::now();
+#endif
+
 	SDL_Event event;
 	while ( SDL_PollEvent( &event ) )
 	{
@@ -37,20 +43,39 @@ void thread_interface()
 
 		case SDL_KEYDOWN:
 		{
+
+			if (capturingText)
+			{
+				if (event.key.keysym.sym > 0x20 && event.key.keysym.sym < 0x7f)
+				{
+					capturedString += event.key.keysym.sym;
+				}
+
+				switch ( event.key.keysym.sym )
+				{
+				case SDLK_RETURN:
+					editUserDataCallback();
+					break;
+				}
+				break;
+			}
+
+
+
 			switch ( event.key.keysym.sym )
 			{
 
 			case SDLK_LEFT:
-				viewPanSetpointX = viewPanSetpointX - (panSpeed * viewZoomSetpoint  );
+				viewPanSetpointX = viewPanSetpointX - (panSpeed * viewZoomSetpoint);
 				break;
 			case SDLK_RIGHT:
-				viewPanSetpointX = viewPanSetpointX + (panSpeed * viewZoomSetpoint  );
+				viewPanSetpointX = viewPanSetpointX + (panSpeed * viewZoomSetpoint);
 				break;
 			case SDLK_UP:
-				viewPanSetpointY = viewPanSetpointY + (panSpeed * viewZoomSetpoint  );
+				viewPanSetpointY = viewPanSetpointY + (panSpeed * viewZoomSetpoint);
 				break;
 			case SDLK_DOWN:
-				viewPanSetpointY = viewPanSetpointY - (panSpeed * viewZoomSetpoint  );
+				viewPanSetpointY = viewPanSetpointY - (panSpeed * viewZoomSetpoint);
 				break;
 			case SDLK_EQUALS:
 				viewZoomSetpoint = viewZoomSetpoint * 0.9f;
@@ -73,35 +98,125 @@ void thread_interface()
 			{
 			case SDL_BUTTON_LEFT:
 			{
+
+
+
+				if (capturingText)
+				{
+					editUserDataCallback () ;
+				}
+
+
+				if ( checkMenus ( mouseX,  mouseY) )
+				{
+
+					return;
+
+
+
+				}
+				else
+				{
+
+					if (  checkClickObjects ( worldMousePos) )
+					{
+						return;
+					}
+				}
+
+
+
+
+
 				break;
 			}
+			break;
+			}
 
+		}
+		case SDL_MOUSEBUTTONUP:
+		{
+			switch (event.button.button)
+			{
+			case SDL_BUTTON_LEFT:
+			{
+				if (getMouseJointStatus())
+				{
+					destroyMouseJoint();
+				}
+
+				if ( draggedMenu != nullptr ) 
+				{
+					clearDraggingMenu();
+				}
+				break;
+			}
+			break;
+			}
+		}
+		case SDL_MOUSEMOTION:
+		{
+
+			int prevMouseX = mouseX;
+			int prevMouseY = mouseY;
+
+			mouseX = event.motion.x;
+			mouseY = event.motion.y;
+
+			int deltaMouseX = ((mouseX - prevMouseX) / viewportScaleFactorX ) ;
+			int deltaMouseY = (-1 * (mouseY - prevMouseY) / viewportScaleFactorY  ) ;
+
+			if ( draggedMenu != nullptr) 
+			{
+
+
+
+			 rebaseMenu (draggedMenu, deltaMouseX, deltaMouseY);
+
+
+
+			}
+
+			worldMousePos = transformScreenPositionToWorld( b2Vec2(mouseX, mouseY) );
+
+
+			if (getMouseJointStatus())
+			{
+				maintainMouseJoint (worldMousePos) ;
 			}
 			break;
 		}
 		}
 	}
+
+#ifdef THREAD_TIMING
+	auto end = std::chrono::steady_clock::now();
+	auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+	std::cout << "threadInterface " << elapsed.count() << " microseconds." << std::endl;
+#endif
 }
 
 int main( int argc, char * argv[] )
 {
 	setupGraphics();
-	initialize();
+	initializePhysics();
+	initializeGame();
+	setupMenus();
 
 	for ( ;; )
 	{
-		// start all the threads and then wait for them to finish.
-		// start threads in order of chunkiest to least chunky.
-
 		// you can start your threads like this:
-		boost::thread t2{ thread_game }; 
+		// boost::thread t2{ threadInterface };
+		boost::thread t3{ threadPhysics };
 
-		
-		// graphics only works in this thread, because it is the one the SDL context was created in.
-		thread_graphics();
+		// graphics only works in this thread, because it is the process the SDL context was created in.
+		threadGraphics();
+
+
 
 		// you can have this thread wait for another to end by saying:
-		t2.join(); 
+		// t2.join();
+		t3.join();
 
 		if (flagQuit)
 		{

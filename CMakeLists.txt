@@ -24,6 +24,10 @@ set(SRCS
 	src/game.cpp
 	src/graphics.cpp
 	src/graphics.h
+	src/menus.h
+	src/menus.cpp
+	src/physics.cpp
+	src/physics.h
 )
 
 link_directories(
@@ -37,7 +41,7 @@ include_directories (
 	${Boost_INCLUDE_DIRS}
 )
 
-add_executable(deepgarden ${SRCS} )
+add_executable(game ${SRCS} )
 
 target_link_libraries (
 	game
