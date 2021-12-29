@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.16)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
-project(game)
+project(deepgarden)
 
 # To make a debug build
 set(CMAKE_CXX_FLAGS "-g")
@@ -41,10 +41,10 @@ include_directories (
 	${Boost_INCLUDE_DIRS}
 )
 
-add_executable(game ${SRCS} )
+add_executable(deepgarden ${SRCS} )
 
 target_link_libraries (
-	game
+	deepgarden
 	OpenMP::OpenMP_CXX
 	${CMAKE_SOURCE_DIR}/box2d/build/bin/libbox2d.a
 	${SDL2_LIBRARIES}

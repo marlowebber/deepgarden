@@ -48,10 +48,10 @@ RM = /usr/bin/cmake -E remove -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/marlo/Documents/cpp_game_engine
+CMAKE_SOURCE_DIR = /home/marlo/Documents/deepgarden
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/marlo/Documents/cpp_game_engine
+CMAKE_BINARY_DIR = /home/marlo/Documents/deepgarden
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -80,9 +80,9 @@ edit_cache/fast: edit_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/marlo/Documents/cpp_game_engine/CMakeFiles /home/marlo/Documents/cpp_game_engine/CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/marlo/Documents/deepgarden/CMakeFiles /home/marlo/Documents/deepgarden/CMakeFiles/progress.marks
 	$(MAKE) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/marlo/Documents/cpp_game_engine/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/marlo/Documents/deepgarden/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
@@ -111,17 +111,17 @@ depend:
 .PHONY : depend
 
 #=============================================================================
-# Target rules for targets named game
+# Target rules for targets named deepgarden
 
 # Build rule for target.
-game: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 game
-.PHONY : game
+deepgarden: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 deepgarden
+.PHONY : deepgarden
 
 # fast build rule for target.
-game/fast:
-	$(MAKE) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/build
-.PHONY : game/fast
+deepgarden/fast:
+	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/build
+.PHONY : deepgarden/fast
 
 src/game.o: src/game.cpp.o
 
@@ -129,7 +129,7 @@ src/game.o: src/game.cpp.o
 
 # target to build an object file
 src/game.cpp.o:
-	$(MAKE) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game.cpp.o
+	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/game.cpp.o
 .PHONY : src/game.cpp.o
 
 src/game.i: src/game.cpp.i
@@ -138,7 +138,7 @@ src/game.i: src/game.cpp.i
 
 # target to preprocess a source file
 src/game.cpp.i:
-	$(MAKE) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game.cpp.i
+	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/game.cpp.i
 .PHONY : src/game.cpp.i
 
 src/game.s: src/game.cpp.s
@@ -147,7 +147,7 @@ src/game.s: src/game.cpp.s
 
 # target to generate assembly for a file
 src/game.cpp.s:
-	$(MAKE) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/game.cpp.s
+	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/game.cpp.s
 .PHONY : src/game.cpp.s
 
 src/graphics.o: src/graphics.cpp.o
@@ -156,7 +156,7 @@ src/graphics.o: src/graphics.cpp.o
 
 # target to build an object file
 src/graphics.cpp.o:
-	$(MAKE) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/graphics.cpp.o
+	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/graphics.cpp.o
 .PHONY : src/graphics.cpp.o
 
 src/graphics.i: src/graphics.cpp.i
@@ -165,7 +165,7 @@ src/graphics.i: src/graphics.cpp.i
 
 # target to preprocess a source file
 src/graphics.cpp.i:
-	$(MAKE) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/graphics.cpp.i
+	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/graphics.cpp.i
 .PHONY : src/graphics.cpp.i
 
 src/graphics.s: src/graphics.cpp.s
@@ -174,7 +174,7 @@ src/graphics.s: src/graphics.cpp.s
 
 # target to generate assembly for a file
 src/graphics.cpp.s:
-	$(MAKE) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/graphics.cpp.s
+	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/graphics.cpp.s
 .PHONY : src/graphics.cpp.s
 
 src/main.o: src/main.cpp.o
@@ -183,7 +183,7 @@ src/main.o: src/main.cpp.o
 
 # target to build an object file
 src/main.cpp.o:
-	$(MAKE) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/main.cpp.o
+	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/main.cpp.o
 .PHONY : src/main.cpp.o
 
 src/main.i: src/main.cpp.i
@@ -192,7 +192,7 @@ src/main.i: src/main.cpp.i
 
 # target to preprocess a source file
 src/main.cpp.i:
-	$(MAKE) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/main.cpp.i
+	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/main.cpp.i
 .PHONY : src/main.cpp.i
 
 src/main.s: src/main.cpp.s
@@ -201,7 +201,7 @@ src/main.s: src/main.cpp.s
 
 # target to generate assembly for a file
 src/main.cpp.s:
-	$(MAKE) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/main.cpp.s
+	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/main.cpp.s
 .PHONY : src/main.cpp.s
 
 src/menus.o: src/menus.cpp.o
@@ -210,7 +210,7 @@ src/menus.o: src/menus.cpp.o
 
 # target to build an object file
 src/menus.cpp.o:
-	$(MAKE) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/menus.cpp.o
+	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/menus.cpp.o
 .PHONY : src/menus.cpp.o
 
 src/menus.i: src/menus.cpp.i
@@ -219,7 +219,7 @@ src/menus.i: src/menus.cpp.i
 
 # target to preprocess a source file
 src/menus.cpp.i:
-	$(MAKE) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/menus.cpp.i
+	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/menus.cpp.i
 .PHONY : src/menus.cpp.i
 
 src/menus.s: src/menus.cpp.s
@@ -228,7 +228,7 @@ src/menus.s: src/menus.cpp.s
 
 # target to generate assembly for a file
 src/menus.cpp.s:
-	$(MAKE) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/menus.cpp.s
+	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/menus.cpp.s
 .PHONY : src/menus.cpp.s
 
 src/physics.o: src/physics.cpp.o
@@ -237,7 +237,7 @@ src/physics.o: src/physics.cpp.o
 
 # target to build an object file
 src/physics.cpp.o:
-	$(MAKE) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/physics.cpp.o
+	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/physics.cpp.o
 .PHONY : src/physics.cpp.o
 
 src/physics.i: src/physics.cpp.i
@@ -246,7 +246,7 @@ src/physics.i: src/physics.cpp.i
 
 # target to preprocess a source file
 src/physics.cpp.i:
-	$(MAKE) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/physics.cpp.i
+	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/physics.cpp.i
 .PHONY : src/physics.cpp.i
 
 src/physics.s: src/physics.cpp.s
@@ -255,7 +255,7 @@ src/physics.s: src/physics.cpp.s
 
 # target to generate assembly for a file
 src/physics.cpp.s:
-	$(MAKE) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/physics.cpp.s
+	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/physics.cpp.s
 .PHONY : src/physics.cpp.s
 
 src/utilities.o: src/utilities.cpp.o
@@ -264,7 +264,7 @@ src/utilities.o: src/utilities.cpp.o
 
 # target to build an object file
 src/utilities.cpp.o:
-	$(MAKE) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/utilities.cpp.o
+	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/utilities.cpp.o
 .PHONY : src/utilities.cpp.o
 
 src/utilities.i: src/utilities.cpp.i
@@ -273,7 +273,7 @@ src/utilities.i: src/utilities.cpp.i
 
 # target to preprocess a source file
 src/utilities.cpp.i:
-	$(MAKE) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/utilities.cpp.i
+	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/utilities.cpp.i
 .PHONY : src/utilities.cpp.i
 
 src/utilities.s: src/utilities.cpp.s
@@ -282,7 +282,7 @@ src/utilities.s: src/utilities.cpp.s
 
 # target to generate assembly for a file
 src/utilities.cpp.s:
-	$(MAKE) -f CMakeFiles/game.dir/build.make CMakeFiles/game.dir/src/utilities.cpp.s
+	$(MAKE) -f CMakeFiles/deepgarden.dir/build.make CMakeFiles/deepgarden.dir/src/utilities.cpp.s
 .PHONY : src/utilities.cpp.s
 
 # Help Target
@@ -293,7 +293,7 @@ help:
 	@echo "... depend"
 	@echo "... rebuild_cache"
 	@echo "... edit_cache"
-	@echo "... game"
+	@echo "... deepgarden"
 	@echo "... src/game.o"
 	@echo "... src/game.i"
 	@echo "... src/game.s"

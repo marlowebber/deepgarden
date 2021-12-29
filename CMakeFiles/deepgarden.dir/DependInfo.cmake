@@ -7,6 +7,8 @@ set(CMAKE_DEPENDS_CHECK_CXX
   "/home/marlo/Documents/deepgarden/src/game.cpp" "/home/marlo/Documents/deepgarden/CMakeFiles/deepgarden.dir/src/game.cpp.o"
   "/home/marlo/Documents/deepgarden/src/graphics.cpp" "/home/marlo/Documents/deepgarden/CMakeFiles/deepgarden.dir/src/graphics.cpp.o"
   "/home/marlo/Documents/deepgarden/src/main.cpp" "/home/marlo/Documents/deepgarden/CMakeFiles/deepgarden.dir/src/main.cpp.o"
+  "/home/marlo/Documents/deepgarden/src/menus.cpp" "/home/marlo/Documents/deepgarden/CMakeFiles/deepgarden.dir/src/menus.cpp.o"
+  "/home/marlo/Documents/deepgarden/src/physics.cpp" "/home/marlo/Documents/deepgarden/CMakeFiles/deepgarden.dir/src/physics.cpp.o"
   "/home/marlo/Documents/deepgarden/src/utilities.cpp" "/home/marlo/Documents/deepgarden/CMakeFiles/deepgarden.dir/src/utilities.cpp.o"
   )
 set(CMAKE_CXX_COMPILER_ID "GNU")

@@ -2,6 +2,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/deepgarden.dir/src/game.cpp.o"
   "CMakeFiles/deepgarden.dir/src/graphics.cpp.o"
   "CMakeFiles/deepgarden.dir/src/main.cpp.o"
+  "CMakeFiles/deepgarden.dir/src/menus.cpp.o"
+  "CMakeFiles/deepgarden.dir/src/physics.cpp.o"
   "CMakeFiles/deepgarden.dir/src/utilities.cpp.o"
   "deepgarden"
   "deepgarden.pdb"
