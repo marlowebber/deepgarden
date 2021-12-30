@@ -258,6 +258,11 @@ int grow( Tree * tree , Branch * growingBranch)
 
 			
 
+
+
+
+
+
 			// the world cursor is moved from the root to the tip position
 
 			worldPositionCursor = b2Vec2(
@@ -290,7 +295,7 @@ int grow( Tree * tree , Branch * growingBranch)
 						printf("create joint\n");
 						b2RevoluteJointDef jointDef =  b2RevoluteJointDef();
 						jointDef.collideConnected = false; // this means that limb segments dont collide with their children
-						jointDef.bodyA = growingBranch->object.p_body;
+						jointDef.bodyA = lastTouchedBranch->object.p_body;
 						jointDef.bodyB = newBranch->object.p_body;
 						jointDef.localAnchorA = b2Vec2( 0.0f,   -1 * (lengthCursor / 2) );
 						jointDef.localAnchorB = b2Vec2( 0.0f,   1 * (lengthCursor / 2) );
@@ -300,6 +305,8 @@ int grow( Tree * tree , Branch * growingBranch)
 					}
 				}
 			}
+
+			lastTouchedBranch = newBranch;
 
 			break;
 		}

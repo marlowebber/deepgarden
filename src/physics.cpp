@@ -98,32 +98,32 @@ void initMouseJointWithBody (b2Vec2 p, b2Body * body)
 
 // this class pins together the parts you need for a box2d physical-world object.
 // if you make your own classes that represent physical objects, you should either have them inherit from this, or have a copy of one of these as a member.
- PhysicalObject::
-	PhysicalObject (std::vector<b2Vec2>   vertices, bool flagStatic)
+PhysicalObject::
+PhysicalObject (std::vector<b2Vec2>   vertices, bool flagStatic)
+{
+	this->flagReady = false;
+	this->flagDelete = false;
+	this->fraction = 0;
+
+	// this->jointDef =  b2RevoluteJointDef();
+	this->bodyDef = b2BodyDef();
+	this->bodyDef.userData = b2BodyUserData();
+
+	this->vertices = vertices;
+
+	if (flagStatic)
 	{
-		this->flagReady = false;
-		this->flagDelete = false;
-		this->fraction = 0;
-
-		// this->jointDef =  b2RevoluteJointDef();
-		this->bodyDef = b2BodyDef();
-		this->bodyDef.userData = b2BodyUserData();
-
-		this->vertices = vertices;
-
-		if (flagStatic)
-		{
-			this->bodyDef.type = b2_staticBody;
-		}
-		else
-		{
-			this->bodyDef.type = b2_dynamicBody;
-		}
-
-		this->shape.Set(this->vertices.data(), this->vertices.size());
-
-		this->color = b2Color (0.1f, 0.1f, 0.1f, 1.0f);
+		this->bodyDef.type = b2_staticBody;
 	}
+	else
+	{
+		this->bodyDef.type = b2_dynamicBody;
+	}
+
+	this->shape.Set(this->vertices.data(), this->vertices.size());
+
+	this->color = b2Color (0.1f, 0.1f, 0.1f, 1.0f);
+}
 
 std::list<b2Body* > rayContacts;
 std::list<PhysicalObject*> physicalObjects;
@@ -238,7 +238,50 @@ void  addToWorld(PhysicalObject * object, b2Vec2 position, float angle)
 	// PhysicalObject * pushedObject = &(physicalObjects.back());
 	object->p_body = m_world->CreateBody( &(object->bodyDef) );
 
+
+
+
+
+
 	object->p_fixture = object->p_body->CreateFixture(&(object->shape), 1.2f);	// this endows the shape with mass and is what adds it to the physical world.
+
+
+	b2Filter tempFilter = object->p_fixture->GetFilterData();
+	tempFilter.groupIndex = 0;
+	tempFilter.maskBits = 0;
+
+
+	if (  object->bodyDef.type == b2_dynamicBody)
+	{
+
+
+		tempFilter.categoryBits = 1 << 1; // i am a..
+
+		// if (m_deepSeaSettings.noClipStatus  )
+		// {
+			tempFilter.maskBits = 1<<2;//  | 1 << 5 | 1 << 6 | 1 << 7 | tempFilter.maskBits;	// and i collide with
+		// }
+
+
+	}
+
+	else if (object->bodyDef.type == b2_staticBody)
+	{
+		tempFilter.categoryBits = 1 << 2; // i am a..
+
+		// if (m_deepSeaSettings.noClipStatus  )
+		// {
+			tempFilter.maskBits = 1<<1; //1  | 1 << 5 | 1 << 6 | 1 << 7 | tempFilter.maskBits;	// and i collide with
+		// }
+	}
+
+
+
+
+
+	object->p_fixture->SetFilterData(tempFilter);
+
+
 
 	object->p_body ->SetTransform(position, angle);
 
