@@ -165,10 +165,27 @@ void createJoint(PhysicalObject * a, PhysicalObject * b)
 	a->jointDef.bodyA = a->p_body;
 	a->jointDef.bodyB = b->p_body;
 	a->jointDef.localAnchorA = b2Vec2( 0.0f,   -1 * (lengthCursor / 2) );
-	a->jointDef.localAnchorB = b2Vec2( 0.0f,   1 * (lengthCursor / 2) );
+	a->jointDef.localAnchorB = b2Vec2( 0.0f,   1  * (lengthCursor / 2) );
 	a->jointDef.enableMotor = true;
-	a->jointDef.maxMotorTorque = 100.0f;
-	m_world->CreateJoint( &(a->jointDef) );
+	a->jointDef.maxMotorTorque = 10000.0f;
+	a->p_joint = (b2RevoluteJoint *)(m_world->CreateJoint( &(a->jointDef) ));
+
+}
+
+
+void createJointWithVariableBAnchor(PhysicalObject * a, PhysicalObject * b, b2Vec2 positionOnB)
+{
+
+	printf("create joint\n");
+	a->jointDef =  b2RevoluteJointDef();
+	a->jointDef.collideConnected = false; // this means that limb segments dont collide with their children
+	a->jointDef.bodyA = a->p_body;
+	a->jointDef.bodyB = b->p_body;
+	a->jointDef.localAnchorA = b2Vec2( 0.0f,   -1 * (lengthCursor / 2) );
+	a->jointDef.localAnchorB = positionOnB;//b2Vec2( 0.0f,   1 * (lengthCursor / 2) );
+	a->jointDef.enableMotor = true;
+	a->jointDef.maxMotorTorque = 10000.0f;
+	a->p_joint = (b2RevoluteJoint *)m_world->CreateJoint( &(a->jointDef) );
 
 }
 
@@ -472,9 +489,10 @@ void  addToWorld(PhysicalObject * object, b2Vec2 position, float angle)
 
 
 
+	object->p_body ->SetTransform(position, angle);
 
 
-	object->p_fixture = object->p_body->CreateFixture(&(object->shape), 1.2f);	// this endows the shape with mass and is what adds it to the physical world.
+	object->p_fixture = object->p_body->CreateFixture(&(object->shape), 0.012f);	// this endows the shape with mass and is what adds it to the physical world. // 1.2f is the default density
 
 
 
@@ -533,7 +551,6 @@ void  addToWorld(PhysicalObject * object, b2Vec2 position, float angle)
 	// p_bone->bodyDef.userData = *p_b2usrdat;
 
 
-	object->p_body ->SetTransform(position, angle);
 
 	// object->flagReady = true;
 

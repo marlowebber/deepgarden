@@ -79,6 +79,8 @@ struct Branch
 
 	bool seed;
 
+	bool stem;
+
 	// bool ready;
 
 	unsigned int capturedLight;

@@ -6,6 +6,16 @@
 
 #IncludeRegexTransform: 
 
+/home/marlo/Documents/deepgarden/src/game.cpp
+physics.h
+/home/marlo/Documents/deepgarden/src/physics.h
+graphics.h
+/home/marlo/Documents/deepgarden/src/graphics.h
+menus.h
+/home/marlo/Documents/deepgarden/src/menus.h
+main.h
+/home/marlo/Documents/deepgarden/src/main.h
+
 /home/marlo/Documents/deepgarden/src/game.h
 stdio.h
 -
@@ -44,19 +54,9 @@ game.h
 game.h
 /home/marlo/Documents/deepgarden/src/game.h
 
-/home/marlo/Documents/deepgarden/src/main.cpp
-ctime
--
-chrono
--
-iostream
--
+/home/marlo/Documents/deepgarden/src/main.h
 physics.h
 /home/marlo/Documents/deepgarden/src/physics.h
-graphics.h
-/home/marlo/Documents/deepgarden/src/graphics.h
-menus.h
-/home/marlo/Documents/deepgarden/src/menus.h
 
 /home/marlo/Documents/deepgarden/src/menus.h
 

@@ -62,4 +62,7 @@ void setupExtremelyFastNumberGenerators();
 uint16_t extremelyFastNumberInRange(uint16_t from, uint16_t to);
 uint16_t extremelyFastNumberFromZeroTo( uint16_t to);
 
+
+float constrainAngle(float x);
+
 #endif

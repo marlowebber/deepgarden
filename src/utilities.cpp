@@ -227,3 +227,11 @@ uDataWrap::uDataWrap(void * dat, unsigned int typ)
 	uData = dat;
 	dataType = typ;
 }
+
+float constrainAngle(float x)
+{
+    x = fmod(x + -const_pi,(2*const_pi));
+    if (x < 0)
+        x += (2*const_pi);
+    return x - const_pi;
+}

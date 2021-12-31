@@ -34,6 +34,7 @@ Branch::Branch()
 	this->seed = false;
 	this->object = PhysicalObject(this->vertices, false);
 	this->flagDelete = false;
+	this->stem = false;
 }
 
 Branch * lastTouchedBranch = nullptr;
@@ -51,6 +52,7 @@ Tree::Tree(std::string genes)
 	this->germinated = false;
 	this->sproutPosition = b2Vec2(0.0f, 0.0f);
 	this->affixedObject = nullptr;
+
 }
 
 std::list<Tree> garden;
@@ -65,7 +67,7 @@ void instantiateSeed (std::string genes, Branch * joinBranch)
 	newBranch->seed = true;
 	tree->mature = false;
 	tree->germinated = false;
-b2Vec2 newBranchPosition ;
+	b2Vec2 newBranchPosition ;
 
 	if (joinBranch != nullptr)
 	{
@@ -74,7 +76,7 @@ b2Vec2 newBranchPosition ;
 		                        joinBranch ->object.p_body->GetWorldCenter() .x //+ ((1.0f ) * cos(joinBranch ->object.p_body->GetAngle()))
 		                        ,
 
-		                       
+
 		                        joinBranch ->object.p_body->GetWorldCenter() .y //+ ((1.0f ) * sin(joinBranch ->object.p_body->GetAngle()))
 		                    );
 	}
@@ -103,11 +105,8 @@ b2Vec2 newBranchPosition ;
 // return 1 indicates the sequence should break. return 0 means it should continue.
 int grow( Tree * tree , Branch * growingBranch)
 {
-	if (tree->flagDelete || (growingBranch->flagDelete)  ) {return 1;}
-	if ( !(tree->mature) ) {return 1;}
-	if (growingBranch->seed && tree->germinated) {return 1;}
 
-	if (tree->energyStored <0 ) {return 1;}
+	if (tree->geneCursor >= tree->genes.length() ) {return 1;}
 
 	// printf()
 	if (tree->geneCursor < tree->genes.length() )
@@ -131,22 +130,41 @@ int grow( Tree * tree , Branch * growingBranch)
 		case 'a':
 		{
 			// array n times end-to-end.
+			tree->geneCursor++;
 
-			// int arrayN = alphanumeric( tree->genes[tree->geneCursor] );
+			uint arrayN = alphanumeric( tree->genes[tree->geneCursor] );
+			printf("array %i times\n", arrayN);
 
-			// // the segment shape parameters are reset, but angle and position are allowed to accumulate.
-			// float tempThicknessCursor = thicknessCursor;
-			// float tempLengthCursor    = lengthCursor;
-			// b2Color tempColorCursor   = colorCursor;
+			// the segment shape parameters are reset, but angle and position are allowed to accumulate.
+			float tempThicknessCursor = thicknessCursor;
+			float tempLengthCursor    = lengthCursor;
+			b2Color tempColorCursor   = colorCursor;
 
-			// for (int i = 0; i < arrayN; ++i)
-			// {
-			// 	while (!grow( tree, lastTouchedBranch )) { ; }
-			// }
+			uint tempGeneCursor = tree->geneCursor;
 
-			// thicknessCursor = tempThicknessCursor;
-			// lengthCursor = tempLengthCursor;
-			// colorCursor = tempColorCursor;
+			for (uint i = 0; i < arrayN; ++i)
+			{
+
+				tree->geneCursor = tempGeneCursor;
+				bool proceed = true;
+				while (proceed) {
+
+					if ( grow( tree, lastTouchedBranch ) == 1 )
+					{
+						proceed = false;
+					}
+
+					if (tree->geneCursor >= tree->genes.length())
+					{
+						proceed = false;
+
+					}
+				}
+			}
+
+			thicknessCursor = tempThicknessCursor;
+			lengthCursor = tempLengthCursor;
+			colorCursor = tempColorCursor;
 
 
 			break;
@@ -217,6 +235,7 @@ int grow( Tree * tree , Branch * growingBranch)
 			// draw a seed
 
 			instantiateSeed(tree->genes, lastTouchedBranch);
+			// return 1; // a seed or fruit is always the end of the branch
 
 			break;
 		}
@@ -286,8 +305,13 @@ int grow( Tree * tree , Branch * growingBranch)
 							{
 
 								printf("a tree grew in the ground\n");
-								createJoint( &(newBranch->object), tree->affixedObject );
 
+								b2Vec2 bLocalAnchor = b2Vec2(  tree->sproutPosition.x - tree->affixedObject->p_body->GetWorldCenter().x , tree->sproutPosition.y - tree->affixedObject->p_body->GetWorldCenter().y   );
+
+								createJointWithVariableBAnchor( &(newBranch->object), tree->affixedObject , bLocalAnchor );
+
+								newBranch->stem = true;
+								// createJointW
 							}
 
 
@@ -446,7 +470,7 @@ void initializeGame ()
 	addToWorld( new PhysicalObject(exampleBox2Vertices, true) , b2Vec2(0.0f, -20.0f), 0.0f );
 
 
-	std::string exampleSentence = std::string("ddds");
+	std::string exampleSentence = std::string("daffffd s");
 
 
 	instantiateSeed(exampleSentence, nullptr);
@@ -457,7 +481,24 @@ void recursiveUpdateMotors( Branch * branch )
 {
 
 
+	if (branch->stem)
+	{
 
+		if (branch->object.p_joint != nullptr)
+		{
+
+
+			float motorSpeed = constrainAngle((branch->object.p_body->GetAngle() +(0.5*const_pi)))  * -0.1;
+			// branch->object.p_joint->SetMotorSpeed(motorSpeed);
+
+
+		}
+
+	}
+
+
+
+	printf("bramches:%lu\n", branch->branches.size());
 	std::list<Branch>::iterator subBranch;
 	for (subBranch = branch->branches.begin(); subBranch != branch->branches.end(); ++subBranch)
 	{
@@ -472,8 +513,12 @@ void recursiveUpdateMotors( Branch * branch )
 			float mainBranchAngle = branch->object.p_body->GetAngle();
 			float subBranchAngle = subBranch->object.p_body->GetAngle();
 
+			float setpointAngle=  constrainAngle(subBranchAngle - mainBranchAngle);
 
-			float motorSpeed = subBranchAngle - mainBranchAngle;
+
+			float motorSpeed = setpointAngle;//subBranchAngle - mainBranchAngle;
+
+			printf("applying motor speed %f\n", motorSpeed);
 
 
 			// subBranch->object.p_joint->SetMotorSpeed(motorSpeed);
@@ -494,21 +539,21 @@ void threadGame()
 	{
 		/* code */
 
-		float xCoord = (RNG()-0.5) * 100;
+		float xCoord = (RNG() - 0.5) * 100;
 
 
 		shine(
 
-			b2Vec2( xCoord , -10 ),
-			b2Vec2( xCoord , 10 )
+		    b2Vec2( xCoord , -10 ),
+		    b2Vec2( xCoord , 10 )
 
-			);
+		);
 
 	}
 
 
 
-	wind = b2Vec2(   clamp(wind.x + (RNG() - 0.5) , -20.0f, 20.0f  ) , clamp(wind.y + (RNG() - 0.5), -5.0f , 5.0f  )  );
+	// wind = b2Vec2(   clamp(wind.x + (RNG() - 0.5) , -20.0f, 20.0f  ) , clamp(wind.y + (RNG() - 0.5), -5.0f , 5.0f  )  );
 
 
 	std::list<Tree>::iterator tree;
@@ -517,17 +562,27 @@ void threadGame()
 	for (tree = garden.begin(); tree != garden.end(); ++tree)
 	{
 
-		printf("tree energy %f\n", tree->energyStored);
+		// printf("tree energy %f\n", tree->energyStored);
 
 		if (tree->mature)
 		{
 
-			grow( &(*tree), &(tree->branches.back()));
+			Branch * growingBranch = &(tree->branches.back());
+
+			if (tree->flagDelete || (growingBranch->flagDelete)  )  { continue;}
+			if ( !(tree->mature) ) 									{ continue;}
+			if (growingBranch->seed && tree->germinated) 			{ continue;}
+			if (tree->energyStored < 0 ) 							{ continue;}
+
+
+
+			grow( &(*tree), growingBranch);
 		}
 
 
 		for (branch = tree->branches.begin(); branch != tree->branches.end(); ++branch)
 		{
+
 			recursiveUpdateMotors( &(*branch) );
 
 
