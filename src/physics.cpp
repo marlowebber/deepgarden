@@ -215,30 +215,30 @@ void collisionHandler (b2Contact * contact)
 							// if (userDataB->dataType == TYPE_BRANCH)
 							// {
 
-								// printf("e\n");
+							// printf("e\n");
 
-								if ( ((PhysicalObject *)(userDataB->uData)) != nullptr  )
-								{
+							if ( ((PhysicalObject *)(userDataB->uData)) != nullptr  )
+							{
 
-									// printf("f\n");
-									// if ( ((PhysicalObject *)(userDataB->uData))->owner != nullptr)
-									// {
+								// printf("f\n");
+								// if ( ((PhysicalObject *)(userDataB->uData))->owner != nullptr)
+								// {
 
-									// 	// printf("g\n");
-									// 	if (((PhysicalObject *)(userDataB->uData))->owner->owner != nullptr)
-									// 	{
+								// 	// printf("g\n");
+								// 	if (((PhysicalObject *)(userDataB->uData))->owner->owner != nullptr)
+								// 	{
 
 
-											// printf("h\n");
-											// ((PhysicalObject *)(userDataB->uData))->owner->owner->mature  = true;
-											// ((PhysicalObject *)(userDataB->uData))->owner->owner->sproutPosition = ((PhysicalObject *)(userDataB->uData))->owner->GetWorldCenter();
+								// printf("h\n");
+								// ((PhysicalObject *)(userDataB->uData))->owner->owner->mature  = true;
+								// ((PhysicalObject *)(userDataB->uData))->owner->owner->sproutPosition = ((PhysicalObject *)(userDataB->uData))->owner->GetWorldCenter();
 
-											((PhysicalObject *)(userDataA->uData))->owner->owner->affixedObject = ((PhysicalObject *)(userDataB->uData));
+								((PhysicalObject *)(userDataA->uData))->owner->owner->affixedObject = ((PhysicalObject *)(userDataB->uData));
 
-									// 	}
-									// }
+								// 	}
+								// }
 
-								}
+							}
 							// }
 
 						}
@@ -286,30 +286,30 @@ void collisionHandler (b2Contact * contact)
 							// if (userDataA->dataType == TYPE_BRANCH)
 							// {
 
-								// printf("a\n");
+							// printf("a\n");
 
 
-								if ( ((PhysicalObject *)(userDataA->uData)) != nullptr  )
-								{
+							if ( ((PhysicalObject *)(userDataA->uData)) != nullptr  )
+							{
 
-									// printf("b\n");
-									// if ( ((PhysicalObject *)(userDataA->uData))->owner != nullptr)
-									// {
+								// printf("b\n");
+								// if ( ((PhysicalObject *)(userDataA->uData))->owner != nullptr)
+								// {
 
-									// 	// printf("c\n");
-									// 	if (((PhysicalObject *)(userDataA->uData))->owner->owner != nullptr)
-									// 	{
+								// 	// printf("c\n");
+								// 	if (((PhysicalObject *)(userDataA->uData))->owner->owner != nullptr)
+								// 	{
 
-											// printf("d\n");
+								// printf("d\n");
 
-											((PhysicalObject *)(userDataB->uData))->owner->owner->affixedObject = ((PhysicalObject *)(userDataA->uData));
-											// ((PhysicalObject *)(userDataA->uData))->owner->owner->mature  = true;
-											// ((PhysicalObject *)(userDataA->uData))->owner->owner->sproutPosition = ((PhysicalObject *)(userDataA->uData))->owner->GetWorldCenter();
+								((PhysicalObject *)(userDataB->uData))->owner->owner->affixedObject = ((PhysicalObject *)(userDataA->uData));
+								// ((PhysicalObject *)(userDataA->uData))->owner->owner->mature  = true;
+								// ((PhysicalObject *)(userDataA->uData))->owner->owner->sproutPosition = ((PhysicalObject *)(userDataA->uData))->owner->GetWorldCenter();
 
-									// 	}
-									// }
+								// 	}
+								// }
 
-								}
+							}
 
 
 							// }
@@ -399,6 +399,46 @@ void shine (b2Vec2 p1, b2Vec2 p2)
 		for (contact = rayContacts.begin(); contact !=  rayContacts.end(); ++contact)
 		{
 			// do stuff to them
+
+			uDataWrap * userDataA = (uDataWrap*)((*contact)->GetUserData().pointer);
+
+
+			if (userDataA != nullptr)
+			{
+
+				// printf("vnevtfic\n");
+				if (userDataA->dataType == TYPE_BRANCH)
+				{
+
+					// printf("e\n");
+
+					if ( ((PhysicalObject *)(userDataA->uData)) != nullptr  )
+					{
+
+						// printf("f\n");
+						if ( ((PhysicalObject *)(userDataA->uData))->owner != nullptr)
+						{
+
+							if ( ! (((PhysicalObject *)(userDataA->uData)) ->owner->seed) )
+							{
+								// printf("photo hitt\n");
+								// ((PhysicalObject *)(userDataA->uData))->owner->capturedLight++;
+
+								// printf("g\n");
+								if (((PhysicalObject *)(userDataA->uData))->owner->owner != nullptr)
+								{
+									((PhysicalObject *)(userDataA->uData))->owner->owner->energyStored += 1.0f;
+
+								}
+
+							}
+						}
+					}
+				}
+			}
+
+
+
 			contactIndex++;
 		}
 	}

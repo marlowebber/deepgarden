@@ -23,6 +23,21 @@ vec_f2::vec_f2( float a,  float b)
 	this->y = b;
 }
 
+
+float clamp (  float n, float min, float max )
+{
+	if (n < min)
+	{
+		return min;
+	}
+	else if (n > max)
+	{
+		return max;
+	}
+	return n;
+}
+
+
 vec_f2 rotatePointPrecomputed( vec_f2 center, float s, float c, vec_f2 point)
 {
 	// translate point back to origin:
@@ -207,8 +222,8 @@ void setupExtremelyFastNumberGenerators()
 
 
 
-	uDataWrap::uDataWrap(void * dat, unsigned int typ)
-	{
-		uData = dat;
-		dataType = typ;
-	}
+uDataWrap::uDataWrap(void * dat, unsigned int typ)
+{
+	uData = dat;
+	dataType = typ;
+}

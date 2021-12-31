@@ -6,6 +6,8 @@
 int exampleNumberCapture = 15;
 std::string exampleTextCapture = std::string("exampleText");
 
+b2Vec2 wind = b2Vec2(0.0f, 0.0f);
+
 unsigned long int ticks = 0;
 
 float thicknessCursor  		= 1.0f;
@@ -63,19 +65,38 @@ void instantiateSeed (std::string genes, Branch * joinBranch)
 	newBranch->seed = true;
 	tree->mature = false;
 	tree->germinated = false;
-	b2Vec2 newBranchPosition = b2Vec2(
+b2Vec2 newBranchPosition ;
 
-	                               worldPositionCursor.x + ((lengthCursor / 2) * cos(angleCursor))
-	                               ,
+	if (joinBranch != nullptr)
+	{
+		newBranchPosition = b2Vec2(
 
-	                               worldPositionCursor.y + ((lengthCursor / 2) * sin(angleCursor))
-	                           );
+		                        joinBranch ->object.p_body->GetWorldCenter() .x //+ ((1.0f ) * cos(joinBranch ->object.p_body->GetAngle()))
+		                        ,
+
+		                       
+		                        joinBranch ->object.p_body->GetWorldCenter() .y //+ ((1.0f ) * sin(joinBranch ->object.p_body->GetAngle()))
+		                    );
+	}
+
+	else {
+		newBranchPosition = b2Vec2(
+
+		                        worldPositionCursor.x + ((lengthCursor / 2) * cos(angleCursor))
+		                        ,
+
+		                        worldPositionCursor.y + ((lengthCursor / 2) * sin(angleCursor))
+		                    );
+
+	}
+
 	addToWorld( &(newBranch->object), newBranchPosition , angleCursor  );
 	newBranch->object.owner = newBranch;
 	newBranch->owner = tree;
+	lastTouchedBranch = newBranch;
 	if (joinBranch != nullptr)
 	{
-		createJoint( &(newBranch->object), &(joinBranch->object) );
+		// createJoint( &(newBranch->object), &(joinBranch->object) );
 	}
 }
 
@@ -85,6 +106,8 @@ int grow( Tree * tree , Branch * growingBranch)
 	if (tree->flagDelete || (growingBranch->flagDelete)  ) {return 1;}
 	if ( !(tree->mature) ) {return 1;}
 	if (growingBranch->seed && tree->germinated) {return 1;}
+
+	if (tree->energyStored <0 ) {return 1;}
 
 	// printf()
 	if (tree->geneCursor < tree->genes.length() )
@@ -207,6 +230,7 @@ int grow( Tree * tree , Branch * growingBranch)
 			{
 				tree->branches.push_back( Branch() );
 				newBranch = &(tree->branches.back());
+				newBranch->seed = false;
 				if (tree->mature && !tree->germinated)
 				{
 					tree->germinated = true;
@@ -258,7 +282,7 @@ int grow( Tree * tree , Branch * growingBranch)
 						if (growingBranch->seed)
 						{
 
-							if (tree->affixedObject != nullptr) 
+							if (tree->affixedObject != nullptr)
 							{
 
 								printf("a tree grew in the ground\n");
@@ -464,11 +488,36 @@ void recursiveUpdateMotors( Branch * branch )
 void threadGame()
 {
 
+
+
+	for (int i = 0; i < 1; ++i)
+	{
+		/* code */
+
+		float xCoord = (RNG()-0.5) * 100;
+
+
+		shine(
+
+			b2Vec2( xCoord , -10 ),
+			b2Vec2( xCoord , 10 )
+
+			);
+
+	}
+
+
+
+	wind = b2Vec2(   clamp(wind.x + (RNG() - 0.5) , -20.0f, 20.0f  ) , clamp(wind.y + (RNG() - 0.5), -5.0f , 5.0f  )  );
+
+
 	std::list<Tree>::iterator tree;
 
 	std::list<Branch>::iterator branch;
 	for (tree = garden.begin(); tree != garden.end(); ++tree)
 	{
+
+		printf("tree energy %f\n", tree->energyStored);
 
 		if (tree->mature)
 		{
@@ -492,6 +541,12 @@ void threadGame()
 				branch->object.flagDelete = true;
 
 			}
+
+
+			// tree->energyStored += branch->capturedLight;
+			// branch->capturedLight = 0;
+
+			branch->object.p_body->ApplyForce(wind, branch->object.p_body->GetWorldCenter() , true);
 
 
 
@@ -559,6 +614,8 @@ void gameGraphics()
 
 		if ( (*object) == nullptr) {continue;}
 
+		if ( (*object)->p_body == nullptr ) {continue;}
+
 		unsigned int nObjectVerts = (*object)->vertices.size();
 		nVertsToRenderThisTurn += nObjectVerts;
 		nIndicesToUseThisTurn  += nObjectVerts + 1;
@@ -577,6 +634,7 @@ void gameGraphics()
 
 
 		if ( (*object) == nullptr) {continue;}
+		if ( (*object)->p_body == nullptr ) {continue;}
 
 		b2Vec2 bodyPosition = (*object)->p_body->GetWorldCenter();
 		float bodyAngle = (*object)->p_body->GetAngle();

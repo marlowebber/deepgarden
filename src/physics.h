@@ -61,6 +61,7 @@ void destroyMouseJoint ();
 bool getMouseJointStatus () ;
 
 
+void shine (b2Vec2 p1, b2Vec2 p2);
 void createJoint(PhysicalObject * a, PhysicalObject * b);
 
 void exampleMenuCallback(void * userData);

@@ -47,6 +47,7 @@ struct uDataWrap
 #define TYPE_UDATA_BOOL	  	(1<<6)
 
 
+float clamp (  float n, float min, float max );
 
 vec_f2 rotatePointPrecomputed( vec_f2 center, float s, float c, vec_f2 point);
 b2Vec2 b2RotatePointPrecomputed( b2Vec2 center, float s, float c, b2Vec2 point);
