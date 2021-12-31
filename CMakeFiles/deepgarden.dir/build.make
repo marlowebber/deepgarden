@@ -70,9 +70,22 @@ CMakeFiles/deepgarden.dir/src/utilities.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/deepgarden.dir/src/utilities.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/marlo/Documents/deepgarden/src/utilities.cpp -o CMakeFiles/deepgarden.dir/src/utilities.cpp.s
 
+CMakeFiles/deepgarden.dir/src/physics.cpp.o: CMakeFiles/deepgarden.dir/flags.make
+CMakeFiles/deepgarden.dir/src/physics.cpp.o: src/physics.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/marlo/Documents/deepgarden/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/deepgarden.dir/src/physics.cpp.o"
+	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/deepgarden.dir/src/physics.cpp.o -c /home/marlo/Documents/deepgarden/src/physics.cpp
+
+CMakeFiles/deepgarden.dir/src/physics.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/deepgarden.dir/src/physics.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/marlo/Documents/deepgarden/src/physics.cpp > CMakeFiles/deepgarden.dir/src/physics.cpp.i
+
+CMakeFiles/deepgarden.dir/src/physics.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/deepgarden.dir/src/physics.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/marlo/Documents/deepgarden/src/physics.cpp -o CMakeFiles/deepgarden.dir/src/physics.cpp.s
+
 CMakeFiles/deepgarden.dir/src/main.cpp.o: CMakeFiles/deepgarden.dir/flags.make
 CMakeFiles/deepgarden.dir/src/main.cpp.o: src/main.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/marlo/Documents/deepgarden/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/deepgarden.dir/src/main.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/marlo/Documents/deepgarden/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/deepgarden.dir/src/main.cpp.o"
 	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/deepgarden.dir/src/main.cpp.o -c /home/marlo/Documents/deepgarden/src/main.cpp
 
 CMakeFiles/deepgarden.dir/src/main.cpp.i: cmake_force
@@ -85,7 +98,7 @@ CMakeFiles/deepgarden.dir/src/main.cpp.s: cmake_force
 
 CMakeFiles/deepgarden.dir/src/game.cpp.o: CMakeFiles/deepgarden.dir/flags.make
 CMakeFiles/deepgarden.dir/src/game.cpp.o: src/game.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/marlo/Documents/deepgarden/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/deepgarden.dir/src/game.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/marlo/Documents/deepgarden/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/deepgarden.dir/src/game.cpp.o"
 	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/deepgarden.dir/src/game.cpp.o -c /home/marlo/Documents/deepgarden/src/game.cpp
 
 CMakeFiles/deepgarden.dir/src/game.cpp.i: cmake_force
@@ -98,7 +111,7 @@ CMakeFiles/deepgarden.dir/src/game.cpp.s: cmake_force
 
 CMakeFiles/deepgarden.dir/src/graphics.cpp.o: CMakeFiles/deepgarden.dir/flags.make
 CMakeFiles/deepgarden.dir/src/graphics.cpp.o: src/graphics.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/marlo/Documents/deepgarden/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/deepgarden.dir/src/graphics.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/marlo/Documents/deepgarden/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object CMakeFiles/deepgarden.dir/src/graphics.cpp.o"
 	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/deepgarden.dir/src/graphics.cpp.o -c /home/marlo/Documents/deepgarden/src/graphics.cpp
 
 CMakeFiles/deepgarden.dir/src/graphics.cpp.i: cmake_force
@@ -111,7 +124,7 @@ CMakeFiles/deepgarden.dir/src/graphics.cpp.s: cmake_force
 
 CMakeFiles/deepgarden.dir/src/menus.cpp.o: CMakeFiles/deepgarden.dir/flags.make
 CMakeFiles/deepgarden.dir/src/menus.cpp.o: src/menus.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/marlo/Documents/deepgarden/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object CMakeFiles/deepgarden.dir/src/menus.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/marlo/Documents/deepgarden/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object CMakeFiles/deepgarden.dir/src/menus.cpp.o"
 	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/deepgarden.dir/src/menus.cpp.o -c /home/marlo/Documents/deepgarden/src/menus.cpp
 
 CMakeFiles/deepgarden.dir/src/menus.cpp.i: cmake_force
@@ -122,37 +135,24 @@ CMakeFiles/deepgarden.dir/src/menus.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/deepgarden.dir/src/menus.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/marlo/Documents/deepgarden/src/menus.cpp -o CMakeFiles/deepgarden.dir/src/menus.cpp.s
 
-CMakeFiles/deepgarden.dir/src/physics.cpp.o: CMakeFiles/deepgarden.dir/flags.make
-CMakeFiles/deepgarden.dir/src/physics.cpp.o: src/physics.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/marlo/Documents/deepgarden/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object CMakeFiles/deepgarden.dir/src/physics.cpp.o"
-	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/deepgarden.dir/src/physics.cpp.o -c /home/marlo/Documents/deepgarden/src/physics.cpp
-
-CMakeFiles/deepgarden.dir/src/physics.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/deepgarden.dir/src/physics.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/marlo/Documents/deepgarden/src/physics.cpp > CMakeFiles/deepgarden.dir/src/physics.cpp.i
-
-CMakeFiles/deepgarden.dir/src/physics.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/deepgarden.dir/src/physics.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/marlo/Documents/deepgarden/src/physics.cpp -o CMakeFiles/deepgarden.dir/src/physics.cpp.s
-
 # Object files for target deepgarden
 deepgarden_OBJECTS = \
 "CMakeFiles/deepgarden.dir/src/utilities.cpp.o" \
+"CMakeFiles/deepgarden.dir/src/physics.cpp.o" \
 "CMakeFiles/deepgarden.dir/src/main.cpp.o" \
 "CMakeFiles/deepgarden.dir/src/game.cpp.o" \
 "CMakeFiles/deepgarden.dir/src/graphics.cpp.o" \
-"CMakeFiles/deepgarden.dir/src/menus.cpp.o" \
-"CMakeFiles/deepgarden.dir/src/physics.cpp.o"
+"CMakeFiles/deepgarden.dir/src/menus.cpp.o"
 
 # External object files for target deepgarden
 deepgarden_EXTERNAL_OBJECTS =
 
 deepgarden: CMakeFiles/deepgarden.dir/src/utilities.cpp.o
+deepgarden: CMakeFiles/deepgarden.dir/src/physics.cpp.o
 deepgarden: CMakeFiles/deepgarden.dir/src/main.cpp.o
 deepgarden: CMakeFiles/deepgarden.dir/src/game.cpp.o
 deepgarden: CMakeFiles/deepgarden.dir/src/graphics.cpp.o
 deepgarden: CMakeFiles/deepgarden.dir/src/menus.cpp.o
-deepgarden: CMakeFiles/deepgarden.dir/src/physics.cpp.o
 deepgarden: CMakeFiles/deepgarden.dir/build.make
 deepgarden: box2d/build/bin/libbox2d.a
 deepgarden: /usr/local/lib/libSDL2main.a

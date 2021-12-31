@@ -101,9 +101,15 @@ void initMouseJointWithBody (b2Vec2 p, b2Body * body)
 PhysicalObject::
 PhysicalObject (std::vector<b2Vec2>   vertices, bool flagStatic)
 {
-	this->flagReady = false;
+
+	this->owner = nullptr;
+
+	// this->flagReady = false;
 	this->flagDelete = false;
 	this->fraction = 0;
+
+	this->jointDef = b2RevoluteJointDef();
+	this->p_joint = nullptr;
 
 	// this->jointDef =  b2RevoluteJointDef();
 	this->bodyDef = b2BodyDef();
@@ -149,10 +155,176 @@ int checkClickObjects (b2Vec2 worldClick)
 	return 0;
 }
 
+
+void createJoint(PhysicalObject * a, PhysicalObject * b)
+{
+
+	printf("create joint\n");
+	a->jointDef =  b2RevoluteJointDef();
+	a->jointDef.collideConnected = false; // this means that limb segments dont collide with their children
+	a->jointDef.bodyA = a->p_body;
+	a->jointDef.bodyB = b->p_body;
+	a->jointDef.localAnchorA = b2Vec2( 0.0f,   -1 * (lengthCursor / 2) );
+	a->jointDef.localAnchorB = b2Vec2( 0.0f,   1 * (lengthCursor / 2) );
+	a->jointDef.enableMotor = true;
+	a->jointDef.maxMotorTorque = 100.0f;
+	m_world->CreateJoint( &(a->jointDef) );
+
+}
+
 void collisionHandler (b2Contact * contact)
 {
+
+	// printf("pliope\n");
 	b2Fixture* fixtureA = contact->GetFixtureA();
 	b2Fixture* fixtureB = contact->GetFixtureB();
+
+	uDataWrap * userDataA = (uDataWrap*)((fixtureA->GetBody())->GetUserData().pointer);
+	uDataWrap * userDataB = (uDataWrap*)((fixtureB->GetBody())->GetUserData().pointer);
+
+	if (userDataA != nullptr)
+	{
+
+		// printf("pencoiec  %u a\n", userDataA->dataType);
+		if (userDataA->dataType == TYPE_BRANCH)
+		{
+
+			// printf("a\n");
+
+
+			if ( ((PhysicalObject *)(userDataA->uData)) != nullptr  )
+			{
+
+				// printf("b\n");
+				if ( ((PhysicalObject *)(userDataA->uData))->owner != nullptr)
+				{
+
+					// printf("c\n");
+					if (((PhysicalObject *)(userDataA->uData))->owner->owner != nullptr)
+					{
+
+						// printf("d\n");
+
+						((PhysicalObject *)(userDataA->uData))->owner->owner->mature  = true;
+						((PhysicalObject *)(userDataA->uData))->owner->owner->sproutPosition = ((PhysicalObject *)(userDataA->uData))->owner->object.p_body->GetWorldCenter();
+
+						if (userDataB != nullptr)
+						{
+
+							// printf("vnevtfic\n");
+							// if (userDataB->dataType == TYPE_BRANCH)
+							// {
+
+								// printf("e\n");
+
+								if ( ((PhysicalObject *)(userDataB->uData)) != nullptr  )
+								{
+
+									// printf("f\n");
+									// if ( ((PhysicalObject *)(userDataB->uData))->owner != nullptr)
+									// {
+
+									// 	// printf("g\n");
+									// 	if (((PhysicalObject *)(userDataB->uData))->owner->owner != nullptr)
+									// 	{
+
+
+											// printf("h\n");
+											// ((PhysicalObject *)(userDataB->uData))->owner->owner->mature  = true;
+											// ((PhysicalObject *)(userDataB->uData))->owner->owner->sproutPosition = ((PhysicalObject *)(userDataB->uData))->owner->GetWorldCenter();
+
+											((PhysicalObject *)(userDataA->uData))->owner->owner->affixedObject = ((PhysicalObject *)(userDataB->uData));
+
+									// 	}
+									// }
+
+								}
+							// }
+
+						}
+
+
+					}
+				}
+
+			}
+
+
+		}
+
+	}
+
+	if (userDataB != nullptr)
+	{
+
+		// printf("vnevtfic\n");
+		if (userDataB->dataType == TYPE_BRANCH)
+		{
+
+			// printf("e\n");
+
+			if ( ((PhysicalObject *)(userDataB->uData)) != nullptr  )
+			{
+
+				// printf("f\n");
+				if ( ((PhysicalObject *)(userDataB->uData))->owner != nullptr)
+				{
+
+					// printf("g\n");
+					if (((PhysicalObject *)(userDataB->uData))->owner->owner != nullptr)
+					{
+
+
+						// printf("h\n");
+						((PhysicalObject *)(userDataB->uData))->owner->owner->mature  = true;
+						((PhysicalObject *)(userDataB->uData))->owner->owner->sproutPosition = ((PhysicalObject *)(userDataB->uData))->owner->object.p_body->GetWorldCenter();
+
+						if (userDataA != nullptr)
+						{
+
+							// printf("pencoiec  %u a\n", userDataA->dataType);
+							// if (userDataA->dataType == TYPE_BRANCH)
+							// {
+
+								// printf("a\n");
+
+
+								if ( ((PhysicalObject *)(userDataA->uData)) != nullptr  )
+								{
+
+									// printf("b\n");
+									// if ( ((PhysicalObject *)(userDataA->uData))->owner != nullptr)
+									// {
+
+									// 	// printf("c\n");
+									// 	if (((PhysicalObject *)(userDataA->uData))->owner->owner != nullptr)
+									// 	{
+
+											// printf("d\n");
+
+											((PhysicalObject *)(userDataB->uData))->owner->owner->affixedObject = ((PhysicalObject *)(userDataA->uData));
+											// ((PhysicalObject *)(userDataA->uData))->owner->owner->mature  = true;
+											// ((PhysicalObject *)(userDataA->uData))->owner->owner->sproutPosition = ((PhysicalObject *)(userDataA->uData))->owner->GetWorldCenter();
+
+									// 	}
+									// }
+
+								}
+
+
+							// }
+
+						}
+
+					}
+				}
+
+			}
+		}
+
+	}
+
+
 }
 
 class MyListener : public b2ContactListener
@@ -234,8 +406,27 @@ void shine (b2Vec2 p1, b2Vec2 p2)
 
 void  addToWorld(PhysicalObject * object, b2Vec2 position, float angle)
 {
-	physicalObjects.push_back( object  );
 	// PhysicalObject * pushedObject = &(physicalObjects.back());
+
+
+	uDataWrap  * p_dataWrapper =  new uDataWrap(object, TYPE_TERRAIN);
+	if (  object->bodyDef.type == b2_dynamicBody)
+	{
+		p_dataWrapper->dataType = TYPE_BRANCH;
+
+	}
+
+
+
+	// b2BodyUserData  b2usrdat =  b2BodyUserData();
+	// b2usrdat.pointer = (uintptr_t ) (&p_dataWrapper);
+	object->bodyDef.userData.pointer =  (uintptr_t ) (p_dataWrapper);
+
+
+
+
+
+
 	object->p_body = m_world->CreateBody( &(object->bodyDef) );
 
 
@@ -244,6 +435,14 @@ void  addToWorld(PhysicalObject * object, b2Vec2 position, float angle)
 
 
 	object->p_fixture = object->p_body->CreateFixture(&(object->shape), 1.2f);	// this endows the shape with mass and is what adds it to the physical world.
+
+
+
+
+
+
+
+
 
 
 	b2Filter tempFilter = object->p_fixture->GetFilterData();
@@ -255,11 +454,11 @@ void  addToWorld(PhysicalObject * object, b2Vec2 position, float angle)
 	{
 
 
-		tempFilter.categoryBits = 1 << 1; // i am a..
+		tempFilter.categoryBits = TYPE_BRANCH;//1 << 1; // i am a..
 
 		// if (m_deepSeaSettings.noClipStatus  )
 		// {
-			tempFilter.maskBits = 1<<2;//  | 1 << 5 | 1 << 6 | 1 << 7 | tempFilter.maskBits;	// and i collide with
+		tempFilter.maskBits = TYPE_TERRAIN; //  | 1 << 5 | 1 << 6 | 1 << 7 | tempFilter.maskBits;	// and i collide with
 		// }
 
 
@@ -267,13 +466,15 @@ void  addToWorld(PhysicalObject * object, b2Vec2 position, float angle)
 
 	else if (object->bodyDef.type == b2_staticBody)
 	{
-		tempFilter.categoryBits = 1 << 2; // i am a..
+		tempFilter.categoryBits = TYPE_TERRAIN; // i am a..
 
 		// if (m_deepSeaSettings.noClipStatus  )
 		// {
-			tempFilter.maskBits = 1<<1; //1  | 1 << 5 | 1 << 6 | 1 << 7 | tempFilter.maskBits;	// and i collide with
+		tempFilter.maskBits = TYPE_BRANCH; //1  | 1 << 5 | 1 << 6 | 1 << 7 | tempFilter.maskBits;	// and i collide with
 		// }
 	}
+
+
 
 
 
@@ -283,18 +484,40 @@ void  addToWorld(PhysicalObject * object, b2Vec2 position, float angle)
 
 
 
+
+// uDataWrap * p_dataWrapper = new uDataWrap(p_bone, TYPE_FOOD);
+	// b2BodyUserData * p_b2usrdat = new b2BodyUserData;
+	// p_b2usrdat->pointer = (uintptr_t )p_dataWrapper;
+
+	// // p_bone->p_body->SetUserData((void*)p_b2usrdat);
+	// p_bone->bodyDef.userData = *p_b2usrdat;
+
+
 	object->p_body ->SetTransform(position, angle);
 
-	object->flagReady = true;
+	// object->flagReady = true;
+
+	physicalObjects.push_back( object  );
 
 	// return pushedObject;
 }
 
 void deleteFromWorld (PhysicalObject * object)
 {
+
+	// destroy the user data object
+
+	delete (uDataWrap*)(object->p_body->GetUserData().pointer);
+
 	// m_world->DestroyJoint(object->p_joint);
 	object->p_body->DestroyFixture(object->p_fixture);
 	m_world->DestroyBody(object->p_body); 	// this action is for real, you can't grow it back.
+
+	if (object->p_joint != nullptr)
+	{
+
+		m_world->DestroyJoint(object->p_joint);
+	}
 }
 
 void exampleMenuCallback(void * userData)

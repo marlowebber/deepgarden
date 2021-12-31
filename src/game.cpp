@@ -6,134 +6,91 @@
 int exampleNumberCapture = 15;
 std::string exampleTextCapture = std::string("exampleText");
 
-
 unsigned long int ticks = 0;
 
-float thicknessCursor = 1.0f;
-float lengthCursor = 1.0f;;
-float angleCursor = 0.0f;;
-b2Color colorCursor = b2Color(0.0f, 0.0f, 0.0f, 1.0f);
+float thicknessCursor  		= 1.0f;
+float lengthCursor 			= 1.0f;;
+float angleCursor 			= 0.0f;;
+b2Color colorCursor 		= b2Color(0.0f, 0.0f, 0.0f, 1.0f);
+b2Vec2 worldPositionCursor 	= b2Vec2(0.0f, 0.0f);
 
-b2Vec2 worldPositionCursor = b2Vec2(0.0f, 0.0f);
-
-
-struct Branch
+Branch::Branch()
 {
-	float energyValue;
-
-	b2Color color;
-	float naturalAngle;
-
-	std::list<Branch> branches;
-
-	bool ready;
-
-	unsigned int capturedLight;
-
-	std::vector<b2Vec2> vertices =//
+	this->owner = nullptr;
+	this-> energyValue = thicknessCursor * lengthCursor;
+	this->color = color;
+	this->naturalAngle  = angleCursor;
+	this-> branches = std::list<Branch>();
+	this->capturedLight = 0;
+	this-> vertices =
 	{
-		b2Vec2( +1.0f ,  -1.0f), //b2Vec2 rootVertexA =
-		b2Vec2( -1.0f ,  -1.0f), // b2Vec2 rootVertexB =
-		b2Vec2( -1.0f ,  +1.0f), //b2Vec2 tipVertexA =
-		b2Vec2( +1.0f ,  +1.0f) // b2Vec2 tipVertexB =
+		b2Vec2( + (thicknessCursor / 2),  -(lengthCursor / 2)),
+		b2Vec2( - (thicknessCursor / 2),  -(lengthCursor / 2)),
+		b2Vec2( - (thicknessCursor / 2),  +(lengthCursor / 2)),
+		b2Vec2( + (thicknessCursor / 2),  +(lengthCursor / 2))
 	};
-
-	PhysicalObject object = PhysicalObject(  vertices, false);
-
-	// Branch();
-
-	Branch()
-	{
-
-		this-> energyValue = thicknessCursor * lengthCursor;
-
-		this->color = color;
-		this->naturalAngle  = angleCursor;
-
-		this-> branches = std::list<Branch>();
-
-		this-> ready = true;
-
-		this->capturedLight = 0;
-
-		this-> vertices = {
-			b2Vec2( + (thicknessCursor / 2),  -(lengthCursor / 2)),
-			b2Vec2( - (thicknessCursor / 2),  -(lengthCursor / 2)),
-			b2Vec2( - (thicknessCursor / 2),  +(lengthCursor / 2)),
-			b2Vec2( + (thicknessCursor / 2),  +(lengthCursor / 2))
-		};
-
-
-		this->object = PhysicalObject(this->vertices, false);
-
-	}
-
-};
+	this->seed = false;
+	this->object = PhysicalObject(this->vertices, false);
+	this->flagDelete = false;
+}
 
 Branch * lastTouchedBranch = nullptr;
 
-
-struct Tree
+Tree::Tree(std::string genes)
 {
+	this->flagDelete = false;
+	this-> energyStored = 1;
+	this-> genes = genes;
+	printf("new tree: %s\n", genes.c_str());
+	this-> lastReproduced = ticks;
+	this->mature = false;
+	this->  branches = std::list<Branch>();
+	this-> geneCursor = 0;
+	this->germinated = false;
+	this->sproutPosition = b2Vec2(0.0f, 0.0f);
+	this->affixedObject = nullptr;
+}
 
-	float energyStored;
+std::list<Tree> garden;
 
-	std::string genes;
+void instantiateSeed (std::string genes, Branch * joinBranch)
+{
+	garden.push_back(  Tree(genes)  );
+	Tree * tree = &(garden.back()) ;
+	tree->branches.push_back( Branch() );
+	Branch * newBranch = &(tree->branches.back());
+	newBranch->object.color = b2Color(0.8f, 0.8f, 0.1f, 1.0f);
+	newBranch->seed = true;
+	tree->mature = false;
+	tree->germinated = false;
+	b2Vec2 newBranchPosition = b2Vec2(
 
-	unsigned long int lastReproduced;
+	                               worldPositionCursor.x + ((lengthCursor / 2) * cos(angleCursor))
+	                               ,
 
-	bool ready;
-
-
-	std::list<Branch> branches;
-
-
-	uint geneCursor;
-
-	// Tree();
-	Tree(std::string genes)
+	                               worldPositionCursor.y + ((lengthCursor / 2) * sin(angleCursor))
+	                           );
+	addToWorld( &(newBranch->object), newBranchPosition , angleCursor  );
+	newBranch->object.owner = newBranch;
+	newBranch->owner = tree;
+	if (joinBranch != nullptr)
 	{
-
-
-		this-> energyStored = 1;
-
-		this-> genes = genes;
-
-		printf("new tree: %s\n", genes.c_str());
-
-		this-> lastReproduced = ticks;
-
-		this-> ready = true;
-
-
-		this->  branches = std::list<Branch>();
-
-
-		this-> geneCursor = 0;
-
-
-
+		createJoint( &(newBranch->object), &(joinBranch->object) );
 	}
-
-
-};
-
-
-
+}
 
 // return 1 indicates the sequence should break. return 0 means it should continue.
 int grow( Tree * tree , Branch * growingBranch)
 {
+	if (tree->flagDelete || (growingBranch->flagDelete)  ) {return 1;}
+	if ( !(tree->mature) ) {return 1;}
+	if (growingBranch->seed && tree->germinated) {return 1;}
 
 	// printf()
 	if (tree->geneCursor < tree->genes.length() )
 	{
-
-
-
 		switch (tree->genes[tree->geneCursor])
 		{
-
 
 		case '.':
 		{
@@ -232,79 +189,92 @@ int grow( Tree * tree , Branch * growingBranch)
 
 			break;
 		}
+		case 's':
+		{
+			// draw a seed
+
+			instantiateSeed(tree->genes, lastTouchedBranch);
+
+			break;
+		}
 		case 'd':
 		{
 			// draw a branch.
 
-
-			// tree->geneCursor++;
 			printf("draw a branch\n");
+			Branch * newBranch ;
+			if (growingBranch->seed)
+			{
+				tree->branches.push_back( Branch() );
+				newBranch = &(tree->branches.back());
+				if (tree->mature && !tree->germinated)
+				{
+					tree->germinated = true;
+				}
+			}
+			else
+			{
+				growingBranch->branches.push_back( Branch() );
+				newBranch = &(growingBranch->branches.back());
 
-
-			growingBranch->branches.push_back( Branch() );
-
+			}
 
 			b2Vec2 newBranchPosition = b2Vec2(
-
-			                               worldPositionCursor.x + ((lengthCursor / 2) * cos(angleCursor))
-			                               ,
-
+			                               worldPositionCursor.x + ((lengthCursor / 2) * cos(angleCursor)),
 			                               worldPositionCursor.y + ((lengthCursor / 2) * sin(angleCursor))
 			                           );
 
-
-			Branch * newBranch = &(growingBranch->branches.back());
-			addToWorld( &(growingBranch->branches.back().object), newBranchPosition , angleCursor  );
-
-			
-
-
-
-
-
+			newBranch->object.owner = newBranch;
+			newBranch->owner = tree;
+			addToWorld( &(newBranch->object), newBranchPosition , angleCursor  );
 
 			// the world cursor is moved from the root to the tip position
-
 			worldPositionCursor = b2Vec2(
-			                          worldPositionCursor.x + (lengthCursor * cos(angleCursor))
-			                          ,
-
+			                          worldPositionCursor.x + (lengthCursor * cos(angleCursor)),
 			                          worldPositionCursor.y + (lengthCursor * sin(angleCursor))
 			                      );
 
-
 			tree->energyStored -= lengthCursor * thicknessCursor;
-
 
 			if (
 			    growingBranch != nullptr &&
-			    lastTouchedBranch != nullptr 
+			    lastTouchedBranch != nullptr
 			)
 			{
 				if (
 				    growingBranch != newBranch
 				)
 				{
-
 					if (
 					    growingBranch->object.p_body != nullptr &&
-					    lastTouchedBranch->object.p_body != nullptr 
+					    lastTouchedBranch->object.p_body != nullptr
 					)
 					{
+						if (  (!( growingBranch->seed ))  && (!( lastTouchedBranch->seed ))  )
+						{
+							createJoint( &(newBranch->object), &(lastTouchedBranch->object) );
+						}
 
-						printf("create joint\n");
-						b2RevoluteJointDef jointDef =  b2RevoluteJointDef();
-						jointDef.collideConnected = false; // this means that limb segments dont collide with their children
-						jointDef.bodyA = lastTouchedBranch->object.p_body;
-						jointDef.bodyB = newBranch->object.p_body;
-						jointDef.localAnchorA = b2Vec2( 0.0f,   -1 * (lengthCursor / 2) );
-						jointDef.localAnchorB = b2Vec2( 0.0f,   1 * (lengthCursor / 2) );
+						if (growingBranch->seed)
+						{
 
-						m_world->CreateJoint( &(jointDef) );
+							if (tree->affixedObject != nullptr) 
+							{
 
+								printf("a tree grew in the ground\n");
+								createJoint( &(newBranch->object), tree->affixedObject );
+
+							}
+
+
+						}
 					}
 				}
 			}
+
+
+
+
 
 			lastTouchedBranch = newBranch;
 
@@ -390,15 +360,6 @@ int grow( Tree * tree , Branch * growingBranch)
 			// 	break;
 
 			// }
-
-
-
-
-
-
-
-
-
 		}
 		// tree->geneCursor++;
 		tree->geneCursor++;
@@ -422,52 +383,6 @@ int grow( Tree * tree , Branch * growingBranch)
 // {
 
 // }
-
-std::list<Tree> garden;
-
-void instantiateSeed (std::string genes)
-{
-
-
-
-	garden.push_back(  Tree(genes)  );
-
-	Tree * tree = &(garden.back()) ;
-
-	// tree->geneCursor++;
-	// angleCursor = alphanumeric( tree->genes[tree->geneCursor] );
-
-	// tree->geneCursor++;
-	// lengthCursor = alphanumeric( tree->genes[tree->geneCursor] );
-
-	// tree->geneCursor++;
-	// thicknessCursor = alphanumeric( tree->genes[tree->geneCursor] );
-
-
-	tree->branches.push_back( Branch() );
-
-
-	b2Vec2 newBranchPosition = b2Vec2(
-
-	                               worldPositionCursor.x + ((lengthCursor / 2) * cos(angleCursor))
-	                               ,
-
-	                               worldPositionCursor.y + ((lengthCursor / 2) * sin(angleCursor))
-	                           );
-
-
-	addToWorld( &(tree->branches.back().object), newBranchPosition , angleCursor  );
-
-	lastTouchedBranch = &(tree->branches.back());
-
-
-}
-
-
-
-
-
-
 
 
 void rebuildMenus ()
@@ -507,22 +422,125 @@ void initializeGame ()
 	addToWorld( new PhysicalObject(exampleBox2Vertices, true) , b2Vec2(0.0f, -20.0f), 0.0f );
 
 
-	std::string exampleSentence = std::string("ddd");
+	std::string exampleSentence = std::string("ddds");
 
 
-	instantiateSeed(exampleSentence);
+	instantiateSeed(exampleSentence, nullptr);
+}
 
 
+void recursiveUpdateMotors( Branch * branch )
+{
+
+
+
+	std::list<Branch>::iterator subBranch;
+	for (subBranch = branch->branches.begin(); subBranch != branch->branches.end(); ++subBranch)
+	{
+
+
+		if (subBranch->object.p_joint != nullptr)
+		{
+
+
+
+
+			float mainBranchAngle = branch->object.p_body->GetAngle();
+			float subBranchAngle = subBranch->object.p_body->GetAngle();
+
+
+			float motorSpeed = subBranchAngle - mainBranchAngle;
+
+
+			// subBranch->object.p_joint->SetMotorSpeed(motorSpeed);
+
+
+		}
+
+		recursiveUpdateMotors( &(*subBranch) )  ;
+	}
 }
 
 void threadGame()
 {
 
 	std::list<Tree>::iterator tree;
+
+	std::list<Branch>::iterator branch;
 	for (tree = garden.begin(); tree != garden.end(); ++tree)
 	{
-		grow( &(*tree), &(tree->branches.back()));
+
+		if (tree->mature)
+		{
+
+			grow( &(*tree), &(tree->branches.back()));
+		}
+
+
+		for (branch = tree->branches.begin(); branch != tree->branches.end(); ++branch)
+		{
+			recursiveUpdateMotors( &(*branch) );
+
+
+			if (tree->mature && branch->seed)
+			{
+
+				// deleteFromWorld ( &(branch->object) );
+				// // tree->branches.erase ( branch );
+				// break;
+				branch->flagDelete = true;
+				branch->object.flagDelete = true;
+
+			}
+
+
+
+		}
+
 	}
+
+//-----------------
+
+	// delete stuff
+	// std::list<Tree>::iterator tree;
+	for (tree = garden.begin(); tree != garden.end(); ++tree)
+	{
+
+		// std::list<Branch>::iterator branch;
+		for (branch = tree->branches.begin(); branch != tree->branches.end(); ++branch)
+		{
+			if (branch->flagDelete)
+			{
+
+				deleteFromWorld ( &(branch->object) );
+			}
+
+		}
+		tree->branches.remove_if( [](Branch branch)
+		{
+			return branch.flagDelete;
+		}
+		                        );
+
+
+	}
+
+
+	garden.remove_if( [](Tree tree)
+	{
+		return tree.flagDelete;
+	}
+	                );
+
+	physicalObjects.remove_if( [](PhysicalObject * object)
+	{
+		return object->flagDelete;
+	}
+	                         );
+
+
+
+
 
 
 	ticks++;
@@ -538,6 +556,9 @@ void gameGraphics()
 	std::list<PhysicalObject*>::iterator object;
 	for (object = physicalObjects.begin(); object !=  physicalObjects.end(); ++object)
 	{
+
+		if ( (*object) == nullptr) {continue;}
+
 		unsigned int nObjectVerts = (*object)->vertices.size();
 		nVertsToRenderThisTurn += nObjectVerts;
 		nIndicesToUseThisTurn  += nObjectVerts + 1;
@@ -554,6 +575,9 @@ void gameGraphics()
 	for (object = physicalObjects.begin(); object !=  physicalObjects.end(); ++object)
 	{
 
+
+		if ( (*object) == nullptr) {continue;}
+
 		b2Vec2 bodyPosition = (*object)->p_body->GetWorldCenter();
 		float bodyAngle = (*object)->p_body->GetAngle();
 		float bodyAngleSin = sin(bodyAngle);
@@ -562,6 +586,7 @@ void gameGraphics()
 		std::vector<b2Vec2>::iterator vert;
 		for (vert = std::begin((*object)->vertices); vert !=  std::end((*object)->vertices); ++vert)
 		{
+
 			// add the position and rotation of the game-world object that the vertex belongs to.
 			b2Vec2 rotatedPoint = b2Vec2(   vert->x + bodyPosition.x, vert->y + bodyPosition.y   );
 			rotatedPoint = b2RotatePointPrecomputed( bodyPosition, bodyAngleSin, bodyAngleCos, rotatedPoint);

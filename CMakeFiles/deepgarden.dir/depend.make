@@ -472,6 +472,7 @@ CMakeFiles/deepgarden.dir/src/physics.cpp.o: box2d/include/box2d/b2_world.h
 CMakeFiles/deepgarden.dir/src/physics.cpp.o: box2d/include/box2d/b2_world_callbacks.h
 CMakeFiles/deepgarden.dir/src/physics.cpp.o: box2d/include/box2d/box2d.h
 
+CMakeFiles/deepgarden.dir/src/utilities.cpp.o: src/game.h
 CMakeFiles/deepgarden.dir/src/utilities.cpp.o: src/physics.h
 CMakeFiles/deepgarden.dir/src/utilities.cpp.o: src/utilities.cpp
 CMakeFiles/deepgarden.dir/src/utilities.cpp.o: src/utilities.h

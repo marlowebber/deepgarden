@@ -18,6 +18,8 @@ find_package(Boost REQUIRED COMPONENTS filesystem thread)
 set(SRCS
 	src/utilities.h
 	src/utilities.cpp
+	src/physics.cpp
+	src/physics.h
 	src/game.h
 	src/main.cpp
 	src/main.h
@@ -26,8 +28,6 @@ set(SRCS
 	src/graphics.h
 	src/menus.h
 	src/menus.cpp
-	src/physics.cpp
-	src/physics.h
 )
 
 link_directories(

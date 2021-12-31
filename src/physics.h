@@ -1,5 +1,5 @@
-#ifndef GAME_H
-#define GAME_H
+#ifndef PHYSICS_H
+#define PHYSICS_H
 
 #define GL_GLEXT_PROTOTYPES
 #include <stdio.h>
@@ -21,6 +21,8 @@ using namespace glm;
 
 #include <box2d.h>
 
+#include "game.h"
+
 // #define THREAD_TIMING
 
 // struct Color
@@ -39,22 +41,6 @@ using namespace glm;
 
 extern b2World * m_world;
 
-class PhysicalObject
-{
-public:
-	b2BodyDef bodyDef;
-	b2Body * p_body;
-	b2PolygonShape shape;
-	b2Fixture * p_fixture;
-	float fraction;
-	bool flagDelete;
-	bool flagReady;
-	b2Color color;
-
-	std::vector<b2Vec2>  vertices;
-
-	PhysicalObject (std::vector<b2Vec2>   vertices, bool flagStatic);
-};
 
 
 extern std::list<b2Body* > rayContacts;
@@ -74,6 +60,8 @@ void destroyMouseJoint ();
 
 bool getMouseJointStatus () ;
 
+
+void createJoint(PhysicalObject * a, PhysicalObject * b);
 
 void exampleMenuCallback(void * userData);
 int checkClickObjects (b2Vec2 worldClick);
