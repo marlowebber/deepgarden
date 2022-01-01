@@ -1,7 +1,5 @@
-
 #ifndef GAME_H
 #define GAME_H
-
 
 #define GL_GLEXT_PROTOTYPES
 #include <stdio.h>
@@ -26,20 +24,14 @@ using namespace glm;
 #include "physics.h"
 #include "game.h"
 
-
-
-
 #define TYPE_BRANCH  (1<<1)
 #define TYPE_TERRAIN (1<<2)
-
-
 
 extern float thicknessCursor  		;
 extern float lengthCursor 			;
 extern float angleCursor 			;
 extern b2Color colorCursor 		;
 extern b2Vec2 worldPositionCursor 	;
-
 
 struct Branch;
 
@@ -51,9 +43,7 @@ struct PhysicalObject
 	b2Fixture * p_fixture;
 	float fraction;
 	bool flagDelete;
-	// bool flagReady;
 	b2Color color;
-
 
 	std::vector<b2Vec2>  vertices;
 
@@ -62,9 +52,7 @@ struct PhysicalObject
 	PhysicalObject (std::vector<b2Vec2>   vertices, bool flagStatic);
 };
 
-
 struct Tree;
-// struct PhysicalObject (std::vector<b2Vec2>   vertices, bool flagStatic) ;
 
 struct Branch
 {
@@ -78,19 +66,16 @@ struct Branch
 	bool seed;
 	bool stem;
 
-
 	bool expressed;
-
-	// bool ready;
 
 	unsigned int capturedLight;
 
-	std::vector<b2Vec2> vertices =//
+	std::vector<b2Vec2> vertices =
 	{
-		b2Vec2( +1.0f ,  -1.0f), //b2Vec2 rootVertexA =
-		b2Vec2( -1.0f ,  -1.0f), // b2Vec2 rootVertexB =
-		b2Vec2( -1.0f ,  +1.0f), //b2Vec2 tipVertexA =
-		b2Vec2( +1.0f ,  +1.0f) // b2Vec2 tipVertexB =
+		b2Vec2( +1.0f ,  -1.0f),
+		b2Vec2( -1.0f ,  -1.0f), 
+		b2Vec2( -1.0f ,  +1.0f),
+		b2Vec2( +1.0f ,  +1.0f) 
 	};
 
 	PhysicalObject object = PhysicalObject(  vertices, false);
@@ -102,7 +87,6 @@ struct Branch
 	unsigned int geneCursorStartPosition;
 	unsigned int geneCursor;
 
-
 	b2RevoluteJointDef rjointDef;
 	b2RevoluteJoint * p_rjoint;
 
@@ -111,8 +95,6 @@ struct Branch
 
 	b2WeldJointDef wjointDef;
 	b2WeldJoint * p_wjoint;
-
-	// Branch();
 
 	Tree * owner;
 
@@ -124,59 +106,33 @@ struct Branch
 	float angleDelta			;
 	b2Color colorDelta		;
 
-
 	Branch(float rootThickness, float tipThickness, float length, float naturalAngle, b2Color color );
 
 };
 
-
-
 struct Tree
 {
-
 	float energyStored;
 
 	std::string genes;
 
 	unsigned long int lastReproduced;
 
-	// bool ready;
-
 	b2Vec2 sproutPosition;
 	PhysicalObject * affixedObject;
 
-
 	std::list<Branch> branches;
-
 
 	bool mature;
 
 	bool germinated;
-
-	// uint geneCursor;
 
 	bool flagDelete;
 
 	Branch * lastGrownBranch;
 
 	unsigned int geneCursor;
-
-
-	// float rootThicknessCursor  		;
-	// float tipThicknessCursor  		;
-	// float lengthCursor 			;
-	// float angleCursor 			;
-	// b2Color colorCursor 		;
-
-
-
-
-
-
 	Tree(std::string genes);
-
-
-
 };
 
 void initializeGame ();

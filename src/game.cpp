@@ -28,19 +28,6 @@ Branch::Branch(float rootThickness, float tipThickness, float length, float natu
 		b2Vec2( - (this->tipThickness / 2),   +(this->length / 2)),
 		b2Vec2( + (this->tipThickness / 2),   +(this->length / 2))
 	};
-
-
-	std::vector<b2Vec2>::iterator vert;
-	unsigned int i =0;
-	for (vert = std::begin(vertices); vert !=  std::end(vertices); ++vert)
-	{
-
-
-			vertices[i] = b2RotatePointPrecomputed( b2Vec2(0.0f, 0.0f), sin(+0.5*const_pi), cos(+0.5*const_pi), *vert  ) ;
-			// vert 
-			i++;
-	}
-
 	this->seed = false;
 	this->object = PhysicalObject(this->vertices, false);
 	this->flagDelete = false;
@@ -51,8 +38,6 @@ Branch::Branch(float rootThickness, float tipThickness, float length, float natu
 	this->angleDelta		= 0.0f 		;
 	this->expressed = false;
 	this->geneCursor = 0;
-
-
 	this->color = b2Color(0.0f, 0.0f, 0.0f, 1.0f)	;
 
 	this->rjointDef = b2RevoluteJointDef();
@@ -74,21 +59,9 @@ Tree::Tree(std::string genes)
 	this-> lastReproduced = ticks;
 	this->mature = false;
 	this->  branches = std::list<Branch>();
-	// this-> geneCursor = 0;
 	this->germinated = false;
 	this->sproutPosition = b2Vec2(0.0f, 0.0f);
 	this->affixedObject = nullptr;
-	// this->	rootThicknessCursor  		= 1.0f;
-	// this->	tipThicknessCursor  		= 1.0f;
-	// this->	lengthCursor 			= 1.0f;;
-	// this->	angleCursor 			= 0.0f;;
-	// this->  colorCursor 		= b2Color(0.0f, 0.0f, 0.0f, 1.0f);
-
-
-	// b2Color colorDelta	= b2Color(0.0f, 0.0f, 0.0f, 1.0f)	;
-
-
-
 }
 
 std::list<Tree> garden;
@@ -133,18 +106,13 @@ void instantiateSeed (std::string genes, Branch * joinBranch, b2Vec2 position)
 }
 
 
-Branch * addBranchSegment (Tree * tree, Branch * growingBranch)
+Branch * addBranchSegment (Tree * tree, Branch * growingBranch, float absoluteAngleOffset)
 {
-
-	// draw a segment.
-
-	// printf("draw a branch segment r: %f, t %f, l %f, a %f\n",  tree->lengthCursor, tree->tipThicknessCursor, tree->rootThicknessCursor ,tree->angleCursor );
 	Branch * newBranch ;
-
 	float newBranch_length        = clamp ( abs(growingBranch->length 			+ growingBranch->lengthDelta 		), 0.1f, 10.0f	);
 	float newBranch_tipThickness  = clamp ( abs(growingBranch->tipThickness 	+ growingBranch->tipThicknessDelta	), 0.1f, 10.0f	);
 	float newBranch_rootThickness = clamp ( abs(growingBranch->rootThickness 	+ growingBranch->rootThicknessDelta	), 0.1f, 10.0f	);
-	float newBranch_naturalAngle  = clamp ( abs(growingBranch->naturalAngle 	+ growingBranch->angleDelta			), 0.1f, 10.0f	);
+	float newBranch_naturalAngle  = constrainAngle(growingBranch->naturalAngle 	+ growingBranch->angleDelta			);
 	b2Color newBranch_color = b2Color(
 	                              growingBranch->color.r + growingBranch->colorDelta.r,
 	                              growingBranch->color.g + growingBranch->colorDelta.g,
@@ -153,13 +121,9 @@ Branch * addBranchSegment (Tree * tree, Branch * growingBranch)
 
 	if (growingBranch->seed)
 	{
-
-
 		newBranch_color = b2Color(0.0f, 0.0f, 0.0f, 1.0f);
-
 		tree->branches.push_back( Branch( newBranch_rootThickness, newBranch_tipThickness, newBranch_length, 0.0f, newBranch_color  ) );
 		newBranch = &(tree->branches.back());
-		// newBranch->seed = false;
 		if (tree->mature && !tree->germinated)
 		{
 			tree->germinated = true;
@@ -174,39 +138,29 @@ Branch * addBranchSegment (Tree * tree, Branch * growingBranch)
 	newBranch->length = newBranch_length;
 	newBranch->tipThickness = newBranch_tipThickness;
 	newBranch->rootThickness = newBranch_rootThickness;
-	newBranch->naturalAngle = newBranch_naturalAngle;
+	newBranch->naturalAngle = newBranch_naturalAngle ;
 	newBranch->color = newBranch_color;
 
-	if (growingBranch->seed)
-	{
-		// newBranch->naturalAngle -= 0.5 * const_pi;
-
-	}
-
-	float actualAngle = constrainAngle( newBranch->naturalAngle + growingBranch->object.p_body->GetAngle() );
-	// if (growingBranch->seed) {actualAngle = 0.5 * const_pi;}
+	float actualAngle = constrainAngle( newBranch->naturalAngle + growingBranch->object.p_body->GetAngle() + absoluteAngleOffset );
 
 	printf("actual angle = %f\n", actualAngle);
-
-
 	b2Vec2 newBranchPosition = b2Vec2(
-	                               growingBranch->object.p_body->GetWorldCenter().x + (( (newBranch->length / 2) + ( growingBranch->length / 2)  ) * cos(actualAngle)),
-	                               growingBranch->object.p_body->GetWorldCenter().y + (( (newBranch->length / 2) + ( growingBranch->length / 2)  ) * sin(actualAngle))
+	                               growingBranch->object.p_body->GetWorldCenter().x +(  (growingBranch->length/2) * cos(growingBranch->object.p_body->GetAngle() )   )   ,
+	                               growingBranch->object.p_body->GetWorldCenter().y +(  (growingBranch->length/2) * sin(growingBranch->object.p_body->GetAngle() )    )   
 	                           );
 
-
+	newBranchPosition = b2Vec2(
+		newBranchPosition.x +  (newBranch->length/2) * cos(actualAngle)
+		,
+		newBranchPosition.y +  (newBranch->length/2) * sin(actualAngle)
+		);
 
 	newBranch->object.owner = newBranch;
 	newBranch->owner = tree;
-
 	newBranch->geneCursorStartPosition = growingBranch->geneCursor;
 	newBranch->geneCursor = newBranch->geneCursorStartPosition;
-
 	tree->energyStored -= (( newBranch->rootThickness + newBranch->tipThickness ) / 2 ) * newBranch->length ;
-
-
 	addToWorld( &(newBranch->object), newBranchPosition , actualAngle  );
-
 	if (
 	    growingBranch != nullptr
 	)
@@ -226,7 +180,6 @@ Branch * addBranchSegment (Tree * tree, Branch * growingBranch)
 
 				if (growingBranch->seed)
 				{
-
 					if (tree->affixedObject != nullptr)
 					{
 						printf("a tree grew in the ground\n");
@@ -235,31 +188,20 @@ Branch * addBranchSegment (Tree * tree, Branch * growingBranch)
 						                          tree->sproutPosition.y - tree->affixedObject->p_body->GetWorldCenter().y
 						                      );
 
-
 						newBranch->object.p_body ->SetTransform(tree->sproutPosition, 0.5f * const_pi);
 						newBranch->object.p_body ->SetLinearVelocity( b2Vec2(0.0f, 0.0f) );
-
-
 						createJointWithVariableBAnchor( newBranch, tree->affixedObject , bLocalAnchor );
 						newBranch->stem = true;
 					}
 				}
-				// else {
-				// 	newBranch->object.p_body ->SetTransform(newBranch->object.p_body ->GetWorldCenter(), newBranch->object.p_body ->GetAngle() + 0.5f * const_pi);
-				// }
 			}
 		}
 	}
-
-
 	return newBranch;
 }
 
-
-
-Branch * transcribeNextSegments (Tree * tree , Branch * growingBranch)
+Branch * transcribeNextSegments (Tree * tree , Branch * growingBranch, float absoluteAngleOffset)
 {
-
 	printf("transcribeNextSegments\n");
 	printf("geneCursor %u, genome length %lu\n", growingBranch->geneCursor, tree->genes.length()  );
 
@@ -269,72 +211,48 @@ Branch * transcribeNextSegments (Tree * tree , Branch * growingBranch)
 	{
 
 		if (growingBranch->geneCursor == 0) {growingBranch-> geneCursor++; continue;}
-
-		// growingBranch-> geneCursor++;
 		switch (tree->genes[growingBranch->geneCursor])
 		{
 		case 's':
 		{
-			// printf("sequence\n");
 			// serial array
 			growingBranch-> geneCursor++;
-
 			int arrayN = alphanumeric(tree->genes[growingBranch->geneCursor]);
-
 			printf("sequence %i\n", arrayN);
-
-
 			Branch * arrayBranch = growingBranch;
 			unsigned int arrayStartGeneCursor = growingBranch->geneCursor;
-
 			for (int i = 0; i < arrayN; ++i)
 			{
 				printf(",");
 				if (arrayBranch != nullptr)
 				{
 					arrayBranch->geneCursor = arrayStartGeneCursor;
-					arrayBranch = transcribeNextSegments(tree, arrayBranch);
+					arrayBranch = transcribeNextSegments(tree, arrayBranch, 0.0f);
 				}
 			}
-
 			return arrayBranch;
-
 			break;
 		}
 		case 'q':
 		{
-			// parallel array
+			// parallel array with angle
 			growingBranch-> geneCursor++;
 			int arrayN = alphanumeric(tree->genes[growingBranch->geneCursor]);
-
+			growingBranch-> geneCursor++;
+			float alpha = alphanumeric(tree->genes[growingBranch->geneCursor]);
+			float angleAdjust = ((alpha / 26) * 2 * const_pi );
 
 			printf("array %i\n", arrayN);
 
-			Branch * arrayBranch = growingBranch;
 			unsigned int arrayStartGeneCursor = growingBranch->geneCursor;
-
-			float originalAngleDelta = growingBranch->angleDelta;
+			float anglePerUnit = (angleAdjust/arrayN);
+			float startingAngle = (angleAdjust/2) ;
 
 			for (int i = 0; i < arrayN; ++i)
 			{
 				growingBranch->geneCursor = arrayStartGeneCursor;
-				// float tempAngleDelta = growingBranch->angleDelta ;
-				arrayBranch = transcribeNextSegments(tree, growingBranch);
-
-
-				growingBranch->angleDelta += (arrayBranch->angleDelta ) ;
-
-				// if (i % 2) 
-				// {
-				// 	growingBranch->angleDelta = growingBranch->angleDelta * -1;
-
-				// }
-
+				transcribeNextSegments(tree, growingBranch, (anglePerUnit*i) -startingAngle )  ;
 			}
-
-			growingBranch->angleDelta = originalAngleDelta;
-
-			return arrayBranch;
 		}
 		case ' ':
 		{
@@ -343,7 +261,7 @@ Branch * transcribeNextSegments (Tree * tree , Branch * growingBranch)
 			printf("break\n");
 			if (drawnAnythingYet) {return nullptr;}
 			break;
-			
+
 		}
 		// case 'f':
 		// {
@@ -359,7 +277,7 @@ Branch * transcribeNextSegments (Tree * tree , Branch * growingBranch)
 			growingBranch-> geneCursor++;
 			printf("add segment\n");
 			// draw a new branch segment
-			Branch * newBranch = addBranchSegment ( tree, growingBranch) ;
+			Branch * newBranch = addBranchSegment ( tree, growingBranch, absoluteAngleOffset) ;
 			drawnAnythingYet = true;
 			return newBranch;
 		}
@@ -368,7 +286,7 @@ Branch * transcribeNextSegments (Tree * tree , Branch * growingBranch)
 			// increment angle cursor
 			growingBranch-> geneCursor++;
 			float alpha = alphanumeric(tree->genes[growingBranch->geneCursor]);
-			float angleAdjust = (alpha- 13) / 10;
+			float angleAdjust = (alpha - 13) / 10;
 			printf("increment angle %f\n", angleAdjust);
 			growingBranch->angleDelta += angleAdjust;
 			break;
@@ -378,7 +296,7 @@ Branch * transcribeNextSegments (Tree * tree , Branch * growingBranch)
 			// increment root thickness cursor
 			growingBranch-> geneCursor++;
 			float alpha = alphanumeric(tree->genes[growingBranch->geneCursor]);
-			float rootAdjust = (alpha- 13) / 10;
+			float rootAdjust = (alpha - 13) / 10;
 			printf("increment root thickness %f\n", rootAdjust);
 			growingBranch->rootThicknessDelta += rootAdjust;
 			break;
@@ -388,7 +306,7 @@ Branch * transcribeNextSegments (Tree * tree , Branch * growingBranch)
 			// increment tip thickness cursor
 			growingBranch-> geneCursor++;
 			float alpha = alphanumeric(tree->genes[growingBranch->geneCursor]);
-			float tipAdjust = (alpha- 13) / 10;
+			float tipAdjust = (alpha - 13) / 10;
 			printf("increment tip thickness %f\n", tipAdjust);
 			growingBranch->tipThicknessDelta += tipAdjust;
 			break;
@@ -398,7 +316,7 @@ Branch * transcribeNextSegments (Tree * tree , Branch * growingBranch)
 			// increment length cursor
 			growingBranch-> geneCursor++;
 			float alpha = alphanumeric(tree->genes[growingBranch->geneCursor]);
-			float lengthAdjust = (alpha- 13) / 10;
+			float lengthAdjust = (alpha - 13) / 10;
 			printf("increment length %f\n", lengthAdjust);
 			growingBranch->lengthDelta += lengthAdjust;
 			break;
@@ -440,12 +358,9 @@ void initializeGame ()
 	terrain.push_back( PhysicalObject(exampleBox2Vertices, true) );
 
 	addToWorld( &(terrain.back()) , b2Vec2(0.0f, -20.0f), 0.0f );
-	
 
 	// std::string exampleSentence = std::string("Weld joint definition. You need to specify local anchor points where they are attached and the relative body angle. The position of the anchor points is important for computing the reaction torque. ");
-	std::string exampleSentence = std::string(" lzbbbqhafbb ");
-
-
+	std::string exampleSentence = std::string(" bbbbbbbbbbbbbbbbbbqdjbbbbb ");
 	instantiateSeed(exampleSentence, nullptr, b2Vec2(50, 50));
 }
 
@@ -480,31 +395,19 @@ void recursiveUpdateMotors( Branch * branch )
 		recursiveUpdateMotors( &(*subBranch) )  ;
 	}
 }
-
-// void growTree ()
-// {
-// 			grow( &(*tree), growingBranch);
-// }
-
-
 void recursiveGrow (Tree * tree, Branch * growingBranch)
 {
-	// printf("recursiveGrow\n");
-
 	if (!growingBranch->expressed)
 	{
-		Branch * tempBranch = transcribeNextSegments(tree, growingBranch);
+		Branch * tempBranch = transcribeNextSegments(tree, growingBranch, 0.0f);
 		growingBranch->expressed = true;
 	}
-
-
 	std::list<Branch>::iterator branch;
 	for (branch = growingBranch->branches.begin(); branch != growingBranch->branches.end(); ++branch)
 	{
 		recursiveGrow ( tree, &(*branch));
 	}
 }
-
 
 void threadGame()
 {
@@ -524,29 +427,18 @@ void threadGame()
 	std::list<Branch>::iterator branch;
 	for (tree = garden.begin(); tree != garden.end(); ++tree)
 	{
-
 		for (branch = tree->branches.begin(); branch != tree->branches.end(); ++branch)
 		{
-
 			if (tree->mature )
 			{
-
-
 				recursiveGrow (&(*tree), &(*branch));
-				// transcribeUntilStop(tree, branch);
-				// transcribeUntilStop(&(*tree), &(*branch) );
 			}
-
-
-
 			recursiveUpdateMotors( &(*branch) );
-
 			if (tree->mature && branch->seed)
 			{
 				branch->flagDelete = true;
 				branch->object.flagDelete = true;
 			}
-			// branch->object.p_body->ApplyForce(wind, branch->object.p_body->GetWorldCenter() , true);
 		}
 	}
 
@@ -557,10 +449,8 @@ void threadGame()
 		{
 			if (branch->flagDelete)
 			{
-
 				if (branch->p_rjoint != nullptr)
 				{
-
 					m_world->DestroyJoint(branch->p_rjoint);
 				}
 				if (branch->p_djoint != nullptr)
@@ -573,8 +463,6 @@ void threadGame()
 
 					m_world->DestroyJoint(branch->p_wjoint);
 				}
-
-
 				deleteFromWorld ( &(branch->object) );
 			}
 
@@ -599,9 +487,6 @@ void threadGame()
 	ticks++;
 }
 
-
-
-
 unsigned int recursiveDrawingAssessment (Branch * branch)
 {
 	unsigned int total = 1;
@@ -614,7 +499,6 @@ unsigned int recursiveDrawingAssessment (Branch * branch)
 
 	return total;
 }
-
 
 void drawPhysicalObject (
     PhysicalObject * object,
@@ -634,7 +518,6 @@ void drawPhysicalObject (
 		std::vector<b2Vec2>::iterator vert;
 		for (vert = std::begin(object->vertices); vert !=  std::end(object->vertices); ++vert)
 		{
-
 			// add the position and rotation of the game-world object that the vertex belongs to.
 			b2Vec2 rotatedPoint = b2Vec2(   vert->x + bodyPosition.x, vert->y + bodyPosition.y   );
 
@@ -657,20 +540,12 @@ void drawPhysicalObject (
 		index_buffer_data[(*index_buffer_cursor)] = PRIMITIVE_RESTART;
 		(*index_buffer_cursor)++;
 	}
-
-
-
-
 }
 
 void recursiveDraw (Branch * branch,
                     unsigned int * vertex_buffer_cursor, float * vertex_buffer_data,
                     unsigned int * index_buffer_cursor,  unsigned int * index_buffer_content, unsigned int * index_buffer_data )
 {
-
-
-
-
 	drawPhysicalObject( &(branch->object), vertex_buffer_cursor, vertex_buffer_data, index_buffer_cursor, index_buffer_content, index_buffer_data );
 
 	std::list<Branch>::iterator subBranch;
@@ -680,12 +555,9 @@ void recursiveDraw (Branch * branch,
 	}
 }
 
-
-
 void gameGraphics()
 {
 	/** your graphics logic here. turn your data into floats and pack it into vertex_buffer_data. The sequence is r, g, b, a, x, y; repeat for each point. **/
-
 	unsigned int numberOfSquaresToDraw = 0;
 	std::list<Tree>::iterator tree;
 	std::list<Branch>::iterator branch;
@@ -705,21 +577,6 @@ void gameGraphics()
 
 	unsigned int nVertsToRenderThisTurn = numberOfSquaresToDraw * 4;
 	unsigned int nIndicesToUseThisTurn = numberOfSquaresToDraw * 5;
-
-
-
-	// std::list<PhysicalObject*>::iterator object;
-	// for (object = physicalObjects.begin(); object !=  physicalObjects.end(); ++object)
-	// {
-
-	// 	if ( (*object) == nullptr) {continue;}
-	// 	if ( (*object)->p_body == nullptr ) {continue;}
-
-	// 	unsigned int nObjectVerts = (*object)->vertices.size();
-	// 	nVertsToRenderThisTurn += nObjectVerts;
-	// 	nIndicesToUseThisTurn  += nObjectVerts + 1;
-	// }
-
 	long unsigned int totalNumberOfFields = nVertsToRenderThisTurn * numberOfFieldsPerVertex;
 	unsigned int vertex_buffer_cursor = 0;
 	float vertex_buffer_data[totalNumberOfFields];
@@ -733,11 +590,8 @@ void gameGraphics()
 		for (branch = tree->branches.begin(); branch != tree->branches.end(); ++branch)
 		{
 			recursiveDraw ( &(*branch) , &vertex_buffer_cursor, vertex_buffer_data, &index_buffer_cursor, &index_buffer_content, index_buffer_data );
-
 		}
 	}
-
-	// std::list<PhysicalObject>::iterator rock;
 	for (rock = terrain.begin(); rock != terrain.end(); ++rock)
 	{
 		// numberOfSquaresToDraw++;
@@ -746,44 +600,6 @@ void gameGraphics()
 
 
 	}
-
-	// // std::list<PhysicalObject>::iterator object;
-	// for (object = physicalObjects.begin(); object !=  physicalObjects.end(); ++object)
-	// {
-	// 	if ( (*object) == nullptr) {continue;}
-	// 	if ( (*object)->p_body == nullptr ) {continue;}
-
-	// 	b2Vec2 bodyPosition = (*object)->p_body->GetWorldCenter();
-	// 	float bodyAngle = (*object)->p_body->GetAngle();
-	// 	float bodyAngleSin = sin(bodyAngle);
-	// 	float bodyAngleCos = cos(bodyAngle);
-
-	// 	std::vector<b2Vec2>::iterator vert;
-	// 	for (vert = std::begin((*object)->vertices); vert !=  std::end((*object)->vertices); ++vert)
-	// 	{
-
-	// 		// add the position and rotation of the game-world object that the vertex belongs to.
-	// 		b2Vec2 rotatedPoint = b2Vec2(   vert->x + bodyPosition.x, vert->y + bodyPosition.y   );
-
-	// 		// printf("bodyposition %f 5f")
-	// 		rotatedPoint = b2RotatePointPrecomputed( bodyPosition, bodyAngleSin, bodyAngleCos, rotatedPoint);
-
-	// 		vertex_buffer_data[(vertex_buffer_cursor) + 0] = (*object)->color.r;
-	// 		vertex_buffer_data[(vertex_buffer_cursor) + 1] = (*object)->color.g;
-	// 		vertex_buffer_data[(vertex_buffer_cursor) + 2] = (*object)->color.b;
-	// 		vertex_buffer_data[(vertex_buffer_cursor) + 3] = (*object)->color.a;
-	// 		vertex_buffer_data[(vertex_buffer_cursor) + 4] = rotatedPoint.x;
-	// 		vertex_buffer_data[(vertex_buffer_cursor) + 5] = rotatedPoint.y ;
-	// 		(vertex_buffer_cursor) += 6;
-
-	// 		index_buffer_data[(index_buffer_cursor)] = (index_buffer_content);
-	// 		(index_buffer_cursor)++;
-	// 		(index_buffer_content)++;
-	// 	}
-
-	// 	index_buffer_data[(index_buffer_cursor)] = PRIMITIVE_RESTART;
-	// 	(index_buffer_cursor)++;
-	// }
 
 	glBufferData( GL_ARRAY_BUFFER, sizeof( vertex_buffer_data ), vertex_buffer_data, GL_DYNAMIC_DRAW );
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(index_buffer_data), index_buffer_data, GL_DYNAMIC_DRAW);

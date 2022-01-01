@@ -9,17 +9,11 @@
 
 #include <box2d.h>
 
-
 b2World * m_world = nullptr;
-
 b2MouseJoint* m_mouseJoint;
 b2Body * mouseDraggingBody;
 b2BodyDef groundBodyDef;
 b2Body * m_groundBody;
-
-
-
-
 
 class MyDestructionListener : public b2DestructionListener
 {
@@ -95,22 +89,14 @@ void initMouseJointWithBody (b2Vec2 p, b2Body * body)
 	return;
 }
 
-
 // this class pins together the parts you need for a box2d physical-world object.
 // if you make your own classes that represent physical objects, you should either have them inherit from this, or have a copy of one of these as a member.
 PhysicalObject::
 PhysicalObject (std::vector<b2Vec2>   vertices, bool flagStatic)
 {
-
 	this->owner = nullptr;
-
-	// this->flagReady = false;
 	this->flagDelete = false;
 	this->fraction = 0;
-
-	;
-
-	// this->jointDef =  b2RevoluteJointDef();
 	this->bodyDef = b2BodyDef();
 	this->bodyDef.userData = b2BodyUserData();
 
@@ -135,19 +121,14 @@ std::list<PhysicalObject*> physicalObjects;
 
 int checkClickObjects (b2Vec2 worldClick)
 {
-
-
 	printf("testing world position %f %f\n", worldClick.x, worldClick.y);
 	std::list<PhysicalObject*>::iterator object;
 	for (object = physicalObjects.begin(); object !=  physicalObjects.end(); ++object)
 	{
 		if ((*object)->p_fixture != nullptr)
 		{
-
-
 			if ((*object)->p_fixture->TestPoint( worldClick) )
 			{
-
 				initMouseJointWithBody (worldClick, (*object)->p_body);
 				return 1;
 			}
@@ -158,7 +139,6 @@ int checkClickObjects (b2Vec2 worldClick)
 	return 0;
 }
 
-
 void createJoint(Branch * a, Branch * b, float angle)
 {
 	printf("create joint\n");
@@ -168,23 +148,23 @@ void createJoint(Branch * a, Branch * b, float angle)
 		a->rjointDef.collideConnected = false; // this means that limb segments dont collide with their children
 		a->rjointDef.bodyA = a->object.p_body;
 		a->rjointDef.bodyB = b->object.p_body;
-		a->rjointDef.localAnchorA = b2Vec2( 1 * (a->length / 2) , 0.0f);
-		a->rjointDef.localAnchorB = b2Vec2( -1 * (b->length / 2), 0.0f );
+		a->rjointDef.localAnchorA = b2Vec2(  0.0f, 1 * (a->length / 2) );
+		a->rjointDef.localAnchorB = b2Vec2(  0.0f , -1 * (b->length / 2));
 		a->rjointDef.enableMotor = true;
-		a->rjointDef.enableLimit = true;
+		a->rjointDef.enableLimit = false;
 		a->rjointDef.lowerAngle = angle - 0.01f;
 		a->rjointDef.lowerAngle = angle + 0.01f;
-		a->rjointDef.maxMotorTorque = 10.0f;
+		a->rjointDef.maxMotorTorque = 0.1f;
 		a->p_rjoint = (b2RevoluteJoint *)(m_world->CreateJoint( &(a->rjointDef) ));
 	}
-	if (true)
+	if (false)
 	{
 		a->djointDef =  b2DistanceJointDef();
 		a->djointDef.collideConnected = false; // this means that limb segments dont collide with their children
 		a->djointDef.bodyA = a->object.p_body;
 		a->djointDef.bodyB = b->object.p_body;
-		a->djointDef.localAnchorA = b2Vec2( 1 * (a->length / 2), 0.0f     );
-		a->djointDef.localAnchorB = b2Vec2( -1 * (b->length / 2) , 0.0f);
+		a->djointDef.localAnchorA = b2Vec2(  0.0f, 1 * (a->length / 2) );
+		a->djointDef.localAnchorB = b2Vec2(  0.0f , -1 * (b->length / 2));
 		a->djointDef.length = 0.01f;
 		a->djointDef.minLength = 0.0f;
 		a->djointDef.maxLength = 0.02f;
@@ -198,11 +178,9 @@ void createJoint(Branch * a, Branch * b, float angle)
 		a->wjointDef.collideConnected = false; // this means that limb segments dont collide with their children
 		a->wjointDef.bodyA = a->object.p_body;
 		a->wjointDef.bodyB = b->object.p_body;
-		a->wjointDef.localAnchorA = b2Vec2(  1 * (a->length / 2) , 0.0f);
-		a->wjointDef.localAnchorB = b2Vec2(  -1 * (b->length / 2), 0.0f );
-		a->wjointDef.referenceAngle = 0.0f;// angle;// 0.01f;
-		// a->wjointDef.minLength = 0.0f;
-		// a->wjointDef.maxLength = 0.02f;
+		a->wjointDef.localAnchorA = b2Vec2(  0.0f, 1 * (a->length / 2) );
+		a->wjointDef.localAnchorB = b2Vec2(  0.0f , -1 * (b->length / 2));
+		a->wjointDef.referenceAngle = 0.0f;
 		a->wjointDef.stiffness = 10.0f;
 		a->wjointDef.damping = 10.0f;
 		a->p_wjoint = (b2WeldJoint *)(m_world->CreateJoint( &(a->wjointDef) ));
@@ -218,19 +196,19 @@ void createJointWithVariableBAnchor(Branch * a, PhysicalObject * b, b2Vec2 posit
 		a->rjointDef.collideConnected = false; // this means that limb segments dont collide with their children
 		a->rjointDef.bodyA = a->object.p_body;
 		a->rjointDef.bodyB = b->p_body;
-		a->rjointDef.localAnchorA = b2Vec2( 1 * (a->length / 2), 0.0f );
+		a->rjointDef.localAnchorA = b2Vec2( 0.0f , 1 * (a->length / 2));
 		a->rjointDef.localAnchorB = positionOnB;
 		a->rjointDef.enableMotor = true;
 		a->rjointDef.maxMotorTorque = 10.0f;
 		a->p_rjoint = (b2RevoluteJoint *)m_world->CreateJoint( &(a->rjointDef) );
 	}
-	if (true)
+	if (false)
 	{
 		a->djointDef =  b2DistanceJointDef();
 		a->djointDef.collideConnected = false; // this means that limb segments dont collide with their children
 		a->djointDef.bodyA = a->object.p_body;
 		a->djointDef.bodyB = b->p_body;
-		a->djointDef.localAnchorA = b2Vec2( 1 * (a->length / 2) , 0.0f);
+		a->djointDef.localAnchorA = b2Vec2( 0.0f , 1 * (a->length / 2));
 		a->djointDef.localAnchorB =  positionOnB;
 		a->djointDef.length = 0.01f;
 		a->djointDef.minLength = 0.0f;
@@ -245,11 +223,9 @@ void createJointWithVariableBAnchor(Branch * a, PhysicalObject * b, b2Vec2 posit
 		a->wjointDef.collideConnected = false; // this means that limb segments dont collide with their children
 		a->wjointDef.bodyA = a->object.p_body;
 		a->wjointDef.bodyB = b->p_body;
-		a->wjointDef.localAnchorA = b2Vec2(   1 * (a->length / 2) , 0.0f);
-		a->wjointDef.localAnchorB = positionOnB;//b2Vec2( 0.0f,   -1 * (b->length / 2) );
-		a->wjointDef.referenceAngle = +0.5 * const_pi;// 0.01f;
-		// a->wjointDef.minLength = 0.0f;
-		// a->wjointDef.maxLength = 0.02f;
+		a->wjointDef.localAnchorA = b2Vec2( 0.0f , 1 * (a->length / 2));
+		a->wjointDef.localAnchorB = positionOnB;
+		a->wjointDef.referenceAngle = +0.5 * const_pi;
 		a->wjointDef.stiffness = 10.0f;
 		a->wjointDef.damping = 10.0f;
 		a->p_wjoint = (b2WeldJoint *)(m_world->CreateJoint( &(a->wjointDef) ));
@@ -258,8 +234,6 @@ void createJointWithVariableBAnchor(Branch * a, PhysicalObject * b, b2Vec2 posit
 
 void collisionHandler (b2Contact * contact)
 {
-
-	// printf("pliope\n");
 	b2Fixture* fixtureA = contact->GetFixtureA();
 	b2Fixture* fixtureB = contact->GetFixtureB();
 
@@ -268,147 +242,55 @@ void collisionHandler (b2Contact * contact)
 
 	if (userDataA != nullptr)
 	{
-
-		// printf("pencoiec  %u a\n", userDataA->dataType);
 		if (userDataA->dataType == TYPE_BRANCH)
 		{
-
-			// printf("a\n");
-
-
 			if ( ((PhysicalObject *)(userDataA->uData)) != nullptr  )
 			{
-
-				// printf("b\n");
 				if ( ((PhysicalObject *)(userDataA->uData))->owner != nullptr)
 				{
-
-					// printf("c\n");
 					if (((PhysicalObject *)(userDataA->uData))->owner->owner != nullptr)
 					{
-
-						// printf("d\n");
-
 						((PhysicalObject *)(userDataA->uData))->owner->owner->mature  = true;
 						((PhysicalObject *)(userDataA->uData))->owner->owner->sproutPosition = ((PhysicalObject *)(userDataA->uData))->owner->object.p_body->GetWorldCenter();
 
 						if (userDataB != nullptr)
 						{
-
-							// printf("vnevtfic\n");
-							// if (userDataB->dataType == TYPE_BRANCH)
-							// {
-
-							// printf("e\n");
-
 							if ( ((PhysicalObject *)(userDataB->uData)) != nullptr  )
 							{
-
-								// printf("f\n");
-								// if ( ((PhysicalObject *)(userDataB->uData))->owner != nullptr)
-								// {
-
-								// 	// printf("g\n");
-								// 	if (((PhysicalObject *)(userDataB->uData))->owner->owner != nullptr)
-								// 	{
-
-
-								// printf("h\n");
-								// ((PhysicalObject *)(userDataB->uData))->owner->owner->mature  = true;
-								// ((PhysicalObject *)(userDataB->uData))->owner->owner->sproutPosition = ((PhysicalObject *)(userDataB->uData))->owner->GetWorldCenter();
-
 								((PhysicalObject *)(userDataA->uData))->owner->owner->affixedObject = ((PhysicalObject *)(userDataB->uData));
-
-								// 	}
-								// }
-
 							}
-							// }
-
 						}
-
-
 					}
 				}
-
 			}
-
-
 		}
-
 	}
 
 	if (userDataB != nullptr)
 	{
-
-		// printf("vnevtfic\n");
 		if (userDataB->dataType == TYPE_BRANCH)
 		{
-
-			// printf("e\n");
-
 			if ( ((PhysicalObject *)(userDataB->uData)) != nullptr  )
 			{
-
-				// printf("f\n");
 				if ( ((PhysicalObject *)(userDataB->uData))->owner != nullptr)
 				{
-
-					// printf("g\n");
 					if (((PhysicalObject *)(userDataB->uData))->owner->owner != nullptr)
 					{
-
-
-						// printf("h\n");
 						((PhysicalObject *)(userDataB->uData))->owner->owner->mature  = true;
 						((PhysicalObject *)(userDataB->uData))->owner->owner->sproutPosition = ((PhysicalObject *)(userDataB->uData))->owner->object.p_body->GetWorldCenter();
 
 						if (userDataA != nullptr)
 						{
-
-							// printf("pencoiec  %u a\n", userDataA->dataType);
-							// if (userDataA->dataType == TYPE_BRANCH)
-							// {
-
-							// printf("a\n");
-
-
 							if ( ((PhysicalObject *)(userDataA->uData)) != nullptr  )
 							{
-
-								// printf("b\n");
-								// if ( ((PhysicalObject *)(userDataA->uData))->owner != nullptr)
-								// {
-
-								// 	// printf("c\n");
-								// 	if (((PhysicalObject *)(userDataA->uData))->owner->owner != nullptr)
-								// 	{
-
-								// printf("d\n");
-
 								((PhysicalObject *)(userDataB->uData))->owner->owner->affixedObject = ((PhysicalObject *)(userDataA->uData));
-								// ((PhysicalObject *)(userDataA->uData))->owner->owner->mature  = true;
-								// ((PhysicalObject *)(userDataA->uData))->owner->owner->sproutPosition = ((PhysicalObject *)(userDataA->uData))->owner->GetWorldCenter();
-
-								// 	}
-								// }
-
 							}
-
-
-							// }
-
 						}
-
 					}
 				}
-
 			}
 		}
-
 	}
-
-
 }
 
 class MyListener : public b2ContactListener
@@ -554,10 +436,11 @@ void addToWorld(PhysicalObject * object, b2Vec2 position, float angle)
 	object->p_body = m_world->CreateBody( &(object->bodyDef) );
 
 
-
+if (  object->bodyDef.type == b2_dynamicBody)
+	{
 
 	object->p_body ->SetTransform(position, angle);
-
+}
 
 	object->p_fixture = object->p_body->CreateFixture(&(object->shape), 0.12f);	// this endows the shape with mass and is what adds it to the physical world. // 1.2f is the default density
 
