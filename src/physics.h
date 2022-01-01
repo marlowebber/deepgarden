@@ -62,8 +62,8 @@ bool getMouseJointStatus () ;
 
 
 void shine (b2Vec2 p1, b2Vec2 p2);
-void createJoint(PhysicalObject * a, PhysicalObject * b);
-void createJointWithVariableBAnchor(PhysicalObject * a, PhysicalObject * b, b2Vec2 positionOnB);
+void createJoint(Branch * a, Branch * b);
+void createJointWithVariableBAnchor(Branch * a, PhysicalObject * b, b2Vec2 positionOnB);
 
 void exampleMenuCallback(void * userData);
 int checkClickObjects (b2Vec2 worldClick);

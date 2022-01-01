@@ -108,8 +108,7 @@ PhysicalObject (std::vector<b2Vec2>   vertices, bool flagStatic)
 	this->flagDelete = false;
 	this->fraction = 0;
 
-	this->jointDef = b2RevoluteJointDef();
-	this->p_joint = nullptr;
+	;
 
 	// this->jointDef =  b2RevoluteJointDef();
 	this->bodyDef = b2BodyDef();
@@ -142,50 +141,100 @@ int checkClickObjects (b2Vec2 worldClick)
 	std::list<PhysicalObject*>::iterator object;
 	for (object = physicalObjects.begin(); object !=  physicalObjects.end(); ++object)
 	{
-
-		if ((*object)->p_fixture->TestPoint( worldClick) )
+		if ((*object)->p_fixture != nullptr)
 		{
 
-			initMouseJointWithBody (worldClick, (*object)->p_body);
-			return 1;
-		}
 
+			if ((*object)->p_fixture->TestPoint( worldClick) )
+			{
+
+				initMouseJointWithBody (worldClick, (*object)->p_body);
+				return 1;
+			}
+
+		}
 	}
 
 	return 0;
 }
 
 
-void createJoint(PhysicalObject * a, PhysicalObject * b)
+void createJoint(Branch * a, Branch * b)
 {
 
 	printf("create joint\n");
-	a->jointDef =  b2RevoluteJointDef();
-	a->jointDef.collideConnected = false; // this means that limb segments dont collide with their children
-	a->jointDef.bodyA = a->p_body;
-	a->jointDef.bodyB = b->p_body;
-	a->jointDef.localAnchorA = b2Vec2( 0.0f,   -1 * (lengthCursor / 2) );
-	a->jointDef.localAnchorB = b2Vec2( 0.0f,   1  * (lengthCursor / 2) );
-	a->jointDef.enableMotor = true;
-	a->jointDef.maxMotorTorque = 10000.0f;
-	a->p_joint = (b2RevoluteJoint *)(m_world->CreateJoint( &(a->jointDef) ));
+	if (true) 
+	{
+
+
+		a->rjointDef =  b2RevoluteJointDef();
+		a->rjointDef.collideConnected = false; // this means that limb segments dont collide with their children
+		a->rjointDef.bodyA = a->object.p_body;
+		a->rjointDef.bodyB = b->object.p_body;
+		a->rjointDef.localAnchorA = b2Vec2( 0.0f,    1 * (a->length / 2) );
+		a->rjointDef.localAnchorB = b2Vec2( 0.0f,   -1 * (b->length / 2) );
+		a->rjointDef.enableMotor = true;
+		a->rjointDef.enableLimit = false;
+		a->rjointDef.maxMotorTorque = 1.0f;
+		a->p_rjoint = (b2RevoluteJoint *)(m_world->CreateJoint( &(a->rjointDef) ));
+
+	}
+
+	a->djointDef =  b2DistanceJointDef();
+	a->djointDef.collideConnected = false; // this means that limb segments dont collide with their children
+	a->djointDef.bodyA = a->object.p_body;
+	a->djointDef.bodyB = b->object.p_body;
+	a->djointDef.localAnchorA = b2Vec2( 0.0f,    1 * (a->length / 2) );
+	a->djointDef.localAnchorB = b2Vec2( 0.0f,   -1 * (b->length / 2) );
+	a->djointDef.length = 0.01f;
+	a->djointDef.minLength = 0.0f;
+	a->djointDef.maxLength = 0.02f;
+	a->djointDef.stiffness = 10.0f;
+	a->djointDef.damping = 100.0f;
+	a->p_djoint = (b2DistanceJoint *)(m_world->CreateJoint( &(a->djointDef) ));
+
+
+
+
 
 }
 
 
-void createJointWithVariableBAnchor(PhysicalObject * a, PhysicalObject * b, b2Vec2 positionOnB)
+void createJointWithVariableBAnchor(Branch * a, PhysicalObject * b, b2Vec2 positionOnB)
 {
 
 	printf("create joint\n");
-	a->jointDef =  b2RevoluteJointDef();
-	a->jointDef.collideConnected = false; // this means that limb segments dont collide with their children
-	a->jointDef.bodyA = a->p_body;
-	a->jointDef.bodyB = b->p_body;
-	a->jointDef.localAnchorA = b2Vec2( 0.0f,   -1 * (lengthCursor / 2) );
-	a->jointDef.localAnchorB = positionOnB;//b2Vec2( 0.0f,   1 * (lengthCursor / 2) );
-	a->jointDef.enableMotor = true;
-	a->jointDef.maxMotorTorque = 10000.0f;
-	a->p_joint = (b2RevoluteJoint *)m_world->CreateJoint( &(a->jointDef) );
+
+	if (true)
+	 {
+			a->rjointDef =  b2RevoluteJointDef();
+	a->rjointDef.collideConnected = false; // this means that limb segments dont collide with their children
+	a->rjointDef.bodyA = a->object.p_body;
+	a->rjointDef.bodyB = b->p_body;
+	a->rjointDef.localAnchorA = b2Vec2( 0.0f,   1 * (a->length / 2) );
+	a->rjointDef.localAnchorB = positionOnB;
+	a->rjointDef.enableMotor = true;
+	a->rjointDef.maxMotorTorque = 10.0f;
+	a->p_rjoint = (b2RevoluteJoint *)m_world->CreateJoint( &(a->rjointDef) );
+
+	}
+
+
+		a->djointDef =  b2DistanceJointDef();
+	a->djointDef.collideConnected = false; // this means that limb segments dont collide with their children
+	a->djointDef.bodyA = a->object.p_body;
+	a->djointDef.bodyB = b->p_body;
+	a->djointDef.localAnchorA = b2Vec2( 0.0f,    1 * (a->length / 2) );
+	a->djointDef.localAnchorB =  positionOnB;
+	a->djointDef.length = 0.01f;
+	a->djointDef.minLength = 0.0f;
+	a->djointDef.maxLength = 0.02f;
+	a->djointDef.stiffness = 10.0f;
+	a->djointDef.damping = 100.0f;
+	a->p_djoint = (b2DistanceJoint *)(m_world->CreateJoint( &(a->djointDef) ));
+
+
+
 
 }
 
@@ -492,7 +541,7 @@ void  addToWorld(PhysicalObject * object, b2Vec2 position, float angle)
 	object->p_body ->SetTransform(position, angle);
 
 
-	object->p_fixture = object->p_body->CreateFixture(&(object->shape), 0.012f);	// this endows the shape with mass and is what adds it to the physical world. // 1.2f is the default density
+	object->p_fixture = object->p_body->CreateFixture(&(object->shape), 0.12f);	// this endows the shape with mass and is what adds it to the physical world. // 1.2f is the default density
 
 
 
@@ -570,11 +619,7 @@ void deleteFromWorld (PhysicalObject * object)
 	object->p_body->DestroyFixture(object->p_fixture);
 	m_world->DestroyBody(object->p_body); 	// this action is for real, you can't grow it back.
 
-	if (object->p_joint != nullptr)
-	{
 
-		m_world->DestroyJoint(object->p_joint);
-	}
 }
 
 void exampleMenuCallback(void * userData)
@@ -589,7 +634,9 @@ void initializePhysics ()
 	// https://stackoverflow.com/questions/9459035/why-does-rand-yield-the-same-sequence-of-numbers-on-every-run
 	setupExtremelyFastNumberGenerators();
 	srand((unsigned int)time(NULL));
-	b2Vec2 gravity = b2Vec2(0.0f, -10.0f);
+	// b2Vec2 gravity = b2Vec2(0.0f, -10.0f);
+
+	b2Vec2 gravity = b2Vec2(0.0f, 0.0f);
 	m_world = new b2World(gravity);
 	m_world->SetContactListener(&listener);
 	setupForMouseJoint();

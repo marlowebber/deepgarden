@@ -54,8 +54,6 @@ struct PhysicalObject
 	// bool flagReady;
 	b2Color color;
 
-	b2RevoluteJointDef jointDef;
-	b2RevoluteJoint * p_joint;
 
 	std::vector<b2Vec2>  vertices;
 
@@ -78,8 +76,10 @@ struct Branch
 	std::list<Branch> branches;
 
 	bool seed;
-
 	bool stem;
+	
+	
+	bool expressed;
 
 	// bool ready;
 
@@ -95,6 +95,19 @@ struct Branch
 
 	PhysicalObject object = PhysicalObject(  vertices, false);
 
+	float rootThickness;
+	float tipThickness;
+	float length;
+
+	unsigned int geneCursorStartPosition;
+	unsigned int geneCursor;
+
+
+	b2RevoluteJointDef rjointDef;
+	b2RevoluteJoint * p_rjoint;
+
+	b2DistanceJointDef djointDef;
+	b2DistanceJoint * p_djoint;
 
 	// Branch();
 
@@ -102,7 +115,14 @@ struct Branch
 
 	bool flagDelete;
 
-	Branch();
+	float rootThicknessDelta  		;
+	float tipThicknessDelta  		;
+	float lengthDelta 			;
+	float angleDelta			;
+	b2Color colorDelta		;
+
+
+	Branch(float rootThickness, float tipThickness, float length, float naturalAngle, b2Color color );
 
 };
 
@@ -130,9 +150,25 @@ struct Tree
 
 	bool germinated;
 
-	uint geneCursor;
+	// uint geneCursor;
 
 	bool flagDelete;
+
+	Branch * lastGrownBranch;
+
+	unsigned int geneCursor;
+
+
+	// float rootThicknessCursor  		;
+	// float tipThicknessCursor  		;
+	// float lengthCursor 			;
+	// float angleCursor 			;
+	// b2Color colorCursor 		;
+
+
+
+
+
 
 	Tree(std::string genes);
 
