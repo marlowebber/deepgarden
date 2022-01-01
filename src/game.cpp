@@ -42,7 +42,7 @@ Branch::Branch(float rootThickness, float tipThickness, float length, float natu
 	this->rjointDef = b2RevoluteJointDef();
 	this->p_rjoint = nullptr;
 
-	                 this->djointDef = b2DistanceJointDef();
+	this->djointDef = b2DistanceJointDef();
 	this->p_djoint = nullptr;
 }
 
@@ -121,10 +121,10 @@ Branch * addBranchSegment (Tree * tree, Branch * growingBranch)
 	// printf("draw a branch segment r: %f, t %f, l %f, a %f\n",  tree->lengthCursor, tree->tipThicknessCursor, tree->rootThicknessCursor ,tree->angleCursor );
 	Branch * newBranch ;
 
-	float newBranch_length        = growingBranch->length + growingBranch->lengthDelta;
-	float newBranch_tipThickness  = growingBranch->length + growingBranch->lengthDelta;
-	float newBranch_rootThickness = growingBranch->rootThickness + growingBranch->rootThicknessDelta;
-	float newBranch_naturalAngle  = growingBranch->naturalAngle + growingBranch->angleDelta;
+	float newBranch_length        = clamp ( abs(growingBranch->length 			+ growingBranch->lengthDelta 		), 0.1f, 10.0f	);
+	float newBranch_tipThickness  = clamp ( abs(growingBranch->tipThickness 	+ growingBranch->tipThicknessDelta	), 0.1f, 10.0f	);
+	float newBranch_rootThickness = clamp ( abs(growingBranch->rootThickness 	+ growingBranch->rootThicknessDelta	), 0.1f, 10.0f	);
+	float newBranch_naturalAngle  = clamp ( abs(growingBranch->naturalAngle 	+ growingBranch->angleDelta			), 0.1f, 10.0f	);
 	b2Color newBranch_color = b2Color(
 	                              growingBranch->color.r + growingBranch->colorDelta.r,
 	                              growingBranch->color.g + growingBranch->colorDelta.g,
@@ -197,10 +197,10 @@ Branch * addBranchSegment (Tree * tree, Branch * growingBranch)
 					if (tree->affixedObject != nullptr)
 					{
 						printf("a tree grew in the ground\n");
-						b2Vec2 bLocalAnchor = b2Vec2(  
-							tree->sproutPosition.x - tree->affixedObject->p_body->GetWorldCenter().x ,
-							tree->sproutPosition.y - tree->affixedObject->p_body->GetWorldCenter().y 
-							   );
+						b2Vec2 bLocalAnchor = b2Vec2(
+						                          tree->sproutPosition.x - tree->affixedObject->p_body->GetWorldCenter().x ,
+						                          tree->sproutPosition.y - tree->affixedObject->p_body->GetWorldCenter().y
+						                      );
 
 
 						newBranch->object.p_body ->SetTransform(tree->sproutPosition, 0.5f * const_pi);
@@ -263,7 +263,6 @@ Branch * transcribeNextSegments (Tree * tree , Branch * growingBranch)
 		{
 			// parallel array
 			growingBranch-> geneCursor++;
-
 			int arrayN = alphanumeric(tree->genes[growingBranch->geneCursor]);
 
 
@@ -301,6 +300,42 @@ Branch * transcribeNextSegments (Tree * tree , Branch * growingBranch)
 
 			return newBranch;
 		}
+		case 'a':
+		{
+			// increment angle cursor
+			growingBranch-> geneCursor++;
+			float angleAdjust = (alphanumeric(tree->genes[growingBranch->geneCursor]) - 13) / 10;
+			printf("increment angle %f\n", angleAdjust);
+			growingBranch->angleDelta += angleAdjust;
+			break;
+		}
+		case 'r':
+		{
+			// increment root thickness cursor
+			growingBranch-> geneCursor++;
+			float rootAdjust = (alphanumeric(tree->genes[growingBranch->geneCursor]) - 13) / 10;
+			printf("increment root thickness %f\n", rootAdjust);
+			growingBranch->rootThicknessDelta += rootAdjust;
+			break;
+		}
+		case 't':
+		{
+			// increment tip thickness cursor
+			growingBranch-> geneCursor++;
+			float tipAdjust = (alphanumeric(tree->genes[growingBranch->geneCursor]) - 13) / 10;
+			printf("increment tip thickness %f\n", tipAdjust);
+			growingBranch->tipThicknessDelta += tipAdjust;
+			break;
+		}
+		case 'l':
+		{
+			// increment length cursor
+			growingBranch-> geneCursor++;
+			float lengthAdjust = (alphanumeric(tree->genes[growingBranch->geneCursor]) - 13) / 10;
+			printf("increment length %f\n", lengthAdjust);
+			growingBranch->lengthDelta += lengthAdjust;
+			break;
+		}
 		default:
 		{
 			printf(".");
@@ -334,7 +369,7 @@ void initializeGame ()
 		b2Vec2( +100 * exampleBoxSize ,  +1 * exampleBoxSize) // b2Vec2 tipVertexB =
 	};
 	addToWorld( new PhysicalObject(exampleBox2Vertices, true) , b2Vec2(0.0f, -20.0f), 0.0f );
-	std::string exampleSentence = std::string(" bbbqdb");
+	std::string exampleSentence = std::string(" bbblzqdazdsbb");
 	instantiateSeed(exampleSentence, nullptr, b2Vec2(50, 50));
 }
 
@@ -345,12 +380,12 @@ void recursiveUpdateMotors( Branch * branch )
 		if (branch->p_rjoint != nullptr)
 		{
 
-			float motorAngle =branch->p_rjoint->GetJointAngle();
-			printf("motor angle %f\n", motorAngle);
+			float motorAngle = branch->p_rjoint->GetJointAngle();
+			// printf("motor angle %f\n", motorAngle);
 
 
-			float motorSpeed = constrainAngle((motorAngle )  )   ;
-			 motorSpeed += branch->p_rjoint->GetJointSpeed() * -0.5;
+			float motorSpeed = constrainAngle((motorAngle + branch->naturalAngle )  )   ;
+			motorSpeed += branch->p_rjoint->GetJointSpeed() * -0.5;
 			branch->p_rjoint->SetMotorSpeed(motorSpeed);
 		}
 	}
@@ -360,10 +395,10 @@ void recursiveUpdateMotors( Branch * branch )
 	{
 		if (subBranch->p_rjoint != nullptr)
 		{
-			
-			float motorAngle =subBranch->p_rjoint->GetJointAngle();
-			float motorSpeed = constrainAngle((motorAngle ) + (1.0f*const_pi) )  ;
-			 motorSpeed += subBranch->p_rjoint->GetJointSpeed() * -0.5;
+
+			float motorAngle = subBranch->p_rjoint->GetJointAngle();
+			float motorSpeed = constrainAngle((motorAngle ) + (1.0f * const_pi) +  branch->naturalAngle)  ;
+			motorSpeed += subBranch->p_rjoint->GetJointSpeed() * -0.5;
 			subBranch->p_rjoint->SetMotorSpeed(motorSpeed);
 		}
 		recursiveUpdateMotors( &(*subBranch) )  ;
@@ -483,25 +518,110 @@ void threadGame()
 	ticks++;
 }
 
+
+
+
+unsigned int recursiveDrawingAssessment (Branch * branch)
+{
+	unsigned int total = 1;
+
+	std::list<Branch>::iterator subBranch;
+	for (subBranch = branch->branches.begin(); subBranch != branch->branches.end(); ++subBranch)
+	{
+		total += recursiveDrawingAssessment( &(*subBranch));
+	}
+
+	return total;
+}
+
+
+void recursiveDraw (Branch * branch,
+                    unsigned int * vertex_buffer_cursor, float * vertex_buffer_data,
+                    unsigned int * index_buffer_cursor,  unsigned int * index_buffer_content, unsigned int * index_buffer_data )
+{
+
+
+	if ( branch->object.p_body != nullptr )
+	{
+
+		b2Vec2 bodyPosition = branch->object.p_body->GetWorldCenter();
+		float bodyAngle = branch->object.p_body->GetAngle();
+		float bodyAngleSin = sin(bodyAngle);
+		float bodyAngleCos = cos(bodyAngle);
+
+
+		std::vector<b2Vec2>::iterator vert;
+		for (vert = std::begin(branch->object.vertices); vert !=  std::end(branch->object.vertices); ++vert)
+		{
+
+			// add the position and rotation of the game-world object that the vertex belongs to.
+			b2Vec2 rotatedPoint = b2Vec2(   vert->x + bodyPosition.x, vert->y + bodyPosition.y   );
+
+			// printf("bodyposition %f 5f")
+			rotatedPoint = b2RotatePointPrecomputed( bodyPosition, bodyAngleSin, bodyAngleCos, rotatedPoint);
+
+			vertex_buffer_data[(*vertex_buffer_cursor) + 0] = branch->color.r;
+			vertex_buffer_data[(*vertex_buffer_cursor) + 1] = branch->color.g;
+			vertex_buffer_data[(*vertex_buffer_cursor) + 2] = branch->color.b;
+			vertex_buffer_data[(*vertex_buffer_cursor) + 3] = branch->color.a;
+			vertex_buffer_data[(*vertex_buffer_cursor) + 4] = rotatedPoint.x;
+			vertex_buffer_data[(*vertex_buffer_cursor) + 5] = rotatedPoint.y ;
+			(*vertex_buffer_cursor) += 6;
+
+			index_buffer_data[(*index_buffer_cursor)] = (*index_buffer_content);
+			(*index_buffer_cursor)++;
+			(*index_buffer_content)++;
+		}
+
+		index_buffer_data[(*index_buffer_cursor)] = PRIMITIVE_RESTART;
+		(*index_buffer_cursor)++;
+	}
+
+
+	
+
+
+
+	std::list<Branch>::iterator subBranch;
+	for (subBranch = branch->branches.begin(); subBranch != branch->branches.end(); ++subBranch)
+	{
+		recursiveDraw( &(*subBranch)  , vertex_buffer_cursor, vertex_buffer_data, index_buffer_cursor, index_buffer_content, index_buffer_data  );
+	}
+}
+
+
+
 void gameGraphics()
 {
 	/** your graphics logic here. turn your data into floats and pack it into vertex_buffer_data. The sequence is r, g, b, a, x, y; repeat for each point. **/
 
-	unsigned int nVertsToRenderThisTurn = 0;
-	unsigned int nIndicesToUseThisTurn = 0;
-
-	std::list<PhysicalObject*>::iterator object;
-	for (object = physicalObjects.begin(); object !=  physicalObjects.end(); ++object)
+	unsigned int numberOfSquaresToDraw = 0;
+	std::list<Tree>::iterator tree;
+	std::list<Branch>::iterator branch;
+	for (tree = garden.begin(); tree != garden.end(); ++tree)
 	{
-
-		if ( (*object) == nullptr) {continue;}
-
-		if ( (*object)->p_body == nullptr ) {continue;}
-
-		unsigned int nObjectVerts = (*object)->vertices.size();
-		nVertsToRenderThisTurn += nObjectVerts;
-		nIndicesToUseThisTurn  += nObjectVerts + 1;
+		for (branch = tree->branches.begin(); branch != tree->branches.end(); ++branch)
+		{
+			numberOfSquaresToDraw += recursiveDrawingAssessment( &(*branch) );
+		}
 	}
+
+	unsigned int nVertsToRenderThisTurn = numberOfSquaresToDraw * 4;
+	unsigned int nIndicesToUseThisTurn = numberOfSquaresToDraw * 5;
+
+
+
+	// std::list<PhysicalObject*>::iterator object;
+	// for (object = physicalObjects.begin(); object !=  physicalObjects.end(); ++object)
+	// {
+
+	// 	if ( (*object) == nullptr) {continue;}
+	// 	if ( (*object)->p_body == nullptr ) {continue;}
+
+	// 	unsigned int nObjectVerts = (*object)->vertices.size();
+	// 	nVertsToRenderThisTurn += nObjectVerts;
+	// 	nIndicesToUseThisTurn  += nObjectVerts + 1;
+	// }
 
 	long unsigned int totalNumberOfFields = nVertsToRenderThisTurn * numberOfFieldsPerVertex;
 	unsigned int vertex_buffer_cursor = 0;
@@ -510,41 +630,53 @@ void gameGraphics()
 	unsigned int index_buffer_content = 0;
 	unsigned int index_buffer_data[nIndicesToUseThisTurn];
 
-	// std::list<PhysicalObject>::iterator object;
-	for (object = physicalObjects.begin(); object !=  physicalObjects.end(); ++object)
+
+	for (tree = garden.begin(); tree != garden.end(); ++tree)
 	{
-		if ( (*object) == nullptr) {continue;}
-		if ( (*object)->p_body == nullptr ) {continue;}
-
-		b2Vec2 bodyPosition = (*object)->p_body->GetWorldCenter();
-		float bodyAngle = (*object)->p_body->GetAngle();
-		float bodyAngleSin = sin(bodyAngle);
-		float bodyAngleCos = cos(bodyAngle);
-
-		std::vector<b2Vec2>::iterator vert;
-		for (vert = std::begin((*object)->vertices); vert !=  std::end((*object)->vertices); ++vert)
+		for (branch = tree->branches.begin(); branch != tree->branches.end(); ++branch)
 		{
+			recursiveDraw ( &(*branch) , &vertex_buffer_cursor, vertex_buffer_data, &index_buffer_cursor, &index_buffer_content, index_buffer_data );
 
-			// add the position and rotation of the game-world object that the vertex belongs to.
-			b2Vec2 rotatedPoint = b2Vec2(   vert->x + bodyPosition.x, vert->y + bodyPosition.y   );
-			rotatedPoint = b2RotatePointPrecomputed( bodyPosition, bodyAngleSin, bodyAngleCos, rotatedPoint);
-
-			vertex_buffer_data[(vertex_buffer_cursor) + 0] = (*object)->color.r;
-			vertex_buffer_data[(vertex_buffer_cursor) + 1] = (*object)->color.g;
-			vertex_buffer_data[(vertex_buffer_cursor) + 2] = (*object)->color.b;
-			vertex_buffer_data[(vertex_buffer_cursor) + 3] = (*object)->color.a;
-			vertex_buffer_data[(vertex_buffer_cursor) + 4] = rotatedPoint.x;
-			vertex_buffer_data[(vertex_buffer_cursor) + 5] = rotatedPoint.y ;
-			(vertex_buffer_cursor) += 6;
-
-			index_buffer_data[(index_buffer_cursor)] = (index_buffer_content);
-			(index_buffer_cursor)++;
-			(index_buffer_content)++;
 		}
-
-		index_buffer_data[(index_buffer_cursor)] = PRIMITIVE_RESTART;
-		(index_buffer_cursor)++;
 	}
+
+	// // std::list<PhysicalObject>::iterator object;
+	// for (object = physicalObjects.begin(); object !=  physicalObjects.end(); ++object)
+	// {
+	// 	if ( (*object) == nullptr) {continue;}
+	// 	if ( (*object)->p_body == nullptr ) {continue;}
+
+	// 	b2Vec2 bodyPosition = (*object)->p_body->GetWorldCenter();
+	// 	float bodyAngle = (*object)->p_body->GetAngle();
+	// 	float bodyAngleSin = sin(bodyAngle);
+	// 	float bodyAngleCos = cos(bodyAngle);
+
+	// 	std::vector<b2Vec2>::iterator vert;
+	// 	for (vert = std::begin((*object)->vertices); vert !=  std::end((*object)->vertices); ++vert)
+	// 	{
+
+	// 		// add the position and rotation of the game-world object that the vertex belongs to.
+	// 		b2Vec2 rotatedPoint = b2Vec2(   vert->x + bodyPosition.x, vert->y + bodyPosition.y   );
+
+	// 		// printf("bodyposition %f 5f")
+	// 		rotatedPoint = b2RotatePointPrecomputed( bodyPosition, bodyAngleSin, bodyAngleCos, rotatedPoint);
+
+	// 		vertex_buffer_data[(vertex_buffer_cursor) + 0] = (*object)->color.r;
+	// 		vertex_buffer_data[(vertex_buffer_cursor) + 1] = (*object)->color.g;
+	// 		vertex_buffer_data[(vertex_buffer_cursor) + 2] = (*object)->color.b;
+	// 		vertex_buffer_data[(vertex_buffer_cursor) + 3] = (*object)->color.a;
+	// 		vertex_buffer_data[(vertex_buffer_cursor) + 4] = rotatedPoint.x;
+	// 		vertex_buffer_data[(vertex_buffer_cursor) + 5] = rotatedPoint.y ;
+	// 		(vertex_buffer_cursor) += 6;
+
+	// 		index_buffer_data[(index_buffer_cursor)] = (index_buffer_content);
+	// 		(index_buffer_cursor)++;
+	// 		(index_buffer_content)++;
+	// 	}
+
+	// 	index_buffer_data[(index_buffer_cursor)] = PRIMITIVE_RESTART;
+	// 	(index_buffer_cursor)++;
+	// }
 
 	glBufferData( GL_ARRAY_BUFFER, sizeof( vertex_buffer_data ), vertex_buffer_data, GL_DYNAMIC_DRAW );
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(index_buffer_data), index_buffer_data, GL_DYNAMIC_DRAW);
