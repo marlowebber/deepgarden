@@ -62,7 +62,7 @@ bool getMouseJointStatus () ;
 
 
 void shine (b2Vec2 p1, b2Vec2 p2);
-void createJoint(Branch * a, Branch * b);
+void createJoint(Branch * a, Branch * b, float angle);
 void createJointWithVariableBAnchor(Branch * a, PhysicalObject * b, b2Vec2 positionOnB);
 
 void exampleMenuCallback(void * userData);

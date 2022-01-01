@@ -77,8 +77,8 @@ struct Branch
 
 	bool seed;
 	bool stem;
-	
-	
+
+
 	bool expressed;
 
 	// bool ready;
@@ -108,6 +108,9 @@ struct Branch
 
 	b2DistanceJointDef djointDef;
 	b2DistanceJoint * p_djoint;
+
+	b2WeldJointDef wjointDef;
+	b2WeldJoint * p_wjoint;
 
 	// Branch();
 

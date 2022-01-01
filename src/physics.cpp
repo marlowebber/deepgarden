@@ -159,83 +159,101 @@ int checkClickObjects (b2Vec2 worldClick)
 }
 
 
-void createJoint(Branch * a, Branch * b)
+void createJoint(Branch * a, Branch * b, float angle)
 {
-
 	printf("create joint\n");
-	if (true) 
+	if (false)
 	{
-
-
 		a->rjointDef =  b2RevoluteJointDef();
 		a->rjointDef.collideConnected = false; // this means that limb segments dont collide with their children
 		a->rjointDef.bodyA = a->object.p_body;
 		a->rjointDef.bodyB = b->object.p_body;
-		a->rjointDef.localAnchorA = b2Vec2( 0.0f,    1 * (a->length / 2) );
-		a->rjointDef.localAnchorB = b2Vec2( 0.0f,   -1 * (b->length / 2) );
+		a->rjointDef.localAnchorA = b2Vec2( 1 * (a->length / 2) , 0.0f);
+		a->rjointDef.localAnchorB = b2Vec2( -1 * (b->length / 2), 0.0f );
 		a->rjointDef.enableMotor = true;
-		a->rjointDef.enableLimit = false;
-		a->rjointDef.maxMotorTorque = 1.0f;
+		a->rjointDef.enableLimit = true;
+		a->rjointDef.lowerAngle = angle - 0.01f;
+		a->rjointDef.lowerAngle = angle + 0.01f;
+		a->rjointDef.maxMotorTorque = 10.0f;
 		a->p_rjoint = (b2RevoluteJoint *)(m_world->CreateJoint( &(a->rjointDef) ));
-
 	}
-
-	a->djointDef =  b2DistanceJointDef();
-	a->djointDef.collideConnected = false; // this means that limb segments dont collide with their children
-	a->djointDef.bodyA = a->object.p_body;
-	a->djointDef.bodyB = b->object.p_body;
-	a->djointDef.localAnchorA = b2Vec2( 0.0f,    1 * (a->length / 2) );
-	a->djointDef.localAnchorB = b2Vec2( 0.0f,   -1 * (b->length / 2) );
-	a->djointDef.length = 0.01f;
-	a->djointDef.minLength = 0.0f;
-	a->djointDef.maxLength = 0.02f;
-	a->djointDef.stiffness = 10.0f;
-	a->djointDef.damping = 100.0f;
-	a->p_djoint = (b2DistanceJoint *)(m_world->CreateJoint( &(a->djointDef) ));
-
-
-
-
-
+	if (true)
+	{
+		a->djointDef =  b2DistanceJointDef();
+		a->djointDef.collideConnected = false; // this means that limb segments dont collide with their children
+		a->djointDef.bodyA = a->object.p_body;
+		a->djointDef.bodyB = b->object.p_body;
+		a->djointDef.localAnchorA = b2Vec2( 1 * (a->length / 2), 0.0f     );
+		a->djointDef.localAnchorB = b2Vec2( -1 * (b->length / 2) , 0.0f);
+		a->djointDef.length = 0.01f;
+		a->djointDef.minLength = 0.0f;
+		a->djointDef.maxLength = 0.02f;
+		a->djointDef.stiffness = 100.0f;
+		a->djointDef.damping = 100.0f;
+		a->p_djoint = (b2DistanceJoint *)(m_world->CreateJoint( &(a->djointDef) ));
+	}
+	if (false)
+	{
+		a->wjointDef =  b2WeldJointDef();
+		a->wjointDef.collideConnected = false; // this means that limb segments dont collide with their children
+		a->wjointDef.bodyA = a->object.p_body;
+		a->wjointDef.bodyB = b->object.p_body;
+		a->wjointDef.localAnchorA = b2Vec2(  1 * (a->length / 2) , 0.0f);
+		a->wjointDef.localAnchorB = b2Vec2(  -1 * (b->length / 2), 0.0f );
+		a->wjointDef.referenceAngle = 0.0f;// angle;// 0.01f;
+		// a->wjointDef.minLength = 0.0f;
+		// a->wjointDef.maxLength = 0.02f;
+		a->wjointDef.stiffness = 10.0f;
+		a->wjointDef.damping = 10.0f;
+		a->p_wjoint = (b2WeldJoint *)(m_world->CreateJoint( &(a->wjointDef) ));
+	}
 }
-
 
 void createJointWithVariableBAnchor(Branch * a, PhysicalObject * b, b2Vec2 positionOnB)
 {
-
 	printf("create joint\n");
-
-	if (true)
-	 {
-			a->rjointDef =  b2RevoluteJointDef();
-	a->rjointDef.collideConnected = false; // this means that limb segments dont collide with their children
-	a->rjointDef.bodyA = a->object.p_body;
-	a->rjointDef.bodyB = b->p_body;
-	a->rjointDef.localAnchorA = b2Vec2( 0.0f,   1 * (a->length / 2) );
-	a->rjointDef.localAnchorB = positionOnB;
-	a->rjointDef.enableMotor = true;
-	a->rjointDef.maxMotorTorque = 10.0f;
-	a->p_rjoint = (b2RevoluteJoint *)m_world->CreateJoint( &(a->rjointDef) );
-
+	if (false)
+	{
+		a->rjointDef =  b2RevoluteJointDef();
+		a->rjointDef.collideConnected = false; // this means that limb segments dont collide with their children
+		a->rjointDef.bodyA = a->object.p_body;
+		a->rjointDef.bodyB = b->p_body;
+		a->rjointDef.localAnchorA = b2Vec2( 1 * (a->length / 2), 0.0f );
+		a->rjointDef.localAnchorB = positionOnB;
+		a->rjointDef.enableMotor = true;
+		a->rjointDef.maxMotorTorque = 10.0f;
+		a->p_rjoint = (b2RevoluteJoint *)m_world->CreateJoint( &(a->rjointDef) );
 	}
-
-
+	if (true)
+	{
 		a->djointDef =  b2DistanceJointDef();
-	a->djointDef.collideConnected = false; // this means that limb segments dont collide with their children
-	a->djointDef.bodyA = a->object.p_body;
-	a->djointDef.bodyB = b->p_body;
-	a->djointDef.localAnchorA = b2Vec2( 0.0f,    1 * (a->length / 2) );
-	a->djointDef.localAnchorB =  positionOnB;
-	a->djointDef.length = 0.01f;
-	a->djointDef.minLength = 0.0f;
-	a->djointDef.maxLength = 0.02f;
-	a->djointDef.stiffness = 10.0f;
-	a->djointDef.damping = 100.0f;
-	a->p_djoint = (b2DistanceJoint *)(m_world->CreateJoint( &(a->djointDef) ));
-
-
-
-
+		a->djointDef.collideConnected = false; // this means that limb segments dont collide with their children
+		a->djointDef.bodyA = a->object.p_body;
+		a->djointDef.bodyB = b->p_body;
+		a->djointDef.localAnchorA = b2Vec2( 1 * (a->length / 2) , 0.0f);
+		a->djointDef.localAnchorB =  positionOnB;
+		a->djointDef.length = 0.01f;
+		a->djointDef.minLength = 0.0f;
+		a->djointDef.maxLength = 0.02f;
+		a->djointDef.stiffness = 100.0f;
+		a->djointDef.damping = 100.0f;
+		a->p_djoint = (b2DistanceJoint *)(m_world->CreateJoint( &(a->djointDef) ));
+	}
+	if (false)
+	{
+		a->wjointDef =  b2WeldJointDef();
+		a->wjointDef.collideConnected = false; // this means that limb segments dont collide with their children
+		a->wjointDef.bodyA = a->object.p_body;
+		a->wjointDef.bodyB = b->p_body;
+		a->wjointDef.localAnchorA = b2Vec2(   1 * (a->length / 2) , 0.0f);
+		a->wjointDef.localAnchorB = positionOnB;//b2Vec2( 0.0f,   -1 * (b->length / 2) );
+		a->wjointDef.referenceAngle = +0.5 * const_pi;// 0.01f;
+		// a->wjointDef.minLength = 0.0f;
+		// a->wjointDef.maxLength = 0.02f;
+		a->wjointDef.stiffness = 10.0f;
+		a->wjointDef.damping = 10.0f;
+		a->p_wjoint = (b2WeldJoint *)(m_world->CreateJoint( &(a->wjointDef) ));
+	}
 }
 
 void collisionHandler (b2Contact * contact)
@@ -510,7 +528,7 @@ void shine (b2Vec2 p1, b2Vec2 p2)
 	}
 }
 
-void  addToWorld(PhysicalObject * object, b2Vec2 position, float angle)
+void addToWorld(PhysicalObject * object, b2Vec2 position, float angle)
 {
 	// PhysicalObject * pushedObject = &(physicalObjects.back());
 
@@ -604,7 +622,7 @@ void  addToWorld(PhysicalObject * object, b2Vec2 position, float angle)
 	// object->flagReady = true;
 
 	physicalObjects.push_back( object  );
-
+	// return &(physicalObjects.back());
 	// return pushedObject;
 }
 
