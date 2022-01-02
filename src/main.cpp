@@ -78,8 +78,8 @@ void thread_interface()
 				heatEverything();
 				break;
 
-			case SDLK_r:
-				returnToNormalTemp();
+			case SDLK_c:
+				coolEverything();
 				break;
 
 

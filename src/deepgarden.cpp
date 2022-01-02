@@ -199,21 +199,28 @@ void heatEverything () {
 
 	for (unsigned int i = 0; i < totalSize; ++i)
 	{
-temperature_grid[i] = 1800;
+		if (temperature_grid[i] < 5000)
+		{
+			temperature_grid[i] += 100;
+		}
 	}
 
 }
 
 
-void returnToNormalTemp () {
+void coolEverything () {
 
-for (unsigned int i = 0; i < totalSize; ++i)
+	for (unsigned int i = 0; i < totalSize; ++i)
 	{
-temperature_grid[i] = 300;
+		if (temperature_grid[i] > 100)
+		{
+			temperature_grid[i] -= 100;
+
+		}
 	}
 }
 
-// void thread_glow() 
+// void thread_glow()
 // {
 
 // 	for (unsigned int i = sizeX; i < totalSize; ++i)
@@ -348,7 +355,7 @@ void physics_sector (unsigned int from, unsigned int to)
 			{
 				uint8_t index = extremelyFastNumberFromZeroTo(2);
 				// chemistry(i, neighbours[index]);
-				if ((phase_grid[neighbours[index]] == PHASE_VACUUM) ||  (phase_grid[neighbours[index]] == PHASE_GAS) ||  (phase_grid[neighbours[index]] == PHASE_LIQUID)  ) 
+				if ((phase_grid[neighbours[index]] == PHASE_VACUUM) ||  (phase_grid[neighbours[index]] == PHASE_GAS) ||  (phase_grid[neighbours[index]] == PHASE_LIQUID)  )
 				{
 					swap(i, neighbours[index]);
 				}

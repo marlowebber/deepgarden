@@ -72,7 +72,7 @@ void thread_optics ();
 void thread_particledrawing ();
 
 void heatEverything () ;
-void returnToNormalTemp();
+void coolEverything();
 
 void thread_temperature ();
 #endif
