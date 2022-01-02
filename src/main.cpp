@@ -72,6 +72,17 @@ void thread_interface()
 				//  setPointSize (pixelSize) ;
 
 				break;
+
+
+			case SDLK_h:
+				heatEverything();
+				break;
+
+			case SDLK_r:
+				returnToNormalTemp();
+				break;
+
+
 			case SDLK_p:
 				togglePause();
 				break;
@@ -127,7 +138,7 @@ int main( int argc, char * argv[] )
 		// boost::thread t3{ thread_chemistry };
 		// printf("started t3\n");
 
-		boost::thread t4{ thread_optics };
+		// boost::thread t4{ thread_optics };
 		// printf("started t4\n");
 
 		// boost::thread t5{ thread_particledrawing };
@@ -150,7 +161,7 @@ int main( int argc, char * argv[] )
 
 // printf("joined t3\n");
 
-		t4.join();
+		// t4.join();
 //
 // printf("joined t4\n");
 

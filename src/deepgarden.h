@@ -22,7 +22,7 @@ using namespace glm;
 #include "deepgarden_utilities.h"
 
 
-#define sizeX 16384
+#define sizeX 8096
 #define sizeY 256
 
 struct Color
@@ -71,6 +71,8 @@ void thread_chemistry ();
 void thread_optics ();
 void thread_particledrawing ();
 
+void heatEverything () ;
+void returnToNormalTemp();
 
 void thread_temperature ();
 #endif
