@@ -145,15 +145,15 @@ Branch * addBranchSegment (Tree * tree, Branch * growingBranch, float absoluteAn
 
 	printf("actual angle = %f\n", actualAngle);
 	b2Vec2 newBranchPosition = b2Vec2(
-	                               growingBranch->object.p_body->GetWorldCenter().x +(  (growingBranch->length/2) * cos(growingBranch->object.p_body->GetAngle() )   )   ,
-	                               growingBranch->object.p_body->GetWorldCenter().y +(  (growingBranch->length/2) * sin(growingBranch->object.p_body->GetAngle() )    )   
+	                               growingBranch->object.p_body->GetWorldCenter().x + (  (growingBranch->length / 2) * cos(growingBranch->object.p_body->GetAngle() )   )   ,
+	                               growingBranch->object.p_body->GetWorldCenter().y + (  (growingBranch->length / 2) * sin(growingBranch->object.p_body->GetAngle() )    )
 	                           );
 
 	newBranchPosition = b2Vec2(
-		newBranchPosition.x +  (newBranch->length/2) * cos(actualAngle)
-		,
-		newBranchPosition.y +  (newBranch->length/2) * sin(actualAngle)
-		);
+	                        newBranchPosition.x +  (newBranch->length / 2) * cos(actualAngle)
+	                        ,
+	                        newBranchPosition.y +  (newBranch->length / 2) * sin(actualAngle)
+	                    );
 
 	newBranch->object.owner = newBranch;
 	newBranch->owner = tree;
@@ -205,7 +205,7 @@ Branch * transcribeNextSegments (Tree * tree , Branch * growingBranch, float abs
 	printf("transcribeNextSegments\n");
 	printf("geneCursor %u, genome length %lu\n", growingBranch->geneCursor, tree->genes.length()  );
 
-	bool drawnAnythingYet= false;
+	bool drawnAnythingYet = false;
 
 	while (growingBranch->geneCursor < tree->genes.length() )
 	{
@@ -245,13 +245,13 @@ Branch * transcribeNextSegments (Tree * tree , Branch * growingBranch, float abs
 			printf("array %i\n", arrayN);
 
 			unsigned int arrayStartGeneCursor = growingBranch->geneCursor;
-			float anglePerUnit = (angleAdjust/arrayN);
-			float startingAngle = (angleAdjust/2) ;
+			float anglePerUnit = (angleAdjust / arrayN);
+			float startingAngle = (angleAdjust / 2) ;
 
 			for (int i = 0; i < arrayN; ++i)
 			{
 				growingBranch->geneCursor = arrayStartGeneCursor;
-				transcribeNextSegments(tree, growingBranch, (anglePerUnit*i) -startingAngle )  ;
+				transcribeNextSegments(tree, growingBranch, (anglePerUnit * i) - startingAngle )  ;
 			}
 		}
 		case ' ':
@@ -263,15 +263,15 @@ Branch * transcribeNextSegments (Tree * tree , Branch * growingBranch, float abs
 			break;
 
 		}
-		// case 'f':
-		// {
-		// 	growingBranch-> geneCursor++;
-		// 	// draw a seed
-		// 	printf("seed\n");
-		// 	instantiateSeed(tree->genes, growingBranch, b2Vec2(50, 50));
-		// 	drawnAnythingYet = true;
-		// 	return nullptr;
-		// }
+		case 'f':
+		{
+			growingBranch-> geneCursor++;
+			// draw a seed
+			printf("seed\n");
+			instantiateSeed(tree->genes, growingBranch, b2Vec2(50, 50));
+			drawnAnythingYet = true;
+			return nullptr;
+		}
 		case 'b':
 		{
 			growingBranch-> geneCursor++;
@@ -360,7 +360,7 @@ void initializeGame ()
 	addToWorld( &(terrain.back()) , b2Vec2(0.0f, -20.0f), 0.0f );
 
 	// std::string exampleSentence = std::string("Weld joint definition. You need to specify local anchor points where they are attached and the relative body angle. The position of the anchor points is important for computing the reaction torque. ");
-	std::string exampleSentence = std::string(" bbbbbbbbbbbbbbbbbbqdjbbbbb ");
+	std::string exampleSentence = std::string(" bbbbbbbbbbbbbbbbbbqdjbbbbbf ");
 	instantiateSeed(exampleSentence, nullptr, b2Vec2(50, 50));
 }
 
@@ -439,6 +439,14 @@ void threadGame()
 				branch->flagDelete = true;
 				branch->object.flagDelete = true;
 			}
+
+
+			if (branch->seed)
+			{
+
+				branch->object.p_body->ApplyForce(b2Vec2(0.0, -1.0f), branch->object.p_body->GetWorldCenter() , true);
+			}
+
 		}
 	}
 

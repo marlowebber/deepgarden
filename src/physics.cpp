@@ -157,7 +157,7 @@ void createJoint(Branch * a, Branch * b, float angle)
 		a->rjointDef.maxMotorTorque = 0.1f;
 		a->p_rjoint = (b2RevoluteJoint *)(m_world->CreateJoint( &(a->rjointDef) ));
 	}
-	if (false)
+	if (true)
 	{
 		a->djointDef =  b2DistanceJointDef();
 		a->djointDef.collideConnected = false; // this means that limb segments dont collide with their children
@@ -202,7 +202,7 @@ void createJointWithVariableBAnchor(Branch * a, PhysicalObject * b, b2Vec2 posit
 		a->rjointDef.maxMotorTorque = 10.0f;
 		a->p_rjoint = (b2RevoluteJoint *)m_world->CreateJoint( &(a->rjointDef) );
 	}
-	if (false)
+	if (true)
 	{
 		a->djointDef =  b2DistanceJointDef();
 		a->djointDef.collideConnected = false; // this means that limb segments dont collide with their children
