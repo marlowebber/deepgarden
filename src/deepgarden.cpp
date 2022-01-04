@@ -12,11 +12,13 @@ const unsigned int totalSize = sizeX * sizeY;
 const unsigned int numberOfFieldsPerVertex = 6; /*  R, G, B, A, X, Y  */
 float colorGrid[totalSize * numberOfFieldsPerVertex ];
 
-unsigned int material_grid[totalSize];
-unsigned int phase_grid[totalSize];
-unsigned int identity_grid[totalSize];
-int temperature_grid[totalSize];
-// b2Color glowGrid[totalSize];
+struct Particle {
+	unsigned int material;
+	unsigned int phase;
+	int temperature;
+};
+
+Particle grid[totalSize];
 
 const Color color_lightblue = Color( 0.1f, 0.3f, 0.65f, 1.0f );
 const Color color_yellow    = Color( 1.0f, 1.0f, 0.0f, 1.0f );
@@ -74,36 +76,28 @@ int defaultTemperature = 300;
 
 // }
 
-
-
-
 void initialize ()
 {
 	setupExtremelyFastNumberGenerators();
 	// https://stackoverflow.com/questions/9459035/why-does-rand-yield-the-same-sequence-of-numbers-on-every-run
 	srand((unsigned int)time(NULL));
 
-	memset( phase_grid, PHASE_VACUUM, (sizeof(unsigned int) * totalSize) );
-	memset( material_grid, MATERIAL_VACUUM, (sizeof(unsigned int) * totalSize) );
-	memset( identity_grid, 0x00, (sizeof(unsigned int) * totalSize) );
-
-
-	memset( temperature_grid, defaultTemperature, (sizeof( int) * totalSize) );
 	memset ( colorGrid, 0x00, sizeof(float ) * numberOfFieldsPerVertex * totalSize );
 
-	// setup the x and y positions in the color grid. these never change so you can just calculate them once.
+	memset(grid, 0x00, sizeof(Particle) * ( totalSize));
+
+	// // setup the x and y positions in the color grid. these never change so you can just calculate them once.
 	unsigned int x = 0;
 	unsigned int y = 0;
 	for (unsigned int i = 0; i < totalSize; ++i)
 	{
 		x = i % sizeX;
 		if (!x) { y = i / sizeX; }
-
 		float fx = x;
 		float fy = y;
 
-		temperature_grid[i] = defaultTemperature;
-		phase_grid[i] = PHASE_VACUUM;
+		grid[i].temperature = defaultTemperature;
+		grid[i].phase = PHASE_VACUUM;
 
 		// RGBA color occupies the first 4 places.
 		// also, initialize the color alpha to 1.
@@ -116,10 +110,10 @@ void initialize ()
 		{
 			if (RNG() < 0.5)
 			{
-				material_grid[i] = MATERIAL_OLIVINE;
-				phase_grid[i] = PHASE_POWDER;
+				grid[i].material = MATERIAL_OLIVINE;
+				grid[i].phase = PHASE_POWDER;
 				memcpy(&colorGrid[i * numberOfFieldsPerVertex], &color_darkgrey, 16  );
-				temperature_grid[i] = defaultTemperature;
+				grid[i].temperature = defaultTemperature;
 			}
 		}
 
@@ -128,10 +122,10 @@ void initialize ()
 		{
 			if (RNG() < 0.5)
 			{
-				material_grid[i] = MATERIAL_AMPHIBOLE;
-				phase_grid[i] = PHASE_POWDER;
+				grid[i].material = MATERIAL_AMPHIBOLE;
+				grid[i].phase = PHASE_POWDER;
 				memcpy(&colorGrid[i * numberOfFieldsPerVertex], &color_grey, 16  );
-				temperature_grid[i] = defaultTemperature;
+				grid[i].temperature = defaultTemperature;
 			}
 		}
 
@@ -140,10 +134,10 @@ void initialize ()
 		{
 			if (RNG() < 0.5)
 			{
-				material_grid[i] = MATERIAL_QUARTZ;
-				phase_grid[i] = PHASE_POWDER;
+				grid[i].material = MATERIAL_QUARTZ;
+				grid[i].phase = PHASE_POWDER;
 				memcpy(&colorGrid[i * numberOfFieldsPerVertex], &color_lightgrey, 16  );
-				temperature_grid[i] = defaultTemperature;
+				grid[i].temperature = defaultTemperature;
 			}
 		}
 
@@ -152,33 +146,17 @@ void initialize ()
 		{
 			if (RNG() < 0.5)
 			{
-				material_grid[i] = MATERIAL_WATER;
-				phase_grid[i] = PHASE_LIQUID;
+				grid[i].material = MATERIAL_WATER;
+				grid[i].phase = PHASE_LIQUID;
 				memcpy(&colorGrid[i * numberOfFieldsPerVertex], &color_lightblue, 16  );
-				temperature_grid[i] = defaultTemperature;
+				grid[i].temperature = defaultTemperature;
 			}
 		}
 	}
 }
 
-
-
-
-
 void swap (unsigned int a, unsigned int b)
 {
-	unsigned int temp_phase = phase_grid[b];
-	phase_grid[b] = phase_grid[a];
-	phase_grid[a] = temp_phase;
-
-	unsigned int temp_id = identity_grid[b];
-	identity_grid[b] = identity_grid[a];
-	identity_grid[a] = temp_id;
-
-	unsigned int temp_mat = material_grid[b];
-	material_grid[b] = material_grid[a];
-	material_grid[a] = temp_mat;
-
 	float temp_color[4];
 	unsigned int a_offset = (a * numberOfFieldsPerVertex);
 	unsigned int b_offset = (b * numberOfFieldsPerVertex);
@@ -186,61 +164,41 @@ void swap (unsigned int a, unsigned int b)
 	memcpy( &colorGrid[ b_offset], &colorGrid[ a_offset] , 16 );
 	memcpy( &colorGrid[ a_offset ], temp_color, 16 );
 
-
-	int temp_temp = ( temperature_grid[a] + temperature_grid[b] ) / 2;
-	temperature_grid[a] = temp_temp;
-	temperature_grid[b] = temp_temp;
-
-
-
+	Particle tempParticle = grid[b];
+	grid[b] = grid[a];
+	grid[a] = tempParticle;
 }
 
-void heatEverything () {
-
+void heatEverything ()
+{
 	for (unsigned int i = 0; i < totalSize; ++i)
 	{
-		if (temperature_grid[i] < 5000)
+		if (grid[i].temperature < 5000)
 		{
-			temperature_grid[i] += 25;
-		}
-	}
-
-}
-
-
-void coolEverything () {
-
-	for (unsigned int i = 0; i < totalSize; ++i)
-	{
-		if (temperature_grid[i] > 100)
-		{
-			temperature_grid[i] -= 25;
-
+			grid[i].temperature += 25;
 		}
 	}
 }
 
-void setNeutralTemp () {
+
+void coolEverything ()
+{
 	for (unsigned int i = 0; i < totalSize; ++i)
 	{
-
-			temperature_grid[i] = 300;
-
-		
+		if (grid[i].temperature > 100)
+		{
+			grid[i].temperature -= 25;
+		}
 	}
 }
 
-// void thread_glow()
-// {
-
-// 	for (unsigned int i = sizeX; i < totalSize; ++i)
-// 	{
-
-// 		glowGrid[i] = colorOfHotObject(temperature_grid[i]);
-// 	}
-
-// }
-
+void setNeutralTemp ()
+{
+	for (unsigned int i = 0; i < totalSize; ++i)
+	{
+		grid[i].temperature = 300;
+	}
+}
 
 void thread_temperature2 ()
 {
@@ -248,117 +206,250 @@ void thread_temperature2 ()
 	auto start = std::chrono::steady_clock::now();
 #endif
 
-	for (unsigned int i = sizeX; i < totalSize; ++i)
+	for (unsigned int i = (sizeX + 1); i < (totalSize - (sizeX + 1)); ++i)
 	{
-		if (phase_grid[i] == PHASE_LIQUID)
+
+
+
+
+
+		if (grid[i].material == MATERIAL_WATER)
 		{
-			if (material_grid[i] == MATERIAL_WATER)
+			if (grid[i].phase == PHASE_POWDER)
 			{
-				if (temperature_grid[i] < 273)
+				if (grid[i].temperature > 273)
 				{
-					phase_grid[i] = PHASE_POWDER;
-				}
-				else if (temperature_grid[i] > 373)
-				{
-					phase_grid[i] = PHASE_GAS;
+					grid[i].phase = PHASE_LIQUID;
 				}
 			}
-			else if (material_grid[i] == MATERIAL_QUARTZ)
+			else if (grid[i].phase == PHASE_LIQUID)
 			{
-				if (temperature_grid[i] < 600)
+				if (grid[i].temperature < 273)
 				{
-					phase_grid[i] = PHASE_POWDER;
+					grid[i].phase = PHASE_POWDER;
 				}
-				else if (temperature_grid[i] > 2330)
+				else if (grid[i].temperature > 373)
 				{
-					phase_grid[i] = PHASE_GAS;
+					grid[i].phase = PHASE_GAS;
 				}
 			}
-			else if (material_grid[i] == MATERIAL_AMPHIBOLE)
+			else if (grid[i].phase == PHASE_GAS)
 			{
-				if (temperature_grid[i] < 800)
+				if (grid[i].temperature < 373)
 				{
-					phase_grid[i] = PHASE_POWDER;
-				}
-				else if (temperature_grid[i] > 2330)
-				{
-					phase_grid[i] = PHASE_GAS;
-				}
-			}
-			else if (material_grid[i] == MATERIAL_OLIVINE)
-			{
-				if (temperature_grid[i] < 1000)
-				{
-					phase_grid[i] = PHASE_POWDER;
-				}
-				else if (temperature_grid[i] > 2330)
-				{
-					phase_grid[i] = PHASE_GAS;
+					grid[i].phase = PHASE_LIQUID;
 				}
 			}
 		}
-		else if (phase_grid[i] == PHASE_POWDER)
+
+
+
+
+
+
+
+
+		else if (grid[i].material == MATERIAL_QUARTZ)
 		{
-			if (material_grid[i] == MATERIAL_WATER)
+			if (grid[i].phase == PHASE_POWDER)
 			{
-				if (temperature_grid[i] > 273)
+				if (grid[i].temperature > 600)
 				{
-					phase_grid[i] = PHASE_LIQUID;
+					grid[i].phase = PHASE_LIQUID;
 				}
 			}
-			else if (material_grid[i] == MATERIAL_QUARTZ)
+			else if (grid[i].phase == PHASE_LIQUID)
 			{
-				if (temperature_grid[i] > 600)
+				if (grid[i].temperature < 600)
 				{
-					phase_grid[i] = PHASE_LIQUID;
+					grid[i].phase = PHASE_POWDER;
+				}
+				else if (grid[i].temperature > 600 && grid[i].temperature < 700)
+				{
+
+					unsigned int squareBelow = i - sizeX;
+					unsigned int squareAbove = i + sizeX;
+					unsigned int neighbours[] =
+					{
+						//squareBelow - 1,
+						squareBelow,
+					//	squareBelow + 1,
+						i - 1,
+						i + 1,
+					//	squareAbove - 1,
+						squareAbove,
+					//	squareAbove + 1
+					};
+					unsigned int nSolidNeighbours = 0;
+					for (int i = 0; i < 4; ++i)
+					{
+						if ( grid[neighbours[i]].material == MATERIAL_QUARTZ )
+						{
+							if (grid[neighbours[i]].phase == PHASE_SOLID )
+							{
+								nSolidNeighbours++;
+							}
+						}
+					}
+					if (nSolidNeighbours > 2)
+					{
+						grid[i].phase = PHASE_SOLID;
+					}
+					else if (extremelyFastNumberFromZeroTo(1000) == 0)
+					{
+						grid[i].phase = PHASE_SOLID;
+					}
+				}
+				else if (grid[i].temperature > 2330)
+				{
+					grid[i].phase = PHASE_GAS;
 				}
 			}
-			else if (material_grid[i] == MATERIAL_AMPHIBOLE)
+			else if (grid[i].phase == PHASE_GAS)
 			{
-				if (temperature_grid[i] > 800)
+				if (grid[i].temperature < 2330)
 				{
-					phase_grid[i] = PHASE_LIQUID;
-				}
-			}
-			else if (material_grid[i] == MATERIAL_OLIVINE)
-			{
-				if (temperature_grid[i] > 1000)
-				{
-					phase_grid[i] = PHASE_LIQUID;
+					grid[i].phase = PHASE_LIQUID;
 				}
 			}
 		}
-		else if (phase_grid[i] == PHASE_GAS)
+
+
+
+
+
+		else if (grid[i].material == MATERIAL_AMPHIBOLE)
 		{
-			if (material_grid[i] == MATERIAL_WATER)
+			if (grid[i].phase == PHASE_POWDER)
 			{
-				if (temperature_grid[i] < 373)
+				if (grid[i].temperature > 800)
 				{
-					//if (extremelyFastNumberFromZeroTo(100) == 1)
-					//{
-					// phase_grid[i] = PHASE_LIQUID;
-					//}
+					grid[i].phase = PHASE_LIQUID;
 				}
 			}
-			else if (material_grid[i] == MATERIAL_QUARTZ)
+			else if (grid[i].phase == PHASE_LIQUID)
 			{
-				if (temperature_grid[i] < 2330)
+				if (grid[i].temperature < 800)
 				{
-					phase_grid[i] = PHASE_LIQUID;
+					grid[i].phase = PHASE_POWDER;
+				}
+				else if (grid[i].temperature > 800 && grid[i].temperature < 900)
+				{
+					unsigned int squareBelow = i - sizeX;
+					unsigned int squareAbove = i + sizeX;
+					unsigned int neighbours[] =
+					{
+						squareBelow - 1,
+						//squareBelow,
+						squareBelow + 1,
+						//i - 1,
+						//i + 1,
+						squareAbove - 1,
+						//squareAbove,
+						squareAbove + 1
+					};
+					unsigned int nSolidNeighbours = 0;
+					for (int i = 0; i < 4; ++i)
+					{
+						if ( grid[neighbours[i]].material == MATERIAL_AMPHIBOLE )
+						{
+							if (grid[neighbours[i]].phase == PHASE_SOLID )
+							{
+								nSolidNeighbours++;
+							}
+						}
+					}
+					if (nSolidNeighbours > 2)
+					{
+						grid[i].phase = PHASE_SOLID;
+					}
+					else if (extremelyFastNumberFromZeroTo(1000) == 0)
+					{
+						grid[i].phase = PHASE_SOLID;
+					}
+
+				}
+				else if (grid[i].temperature > 2330)
+				{
+					grid[i].phase = PHASE_GAS;
 				}
 			}
-			else if (material_grid[i] == MATERIAL_AMPHIBOLE)
+
+			else if (grid[i].phase == PHASE_GAS)
 			{
-				if (temperature_grid[i] < 2330)
+				if (grid[i].temperature < 2330)
 				{
-					phase_grid[i] = PHASE_LIQUID;
+					grid[i].phase = PHASE_LIQUID;
 				}
 			}
-			else if (material_grid[i] == MATERIAL_OLIVINE)
+
+
+
+		}
+
+
+		else if (grid[i].material == MATERIAL_OLIVINE)
+		{
+			if (grid[i].phase == PHASE_POWDER)
 			{
-				if (temperature_grid[i] < 2330)
+				if (grid[i].temperature > 1000)
 				{
-					phase_grid[i] = PHASE_LIQUID;
+					grid[i].phase = PHASE_LIQUID;
+				}
+			}
+			else if (grid[i].phase == PHASE_LIQUID)
+			{
+				if (grid[i].temperature < 1000)
+				{
+					grid[i].phase = PHASE_POWDER;
+				}
+				else if (grid[i].temperature > 1000 && grid[i].temperature < 1100)
+				{
+
+					unsigned int squareBelow = i - sizeX;
+					unsigned int squareAbove = i + sizeX;
+					unsigned int neighbours[] =
+					{
+					//	squareBelow - 1,
+						squareBelow,
+					//	squareBelow + 1,
+						//i - 1,
+					//	i + 1,
+					//	squareAbove - 1,
+						squareAbove,
+					//	squareAbove + 1
+					};
+					unsigned int nSolidNeighbours = 0;
+					for (int i = 0; i < 2; ++i)
+					{
+						if ( grid[neighbours[i]].material == MATERIAL_OLIVINE )
+						{
+							if (grid[neighbours[i]].phase == PHASE_SOLID )
+							{
+								nSolidNeighbours++;
+							}
+						}
+					}
+					if (nSolidNeighbours > 1)
+					{
+						grid[i].phase = PHASE_SOLID;
+					}
+					else if (extremelyFastNumberFromZeroTo(1000) == 0)
+					{
+						grid[i].phase = PHASE_SOLID;
+					}
+
+				}
+				else if (grid[i].temperature > 2330)
+				{
+					grid[i].phase = PHASE_GAS;
+				}
+			}
+			else if (grid[i].phase == PHASE_GAS)
+			{
+				if (grid[i].temperature < 2330)
+				{
+					grid[i].phase = PHASE_LIQUID;
 				}
 			}
 		}
@@ -376,9 +467,6 @@ void thread_temperature2 ()
 #endif
 }
 
-
-
-
 // return a random integer in the range. It is inclusive of both end values.
 unsigned int randomIntegerInRange (unsigned int from, unsigned int to)
 {
@@ -395,7 +483,7 @@ void physics_sector (unsigned int from, unsigned int to)
 	{
 		unsigned int squareBelow = i - sizeX;
 
-		if (phase_grid[i]  == PHASE_POWDER)
+		if (grid[i].phase  == PHASE_POWDER)
 		{
 			unsigned int neighbours[] =
 			{
@@ -408,7 +496,7 @@ void physics_sector (unsigned int from, unsigned int to)
 			{
 				uint8_t index = extremelyFastNumberFromZeroTo(2);
 				// chemistry(i, neighbours[index]);
-				if ((phase_grid[neighbours[index]] == PHASE_VACUUM) ||  (phase_grid[neighbours[index]] == PHASE_GAS) ||  (phase_grid[neighbours[index]] == PHASE_LIQUID)  )
+				if ((grid[neighbours[index]].phase == PHASE_VACUUM) ||  (grid[neighbours[index]].phase == PHASE_GAS) ||  (grid[neighbours[index]].phase == PHASE_LIQUID)  )
 				{
 					swap(i, neighbours[index]);
 					break;
@@ -417,7 +505,7 @@ void physics_sector (unsigned int from, unsigned int to)
 		}
 
 		// movement instructions for LIQUIDS
-		else if (phase_grid[i] == PHASE_LIQUID)
+		else if (grid[i].phase == PHASE_LIQUID)
 		{
 			unsigned int neighbours[] =
 			{
@@ -432,7 +520,7 @@ void physics_sector (unsigned int from, unsigned int to)
 			{
 				uint8_t index = extremelyFastNumberFromZeroTo(4);
 				// chemistry(i, neighbours[index]) ;
-				if ((phase_grid[neighbours[index]] == PHASE_VACUUM) || (phase_grid[neighbours[index]] == PHASE_GAS) ||  (phase_grid[neighbours[index]] == PHASE_LIQUID)     )
+				if ((grid[neighbours[index]].phase == PHASE_VACUUM) || (grid[neighbours[index]].phase == PHASE_GAS) ||  (grid[neighbours[index]].phase == PHASE_LIQUID)     )
 				{
 					swap(i, neighbours[index]);
 					break;
@@ -441,7 +529,7 @@ void physics_sector (unsigned int from, unsigned int to)
 		}
 
 		// movement instructions for GASES
-		else if (phase_grid[i] == PHASE_GAS)
+		else if (grid[i].phase == PHASE_GAS)
 		{
 			unsigned int squareAbove = i + sizeX;
 			unsigned int neighbours[] =
@@ -460,33 +548,33 @@ void physics_sector (unsigned int from, unsigned int to)
 			{
 				uint8_t index = extremelyFastNumberFromZeroTo(7);
 
-					if (material_grid[i] == MATERIAL_WATER)
+				if (grid[i].material == MATERIAL_WATER)
+				{
+					if (grid[neighbours[index]].material != MATERIAL_VACUUM)
 					{
-						if (material_grid[neighbours[index]] != MATERIAL_VACUUM)
+						if (grid[i].temperature < 373 )
 						{
-							if (temperature_grid[i] < 373 )
-							{
-								phase_grid[i] = PHASE_LIQUID;
-							}
+							grid[i].phase = PHASE_LIQUID;
 						}
 					}
-					if (material_grid[neighbours[index]] == MATERIAL_WATER)
-					{	
-						if (material_grid[i] != MATERIAL_VACUUM)
+				}
+				if (grid[neighbours[index]].material == MATERIAL_WATER)
+				{
+					if (grid[i].material != MATERIAL_VACUUM)
+					{
+						if (grid[neighbours[index]].temperature < 373 )
 						{
-							if (temperature_grid[neighbours[index]] < 373 )
-							{
-								phase_grid[neighbours[index]] = PHASE_LIQUID;
-							}
+							grid[neighbours[index]].phase = PHASE_LIQUID;
 						}
 					}
+				}
 
 
-				if (phase_grid[neighbours[index]]  == PHASE_VACUUM || (phase_grid[neighbours[index]] == PHASE_GAS) )
+				if (grid[neighbours[index]].phase  == PHASE_VACUUM || (grid[neighbours[index]].phase == PHASE_GAS) )
 				{
 					swap(i, neighbours[index]);
 
-				
+
 					break;
 				}
 			}
@@ -501,7 +589,6 @@ void physics_sector (unsigned int from, unsigned int to)
 
 void thread_physics ()
 {
-
 	uint16_t windChange = extremelyFastNumberFromZeroTo(100);
 
 	if (!windChange)
@@ -540,7 +627,7 @@ void thread_physics ()
 
 // 			unsigned int squareBelow = i - sizeX;
 
-// 			if ((phase_grid[i] & (PHASE_POWDER)) == (PHASE_POWDER))
+// 			if ((grid[i].phase] & (PHASE_POWDER)) == (PHASE_POWDER))
 // 			{
 // 				unsigned int neighbours[] =
 // 				{
@@ -561,7 +648,7 @@ void thread_physics ()
 // 			}
 
 // 			// movement instructions for LIQUIDS
-// 			else if ((phase_grid[i] & (PHASE_LIQUID)) == (PHASE_LIQUID))
+// 			else if ((grid[i].phase] & (PHASE_LIQUID)) == (PHASE_LIQUID))
 // 			{
 // 				unsigned int neighbours[] =
 // 				{
@@ -584,7 +671,7 @@ void thread_physics ()
 // 			}
 
 // 			// movement instructions for GASES
-// 			else if ((phase_grid[i] & (PHASE_GAS)) == (PHASE_GAS))
+// 			else if ((grid[i].phase] & (PHASE_GAS)) == (PHASE_GAS))
 // 			{
 // 				unsigned int squareAbove = i + sizeX;
 // 				unsigned int neighbours[] =
@@ -613,25 +700,21 @@ void thread_physics ()
 // 	}
 // }
 
-
-
 void chooseColor ( Color * colorToUse, unsigned int index )
 {
-	if ((material_grid[index] & (MATERIAL_VACUUM))     == (MATERIAL_VACUUM))       {    *colorToUse = color_black;  return; }
-	if ((material_grid[index] & (MATERIAL_WATER))      == (MATERIAL_WATER))       {    *colorToUse = color_lightblue;  return; }
-	if ((material_grid[index] & (MATERIAL_QUARTZ))     == (MATERIAL_QUARTZ))       {    *colorToUse = color_lightgrey;  return; }
-	if ((material_grid[index] & (MATERIAL_AMPHIBOLE))  == (MATERIAL_AMPHIBOLE))       {    *colorToUse = color_grey;  return; }
-	if ((material_grid[index] & (MATERIAL_OLIVINE))    == (MATERIAL_OLIVINE))       {    *colorToUse = color_darkgrey;  return; }
-	if ((material_grid[index] & (MATERIAL_GOLD))       == (MATERIAL_GOLD))       {    *colorToUse = color_yellow;  return; }
+	if ((grid[index].material & (MATERIAL_VACUUM))     == (MATERIAL_VACUUM))       {    *colorToUse = color_black;  return; }
+	if ((grid[index].material & (MATERIAL_WATER))      == (MATERIAL_WATER))       {    *colorToUse = color_lightblue;  return; }
+	if ((grid[index].material & (MATERIAL_QUARTZ))     == (MATERIAL_QUARTZ))       {    *colorToUse = color_lightgrey;  return; }
+	if ((grid[index].material & (MATERIAL_AMPHIBOLE))  == (MATERIAL_AMPHIBOLE))       {    *colorToUse = color_grey;  return; }
+	if ((grid[index].material & (MATERIAL_OLIVINE))    == (MATERIAL_OLIVINE))       {    *colorToUse = color_darkgrey;  return; }
+	if ((grid[index].material & (MATERIAL_GOLD))       == (MATERIAL_GOLD))       {    *colorToUse = color_yellow;  return; }
 }
-
 
 void setPointSize (unsigned int pointSize)
 {
 
 	glPointSize(pointSize);
 }
-
 
 void thread_graphics()
 {
