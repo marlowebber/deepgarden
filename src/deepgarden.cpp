@@ -201,7 +201,7 @@ void heatEverything () {
 	{
 		if (temperature_grid[i] < 5000)
 		{
-			temperature_grid[i] += 100;
+			temperature_grid[i] += 25;
 		}
 	}
 
@@ -214,9 +214,19 @@ void coolEverything () {
 	{
 		if (temperature_grid[i] > 100)
 		{
-			temperature_grid[i] -= 100;
+			temperature_grid[i] -= 25;
 
 		}
+	}
+}
+
+void setNeutralTemp () {
+	for (unsigned int i = 0; i < totalSize; ++i)
+	{
+
+			temperature_grid[i] = 300;
+
+		
 	}
 }
 
@@ -232,7 +242,7 @@ void coolEverything () {
 // }
 
 
-void thread_temperature ()
+void thread_temperature2 ()
 {
 #ifdef THREAD_TIMING
 	auto start = std::chrono::steady_clock::now();
@@ -240,83 +250,123 @@ void thread_temperature ()
 
 	for (unsigned int i = sizeX; i < totalSize; ++i)
 	{
-
-		if (material_grid[i] == MATERIAL_WATER)
+		if (phase_grid[i] == PHASE_LIQUID)
 		{
-			if (temperature_grid[i] > 273 )
+			if (material_grid[i] == MATERIAL_WATER)
 			{
-				if (temperature_grid[i] > 373)
+				if (temperature_grid[i] < 273)
+				{
+					phase_grid[i] = PHASE_POWDER;
+				}
+				else if (temperature_grid[i] > 373)
 				{
 					phase_grid[i] = PHASE_GAS;
 				}
-				else
+			}
+			else if (material_grid[i] == MATERIAL_QUARTZ)
+			{
+				if (temperature_grid[i] < 600)
+				{
+					phase_grid[i] = PHASE_POWDER;
+				}
+				else if (temperature_grid[i] > 2330)
+				{
+					phase_grid[i] = PHASE_GAS;
+				}
+			}
+			else if (material_grid[i] == MATERIAL_AMPHIBOLE)
+			{
+				if (temperature_grid[i] < 800)
+				{
+					phase_grid[i] = PHASE_POWDER;
+				}
+				else if (temperature_grid[i] > 2330)
+				{
+					phase_grid[i] = PHASE_GAS;
+				}
+			}
+			else if (material_grid[i] == MATERIAL_OLIVINE)
+			{
+				if (temperature_grid[i] < 1000)
+				{
+					phase_grid[i] = PHASE_POWDER;
+				}
+				else if (temperature_grid[i] > 2330)
+				{
+					phase_grid[i] = PHASE_GAS;
+				}
+			}
+		}
+		else if (phase_grid[i] == PHASE_POWDER)
+		{
+			if (material_grid[i] == MATERIAL_WATER)
+			{
+				if (temperature_grid[i] > 273)
 				{
 					phase_grid[i] = PHASE_LIQUID;
 				}
 			}
-			else
+			else if (material_grid[i] == MATERIAL_QUARTZ)
 			{
-				phase_grid[i] = PHASE_POWDER;
-			}
-		}
-
-		else if (material_grid[i] == MATERIAL_QUARTZ)
-		{
-			if (temperature_grid[i] > 600 )
-			{
-				if (temperature_grid[i] > 2330)
-				{
-					phase_grid[i] = PHASE_GAS;
-				}
-				else
+				if (temperature_grid[i] > 600)
 				{
 					phase_grid[i] = PHASE_LIQUID;
 				}
 			}
-			else
+			else if (material_grid[i] == MATERIAL_AMPHIBOLE)
 			{
-				phase_grid[i] = PHASE_POWDER;
-			}
-		}
-
-
-		else if (material_grid[i] == MATERIAL_AMPHIBOLE)
-		{
-			if (temperature_grid[i] > 800 )
-			{
-				if (temperature_grid[i] > 2330)
-				{
-					phase_grid[i] = PHASE_GAS;
-				}
-				else
+				if (temperature_grid[i] > 800)
 				{
 					phase_grid[i] = PHASE_LIQUID;
 				}
 			}
-			else
+			else if (material_grid[i] == MATERIAL_OLIVINE)
 			{
-				phase_grid[i] = PHASE_POWDER;
-			}
-		}
-
-		else if (material_grid[i] == MATERIAL_OLIVINE)
-		{
-			if (temperature_grid[i] > 1000 )
-			{
-				if (temperature_grid[i] > 2330)
-				{
-					phase_grid[i] = PHASE_GAS;
-				}
-				else
+				if (temperature_grid[i] > 1000)
 				{
 					phase_grid[i] = PHASE_LIQUID;
 				}
 			}
-			else
+		}
+		else if (phase_grid[i] == PHASE_GAS)
+		{
+			if (material_grid[i] == MATERIAL_WATER)
 			{
-				phase_grid[i] = PHASE_POWDER;
+				if (temperature_grid[i] < 373)
+				{
+					//if (extremelyFastNumberFromZeroTo(100) == 1)
+					//{
+					// phase_grid[i] = PHASE_LIQUID;
+					//}
+				}
+			}
+			else if (material_grid[i] == MATERIAL_QUARTZ)
+			{
+				if (temperature_grid[i] < 2330)
+				{
+					phase_grid[i] = PHASE_LIQUID;
+				}
+			}
+			else if (material_grid[i] == MATERIAL_AMPHIBOLE)
+			{
+				if (temperature_grid[i] < 2330)
+				{
+					phase_grid[i] = PHASE_LIQUID;
+				}
+			}
+			else if (material_grid[i] == MATERIAL_OLIVINE)
+			{
+				if (temperature_grid[i] < 2330)
+				{
+					phase_grid[i] = PHASE_LIQUID;
+				}
 			}
 		}
+
+
+
+
+
 	}
 
 #ifdef THREAD_TIMING
@@ -325,6 +375,9 @@ void thread_temperature ()
 	std::cout << "thread_temperature " << elapsed.count() << " microseconds." << std::endl;
 #endif
 }
+
+
+
 
 // return a random integer in the range. It is inclusive of both end values.
 unsigned int randomIntegerInRange (unsigned int from, unsigned int to)
@@ -358,6 +411,7 @@ void physics_sector (unsigned int from, unsigned int to)
 				if ((phase_grid[neighbours[index]] == PHASE_VACUUM) ||  (phase_grid[neighbours[index]] == PHASE_GAS) ||  (phase_grid[neighbours[index]] == PHASE_LIQUID)  )
 				{
 					swap(i, neighbours[index]);
+					break;
 				}
 			}
 		}
@@ -381,6 +435,7 @@ void physics_sector (unsigned int from, unsigned int to)
 				if ((phase_grid[neighbours[index]] == PHASE_VACUUM) || (phase_grid[neighbours[index]] == PHASE_GAS) ||  (phase_grid[neighbours[index]] == PHASE_LIQUID)     )
 				{
 					swap(i, neighbours[index]);
+					break;
 				}
 			}
 		}
@@ -404,9 +459,35 @@ void physics_sector (unsigned int from, unsigned int to)
 			for (uint8_t j = 0; j < 3; ++j)
 			{
 				uint8_t index = extremelyFastNumberFromZeroTo(7);
+
+					if (material_grid[i] == MATERIAL_WATER)
+					{
+						if (material_grid[neighbours[index]] != MATERIAL_VACUUM)
+						{
+							if (temperature_grid[i] < 373 )
+							{
+								phase_grid[i] = PHASE_LIQUID;
+							}
+						}
+					}
+					if (material_grid[neighbours[index]] == MATERIAL_WATER)
+					{	
+						if (material_grid[i] != MATERIAL_VACUUM)
+						{
+							if (temperature_grid[neighbours[index]] < 373 )
+							{
+								phase_grid[neighbours[index]] = PHASE_LIQUID;
+							}
+						}
+					}
+
+
 				if (phase_grid[neighbours[index]]  == PHASE_VACUUM || (phase_grid[neighbours[index]] == PHASE_GAS) )
 				{
 					swap(i, neighbours[index]);
+
+				
+					break;
 				}
 			}
 		}

@@ -82,6 +82,10 @@ void thread_interface()
 				coolEverything();
 				break;
 
+			case SDLK_b:
+				setNeutralTemp();
+				break;
+
 
 			case SDLK_p:
 				togglePause();
@@ -130,7 +134,7 @@ int main( int argc, char * argv[] )
 
 
 
-		boost::thread t99{ thread_temperature };
+		boost::thread t99{ thread_temperature2 };
 
 		boost::thread t2{ thread_physics };
 		// printf("started t2\n");

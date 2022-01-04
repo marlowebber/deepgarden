@@ -74,5 +74,9 @@ void thread_particledrawing ();
 void heatEverything () ;
 void coolEverything();
 
-void thread_temperature ();
+// void thread_temperature ();
+
+void setNeutralTemp () ;
+
+void thread_temperature2 ();
 #endif
