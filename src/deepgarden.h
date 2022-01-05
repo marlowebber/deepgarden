@@ -36,19 +36,18 @@ struct Color
 };
 
 
-#define MATERIAL_VACUUM	1
-#define MATERIAL_PHOTON          		  2  // 2^1, bit 1
+#define MATERIAL_VACUUM		1
+#define MATERIAL_PHOTON  	2       
+#define MATERIAL_SEED 		3
+#define MATERIAL_IRON 		4
+#define MATERIAL_STONE 		5
+#define MATERIAL_OXYGEN 	6
+#define MATERIAL_GOLD 		7
+#define MATERIAL_WATER 		8
+#define MATERIAL_QUARTZ 	9
+#define MATERIAL_AMPHIBOLE 	10
+#define MATERIAL_OLIVINE 	11
 
-#define MATERIAL_IRON 4
-#define MATERIAL_STONE 8
-#define MATERIAL_OXYGEN 16
-#define MATERIAL_GOLD 32
-#define MATERIAL_WATER 64
-#define MATERIAL_QUARTZ 128
-#define MATERIAL_AMPHIBOLE 256
-#define MATERIAL_OLIVINE 512
-
-#define MATERIAL_SEED 1024
 
 #define PHASE_VACUUM 1
 #define PHASE_SOLID 2

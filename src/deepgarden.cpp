@@ -22,34 +22,37 @@ float lifeColorGrid[totalSize * numberOfFieldsPerVertex ];
 
 struct Particle
 {
-	unsigned int material;
-	unsigned int phase;
-	int temperature;
+	std::string genes;
+	uint16_t identity;
+	int8_t energy;
+	uint8_t material;
+	uint8_t phase;
+	uint16_t temperature;
 };
 
 Particle grid[totalSize];
 
 
-#define FUNCTION_DEFAULT 1
-#define FUNCTION_LEAF 2
+// #define FUNCTION_DEFAULT 1
+// #define FUNCTION_LEAF 2
 
-struct LifeParticle
-{
-	Color color = Color(0.5f, 0.5f, 0.5f, 1.0f);
-	unsigned int identity;
-	int energyStored;
-	unsigned int functions;
-};
+// struct LifeParticle
+// {
+// 	Color color = Color(0.5f, 0.5f, 0.5f, 1.0f);
+// 	unsigned int identity;
+// 	int energyStored;
+// 	unsigned int functions;
+// };
 
 
 
-LifeParticle lifeGrid[totalSize];
+// LifeParticle lifeGrid[totalSize];
 //Seed seedGrid[totalSize];
 
 
 // LifeParticle backgroundLife[totalSize];
 
-std::string exampleSentence = "agfa fafga fellelente oricorori malamuula tannantantanest";
+std::string exampleSentence = "sr leeees";
 
 const Color color_lightblue = Color( 0.1f, 0.3f, 0.65f, 1.0f );
 const Color color_yellow    = Color( 1.0f, 1.0f, 0.0f, 1.0f );
@@ -126,6 +129,64 @@ std::list<unsigned int> identities;
 
 // }
 
+
+void setParticle(std::string genes, unsigned int i)
+{
+
+	grid[i].genes = genes;
+	grid[i].identity = 0x00;
+
+	grid[i].temperature = defaultTemperature;
+
+	switch (grid[i].genes[0])
+	{
+
+
+	case 'q':
+	{
+		grid[i].material = MATERIAL_QUARTZ;
+		grid[i].phase = PHASE_POWDER;
+		memcpy(&colorGrid[i * numberOfFieldsPerVertex], &color_lightgrey, 16  );
+		break;
+	}
+
+	case 'o':
+	{
+		grid[i].material = MATERIAL_OLIVINE;
+		grid[i].phase = PHASE_POWDER;
+		memcpy(&colorGrid[i * numberOfFieldsPerVertex], &color_darkgrey, 16  );
+		break;
+
+	}
+	case 'a':
+	{
+		grid[i].material = MATERIAL_AMPHIBOLE;
+		grid[i].phase = PHASE_POWDER;
+		memcpy(&colorGrid[i * numberOfFieldsPerVertex], &color_grey, 16  );
+		break;
+	}
+
+	case 'w':
+	{
+		grid[i].material = MATERIAL_WATER;
+		grid[i].phase = PHASE_LIQUID;
+		memcpy(&colorGrid[i * numberOfFieldsPerVertex], &color_lightblue, 16  );
+
+		break;
+	}
+
+	case 's':
+	{
+		grid[i].genes[1] = 'u';
+		grid[i].material = MATERIAL_SEED;
+		grid[i].phase = PHASE_POWDER;
+		memcpy(&colorGrid[i * numberOfFieldsPerVertex], &color_yellow, 16  );
+	}
+
+	}
+
+}
+
 void initialize ()
 {
 	setupExtremelyFastNumberGenerators();
@@ -148,7 +209,7 @@ void initialize ()
 		float fx = x;
 		float fy = y;
 
-	
+
 
 		grid[i].temperature = defaultTemperature;
 		grid[i].phase = PHASE_VACUUM;
@@ -173,10 +234,7 @@ void initialize ()
 			{
 				if (y > 100 && y < 200)
 				{
-					grid[i].material = MATERIAL_OLIVINE;
-					grid[i].phase = PHASE_SOLID;
-					memcpy(&colorGrid[i * numberOfFieldsPerVertex], &color_darkgrey, 16  );
-					grid[i].temperature = defaultTemperature;
+					setParticle( std::string("o"), i);
 				}
 
 			}
@@ -190,10 +248,7 @@ void initialize ()
 			{
 				if (RNG() < 0.5)
 				{
-					grid[i].material = MATERIAL_OLIVINE;
-					grid[i].phase = PHASE_POWDER;
-					memcpy(&colorGrid[i * numberOfFieldsPerVertex], &color_darkgrey, 16  );
-					grid[i].temperature = defaultTemperature;
+					setParticle( std::string("o"), i);
 				}
 			}
 
@@ -202,10 +257,7 @@ void initialize ()
 			{
 				if (RNG() < 0.5)
 				{
-					grid[i].material = MATERIAL_AMPHIBOLE;
-					grid[i].phase = PHASE_POWDER;
-					memcpy(&colorGrid[i * numberOfFieldsPerVertex], &color_grey, 16  );
-					grid[i].temperature = defaultTemperature;
+					setParticle( std::string("a"), i);
 				}
 			}
 
@@ -214,10 +266,7 @@ void initialize ()
 			{
 				if (RNG() < 0.5)
 				{
-					grid[i].material = MATERIAL_QUARTZ;
-					grid[i].phase = PHASE_POWDER;
-					memcpy(&colorGrid[i * numberOfFieldsPerVertex], &color_lightgrey, 16  );
-					grid[i].temperature = defaultTemperature;
+					setParticle( std::string("q"), i);
 				}
 			}
 
@@ -226,32 +275,40 @@ void initialize ()
 			{
 				if (RNG() < 0.5)
 				{
-					grid[i].material = MATERIAL_WATER;
-					grid[i].phase = PHASE_LIQUID;
-					memcpy(&colorGrid[i * numberOfFieldsPerVertex], &color_lightblue, 16  );
-					grid[i].temperature = defaultTemperature;
+					setParticle( std::string("w"), i);
 				}
 			}
 		}
 
 
 
-			if (x == 50 && y == 50)
+		if (x == 50 && y == 50)
 		{
 			// seedGrid[i].seed = true;
 			// seedGrid[i].genes = exampleSentence;
 			// seedGrid[i].planted = true;
 			// seedGrid[i].ripe = true;
 
-			grid[i].material = MATERIAL_SEED;
+			// grid[i].material = MATERIAL_SEED;
 
-			grid[i].phase = PHASE_POWDER;
-			memcpy(&colorGrid[i * numberOfFieldsPerVertex], &color_yellow, 16  );
+			// grid[i].phase = PHASE_POWDER;
+			// memcpy(&colorGrid[i * numberOfFieldsPerVertex], &color_yellow, 16  );
+			setParticle(exampleSentence, i);
 
+			grid[i].genes[1] = 'r';
 		}
 
 
 	}
+
+	// for (unsigned int i = 0; i < totalSize; ++i)
+	// {
+
+	// 	if () {
+
+	// 	}
+
+	// }
 }
 
 void swap (unsigned int a, unsigned int b)
@@ -272,10 +329,10 @@ void heatEverything ()
 {
 	for (unsigned int i = 0; i < totalSize; ++i)
 	{
-		if (grid[i].temperature < 5000)
-		{
-			grid[i].temperature += 25;
-		}
+		// if (grid[i].temperature < 5000)
+		// {
+		grid[i].temperature += 25;
+		// }
 	}
 }
 
@@ -284,10 +341,10 @@ void coolEverything ()
 {
 	for (unsigned int i = 0; i < totalSize; ++i)
 	{
-		if (grid[i].temperature > 100)
-		{
-			grid[i].temperature -= 25;
-		}
+		// if (grid[i].temperature > 0)
+		// {
+		grid[i].temperature -= 25;
+		// }
 	}
 }
 
@@ -411,6 +468,46 @@ void thread_temperature2 ()
 					grid[i].phase = PHASE_LIQUID;
 				}
 			}
+			else if (grid[i].phase == PHASE_SOLID )
+			{
+				if (grid[i].temperature > 2330)
+				{
+					unsigned int squareBelow = i - sizeX;
+					unsigned int squareAbove = i + sizeX;
+					unsigned int neighbours[] =
+					{
+						squareBelow - 1,
+						squareBelow,
+						squareBelow + 1,
+						i - 1,
+						i + 1,
+						squareAbove - 1,
+						squareAbove,
+						squareAbove + 1
+					};
+					unsigned int nGaseousNeighbours = 0;
+					for (int i = 0; i < 8; ++i)
+					{
+						if ( grid[neighbours[i]].material == MATERIAL_QUARTZ )
+						{
+							if (grid[neighbours[i]].phase == PHASE_GAS )
+							{
+								nGaseousNeighbours++;
+							}
+						}
+					}
+					if (nGaseousNeighbours > 3)
+					{
+						grid[i].phase = PHASE_GAS;
+					}
+					else if (extremelyFastNumberFromZeroTo(1000) == 0)
+					{
+						grid[i].phase = PHASE_GAS;
+					}
+				}
+
+			}
+
 		}
 
 
@@ -1004,6 +1101,8 @@ int drawCharacter ( std::string genes , unsigned int identity)
 
 	std::list<vec_u2> v;
 
+	std::list<vec_u2> v_seeds;
+
 	unsigned int genesize = genes.length();
 
 	switch (c)
@@ -1099,6 +1198,11 @@ int drawCharacter ( std::string genes , unsigned int identity)
 	case 'g': // make a seed
 	{
 		cursor_string++; if (cursor_string > genesize) {return -1;}
+		// setParticle(  genes ,  ( cursor_grid.y * cursor_grid.x ) + cursor_grid.x    );
+		// grid[( cursor_grid.y * cursor_grid.x ) + cursor_grid.x  ].genes[1] = 'u';
+
+		v_seeds.push_back( cursor_grid );
+
 		break;
 	}
 
@@ -1284,6 +1388,18 @@ int drawCharacter ( std::string genes , unsigned int identity)
 		n_points ++;
 	}
 
+	unsigned int n_seeds = 0;
+	for (std::list<vec_u2>::iterator it = v_seeds.begin(); it != v_seeds.end(); ++it)
+	{
+		unsigned int i = (it->y * sizeX) + it->x;
+
+
+
+		setParticle(  genes ,  ( cursor_grid.y * cursor_grid.x ) + cursor_grid.x    );
+		n_seeds++;
+	}
+
+
 	//energy -= n_points;
 
 	return 0;
@@ -1334,12 +1450,16 @@ void thread_life()
 		// {
 
 
-			if (grid[i].material == MATERIAL_SEED)
-			{
-				drawPlantFromSeed( exampleSentence, x,  y );
+		if (grid[i].material == MATERIAL_SEED)
+		{
 
-				grid[i].material == MATERIAL_WATER;
+			if (grid[i].genes[1] == 'r' )
+			{
+				drawPlantFromSeed( grid[i].genes, x,  y );
 			}
+
+			grid[i].material == MATERIAL_WATER;
+		}
 
 
 		// }
