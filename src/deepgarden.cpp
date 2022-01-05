@@ -5,20 +5,51 @@
 #include <chrono>
 #include <iostream>
 
-#define THREAD_TIMING
+//#define THREAD_TIMING
 #define RENDERING_THREADS 4
 
 const unsigned int totalSize = sizeX * sizeY;
 const unsigned int numberOfFieldsPerVertex = 6; /*  R, G, B, A, X, Y  */
+
+
 float colorGrid[totalSize * numberOfFieldsPerVertex ];
 
-struct Particle {
+
+float lifeColorGrid[totalSize * numberOfFieldsPerVertex ];
+
+
+
+
+struct Particle
+{
 	unsigned int material;
 	unsigned int phase;
 	int temperature;
 };
 
 Particle grid[totalSize];
+
+
+#define FUNCTION_DEFAULT 1
+#define FUNCTION_LEAF 2
+
+struct LifeParticle
+{
+	Color color = Color(0.5f, 0.5f, 0.5f, 1.0f);
+	unsigned int identity;
+	int energyStored;
+	unsigned int functions;
+};
+
+
+
+LifeParticle lifeGrid[totalSize];
+//Seed seedGrid[totalSize];
+
+
+// LifeParticle backgroundLife[totalSize];
+
+std::string exampleSentence = "agfa fafga fellelente oricorori malamuula tannantantanest";
 
 const Color color_lightblue = Color( 0.1f, 0.3f, 0.65f, 1.0f );
 const Color color_yellow    = Color( 1.0f, 1.0f, 0.0f, 1.0f );
@@ -30,6 +61,25 @@ const Color color_black     = Color( 0.0f, 0.0f, 0.0f, 1.0f );
 int wind = 0;
 
 int defaultTemperature = 300;
+
+
+unsigned int recursion_level = 0;
+const unsigned int recursion_limit = 5;
+
+// variables keep track of the sequence and rotation states.
+float accumulatedRotation = 0.0f;
+float accumulatedRotation_precomputedSin = sin(accumulatedRotation);
+float accumulatedRotation_precomputedCos = cos(accumulatedRotation);
+
+vec_u2 cursor_grid = vec_u2(0, 0);
+
+vec_u2 prevCursor_grid = vec_u2(0, 0);
+
+unsigned int cursor_string = 0;
+vec_u2 origin = vec_u2(0, 0);
+
+std::list<unsigned int> identities;
+
 
 
 
@@ -84,6 +134,8 @@ void initialize ()
 
 	memset ( colorGrid, 0x00, sizeof(float ) * numberOfFieldsPerVertex * totalSize );
 
+	memset ( lifeColorGrid, 0x00, sizeof(float ) * numberOfFieldsPerVertex * totalSize );
+
 	memset(grid, 0x00, sizeof(Particle) * ( totalSize));
 
 	// // setup the x and y positions in the color grid. these never change so you can just calculate them once.
@@ -96,6 +148,8 @@ void initialize ()
 		float fx = x;
 		float fy = y;
 
+	
+
 		grid[i].temperature = defaultTemperature;
 		grid[i].phase = PHASE_VACUUM;
 
@@ -105,53 +159,98 @@ void initialize ()
 		colorGrid[ (i * numberOfFieldsPerVertex) + 4] = fx;
 		colorGrid[ (i * numberOfFieldsPerVertex) + 5] = fy;
 
-		// sprinkle some material on it to make a default scene.
-		if (i > (10 * sizeX) && i < (50 * sizeX))
-		{
-			if (RNG() < 0.5)
+		lifeColorGrid[ (i * numberOfFieldsPerVertex) + 3] = 0.0f;
+		lifeColorGrid[ (i * numberOfFieldsPerVertex) + 4] = fx;
+		lifeColorGrid[ (i * numberOfFieldsPerVertex) + 5] = fy;
+
+
+
+
+		if (false) {
+			// olivine cube
+
+			if (x > 100 && x < 200)
 			{
-				grid[i].material = MATERIAL_OLIVINE;
-				grid[i].phase = PHASE_POWDER;
-				memcpy(&colorGrid[i * numberOfFieldsPerVertex], &color_darkgrey, 16  );
-				grid[i].temperature = defaultTemperature;
+				if (y > 100 && y < 200)
+				{
+					grid[i].material = MATERIAL_OLIVINE;
+					grid[i].phase = PHASE_SOLID;
+					memcpy(&colorGrid[i * numberOfFieldsPerVertex], &color_darkgrey, 16  );
+					grid[i].temperature = defaultTemperature;
+				}
+
+			}
+
+		}
+
+
+		if (true) {
+			// sprinkle some material on it to make a default scene.
+			if (i > (10 * sizeX) && i < (50 * sizeX))
+			{
+				if (RNG() < 0.5)
+				{
+					grid[i].material = MATERIAL_OLIVINE;
+					grid[i].phase = PHASE_POWDER;
+					memcpy(&colorGrid[i * numberOfFieldsPerVertex], &color_darkgrey, 16  );
+					grid[i].temperature = defaultTemperature;
+				}
+			}
+
+			// sprinkle some material on it to make a default scene.
+			if (i > (50 * sizeX) && i < (75 * sizeX))
+			{
+				if (RNG() < 0.5)
+				{
+					grid[i].material = MATERIAL_AMPHIBOLE;
+					grid[i].phase = PHASE_POWDER;
+					memcpy(&colorGrid[i * numberOfFieldsPerVertex], &color_grey, 16  );
+					grid[i].temperature = defaultTemperature;
+				}
+			}
+
+			// sprinkle some material on it to make a default scene.
+			if (i > (75 * sizeX) && i < (100 * sizeX))
+			{
+				if (RNG() < 0.5)
+				{
+					grid[i].material = MATERIAL_QUARTZ;
+					grid[i].phase = PHASE_POWDER;
+					memcpy(&colorGrid[i * numberOfFieldsPerVertex], &color_lightgrey, 16  );
+					grid[i].temperature = defaultTemperature;
+				}
+			}
+
+			// sprinkle some material on it to make a default scene.
+			if (i > (100 * sizeX) && i < (125 * sizeX))
+			{
+				if (RNG() < 0.5)
+				{
+					grid[i].material = MATERIAL_WATER;
+					grid[i].phase = PHASE_LIQUID;
+					memcpy(&colorGrid[i * numberOfFieldsPerVertex], &color_lightblue, 16  );
+					grid[i].temperature = defaultTemperature;
+				}
 			}
 		}
 
-		// sprinkle some material on it to make a default scene.
-		if (i > (50 * sizeX) && i < (75 * sizeX))
+
+
+			if (x == 50 && y == 50)
 		{
-			if (RNG() < 0.5)
-			{
-				grid[i].material = MATERIAL_AMPHIBOLE;
-				grid[i].phase = PHASE_POWDER;
-				memcpy(&colorGrid[i * numberOfFieldsPerVertex], &color_grey, 16  );
-				grid[i].temperature = defaultTemperature;
-			}
+			// seedGrid[i].seed = true;
+			// seedGrid[i].genes = exampleSentence;
+			// seedGrid[i].planted = true;
+			// seedGrid[i].ripe = true;
+
+			grid[i].material = MATERIAL_SEED;
+
+			grid[i].phase = PHASE_POWDER;
+			memcpy(&colorGrid[i * numberOfFieldsPerVertex], &color_yellow, 16  );
+
 		}
 
-		// sprinkle some material on it to make a default scene.
-		if (i > (75 * sizeX) && i < (100 * sizeX))
-		{
-			if (RNG() < 0.5)
-			{
-				grid[i].material = MATERIAL_QUARTZ;
-				grid[i].phase = PHASE_POWDER;
-				memcpy(&colorGrid[i * numberOfFieldsPerVertex], &color_lightgrey, 16  );
-				grid[i].temperature = defaultTemperature;
-			}
-		}
 
-		// sprinkle some material on it to make a default scene.
-		if (i > (100 * sizeX) && i < (125 * sizeX))
-		{
-			if (RNG() < 0.5)
-			{
-				grid[i].material = MATERIAL_WATER;
-				grid[i].phase = PHASE_LIQUID;
-				memcpy(&colorGrid[i * numberOfFieldsPerVertex], &color_lightblue, 16  );
-				grid[i].temperature = defaultTemperature;
-			}
-		}
 	}
 }
 
@@ -273,12 +372,12 @@ void thread_temperature2 ()
 					{
 						//squareBelow - 1,
 						squareBelow,
-					//	squareBelow + 1,
+						//	squareBelow + 1,
 						i - 1,
 						i + 1,
-					//	squareAbove - 1,
+						//	squareAbove - 1,
 						squareAbove,
-					//	squareAbove + 1
+						//	squareAbove + 1
 					};
 					unsigned int nSolidNeighbours = 0;
 					for (int i = 0; i < 4; ++i)
@@ -410,14 +509,14 @@ void thread_temperature2 ()
 					unsigned int squareAbove = i + sizeX;
 					unsigned int neighbours[] =
 					{
-					//	squareBelow - 1,
+						//	squareBelow - 1,
 						squareBelow,
-					//	squareBelow + 1,
+						//	squareBelow + 1,
 						//i - 1,
-					//	i + 1,
-					//	squareAbove - 1,
+						//	i + 1,
+						//	squareAbove - 1,
 						squareAbove,
-					//	squareAbove + 1
+						//	squareAbove + 1
 					};
 					unsigned int nSolidNeighbours = 0;
 					for (int i = 0; i < 2; ++i)
@@ -523,6 +622,31 @@ void physics_sector (unsigned int from, unsigned int to)
 				if ((grid[neighbours[index]].phase == PHASE_VACUUM) || (grid[neighbours[index]].phase == PHASE_GAS) ||  (grid[neighbours[index]].phase == PHASE_LIQUID)     )
 				{
 					swap(i, neighbours[index]);
+
+					if (false)
+					{
+
+
+						unsigned int erosionNeighbours[] =
+						{
+							//squareBelow - 1,
+							squareBelow,
+							//squareBelow + 1,
+							i - 1,
+							i + 1
+						};
+
+						for (uint8_t k = 0; k < 3; ++k)
+						{
+							if ( grid[erosionNeighbours[k]].phase == PHASE_SOLID )
+							{
+								if (extremelyFastNumberFromZeroTo(10) == 0 )
+								{
+									grid[erosionNeighbours[k]].phase = PHASE_POWDER;
+								}
+							}
+						}
+					}
 					break;
 				}
 			}
@@ -596,6 +720,30 @@ void thread_physics ()
 		uint16_t windRand =  extremelyFastNumberFromZeroTo( 2);
 		wind = windRand - 1;
 	}
+
+
+
+	if (false)
+	{
+
+// sprinkle rain
+
+		for (int i = (sizeY - 2) * sizeX; i < (sizeY - 1)*sizeX; ++i)
+		{
+			if (extremelyFastNumberFromZeroTo(10) == 0)
+			{
+				grid[i].material = MATERIAL_WATER;
+				grid[i].phase = PHASE_LIQUID;
+				memcpy(&colorGrid[i * numberOfFieldsPerVertex], &color_lightblue, 16  );
+				grid[i].temperature = defaultTemperature;
+			}
+
+		}
+
+	}
+
+
+
 
 	unsigned int quad1 = totalSize / 4;
 	unsigned int quad2 = totalSize / 2;
@@ -708,6 +856,8 @@ void chooseColor ( Color * colorToUse, unsigned int index )
 	if ((grid[index].material & (MATERIAL_AMPHIBOLE))  == (MATERIAL_AMPHIBOLE))       {    *colorToUse = color_grey;  return; }
 	if ((grid[index].material & (MATERIAL_OLIVINE))    == (MATERIAL_OLIVINE))       {    *colorToUse = color_darkgrey;  return; }
 	if ((grid[index].material & (MATERIAL_GOLD))       == (MATERIAL_GOLD))       {    *colorToUse = color_yellow;  return; }
+
+	if ((grid[index].material & (MATERIAL_SEED))       == (MATERIAL_SEED))       {    *colorToUse = color_yellow;  return; }
 }
 
 void setPointSize (unsigned int pointSize)
@@ -729,6 +879,9 @@ void thread_graphics()
 	glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, colorGrid, GL_DYNAMIC_DRAW );
 	glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
 
+	glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, lifeColorGrid, GL_DYNAMIC_DRAW );
+	glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
+
 	postDraw();
 
 #ifdef THREAD_TIMING
@@ -739,3 +892,463 @@ void thread_graphics()
 }
 
 
+
+
+
+
+
+
+unsigned int newIdentity ()
+{
+	unsigned int identityCursor = 1; // zero is reserved
+	while (true)
+	{
+		bool used = false;
+		for (std::list<unsigned int>::iterator it = identities.begin(); it != identities.end(); ++it)
+		{
+			if (identityCursor == *it)
+			{
+				used = true;
+			}
+		}
+
+		if (!used)
+		{
+			identities.push_back(identityCursor);
+			return identityCursor;
+		}
+		identityCursor++;
+	}
+	return identityCursor;
+}
+
+void retireIdentity (unsigned int identityToRetire)
+{
+	identities.remove (identityToRetire);
+}
+
+
+
+// THE EXTREMELY FAST LINE ALGORITHM Variation E (Addition Fixed Point PreCalc Small Display)
+// Small Display (256x256) resolution.
+std::list<vec_u2> EFLA_E(vec_u2 start, vec_u2 end)
+{
+	int x  = start.x;
+	int y  = start.y;
+	int x2 = end.x;
+	int y2 = end.y;
+
+	std::list<vec_u2> v;
+
+	bool yLonger = false;
+	int shortLen = y2 - y;
+	int longLen = x2 - x;
+	if (abs(shortLen) > abs(longLen)) {
+		int swap = shortLen;
+		shortLen = longLen;
+		longLen = swap;
+		yLonger = true;
+	}
+	int decInc;
+	if (longLen == 0) decInc = 0;
+	else decInc = (shortLen << 8) / longLen;
+
+	if (yLonger) {
+		if (longLen > 0) {
+			longLen += y;
+			for (int j = 0x80 + (x << 8); y <= longLen; ++y) {
+				// myPixel(surface,j >> 8,y);
+				v.push_back( vec_u2(j >> 8, y) );
+				j += decInc;
+			}
+			return v;
+		}
+		longLen += y;
+		for (int j = 0x80 + (x << 8); y >= longLen; --y) {
+			// myPixel(surface,j >> 8,y);
+			v.push_back( vec_u2(j >> 8, y) );
+			j -= decInc;
+		}
+		return v;
+	}
+
+	if (longLen > 0) {
+		longLen += x;
+		for (int j = 0x80 + (y << 8); x <= longLen; ++x) {
+			// myPixel(surface,x,j >> 8);
+			v.push_back( vec_u2(x, j >> 8) );
+			j += decInc;
+		}
+		return v;
+	}
+	longLen += x;
+	for (int j = 0x80 + (y << 8); x >= longLen; --x) {
+		// myPixel(surface,x,j >> 8);
+		v.push_back( vec_u2(x, j >> 8) );
+		j -= decInc;
+	}
+
+	return v;
+}
+
+
+int drawCharacter ( std::string genes , unsigned int identity)
+{
+
+	if (recursion_level > recursion_limit)
+	{
+		return -1;
+	}
+
+	char c = genes[cursor_string];
+
+	std::list<vec_u2> v;
+
+	unsigned int genesize = genes.length();
+
+	switch (c)
+	{
+
+	case 'b': // branch. a sequence that grows at an angle to the main trunk
+	{
+		cursor_string++; if (cursor_string > genesize) {return -1;}
+
+		int numberModifier = 0;
+		while (!numberModifier) {	numberModifier = alphanumeric( genes[cursor_string] ); cursor_string++; if (cursor_string > genesize) {return -1;} }
+
+		float rotation = numberModifier;
+
+		// record trunk rotation
+		float trunkRotation = accumulatedRotation;
+
+		// figure out new branch rotation
+		accumulatedRotation = accumulatedRotation + (rotation / 26.0f) * 2.0f * 3.14159f;
+		accumulatedRotation_precomputedSin = sin(accumulatedRotation);
+		accumulatedRotation_precomputedCos = cos(accumulatedRotation);
+
+		// record old cursor position
+		vec_u2 old_cursorGrid = cursor_grid;
+
+		recursion_level++;
+		while (1)
+		{
+			if ( drawCharacter(genes, identity) < 0)
+			{
+				break;
+			}
+		}
+		recursion_level--;
+
+		// return to normal rotation
+		accumulatedRotation = trunkRotation;
+		accumulatedRotation_precomputedSin = sin(accumulatedRotation);
+		accumulatedRotation_precomputedCos = cos(accumulatedRotation);
+
+		// return to normal position
+		cursor_grid = old_cursorGrid;
+
+		break;
+	}
+
+	case 's': // sequence. a motif is repeated serially a number of times.
+	{
+		cursor_string++; if (cursor_string > genesize) {return -1;}
+
+		// get number of times to repeat the sequence
+		int numberModifier = 0;
+		while (!numberModifier) {	numberModifier = alphanumeric( genes[cursor_string] ); cursor_string++; if (cursor_string > genesize) {return -1;} }
+
+		int repeats = numberModifier;
+
+		// the character after that is the next thing to be arrayed
+		cursor_string++; if (cursor_string > genesize) {return -1;}
+
+		unsigned int sequenceOrigin = cursor_string;
+
+		recursion_level++;
+		for ( int i = 0; i < repeats; ++i)
+		{
+			while (1)
+			{
+				if ( drawCharacter(genes, identity) < 0)
+				{
+					break;
+				}
+			}
+			cursor_string = sequenceOrigin;
+		}
+		break;
+		recursion_level--;
+	}
+	case ' ': // break innermost array
+	{
+		cursor_string++; if (cursor_string > genesize) {return -1;}
+
+		return -1;
+		break;
+	}
+
+	case '.': // break array and return cursor to origin
+		cursor_string++; if (cursor_string > genesize) {return -1;}
+
+		cursor_grid = origin;
+
+		return -1;
+		break;
+
+	case 'g': // make a seed
+	{
+		cursor_string++; if (cursor_string > genesize) {return -1;}
+		break;
+	}
+
+	case 'c': // paint a circle at the cursor
+	{
+		cursor_string++; if (cursor_string > genesize) {return -1;}
+
+		int numberModifier = 0;
+		while (!numberModifier) {	numberModifier = alphanumeric( genes[cursor_string] ); cursor_string++; if (cursor_string > genesize) {return -1;} }
+
+		// get the circle radius (the next number in the string.)
+		unsigned int radius = numberModifier;
+
+		// define the range of pixels you'll draw- so you don't have to navigate the entire, massive grid.
+		unsigned int drawingAreaLowerX = cursor_grid.x - radius;
+		unsigned int drawingAreaLowerY = cursor_grid.y - radius;
+		unsigned int drawingAreaUpperX = cursor_grid.x + radius;
+		unsigned int drawingAreaUpperY = cursor_grid.y + radius;
+
+		// raster a circle
+		for (unsigned int i = drawingAreaLowerX; i < drawingAreaUpperX; ++i)
+		{
+			for (unsigned int j = drawingAreaLowerY; j < drawingAreaUpperY; ++j)
+			{
+				if (  magnitude_int (  i - cursor_grid.x , j - cursor_grid.y )  < radius )
+				{
+					v.push_back( vec_u2(i, j) );
+				}
+			}
+		}
+
+		break;
+	}
+
+	case 'l':
+	{
+		// rasters a line, taking into account the accumulated rotation
+		cursor_string++; if (cursor_string > genesize) {return -1;}
+
+		// set the previous x and y, which will be the start of the line
+		prevCursor_grid = cursor_grid;
+
+		bool chosenSignX = false;
+		int signX = 1;
+
+		while (!chosenSignX)
+		{
+			cursor_string++; if (cursor_string > genesize) {return -1;}
+			signX = alphanumeric( genes[cursor_string]);
+			if (signX > 13) { signX = 1; } else { signX = -1; }
+			chosenSignX = true;
+		}
+
+		bool chosenSignY = false;
+		int signY = 1;
+
+		while (!chosenSignY)
+		{
+			cursor_string++; if (cursor_string > genesize) {return -1;}
+			signY = alphanumeric( genes[cursor_string]);
+			if (signY > 13) { signY = 1; }
+			else {
+				signY = 1; // signY = -1; // i made it this way so the plants always grow up. instead of into the ground.
+			}
+			chosenSignY = true;
+		}
+
+		unsigned int numberModifier = 0;
+
+		while (!numberModifier)
+		{
+			cursor_string++; if (cursor_string > genesize) {return -1;}
+			numberModifier = alphanumeric( genes[cursor_string] );
+		}
+
+		bool inRange = true;
+
+		if (cursor_grid.x + numberModifier  > sizeX && signX > 0)
+		{
+			cursor_grid.x = sizeX - 1;
+			inRange = false;
+		}
+		if (numberModifier > cursor_grid.x && signX < 0 )
+		{
+			cursor_grid.x = 0;
+			inRange = false;
+		}
+		if (inRange)
+		{
+			if (signX > 0)
+			{
+				cursor_grid.x += (numberModifier );
+			}
+			else
+			{
+				cursor_grid.x -= (numberModifier );
+			}
+		}
+		numberModifier = 0;
+
+		while (!numberModifier)
+		{
+			cursor_string++; if (cursor_string > genesize) {return -1;}
+			numberModifier = alphanumeric( genes[cursor_string] );
+		}
+
+		inRange = true;
+		if (cursor_grid.y + numberModifier  > sizeY && signY > 0)
+		{
+			cursor_grid.y = sizeY - 1;
+			inRange = false;
+		}
+		if (numberModifier > cursor_grid.y && signY < 0 )
+		{
+			cursor_grid.y = 0;
+			inRange = false;
+		}
+
+		if (inRange)
+		{
+			if (signY > 0)
+			{
+				cursor_grid.y += (numberModifier );
+			}
+			else
+			{
+				cursor_grid.y -= (numberModifier );
+			}
+		}
+
+		vec_f2 rotatedPoint = rotatePointPrecomputed( vec_f2(prevCursor_grid.x, prevCursor_grid.y),  accumulatedRotation_precomputedSin,  accumulatedRotation_precomputedCos, vec_f2(  cursor_grid.x, cursor_grid.y));
+
+		if 		(rotatedPoint.x > 0 && rotatedPoint.x < sizeX - 1) 	{ cursor_grid.x = rotatedPoint.x;}
+		else if (rotatedPoint.x < 0) 								{ cursor_grid.x = 0;}
+		else if (rotatedPoint.x > sizeX - 1) 						{ cursor_grid.x = sizeX - 1; }
+
+		if 		(rotatedPoint.y > 0 && rotatedPoint.y < sizeY - 1) 	{ cursor_grid.y = rotatedPoint.y;}
+		else if (rotatedPoint.y < 0) 								{ cursor_grid.y = 0;}
+		else if (rotatedPoint.y > sizeY - 1) 						{ cursor_grid.y = sizeY - 1; }
+
+		v = EFLA_E( prevCursor_grid, cursor_grid);
+
+		break;
+	}
+
+	default:
+	{
+		cursor_string++; if (cursor_string > genesize) {return -1;}
+	}
+	}
+
+	// paint in the points with material
+	unsigned int n_points = 0;
+	for (std::list<vec_u2>::iterator it = v.begin(); it != v.end(); ++it)
+	{
+		unsigned int i = (it->y * sizeX) + it->x;
+
+
+		grid[i].phase 	= PHASE_SOLID;
+		grid[i].material = MATERIAL_QUARTZ;
+
+
+		// foregroundLife[i].identity = identity;
+		// foregroundLife[i].energyStored = 0;
+		// foregroundLife[i].color = Color(0.5f, 0.5f, 0.5f, 1.0f);
+		// foregroundLife[i].seed = false;
+		// foregroundLife[i].functions = 0;
+		// foregroundLife[i].genes = genes;
+
+
+		// lifeColorGridF[i * numberOfFieldsPerVertex] =
+		// memcpy(  &(lifeColorGridF[i * numberOfFieldsPerVertex]) , &(foregroundLife[i].color), sizeof(Color)  );
+//
+		// 		Color color;
+		// unsigned int identity;
+		// int energyStored;
+		// bool seed;
+		// unsigned int functions;
+		// std::string * genes;
+
+
+
+		n_points ++;
+	}
+
+	//energy -= n_points;
+
+	return 0;
+}
+
+
+
+void drawPlantFromSeed( std::string genes, unsigned int x, unsigned int y )
+{
+
+	printf("drawPlantFromSeed\n");
+	unsigned int identity = newIdentity();
+	cursor_string = 0;
+	cursor_grid = vec_u2(x, y);
+	prevCursor_grid = cursor_grid;
+
+	while (cursor_string < genes.length() )
+	{
+		drawCharacter (genes , identity);
+	}
+
+
+}
+
+
+
+void thread_life()
+{
+
+#ifdef THREAD_TIMING
+	auto start = std::chrono::steady_clock::now();
+#endif
+
+	// iterate through background life, if there is a seed, draw it on the foreground.
+
+	unsigned int x = 0;
+	unsigned int y = 0;
+
+
+	for (int i = 0; i < totalSize; ++i)
+	{
+
+		x = i % sizeX;
+		if (!x) { y = i / sizeX; }
+
+
+		// if (seedGrid[i].seed)
+		// {
+
+
+			if (grid[i].material == MATERIAL_SEED)
+			{
+				drawPlantFromSeed( exampleSentence, x,  y );
+
+				grid[i].material == MATERIAL_WATER;
+			}
+
+
+		// }
+	}
+
+#ifdef THREAD_TIMING
+	auto end = std::chrono::steady_clock::now();
+	auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+	std::cout << "thread_life " << elapsed.count() << " microseconds." << std::endl;
+#endif
+
+}

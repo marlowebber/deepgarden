@@ -48,6 +48,8 @@ struct Color
 #define MATERIAL_AMPHIBOLE 256
 #define MATERIAL_OLIVINE 512
 
+#define MATERIAL_SEED 1024
+
 #define PHASE_VACUUM 1
 #define PHASE_SOLID 2
 #define PHASE_POWDER 4
@@ -79,4 +81,7 @@ void coolEverything();
 void setNeutralTemp () ;
 
 void thread_temperature2 ();
+
+
+void thread_life();
 #endif
