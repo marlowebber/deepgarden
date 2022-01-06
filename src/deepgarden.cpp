@@ -35,13 +35,14 @@ struct SeedParticle
 	uint16_t parentIdentity;
 	std::string genes;
 	int energy;
+	uint8_t stage;
 };
 
 Particle grid[totalSize];
 LifeParticle lifeGrid[totalSize];
 SeedParticle seedGrid[totalSize];
 
-std::string exampleSentence = "sr lmmmm sd lmmmmblmmmmgg ";
+std::string exampleSentence = "su lmmmm sd lmmmmblmmmmgg ";
 
 void mutateSentence ( std::string * genes )
 {
@@ -160,10 +161,12 @@ void swapLifeParticle(unsigned int a, unsigned int b)
 
 
 
-void setSeedParticle( std::string genes, unsigned int parentIdentity, unsigned int i)
+void setSeedParticle( std::string genes, unsigned int parentIdentity, int energyDebt, unsigned int i)
 {
 	seedGrid[i].genes = genes;
 	seedGrid[i].parentIdentity = parentIdentity;
+	seedGrid[i].stage = STAGE_BUD;
+	seedGrid[i].energy = energyDebt;
 
 	memcpy( (&seedColorGrid[i * numberOfFieldsPerVertex]) ,  &(color_yellow),  sizeof(Color) );
 }
@@ -171,7 +174,7 @@ void clearSeedParticle( unsigned int i)
 {
 	memset( &(seedGrid[i]) , 0x00, sizeof(SeedParticle) );
 
-	memset( &(seedColorGrid[ i*numberOfFieldsPerVertex ]) , 0x00, 16 );
+	memset( &(seedColorGrid[ i * numberOfFieldsPerVertex ]) , 0x00, 16 );
 
 
 }
@@ -331,11 +334,18 @@ void initialize ()
 
 
 
-		if (x == 500 && y == 50)
+		// if (x == 500 && y == 10)
+		// {
+
+		// 	setSeedParticle(exampleSentence, newIdentity() , i);
+		// 	// seedGrid[i].genes[1] = 'r';
+		// }
+
+		if (x == 500 && y == 100)
 		{
 
-			setSeedParticle(exampleSentence, newIdentity() , i);
-			seedGrid[i].genes[1] = 'r';
+			setSeedParticle(exampleSentence, newIdentity() , 0, i);
+			seedGrid[i].stage = STAGE_FRUIT;
 		}
 
 
@@ -1056,8 +1066,10 @@ std::list<vec_u2> EFLA_E(vec_u2 start, vec_u2 end)
 }
 
 
-int drawCharacter ( std::string genes , unsigned int identity)
+int drawCharacter ( std::string genes , unsigned int identity, int energyDebtSoFar)
 {
+
+	printf("cursor_grid %u %u\n", cursor_grid.x, cursor_grid.y);
 
 	if (recursion_level > recursion_limit)
 	{
@@ -1106,7 +1118,7 @@ int drawCharacter ( std::string genes , unsigned int identity)
 		recursion_level++;
 		while (1)
 		{
-			if ( drawCharacter(genes, identity) < 0)
+			if ( drawCharacter(genes, identity, energyDebtSoFar) < 0)
 			{
 				break;
 			}
@@ -1148,7 +1160,7 @@ int drawCharacter ( std::string genes , unsigned int identity)
 		{
 			while (1)
 			{
-				if ( drawCharacter(genes, identity) < 0)
+				if ( drawCharacter(genes, identity, energyDebtSoFar) < 0)
 				{
 					break;
 				}
@@ -1224,6 +1236,7 @@ int drawCharacter ( std::string genes , unsigned int identity)
 				if (  magnitude_int (  i - cursor_grid.x , j - cursor_grid.y )  < radius )
 				{
 					v.push_back( vec_u2(i, j) );
+
 				}
 			}
 		}
@@ -1382,6 +1395,7 @@ int drawCharacter ( std::string genes , unsigned int identity)
 
 
 		setLifeParticle(  genes, identity, i);
+		energyDebtSoFar--;
 		// grid[i].phase = PHASE_SOLID;
 
 		// n_points ++;
@@ -1394,7 +1408,7 @@ int drawCharacter ( std::string genes , unsigned int identity)
 
 
 
-		setSeedParticle(  genes, identity, i);
+		setSeedParticle(  genes, identity, energyDebtSoFar, i);
 
 		// setParticle(  genes , i);
 		// grid[i].phase = PHASE_POWDER;
@@ -1417,9 +1431,11 @@ void drawPlantFromSeed( std::string genes, unsigned int i )
 	unsigned int y = 0;
 
 
-		x = i % sizeX;
-		if (!x) { y = i / sizeX; }
+	x = i % sizeX;
+	y = i / sizeX;
 
+
+	int energyDebtSoFar = 0;
 
 
 
@@ -1427,13 +1443,14 @@ void drawPlantFromSeed( std::string genes, unsigned int i )
 	unsigned int identity = newIdentity();
 	cursor_string = 2;
 	cursor_grid = vec_u2(x, y);
+	origin = cursor_grid;
 	prevCursor_grid = cursor_grid;
 
 	drawActions = 0;
 
 	while (cursor_string < genes.length() )
 	{
-		drawCharacter (genes , identity);
+		drawCharacter (genes , identity, energyDebtSoFar);
 	}
 
 
@@ -1471,13 +1488,43 @@ void thread_life()
 	unsigned int y = 0;
 
 
-	for (unsigned int i = 0; i < totalSize; ++i)
+	for (unsigned int i = (sizeX + 1); i < (totalSize - (sizeX + 1)); ++i)
 	{
 
+if ( lifeGrid[i].identity) 
+{
 		x = i % sizeX;
 		if (!x) { y = i / sizeX; }
 
 
+		unsigned int squareBelow = i - sizeX;
+		unsigned int squareAbove = i + sizeX;
+		unsigned int neighbours[] =
+		{
+			squareBelow - 1,
+			squareBelow,
+			squareBelow + 1,
+			i - 1,
+			i + 1,
+			squareAbove - 1,
+			squareAbove,
+			squareAbove + 1
+		};
+		for (unsigned int j = 0; j < 8; ++j)
+		{
+
+			if (lifeGrid[neighbours[j]].identity == lifeGrid[i].identity) 
+			{
+
+				int equalizedEnergy = ( lifeGrid[neighbours[j]].energy + lifeGrid[i].energy )/2;
+				lifeGrid[neighbours[j]].energy = equalizedEnergy;
+				lifeGrid[i].energy = equalizedEnergy;
+
+			}
+
+		}
+
+}
 
 	}
 
@@ -1511,14 +1558,14 @@ void thread_seeds()
 	for (unsigned int i = (sizeX + 1); i < (totalSize - (sizeX + 1)); ++i)
 	{
 
-	
+
 
 		if (seedGrid[i].parentIdentity > 0)
 		{
 
 			// printf("morten\n");
 
-			if (seedGrid[i].genes[1] == 'r') 
+			if (seedGrid[i].stage == STAGE_SEED)
 			{
 				drawPlantFromSeed(seedGrid[i].genes, i);
 				clearSeedParticle(i);
@@ -1526,69 +1573,95 @@ void thread_seeds()
 			}
 
 
-			unsigned int squareBelow = i - sizeX;
-			unsigned int squareAbove = i + sizeX;
-			unsigned int neighbours[] =
+			if (seedGrid[i].stage == STAGE_FRUIT)
 			{
-				squareBelow - 1,
-				squareBelow,
-				squareBelow + 1,
-				i - 1,
-				i + 1,
-				squareAbove - 1,
-				squareAbove,
-				squareAbove + 1
-			};
-
-// printf("mort1en\n");
-
-
-			for (unsigned int j = 0; j < 8; ++j)
-			{
-
-				if (j < 5)
+				unsigned int squareBelow = i - sizeX;
+				unsigned int squareAbove = i + sizeX;
+				unsigned int neighbours[] =
 				{
-
-
-					if (grid[neighbours[j]].phase == PHASE_VACUUM || grid[neighbours[j]].phase == PHASE_GAS )
-						// {printf("mort2en\n");
+					squareBelow - 1,
+					squareBelow,
+					squareBelow + 1,
+					i - 1,
+					i + 1,
+					squareAbove - 1,
+					squareAbove,
+					squareAbove + 1
+				};
+				unsigned int nSolidNeighbours = 0;
+				for (unsigned int j = 0; j < 8; ++j)
+				{
+					if (j < 5)
 					{
-
-
-						if (extremelyFastNumberFromZeroTo(2) == 0)
+						if (grid[neighbours[j]].phase == PHASE_VACUUM || grid[neighbours[j]].phase == PHASE_GAS )
 						{
+							if (extremelyFastNumberFromZeroTo(8) == 0)
+							{
+								swapSeedParticle( i, neighbours[j] );
+								break;
+							}
+						}
+						if (grid[neighbours[j]].material == MATERIAL_QUARTZ)
+						{
+							nSolidNeighbours++;
+						}
+					}
 
+					if (grid[neighbours[j]].phase == PHASE_LIQUID )
+					{
+						if (extremelyFastNumberFromZeroTo(8) == 0)
+						{
 							swapSeedParticle( i, neighbours[j] );
-
 							break;
 						}
 					}
-					// {printf("mor3ten\n");
-
-
 				}
-
-
-
-
-				if (grid[neighbours[j]].phase == PHASE_LIQUID )
-					// {printf("mort2en\n");
+				if (nSolidNeighbours > 2)
 				{
 
+					seedGrid[i].stage = STAGE_SEED;
 
-					if (extremelyFastNumberFromZeroTo(2) == 0)
+				}
+			}
+
+			if (seedGrid[i].stage == STAGE_BUD)
+			{
+
+				unsigned int squareBelow = i - sizeX;
+				unsigned int squareAbove = i + sizeX;
+				unsigned int neighbours[] =
+				{
+					squareBelow - 1,
+					squareBelow,
+					squareBelow + 1,
+					i - 1,
+					i + 1,
+					squareAbove - 1,
+					squareAbove,
+					squareAbove + 1
+				};
+
+				for (unsigned int j = 0; j < 8; ++j)
+				{
+
+					if (lifeGrid[neighbours[j]].energy > 0) 
 					{
+						seedGrid[i].energy += lifeGrid[neighbours[j]].energy;
+						lifeGrid[neighbours[j]].energy = 0;
 
-						swapSeedParticle( i, neighbours[j] );
-
-						break;
 					}
+
 				}
 
 
+				if (seedGrid[i].energy > 0) 
+				{
+					seedGrid[i].stage = STAGE_FRUIT;
 
+				}
 
 			}
+
 
 		}
 

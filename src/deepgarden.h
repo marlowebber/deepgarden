@@ -59,6 +59,10 @@ struct Color
 #define DARK 0
 #define LIGHT 1
 
+#define STAGE_BUD 1
+#define STAGE_FRUIT 2
+#define STAGE_SEED 3
+
 float RNG();
 
 void initialize ();
