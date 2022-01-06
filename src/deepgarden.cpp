@@ -52,7 +52,26 @@ Particle grid[totalSize];
 
 // LifeParticle backgroundLife[totalSize];
 
-std::string exampleSentence = "sr leeees";
+std::string exampleSentence = "sr lmmmm sd lmmmmgblmmmmgg ";
+
+
+
+
+
+void mutateSentence ( std::string * genes )
+{
+	size_t genesLength = genes->length();
+
+	for (int i = 0; i < genesLength; ++i)
+	{
+		if (extremelyFastNumberFromZeroTo(100) == 0)
+		{
+			// https://stackoverflow.com/questions/20132650/how-to-select-random-letters-in-c
+			(*genes)[i] = (char)('a' + rand() % 26);
+		}
+	}
+}
+
 
 const Color color_lightblue = Color( 0.1f, 0.3f, 0.65f, 1.0f );
 const Color color_yellow    = Color( 1.0f, 1.0f, 0.0f, 1.0f );
@@ -68,6 +87,10 @@ int defaultTemperature = 300;
 
 unsigned int recursion_level = 0;
 const unsigned int recursion_limit = 5;
+
+unsigned int drawActions = 0;
+const unsigned int drawActionlimit = 100;
+
 
 // variables keep track of the sequence and rotation states.
 float accumulatedRotation = 0.0f;
@@ -282,7 +305,7 @@ void initialize ()
 
 
 
-		if (x == 50 && y == 50)
+		if (x == 500 && y == 50)
 		{
 			// seedGrid[i].seed = true;
 			// seedGrid[i].genes = exampleSentence;
@@ -294,7 +317,6 @@ void initialize ()
 			// grid[i].phase = PHASE_POWDER;
 			// memcpy(&colorGrid[i * numberOfFieldsPerVertex], &color_yellow, 16  );
 			setParticle(exampleSentence, i);
-
 			grid[i].genes[1] = 'r';
 		}
 
@@ -953,7 +975,6 @@ void chooseColor ( Color * colorToUse, unsigned int index )
 	if ((grid[index].material & (MATERIAL_AMPHIBOLE))  == (MATERIAL_AMPHIBOLE))       {    *colorToUse = color_grey;  return; }
 	if ((grid[index].material & (MATERIAL_OLIVINE))    == (MATERIAL_OLIVINE))       {    *colorToUse = color_darkgrey;  return; }
 	if ((grid[index].material & (MATERIAL_GOLD))       == (MATERIAL_GOLD))       {    *colorToUse = color_yellow;  return; }
-
 	if ((grid[index].material & (MATERIAL_SEED))       == (MATERIAL_SEED))       {    *colorToUse = color_yellow;  return; }
 }
 
@@ -1097,6 +1118,11 @@ int drawCharacter ( std::string genes , unsigned int identity)
 		return -1;
 	}
 
+	if (drawActions > drawActionlimit)
+	{
+		return -1;
+	}
+
 	char c = genes[cursor_string];
 
 	std::list<vec_u2> v;
@@ -1110,6 +1136,9 @@ int drawCharacter ( std::string genes , unsigned int identity)
 
 	case 'b': // branch. a sequence that grows at an angle to the main trunk
 	{
+
+
+		printf("branch\n");
 		cursor_string++; if (cursor_string > genesize) {return -1;}
 
 		int numberModifier = 0;
@@ -1146,11 +1175,15 @@ int drawCharacter ( std::string genes , unsigned int identity)
 		// return to normal position
 		cursor_grid = old_cursorGrid;
 
+
+		drawActions++;
 		break;
 	}
 
 	case 's': // sequence. a motif is repeated serially a number of times.
 	{
+
+		printf("sequence\n");
 		cursor_string++; if (cursor_string > genesize) {return -1;}
 
 		// get number of times to repeat the sequence
@@ -1176,38 +1209,53 @@ int drawCharacter ( std::string genes , unsigned int identity)
 			}
 			cursor_string = sequenceOrigin;
 		}
-		break;
 		recursion_level--;
+
+		drawActions++;
+		break;
+
 	}
 	case ' ': // break innermost array
 	{
+
+		printf("break\n");
 		cursor_string++; if (cursor_string > genesize) {return -1;}
 
+		drawActions++;
 		return -1;
 		break;
+
 	}
 
 	case '.': // break array and return cursor to origin
+
+		printf("break and return cursor\n");
 		cursor_string++; if (cursor_string > genesize) {return -1;}
 
 		cursor_grid = origin;
 
+		drawActions++;
 		return -1;
 		break;
 
 	case 'g': // make a seed
 	{
+
+		printf("draw a seed\n");
 		cursor_string++; if (cursor_string > genesize) {return -1;}
 		// setParticle(  genes ,  ( cursor_grid.y * cursor_grid.x ) + cursor_grid.x    );
 		// grid[( cursor_grid.y * cursor_grid.x ) + cursor_grid.x  ].genes[1] = 'u';
 
 		v_seeds.push_back( cursor_grid );
 
+		drawActions++;
 		break;
 	}
 
 	case 'c': // paint a circle at the cursor
 	{
+
+		printf("draw a circle\n");
 		cursor_string++; if (cursor_string > genesize) {return -1;}
 
 		int numberModifier = 0;
@@ -1234,11 +1282,13 @@ int drawCharacter ( std::string genes , unsigned int identity)
 			}
 		}
 
+		drawActions++;
 		break;
 	}
 
 	case 'l':
 	{
+		printf("draw a line\n");
 		// rasters a line, taking into account the accumulated rotation
 		cursor_string++; if (cursor_string > genesize) {return -1;}
 
@@ -1345,6 +1395,7 @@ int drawCharacter ( std::string genes , unsigned int identity)
 
 		v = EFLA_E( prevCursor_grid, cursor_grid);
 
+		drawActions++;
 		break;
 	}
 
@@ -1355,14 +1406,14 @@ int drawCharacter ( std::string genes , unsigned int identity)
 	}
 
 	// paint in the points with material
-	unsigned int n_points = 0;
+	// unsigned int n_points = 0;
 	for (std::list<vec_u2>::iterator it = v.begin(); it != v.end(); ++it)
 	{
 		unsigned int i = (it->y * sizeX) + it->x;
 
 
-		grid[i].phase 	= PHASE_SOLID;
-		grid[i].material = MATERIAL_QUARTZ;
+		// grid[i].phase 	= PHASE_SOLID;
+		// grid[i].material = MATERIAL_QUARTZ;
 
 
 		// foregroundLife[i].identity = identity;
@@ -1384,19 +1435,23 @@ int drawCharacter ( std::string genes , unsigned int identity)
 		// std::string * genes;
 
 
+		setParticle(  std::string("a") , i);
+		grid[i].phase = PHASE_SOLID;
 
-		n_points ++;
+		// n_points ++;
 	}
 
-	unsigned int n_seeds = 0;
+	// unsigned int n_seeds = 0;
 	for (std::list<vec_u2>::iterator it = v_seeds.begin(); it != v_seeds.end(); ++it)
 	{
 		unsigned int i = (it->y * sizeX) + it->x;
 
 
 
-		setParticle(  genes ,  ( cursor_grid.y * cursor_grid.x ) + cursor_grid.x    );
-		n_seeds++;
+		setParticle(  genes , i);
+		grid[i].phase = PHASE_POWDER;
+		// grid[i].genes[1] = 'r';
+		// n_seeds++;
 	}
 
 
@@ -1412,9 +1467,11 @@ void drawPlantFromSeed( std::string genes, unsigned int x, unsigned int y )
 
 	printf("drawPlantFromSeed\n");
 	unsigned int identity = newIdentity();
-	cursor_string = 0;
+	cursor_string = 2;
 	cursor_grid = vec_u2(x, y);
 	prevCursor_grid = cursor_grid;
+
+	drawActions = 0;
 
 	while (cursor_string < genes.length() )
 	{
@@ -1424,7 +1481,20 @@ void drawPlantFromSeed( std::string genes, unsigned int x, unsigned int y )
 
 }
 
-
+/**
+ *
+ *
+ * universal gene codes
+ *
+ * the first gene says the material. all particles including rocks n stuff have this.
+ *
+ * the second gene says if living material is 'ripe' to grow or not.
+ *
+ *
+ *
+ *
+ *
+ * */
 
 void thread_life()
 {
@@ -1439,7 +1509,7 @@ void thread_life()
 	unsigned int y = 0;
 
 
-	for (int i = 0; i < totalSize; ++i)
+	for (unsigned int i = 0; i < totalSize; ++i)
 	{
 
 		x = i % sizeX;
@@ -1456,9 +1526,49 @@ void thread_life()
 			if (grid[i].genes[1] == 'r' )
 			{
 				drawPlantFromSeed( grid[i].genes, x,  y );
+				grid[i].material == MATERIAL_WATER;
+
+
 			}
 
-			grid[i].material == MATERIAL_WATER;
+
+
+			unsigned int squareBelow = i - sizeX;
+			unsigned int squareAbove = i + sizeX;
+			unsigned int neighbours[] =
+			{
+				squareBelow - 1,
+				squareBelow,
+				squareBelow + 1,
+				i - 1,
+				i + 1,
+				squareAbove - 1,
+				squareAbove,
+				squareAbove + 1
+			};
+			unsigned int nSolidNeighbours = 0;
+			for (int i = 0; i < 8; ++i)
+			{
+				if ( grid[neighbours[i]].material == MATERIAL_QUARTZ )
+				{
+
+					nSolidNeighbours++;
+
+				}
+			}
+			if (nSolidNeighbours > 2)
+			{
+				if (extremelyFastNumberFromZeroTo(100) == 0)
+				{
+					printf("a seed ripened\n");
+					grid[i].genes[1] = 'r';
+				}
+			}
+
+
+
+
+
 		}
 
 
