@@ -65,6 +65,8 @@ const Color color_grey      = Color( 0.50f, 0.50f, 0.50f, 1.0f );
 const Color color_darkgrey  = Color( 0.25f, 0.25f, 0.25f, 1.0f );
 const Color color_black     = Color( 0.0f, 0.0f, 0.0f, 1.0f );
 
+const Color color_white     = Color( 1.0f, 1.0f, 1.0f, 1.0f );
+
 
 const Color color_purple     = Color( 0.8f, 0.0f, 0.8f, 1.0f );
 
@@ -170,9 +172,23 @@ void setSeedParticle( std::string genes, unsigned int parentIdentity, int energy
 
 	memcpy( (&seedColorGrid[i * numberOfFieldsPerVertex]) ,  &(color_yellow),  sizeof(Color) );
 }
+
+void setPhoton(  unsigned int i)
+{
+	// printf("setogog\n");
+	// seedGrid[i].genes = genes;
+	// seedGrid[i].parentIdentity = parentIdentity;
+	seedGrid[i].stage = STAGE_PHOTON;
+	// seedGrid[i].energy = energyDebt;
+
+	memcpy( (&seedColorGrid[i * numberOfFieldsPerVertex]) ,  &(color_white),  sizeof(Color) );
+}
+
 void clearSeedParticle( unsigned int i)
 {
-	memset( &(seedGrid[i]) , 0x00, sizeof(SeedParticle) );
+	// memset( &(seedGrid[i]) , 0x00, sizeof(SeedParticle) );
+
+	seedGrid[i].stage = 0x00;
 
 	memset( &(seedColorGrid[ i * numberOfFieldsPerVertex ]) , 0x00, 16 );
 
@@ -196,7 +212,6 @@ void swapSeedParticle(unsigned int a, unsigned int b)
 	memcpy( temp_color, 				&seedColorGrid[ b_offset ] , 	sizeof(Color) ); // 4x floats of 4 bytes each
 	memcpy( &seedColorGrid[ b_offset], 	&seedColorGrid[ a_offset] , 	sizeof(Color) );
 	memcpy( &seedColorGrid[ a_offset ], temp_color, 					sizeof(Color) );
-
 }
 
 
@@ -853,6 +868,31 @@ void thread_physics ()
 
 
 
+	if (true)
+	{
+
+// sprinkle photons
+
+		for (int i = (sizeY - 2) * sizeX; i < (sizeY - 1)*sizeX; ++i)
+		{
+			if (extremelyFastNumberFromZeroTo(100) == 0)
+			{
+				// grid[i].material = MATERIAL_WATER;
+				// grid[i].phase = PHASE_LIQUID;
+				// memcpy(&colorGrid[i * numberOfFieldsPerVertex], &color_lightblue, 16  );
+				// grid[i].temperature = defaultTemperature;
+
+
+				 setPhoton(   i);
+			}
+
+		}
+
+	}
+
+
+
+
 
 	unsigned int quad1 = totalSize / 4;
 	unsigned int quad2 = totalSize / 2;
@@ -869,6 +909,15 @@ void thread_physics ()
 	t13.join();
 	t14.join();
 }
+
+
+
+
+void thread_optics ()
+{
+
+}
+
 
 
 
@@ -972,17 +1021,43 @@ void thread_graphics()
 #endif
 	preDraw();
 
-	unsigned int nVertsToRenderThisTurn = 1 * totalSize;
-	long unsigned int totalNumberOfFields = nVertsToRenderThisTurn * numberOfFieldsPerVertex;
 
-	glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, colorGrid, GL_DYNAMIC_DRAW );
-	glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
+	if (true)
+	{
 
-	glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, lifeColorGrid, GL_DYNAMIC_DRAW );
-	glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
 
-	glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, seedColorGrid, GL_DYNAMIC_DRAW );
-	glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
+		unsigned int nVertsToRenderThisTurn = 1 * totalSize;
+		long unsigned int totalNumberOfFields = nVertsToRenderThisTurn * numberOfFieldsPerVertex;
+
+		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, colorGrid, GL_DYNAMIC_DRAW );
+		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
+
+		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, lifeColorGrid, GL_DYNAMIC_DRAW );
+		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
+
+		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, seedColorGrid, GL_DYNAMIC_DRAW );
+		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
+
+	}
+	else if (false)
+	{
+
+
+		// unsigned int nVertsToRenderThisTurn = 1 * totalSize;
+		// long unsigned int totalNumberOfFields = nVertsToRenderThisTurn * numberOfFieldsPerVertex;
+
+		// float energyColorGrid[totalNumberOfFields];
+
+		// for (int i = 0; i < nVertsToRenderThisTurn; ++i)
+		// {
+		// 	energyColorGrid
+		// }
+
+		// glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, energyColorGrid, GL_DYNAMIC_DRAW );
+		// glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
+
+
+	}
 
 	postDraw();
 
@@ -1491,40 +1566,40 @@ void thread_life()
 	for (unsigned int i = (sizeX + 1); i < (totalSize - (sizeX + 1)); ++i)
 	{
 
-if ( lifeGrid[i].identity) 
-{
-		x = i % sizeX;
-		if (!x) { y = i / sizeX; }
-
-
-		unsigned int squareBelow = i - sizeX;
-		unsigned int squareAbove = i + sizeX;
-		unsigned int neighbours[] =
+		if ( lifeGrid[i].identity)
 		{
-			squareBelow - 1,
-			squareBelow,
-			squareBelow + 1,
-			i - 1,
-			i + 1,
-			squareAbove - 1,
-			squareAbove,
-			squareAbove + 1
-		};
-		for (unsigned int j = 0; j < 8; ++j)
-		{
+			x = i % sizeX;
+			if (!x) { y = i / sizeX; }
 
-			if (lifeGrid[neighbours[j]].identity == lifeGrid[i].identity) 
+
+			unsigned int squareBelow = i - sizeX;
+			unsigned int squareAbove = i + sizeX;
+			unsigned int neighbours[] =
+			{
+				squareBelow - 1,
+				squareBelow,
+				squareBelow + 1,
+				i - 1,
+				i + 1,
+				squareAbove - 1,
+				squareAbove,
+				squareAbove + 1
+			};
+			for (unsigned int j = 0; j < 8; ++j)
 			{
 
-				int equalizedEnergy = ( lifeGrid[neighbours[j]].energy + lifeGrid[i].energy )/2;
-				lifeGrid[neighbours[j]].energy = equalizedEnergy;
-				lifeGrid[i].energy = equalizedEnergy;
+				if (lifeGrid[neighbours[j]].identity == lifeGrid[i].identity)
+				{
+
+					int equalizedEnergy = ( lifeGrid[neighbours[j]].energy + lifeGrid[i].energy ) / 2;
+					lifeGrid[neighbours[j]].energy = equalizedEnergy;
+					lifeGrid[i].energy = equalizedEnergy;
+
+				}
 
 			}
 
 		}
-
-}
 
 	}
 
@@ -1558,7 +1633,30 @@ void thread_seeds()
 	for (unsigned int i = (sizeX + 1); i < (totalSize - (sizeX + 1)); ++i)
 	{
 
+		if (seedGrid[i].stage == STAGE_PHOTON)
+		{
 
+			unsigned int squareBelow = i - sizeX;
+
+			if (lifeGrid[squareBelow].identity > 0)
+			{
+				lifeGrid[squareBelow].energy++;
+				clearSeedParticle(i);
+				continue;
+			}
+			if (grid[squareBelow].phase != PHASE_VACUUM)
+			{
+				// lifeGrid[squareBelow].energy++;
+				clearSeedParticle(i);
+				continue;
+			}
+			else
+			{
+
+				swapSeedParticle( i, squareBelow);
+
+			}
+		}
 
 		if (seedGrid[i].parentIdentity > 0)
 		{
@@ -1644,7 +1742,7 @@ void thread_seeds()
 				for (unsigned int j = 0; j < 8; ++j)
 				{
 
-					if (lifeGrid[neighbours[j]].energy > 0) 
+					if (lifeGrid[neighbours[j]].energy > 0)
 					{
 						seedGrid[i].energy += lifeGrid[neighbours[j]].energy;
 						lifeGrid[neighbours[j]].energy = 0;
@@ -1654,7 +1752,7 @@ void thread_seeds()
 				}
 
 
-				if (seedGrid[i].energy > 0) 
+				if (seedGrid[i].energy > 0)
 				{
 					seedGrid[i].stage = STAGE_FRUIT;
 

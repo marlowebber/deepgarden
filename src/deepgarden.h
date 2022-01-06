@@ -62,6 +62,7 @@ struct Color
 #define STAGE_BUD 1
 #define STAGE_FRUIT 2
 #define STAGE_SEED 3
+#define STAGE_PHOTON 4
 
 float RNG();
 
