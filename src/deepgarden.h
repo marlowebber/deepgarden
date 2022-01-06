@@ -33,7 +33,7 @@ struct Color
 	float a;
 
 	Color(float r, float g, float b, float a);
-};
+}__attribute__((packed));
 
 
 #define MATERIAL_VACUUM		1
@@ -83,4 +83,5 @@ void thread_temperature2 ();
 
 
 void thread_life();
+void thread_seeds();
 #endif

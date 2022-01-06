@@ -11,52 +11,37 @@
 const unsigned int totalSize = sizeX * sizeY;
 const unsigned int numberOfFieldsPerVertex = 6; /*  R, G, B, A, X, Y  */
 
-
-float colorGrid[totalSize * numberOfFieldsPerVertex ];
-
-
+float colorGrid[ totalSize * numberOfFieldsPerVertex ];
 float lifeColorGrid[totalSize * numberOfFieldsPerVertex ];
-
-
+float seedColorGrid[totalSize * numberOfFieldsPerVertex];
 
 
 struct Particle
 {
-	std::string genes;
-	uint16_t identity;
-	int8_t energy;
 	uint8_t material;
 	uint8_t phase;
 	uint16_t temperature;
 };
 
+struct LifeParticle
+{
+	std::string genes;
+	uint16_t identity;
+	int8_t energy;
+};
+
+struct SeedParticle
+{
+	uint16_t parentIdentity;
+	std::string genes;
+	int energy;
+};
+
 Particle grid[totalSize];
+LifeParticle lifeGrid[totalSize];
+SeedParticle seedGrid[totalSize];
 
-
-// #define FUNCTION_DEFAULT 1
-// #define FUNCTION_LEAF 2
-
-// struct LifeParticle
-// {
-// 	Color color = Color(0.5f, 0.5f, 0.5f, 1.0f);
-// 	unsigned int identity;
-// 	int energyStored;
-// 	unsigned int functions;
-// };
-
-
-
-// LifeParticle lifeGrid[totalSize];
-//Seed seedGrid[totalSize];
-
-
-// LifeParticle backgroundLife[totalSize];
-
-std::string exampleSentence = "sr lmmmm sd lmmmmgblmmmmgg ";
-
-
-
-
+std::string exampleSentence = "sr lmmmm sd lmmmmblmmmmgg ";
 
 void mutateSentence ( std::string * genes )
 {
@@ -72,7 +57,6 @@ void mutateSentence ( std::string * genes )
 	}
 }
 
-
 const Color color_lightblue = Color( 0.1f, 0.3f, 0.65f, 1.0f );
 const Color color_yellow    = Color( 1.0f, 1.0f, 0.0f, 1.0f );
 const Color color_lightgrey = Color( 0.75f, 0.75f, 0.75f, 1.0f );
@@ -80,10 +64,13 @@ const Color color_grey      = Color( 0.50f, 0.50f, 0.50f, 1.0f );
 const Color color_darkgrey  = Color( 0.25f, 0.25f, 0.25f, 1.0f );
 const Color color_black     = Color( 0.0f, 0.0f, 0.0f, 1.0f );
 
+
+const Color color_purple     = Color( 0.8f, 0.0f, 0.8f, 1.0f );
+
+
 int wind = 0;
 
 int defaultTemperature = 300;
-
 
 unsigned int recursion_level = 0;
 const unsigned int recursion_limit = 5;
@@ -91,124 +78,163 @@ const unsigned int recursion_limit = 5;
 unsigned int drawActions = 0;
 const unsigned int drawActionlimit = 100;
 
-
 // variables keep track of the sequence and rotation states.
 float accumulatedRotation = 0.0f;
 float accumulatedRotation_precomputedSin = sin(accumulatedRotation);
 float accumulatedRotation_precomputedCos = cos(accumulatedRotation);
 
 vec_u2 cursor_grid = vec_u2(0, 0);
-
 vec_u2 prevCursor_grid = vec_u2(0, 0);
-
 unsigned int cursor_string = 0;
 vec_u2 origin = vec_u2(0, 0);
 
 std::list<unsigned int> identities;
 
-
-
-
-// b2Color colorOfHotObject (int temperature)
-// {
-
-// // https://en.wikipedia.org/wiki/Black-body_radiation#/media/File:Gluehfarben_no_language_horizontal.svg
-// // from a blacksmith's color temp chart
-
-
-// // temp r g b
-// // 550  0.2, 0.13, 0.04
-// // 630  32.9 15.7 1.2
-// // 680  40.8 6.7 0.0
-// // 740  52.5 8.6 0
-// // 780  62.7 0 0
-// // 810  75.7 10.6 10.6
-// // 850  83.1 25.5 8.2
-
-
-// // 900 91.4 34.5 17.3
-// // 950 91.4 49.4 11
-// // 1000 100 66.7 5.9
-// // 1100 98 75 20
-// // 1200 100 81 38
-// // 1300 100 90 67
-// // 1500 100 95 80
-// // 2000 100 100 100
-
-// 	if (temperature > 500)
-// 	{
-
-// 		int glowyTemp = (temperature - 500);
-
-// 		float red   = glowyTemp / 1000;
-// 		float green = glowyTemp / 2000;
-// 		float blue  = glowyTemp / 3000;
-
-// 		return b2Color( red   , green   ,blue, blue );
-// 	}
-
-
-// 	return b2Color(  0.0f , 0.0f   , 0.0f, 1.0f );
-
-// }
-
-
-void setParticle(std::string genes, unsigned int i)
+Color materialColor ( unsigned int material )
 {
+	if ((material == MATERIAL_VACUUM))      {    return color_black;      }
+	if ((material == MATERIAL_WATER))       {    return color_lightblue;  }
+	if ((material == MATERIAL_QUARTZ))      {    return color_lightgrey;  }
+	if ((material == MATERIAL_AMPHIBOLE))   {    return color_grey;       }
+	if ((material == MATERIAL_OLIVINE))     {    return color_darkgrey;   }
+	if ((material == MATERIAL_GOLD))        {    return color_yellow;     }
+	if ((material == MATERIAL_SEED))        {    return color_yellow;     }
+	return color_black;
+}
 
-	grid[i].genes = genes;
-	grid[i].identity = 0x00;
-
+void setParticle(unsigned int material, unsigned int i)
+{
 	grid[i].temperature = defaultTemperature;
+	grid[i].material = material;
+	grid[i].phase = PHASE_POWDER;
+	Color temp_color = materialColor(material);
 
-	switch (grid[i].genes[0])
-	{
+	unsigned int a_offset = (i * numberOfFieldsPerVertex);
+	memcpy( &colorGrid[ a_offset ], &temp_color, 16 );
 
-
-	case 'q':
-	{
-		grid[i].material = MATERIAL_QUARTZ;
-		grid[i].phase = PHASE_POWDER;
-		memcpy(&colorGrid[i * numberOfFieldsPerVertex], &color_lightgrey, 16  );
-		break;
-	}
-
-	case 'o':
-	{
-		grid[i].material = MATERIAL_OLIVINE;
-		grid[i].phase = PHASE_POWDER;
-		memcpy(&colorGrid[i * numberOfFieldsPerVertex], &color_darkgrey, 16  );
-		break;
-
-	}
-	case 'a':
-	{
-		grid[i].material = MATERIAL_AMPHIBOLE;
-		grid[i].phase = PHASE_POWDER;
-		memcpy(&colorGrid[i * numberOfFieldsPerVertex], &color_grey, 16  );
-		break;
-	}
-
-	case 'w':
-	{
-		grid[i].material = MATERIAL_WATER;
-		grid[i].phase = PHASE_LIQUID;
-		memcpy(&colorGrid[i * numberOfFieldsPerVertex], &color_lightblue, 16  );
-
-		break;
-	}
-
-	case 's':
-	{
-		grid[i].genes[1] = 'u';
-		grid[i].material = MATERIAL_SEED;
-		grid[i].phase = PHASE_POWDER;
-		memcpy(&colorGrid[i * numberOfFieldsPerVertex], &color_yellow, 16  );
-	}
-
-	}
 
 }
+
+void swapParticle (unsigned int a, unsigned int b)
+{
+	float temp_color[4];
+	unsigned int a_offset = (a * numberOfFieldsPerVertex);
+	unsigned int b_offset = (b * numberOfFieldsPerVertex);
+	memcpy( temp_color, &colorGrid[ b_offset ] , 16 ); // 4x floats of 4 bytes each
+	memcpy( &colorGrid[ b_offset], &colorGrid[ a_offset] , 16 );
+	memcpy( &colorGrid[ a_offset ], temp_color, 16 );
+
+	Particle tempParticle = grid[b];
+	grid[b] = grid[a];
+	grid[a] = tempParticle;
+}
+
+
+
+
+
+void setLifeParticle( std::string genes, unsigned int identity, unsigned int i)
+{
+	lifeGrid[i].identity = identity;
+	lifeGrid[i].genes  = genes;
+	lifeGrid[i].energy = 0;
+
+	memcpy( (&lifeColorGrid[i * numberOfFieldsPerVertex]),  &(color_purple),  sizeof(Color) );
+}
+
+void swapLifeParticle(unsigned int a, unsigned int b)
+{
+	LifeParticle tempLife;
+	memcpy( &tempLife,  &(lifeGrid[a]), 	 sizeof(LifeParticle) );
+	memcpy( &(lifeGrid[a]),  &(lifeGrid[b]), sizeof(LifeParticle) );
+	memcpy( &(lifeGrid[b]),  &tempLife, 	 sizeof(LifeParticle) );
+
+	float temp_color[4];
+	unsigned int a_offset = (a * numberOfFieldsPerVertex)  ;
+	unsigned int b_offset = (b * numberOfFieldsPerVertex)  ;
+	memcpy( temp_color, &lifeColorGrid[ b_offset ] , sizeof(Color) ); // 4x floats of 4 bytes each
+	memcpy( &lifeColorGrid[ b_offset], &lifeColorGrid[ a_offset] , sizeof(Color) );
+	memcpy( &lifeColorGrid[ a_offset ], temp_color, sizeof(Color) );
+}
+
+
+
+
+void setSeedParticle( std::string genes, unsigned int parentIdentity, unsigned int i)
+{
+	seedGrid[i].genes = genes;
+	seedGrid[i].parentIdentity = parentIdentity;
+
+	memcpy( (&seedColorGrid[i * numberOfFieldsPerVertex]) ,  &(color_yellow),  sizeof(Color) );
+}
+void clearSeedParticle( unsigned int i)
+{
+	memset( &(seedGrid[i]) , 0x00, sizeof(SeedParticle) );
+
+	memset( &(seedColorGrid[ i*numberOfFieldsPerVertex ]) , 0x00, 16 );
+
+
+}
+void swapSeedParticle(unsigned int a, unsigned int b)
+{
+	SeedParticle tempSeed = seedGrid[b];
+	seedGrid[b] = seedGrid[a];
+	seedGrid[a] = tempSeed;
+
+	// memcpy( &tempSeed,  &(seedGrid[a]), 	 sizeof(SeedParticle) );
+	// memcpy( &(seedGrid[a]),  &(seedGrid[b]), sizeof(SeedParticle) );
+	// memcpy( &(seedGrid[b]),  &tempSeed, 	 sizeof(SeedParticle) );
+
+
+
+	float temp_color[4];
+	unsigned int a_offset = (a * numberOfFieldsPerVertex) ;
+	unsigned int b_offset = (b * numberOfFieldsPerVertex) ;
+	memcpy( temp_color, 				&seedColorGrid[ b_offset ] , 	sizeof(Color) ); // 4x floats of 4 bytes each
+	memcpy( &seedColorGrid[ b_offset], 	&seedColorGrid[ a_offset] , 	sizeof(Color) );
+	memcpy( &seedColorGrid[ a_offset ], temp_color, 					sizeof(Color) );
+
+}
+
+
+
+
+
+
+unsigned int newIdentity ()
+{
+	unsigned int identityCursor = 1; // zero is reserved
+	while (true)
+	{
+		bool used = false;
+		for (std::list<unsigned int>::iterator it = identities.begin(); it != identities.end(); ++it)
+		{
+			if (identityCursor == *it)
+			{
+				used = true;
+			}
+		}
+
+		if (!used)
+		{
+			identities.push_back(identityCursor);
+
+			printf("claimed new ID: %u\n", identityCursor);
+
+			return identityCursor;
+		}
+		identityCursor++;
+	}
+	return identityCursor;
+}
+
+void retireIdentity (unsigned int identityToRetire)
+{
+	identities.remove (identityToRetire);
+}
+
+
+
 
 void initialize ()
 {
@@ -216,9 +242,9 @@ void initialize ()
 	// https://stackoverflow.com/questions/9459035/why-does-rand-yield-the-same-sequence-of-numbers-on-every-run
 	srand((unsigned int)time(NULL));
 
-	memset ( colorGrid, 0x00, sizeof(float ) * numberOfFieldsPerVertex * totalSize );
-
+	memset ( colorGrid, 	0x00, sizeof(float ) * numberOfFieldsPerVertex * totalSize );
 	memset ( lifeColorGrid, 0x00, sizeof(float ) * numberOfFieldsPerVertex * totalSize );
+	memset ( seedColorGrid, 0x00, sizeof(float ) * numberOfFieldsPerVertex * totalSize );
 
 	memset(grid, 0x00, sizeof(Particle) * ( totalSize));
 
@@ -231,8 +257,6 @@ void initialize ()
 		if (!x) { y = i / sizeX; }
 		float fx = x;
 		float fy = y;
-
-
 
 		grid[i].temperature = defaultTemperature;
 		grid[i].phase = PHASE_VACUUM;
@@ -247,7 +271,9 @@ void initialize ()
 		lifeColorGrid[ (i * numberOfFieldsPerVertex) + 4] = fx;
 		lifeColorGrid[ (i * numberOfFieldsPerVertex) + 5] = fy;
 
-
+		seedColorGrid[ (i * numberOfFieldsPerVertex) + 3] = 0.0f;
+		seedColorGrid[ (i * numberOfFieldsPerVertex) + 4] = fx;
+		seedColorGrid[ (i * numberOfFieldsPerVertex) + 5] = fy;
 
 
 		if (false) {
@@ -257,7 +283,7 @@ void initialize ()
 			{
 				if (y > 100 && y < 200)
 				{
-					setParticle( std::string("o"), i);
+					setParticle( MATERIAL_OLIVINE, i);
 				}
 
 			}
@@ -271,7 +297,7 @@ void initialize ()
 			{
 				if (RNG() < 0.5)
 				{
-					setParticle( std::string("o"), i);
+					setParticle( MATERIAL_OLIVINE, i);
 				}
 			}
 
@@ -280,7 +306,7 @@ void initialize ()
 			{
 				if (RNG() < 0.5)
 				{
-					setParticle( std::string("a"), i);
+					setParticle( MATERIAL_AMPHIBOLE, i);
 				}
 			}
 
@@ -289,7 +315,7 @@ void initialize ()
 			{
 				if (RNG() < 0.5)
 				{
-					setParticle( std::string("q"), i);
+					setParticle( MATERIAL_QUARTZ, i);
 				}
 			}
 
@@ -298,7 +324,7 @@ void initialize ()
 			{
 				if (RNG() < 0.5)
 				{
-					setParticle( std::string("w"), i);
+					setParticle( MATERIAL_WATER, i);
 				}
 			}
 		}
@@ -307,54 +333,21 @@ void initialize ()
 
 		if (x == 500 && y == 50)
 		{
-			// seedGrid[i].seed = true;
-			// seedGrid[i].genes = exampleSentence;
-			// seedGrid[i].planted = true;
-			// seedGrid[i].ripe = true;
 
-			// grid[i].material = MATERIAL_SEED;
-
-			// grid[i].phase = PHASE_POWDER;
-			// memcpy(&colorGrid[i * numberOfFieldsPerVertex], &color_yellow, 16  );
-			setParticle(exampleSentence, i);
-			grid[i].genes[1] = 'r';
+			setSeedParticle(exampleSentence, newIdentity() , i);
+			seedGrid[i].genes[1] = 'r';
 		}
 
 
 	}
-
-	// for (unsigned int i = 0; i < totalSize; ++i)
-	// {
-
-	// 	if () {
-
-	// 	}
-
-	// }
 }
 
-void swap (unsigned int a, unsigned int b)
-{
-	float temp_color[4];
-	unsigned int a_offset = (a * numberOfFieldsPerVertex);
-	unsigned int b_offset = (b * numberOfFieldsPerVertex);
-	memcpy( temp_color, &colorGrid[ b_offset ] , 16 ); // 4x floats of 4 bytes each
-	memcpy( &colorGrid[ b_offset], &colorGrid[ a_offset] , 16 );
-	memcpy( &colorGrid[ a_offset ], temp_color, 16 );
-
-	Particle tempParticle = grid[b];
-	grid[b] = grid[a];
-	grid[a] = tempParticle;
-}
 
 void heatEverything ()
 {
 	for (unsigned int i = 0; i < totalSize; ++i)
 	{
-		// if (grid[i].temperature < 5000)
-		// {
 		grid[i].temperature += 25;
-		// }
 	}
 }
 
@@ -363,10 +356,7 @@ void coolEverything ()
 {
 	for (unsigned int i = 0; i < totalSize; ++i)
 	{
-		// if (grid[i].temperature > 0)
-		// {
 		grid[i].temperature -= 25;
-		// }
 	}
 }
 
@@ -386,11 +376,7 @@ void thread_temperature2 ()
 
 	for (unsigned int i = (sizeX + 1); i < (totalSize - (sizeX + 1)); ++i)
 	{
-
-
-
-
-
+		// MATERIAL_WATER
 		if (grid[i].material == MATERIAL_WATER)
 		{
 			if (grid[i].phase == PHASE_POWDER)
@@ -420,13 +406,7 @@ void thread_temperature2 ()
 			}
 		}
 
-
-
-
-
-
-
-
+		// MATERIAL_QUARTZ
 		else if (grid[i].material == MATERIAL_QUARTZ)
 		{
 			if (grid[i].phase == PHASE_POWDER)
@@ -716,7 +696,7 @@ void physics_sector (unsigned int from, unsigned int to)
 				// chemistry(i, neighbours[index]);
 				if ((grid[neighbours[index]].phase == PHASE_VACUUM) ||  (grid[neighbours[index]].phase == PHASE_GAS) ||  (grid[neighbours[index]].phase == PHASE_LIQUID)  )
 				{
-					swap(i, neighbours[index]);
+					swapParticle(i, neighbours[index]);
 					break;
 				}
 			}
@@ -740,7 +720,7 @@ void physics_sector (unsigned int from, unsigned int to)
 				// chemistry(i, neighbours[index]) ;
 				if ((grid[neighbours[index]].phase == PHASE_VACUUM) || (grid[neighbours[index]].phase == PHASE_GAS) ||  (grid[neighbours[index]].phase == PHASE_LIQUID)     )
 				{
-					swap(i, neighbours[index]);
+					swapParticle(i, neighbours[index]);
 
 					if (false)
 					{
@@ -815,7 +795,7 @@ void physics_sector (unsigned int from, unsigned int to)
 
 				if (grid[neighbours[index]].phase  == PHASE_VACUUM || (grid[neighbours[index]].phase == PHASE_GAS) )
 				{
-					swap(i, neighbours[index]);
+					swapParticle(i, neighbours[index]);
 
 
 					break;
@@ -967,16 +947,7 @@ void thread_physics ()
 // 	}
 // }
 
-void chooseColor ( Color * colorToUse, unsigned int index )
-{
-	if ((grid[index].material & (MATERIAL_VACUUM))     == (MATERIAL_VACUUM))       {    *colorToUse = color_black;  return; }
-	if ((grid[index].material & (MATERIAL_WATER))      == (MATERIAL_WATER))       {    *colorToUse = color_lightblue;  return; }
-	if ((grid[index].material & (MATERIAL_QUARTZ))     == (MATERIAL_QUARTZ))       {    *colorToUse = color_lightgrey;  return; }
-	if ((grid[index].material & (MATERIAL_AMPHIBOLE))  == (MATERIAL_AMPHIBOLE))       {    *colorToUse = color_grey;  return; }
-	if ((grid[index].material & (MATERIAL_OLIVINE))    == (MATERIAL_OLIVINE))       {    *colorToUse = color_darkgrey;  return; }
-	if ((grid[index].material & (MATERIAL_GOLD))       == (MATERIAL_GOLD))       {    *colorToUse = color_yellow;  return; }
-	if ((grid[index].material & (MATERIAL_SEED))       == (MATERIAL_SEED))       {    *colorToUse = color_yellow;  return; }
-}
+
 
 void setPointSize (unsigned int pointSize)
 {
@@ -1000,6 +971,9 @@ void thread_graphics()
 	glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, lifeColorGrid, GL_DYNAMIC_DRAW );
 	glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
 
+	glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, seedColorGrid, GL_DYNAMIC_DRAW );
+	glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
+
 	postDraw();
 
 #ifdef THREAD_TIMING
@@ -1016,34 +990,6 @@ void thread_graphics()
 
 
 
-unsigned int newIdentity ()
-{
-	unsigned int identityCursor = 1; // zero is reserved
-	while (true)
-	{
-		bool used = false;
-		for (std::list<unsigned int>::iterator it = identities.begin(); it != identities.end(); ++it)
-		{
-			if (identityCursor == *it)
-			{
-				used = true;
-			}
-		}
-
-		if (!used)
-		{
-			identities.push_back(identityCursor);
-			return identityCursor;
-		}
-		identityCursor++;
-	}
-	return identityCursor;
-}
-
-void retireIdentity (unsigned int identityToRetire)
-{
-	identities.remove (identityToRetire);
-}
 
 
 
@@ -1435,8 +1381,8 @@ int drawCharacter ( std::string genes , unsigned int identity)
 		// std::string * genes;
 
 
-		setParticle(  std::string("a") , i);
-		grid[i].phase = PHASE_SOLID;
+		setLifeParticle(  genes, identity, i);
+		// grid[i].phase = PHASE_SOLID;
 
 		// n_points ++;
 	}
@@ -1448,8 +1394,10 @@ int drawCharacter ( std::string genes , unsigned int identity)
 
 
 
-		setParticle(  genes , i);
-		grid[i].phase = PHASE_POWDER;
+		setSeedParticle(  genes, identity, i);
+
+		// setParticle(  genes , i);
+		// grid[i].phase = PHASE_POWDER;
 		// grid[i].genes[1] = 'r';
 		// n_seeds++;
 	}
@@ -1462,8 +1410,18 @@ int drawCharacter ( std::string genes , unsigned int identity)
 
 
 
-void drawPlantFromSeed( std::string genes, unsigned int x, unsigned int y )
+void drawPlantFromSeed( std::string genes, unsigned int i )
 {
+
+	unsigned int x = 0;
+	unsigned int y = 0;
+
+
+		x = i % sizeX;
+		if (!x) { y = i / sizeX; }
+
+
+
 
 	printf("drawPlantFromSeed\n");
 	unsigned int identity = newIdentity();
@@ -1496,14 +1454,18 @@ void drawPlantFromSeed( std::string genes, unsigned int x, unsigned int y )
  *
  * */
 
+
 void thread_life()
 {
+
+
+
+
 
 #ifdef THREAD_TIMING
 	auto start = std::chrono::steady_clock::now();
 #endif
 
-	// iterate through background life, if there is a seed, draw it on the foreground.
 
 	unsigned int x = 0;
 	unsigned int y = 0;
@@ -1516,21 +1478,52 @@ void thread_life()
 		if (!x) { y = i / sizeX; }
 
 
-		// if (seedGrid[i].seed)
-		// {
+
+	}
 
 
-		if (grid[i].material == MATERIAL_SEED)
+
+#ifdef THREAD_TIMING
+	auto end = std::chrono::steady_clock::now();
+	auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+	std::cout << "thread_life " << elapsed.count() << " microseconds." << std::endl;
+#endif
+
+
+}
+
+
+
+void thread_seeds()
+{
+
+#ifdef THREAD_TIMING
+	auto start = std::chrono::steady_clock::now();
+#endif
+
+
+	// iterate through background life, if there is a seed, draw it on the foreground.
+
+	// unsigned int x = 0;
+	// unsigned int y = 0;
+
+
+	for (unsigned int i = (sizeX + 1); i < (totalSize - (sizeX + 1)); ++i)
+	{
+
+	
+
+		if (seedGrid[i].parentIdentity > 0)
 		{
 
-			if (grid[i].genes[1] == 'r' )
+			// printf("morten\n");
+
+			if (seedGrid[i].genes[1] == 'r') 
 			{
-				drawPlantFromSeed( grid[i].genes, x,  y );
-				grid[i].material == MATERIAL_WATER;
-
-
+				drawPlantFromSeed(seedGrid[i].genes, i);
+				clearSeedParticle(i);
+				break;
 			}
-
 
 
 			unsigned int squareBelow = i - sizeX;
@@ -1546,39 +1539,66 @@ void thread_life()
 				squareAbove,
 				squareAbove + 1
 			};
-			unsigned int nSolidNeighbours = 0;
-			for (int i = 0; i < 8; ++i)
+
+// printf("mort1en\n");
+
+
+			for (unsigned int j = 0; j < 8; ++j)
 			{
-				if ( grid[neighbours[i]].material == MATERIAL_QUARTZ )
+
+				if (j < 5)
 				{
 
-					nSolidNeighbours++;
+
+					if (grid[neighbours[j]].phase == PHASE_VACUUM || grid[neighbours[j]].phase == PHASE_GAS )
+						// {printf("mort2en\n");
+					{
+
+
+						if (extremelyFastNumberFromZeroTo(2) == 0)
+						{
+
+							swapSeedParticle( i, neighbours[j] );
+
+							break;
+						}
+					}
+					// {printf("mor3ten\n");
+
 
 				}
-			}
-			if (nSolidNeighbours > 2)
-			{
-				if (extremelyFastNumberFromZeroTo(100) == 0)
+
+
+
+
+				if (grid[neighbours[j]].phase == PHASE_LIQUID )
+					// {printf("mort2en\n");
 				{
-					printf("a seed ripened\n");
-					grid[i].genes[1] = 'r';
+
+
+					if (extremelyFastNumberFromZeroTo(2) == 0)
+					{
+
+						swapSeedParticle( i, neighbours[j] );
+
+						break;
+					}
 				}
+
+
+
+
 			}
-
-
-
-
 
 		}
 
-
-		// }
+// }
 	}
 
 #ifdef THREAD_TIMING
 	auto end = std::chrono::steady_clock::now();
 	auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-	std::cout << "thread_life " << elapsed.count() << " microseconds." << std::endl;
+	std::cout << "thread_seeds " << elapsed.count() << " microseconds." << std::endl;
 #endif
 
 }

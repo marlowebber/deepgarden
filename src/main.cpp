@@ -149,12 +149,19 @@ int main( int argc, char * argv[] )
 		boost::thread t6{ thread_interface };
 
 		boost::thread t7 { thread_life};
+
+		boost::thread t8 { thread_seeds};
 		// printf("started t6\n");
 
 		// graphics only seems to work in this thread, so we can just say that's what this thread is for.
 
 		thread_graphics();
 
+t8.join();
+
+t7.join();
+
+	t6.join();
 
 
 // 		t1.join();
@@ -172,9 +179,10 @@ int main( int argc, char * argv[] )
 // printf("joined t4\n");
 
 		// t5.join();
-		t6.join();
+	
 
-		t7.join();
+		
+		
 
 // printf("joined t6\n");
 		t99.join();
