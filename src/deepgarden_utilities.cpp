@@ -135,8 +135,13 @@ int alphanumeric (char c)
 	case ',': { val = 24; break; }
 	case '.': { val = 25; break; }
 	case '/': { val = 26; break; }
-	case '?': { val = 27; break; }
+	case '?': { val = 0; break; }
 	}
+
+
+
+
+
 
 	return val;
 }

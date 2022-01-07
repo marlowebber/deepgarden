@@ -13,8 +13,14 @@ const unsigned int numberOfFieldsPerVertex = 6; /*  R, G, B, A, X, Y  */
 
 float colorGrid[ totalSize * numberOfFieldsPerVertex ];
 float lifeColorGrid[totalSize * numberOfFieldsPerVertex ];
+float lifeColorGridB[totalSize * numberOfFieldsPerVertex ];
 float seedColorGrid[totalSize * numberOfFieldsPerVertex];
 
+
+bool showEnergyGrid = false;
+
+unsigned int nGerminatedSeeds = 0;
+unsigned int germinatedSeedsLimit = 1000;
 
 struct Particle
 {
@@ -30,6 +36,20 @@ struct LifeParticle
 	float energy;
 };
 
+
+struct ProposedLifeParticle
+{
+	Color color = Color(0.5f, 0.5f, 0.5f, 1.0f);
+	vec_u2 position = vec_u2(0, 0);
+
+	ProposedLifeParticle(Color color, vec_u2 position)
+	{
+		this->position = position;
+		this->color = color;
+	}
+
+};
+
 struct SeedParticle
 {
 	uint16_t parentIdentity;
@@ -42,7 +62,21 @@ Particle grid[totalSize];
 LifeParticle lifeGrid[totalSize];
 SeedParticle seedGrid[totalSize];
 
-std::string exampleSentence = "su lmmmm sd lmmmmblmmmmff ";
+std::string exampleSentence = std::string( "lmzsfyonlzztnlzzf" );
+
+std::string randomSentence(unsigned int length)
+{
+
+	std::string s = std::string("");
+
+	for (int i = 0; i < length; ++i)
+	{
+		s.push_back((char)('a' + rand() % 26));
+	}
+
+	return s;
+
+}
 
 void mutateSentence ( std::string * genes )
 {
@@ -78,7 +112,7 @@ const Color color_lightgrey = Color( 0.75f, 0.75f, 0.75f, 1.0f );
 const Color color_grey      = Color( 0.50f, 0.50f, 0.50f, 1.0f );
 const Color color_darkgrey  = Color( 0.25f, 0.25f, 0.25f, 1.0f );
 const Color color_black     = Color( 0.0f, 0.0f, 0.0f, 1.0f );
-const Color color_white     = Color( 1.0f, 1.0f, 1.0f, 1.0f );
+const Color color_white_clear     = Color( 1.0f, 1.0f, 1.0f, 0.25f );
 const Color color_purple     = Color( 0.8f, 0.0f, 0.8f, 1.0f );
 
 int wind = 0;
@@ -92,9 +126,7 @@ unsigned int drawActions = 0;
 const unsigned int drawActionlimit = 100;
 
 // variables keep track of the sequence and rotation states.
-float accumulatedRotation = 0.0f;
-float accumulatedRotation_precomputedSin = sin(accumulatedRotation);
-float accumulatedRotation_precomputedCos = cos(accumulatedRotation);
+float accumulatedRotation = (0.5 * 3.1415);
 
 vec_u2 cursor_grid = vec_u2(0, 0);
 vec_u2 prevCursor_grid = vec_u2(0, 0);
@@ -102,9 +134,17 @@ unsigned int cursor_string = 0;
 vec_u2 origin = vec_u2(0, 0);
 Color cursor_color = Color(0.1f, 0.1f, 0.1f, 1.0f);
 
+float energyDebtSoFar = 0.0f;
+
 float maximumDisplayEnergy = 1;
 
 std::list<unsigned int> identities;
+
+
+std::list<ProposedLifeParticle> v;
+
+std::list<vec_u2> v_seeds;
+
 
 Color materialColor ( unsigned int material )
 {
@@ -141,13 +181,13 @@ void swapParticle (unsigned int a, unsigned int b)
 	grid[a] = tempParticle;
 }
 
-void setLifeParticle( std::string genes, unsigned int identity, unsigned int i)
+void setLifeParticle( std::string genes, unsigned int identity, unsigned int i, Color color)
 {
 	lifeGrid[i].identity = identity;
 	lifeGrid[i].genes  = genes;
 	lifeGrid[i].energy = 0.0f;
 
-	memcpy( (&lifeColorGrid[i * numberOfFieldsPerVertex]),  &(cursor_color),  sizeof(Color) );
+	memcpy( (&lifeColorGrid[i * numberOfFieldsPerVertex]),  &(color),  sizeof(Color) );
 }
 
 void swapLifeParticle(unsigned int a, unsigned int b)
@@ -171,18 +211,22 @@ void setSeedParticle( std::string genes, unsigned int parentIdentity, float ener
 	seedGrid[i].parentIdentity = parentIdentity;
 	seedGrid[i].stage = STAGE_BUD;
 	seedGrid[i].energy = energyDebt;
+	printf("seed with energy debt %f \n", energyDebt);
 	memcpy( (&seedColorGrid[i * numberOfFieldsPerVertex]) ,  &(color_yellow),  sizeof(Color) );
 }
 
 void setPhoton(  unsigned int i)
 {
 	seedGrid[i].stage = STAGE_PHOTON;
-	memcpy( (&seedColorGrid[i * numberOfFieldsPerVertex]) ,  &(color_white),  sizeof(Color) );
+	memcpy( (&seedColorGrid[i * numberOfFieldsPerVertex]) ,  &(color_white_clear),  sizeof(Color) );
 }
 
 void clearSeedParticle( unsigned int i)
 {
 	seedGrid[i].stage = 0x00;
+	seedGrid[i].parentIdentity = 0x00;
+	seedGrid[i].energy = 0.0f;
+	seedGrid[i].genes = std::string("");
 	memset( &(seedColorGrid[ i * numberOfFieldsPerVertex ]) , 0x00, 16 );
 }
 
@@ -268,17 +312,33 @@ void initialize ()
 		seedColorGrid[ (i * numberOfFieldsPerVertex) + 4] = fx;
 		seedColorGrid[ (i * numberOfFieldsPerVertex) + 5] = fy;
 
-		if (false)
+		if (true)
 		{
 			// olivine cube
 
-			if (x > 100 && x < 200)
-			{
-				if (y > 100 && y < 200)
-				{
-					setParticle( MATERIAL_OLIVINE, i);
-				}
-			}
+			// if (x > 100 && x < 200)
+			// {
+			// 	if (y > 100 && y < 200)
+			// 	{
+			// 		setParticle( MATERIAL_QUARTZ, i);
+			// 	}
+			// }
+
+			// if (x > 500 && x < 600)
+			// {
+			// 	if (y > 100 && y < 200)
+			// 	{
+			// 		setParticle( MATERIAL_QUARTZ, i);
+			// 	}
+			// }
+
+			// if (x > 800 && x < 900)
+			// {
+			// 	if (y > 100 && y < 200)
+			// 	{
+			// 		setParticle( MATERIAL_QUARTZ, i);
+			// 	}
+			// }
 		}
 
 		if (true)
@@ -311,13 +371,13 @@ void initialize ()
 			}
 
 			// sprinkle some material on it to make a default scene.
-			if (i > (100 * sizeX) && i < (125 * sizeX))
-			{
-				if (RNG() < 0.5)
-				{
-					setParticle( MATERIAL_WATER, i);
-				}
-			}
+			// if (i > (100 * sizeX) && i < (125 * sizeX))
+			// {
+			// 	if (RNG() < 0.5)
+			// 	{
+			// 		setParticle( MATERIAL_WATER, i);
+			// 	}
+			// }
 		}
 
 		if (x == 500 && y == 100)
@@ -696,9 +756,13 @@ void physics_sector (unsigned int from, unsigned int to)
 				i + 1
 			};
 
-			for (uint8_t k = 0; k < 2; ++k)
+
+			uint8_t offset = extremelyFastNumberFromZeroTo(4);
+			for (uint8_t k = 0; k < 5; ++k)
 			{
-				uint8_t index = extremelyFastNumberFromZeroTo(4);
+
+				unsigned int index = (k + offset) % 5;
+
 				// chemistry(i, neighbours[index]) ;
 				if ((grid[neighbours[index]].phase == PHASE_VACUUM) || (grid[neighbours[index]].phase == PHASE_GAS) ||  (grid[neighbours[index]].phase == PHASE_LIQUID)     )
 				{
@@ -843,6 +907,11 @@ void setPointSize (unsigned int pointSize)
 	glPointSize(pointSize);
 }
 
+void toggleEnergyGridDisplay ()
+{
+	showEnergyGrid = !showEnergyGrid;
+}
+
 void thread_graphics()
 {
 #ifdef THREAD_TIMING
@@ -850,7 +919,6 @@ void thread_graphics()
 #endif
 	preDraw();
 
-	bool showEnergyGrid = false;
 	if (showEnergyGrid)
 	{
 
@@ -871,7 +939,7 @@ void thread_graphics()
 			// {
 			// 	maximumDisplayEnergy = energySqrt;
 			// }
-			// if (maximumDisplayEnergy < 0.1f) 
+			// if (maximumDisplayEnergy < 0.1f)
 			// {
 			// 	maximumDisplayEnergy = 0.1f;
 			// }
@@ -887,7 +955,7 @@ void thread_graphics()
 			energyColorGrid[ (i * numberOfFieldsPerVertex) + 4 ] = fx;
 			energyColorGrid[ (i * numberOfFieldsPerVertex) + 5 ] = fy;
 
-			
+
 		}
 
 
@@ -908,6 +976,9 @@ void thread_graphics()
 
 		unsigned int nVertsToRenderThisTurn = 1 * totalSize;
 		long unsigned int totalNumberOfFields = nVertsToRenderThisTurn * numberOfFieldsPerVertex;
+
+		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, lifeColorGridB, GL_DYNAMIC_DRAW );
+		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
 
 		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, colorGrid, GL_DYNAMIC_DRAW );
 		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
@@ -936,14 +1007,14 @@ void thread_graphics()
 
 // THE EXTREMELY FAST LINE ALGORITHM Variation E (Addition Fixed Point PreCalc Small Display)
 // Small Display (256x256) resolution.
-std::list<vec_u2> EFLA_E(vec_u2 start, vec_u2 end)
+std::list<ProposedLifeParticle> EFLA_E(vec_u2 start, vec_u2 end)
 {
 	int x  = start.x;
 	int y  = start.y;
 	int x2 = end.x;
 	int y2 = end.y;
 
-	std::list<vec_u2> v;
+	std::list<ProposedLifeParticle> v;
 
 	bool yLonger = false;
 	int shortLen = y2 - y;
@@ -963,14 +1034,14 @@ std::list<vec_u2> EFLA_E(vec_u2 start, vec_u2 end)
 		if (longLen > 0) {
 			longLen += y;
 			for (int j = 0x80 + (x << 8); y <= longLen; ++y) {
-				v.push_back( vec_u2(j >> 8, y) );
+				v.push_back(   ProposedLifeParticle(cursor_color, vec_u2(j >> 8, y))   );
 				j += decInc;
 			}
 			return v;
 		}
 		longLen += y;
 		for (int j = 0x80 + (x << 8); y >= longLen; --y) {
-			v.push_back( vec_u2(j >> 8, y) );
+			v.push_back( ProposedLifeParticle(cursor_color, vec_u2(j >> 8, y) ));
 			j -= decInc;
 		}
 		return v;
@@ -979,24 +1050,24 @@ std::list<vec_u2> EFLA_E(vec_u2 start, vec_u2 end)
 	if (longLen > 0) {
 		longLen += x;
 		for (int j = 0x80 + (y << 8); x <= longLen; ++x) {
-			v.push_back( vec_u2(x, j >> 8) );
+			v.push_back( ProposedLifeParticle(cursor_color, vec_u2(x, j >> 8) ) );
 			j += decInc;
 		}
 		return v;
 	}
 	longLen += x;
 	for (int j = 0x80 + (y << 8); x >= longLen; --x) {
-		v.push_back( vec_u2(x, j >> 8) );
+		v.push_back( ProposedLifeParticle(cursor_color, vec_u2(x, j >> 8) ));
 		j -= decInc;
 	}
 	return v;
 }
 
-int drawCharacter ( std::string genes , unsigned int identity, int energyDebtSoFar)
+int drawCharacter ( std::string genes , unsigned int identity)
 {
 	char c = genes[cursor_string];
 
-	printf("char %c ", c);
+	printf("char %c cursor %u  ", c, cursor_string);
 	drawActions++;
 	// printf("cursor_grid %u %u\n", cursor_grid.x, cursor_grid.y);
 	if (recursion_level > recursion_limit)
@@ -1013,10 +1084,7 @@ int drawCharacter ( std::string genes , unsigned int identity, int energyDebtSoF
 		return -1;
 	}
 
-	
-	std::list<vec_u2> v;
 
-	std::list<vec_u2> v_seeds;
 
 	unsigned int genesize = genes.length();
 
@@ -1038,8 +1106,8 @@ int drawCharacter ( std::string genes , unsigned int identity, int energyDebtSoF
 
 		// figure out new branch rotation
 		accumulatedRotation = accumulatedRotation + (rotation / 26.0f) * 2.0f * 3.14159f;
-		accumulatedRotation_precomputedSin = sin(accumulatedRotation);
-		accumulatedRotation_precomputedCos = cos(accumulatedRotation);
+		// accumulatedRotation_precomputedSin = sin(accumulatedRotation);
+		// accumulatedRotation_precomputedCos = cos(accumulatedRotation);
 
 		// record old cursor position
 		vec_u2 old_cursorGrid = cursor_grid;
@@ -1047,7 +1115,7 @@ int drawCharacter ( std::string genes , unsigned int identity, int energyDebtSoF
 		recursion_level++;
 		while (1)
 		{
-			if ( drawCharacter(genes, identity, energyDebtSoFar) < 0)
+			if ( drawCharacter(genes, identity) < 0)
 			{
 				break;
 			}
@@ -1056,8 +1124,8 @@ int drawCharacter ( std::string genes , unsigned int identity, int energyDebtSoF
 
 		// return to normal rotation
 		accumulatedRotation = trunkRotation;
-		accumulatedRotation_precomputedSin = sin(accumulatedRotation);
-		accumulatedRotation_precomputedCos = cos(accumulatedRotation);
+		// accumulatedRotation_precomputedSin = sin(accumulatedRotation);
+		// accumulatedRotation_precomputedCos = cos(accumulatedRotation);
 
 		// return to normal position
 		cursor_grid = old_cursorGrid;
@@ -1074,9 +1142,10 @@ int drawCharacter ( std::string genes , unsigned int identity, int energyDebtSoF
 
 		// get number of times to repeat the sequence
 		int numberModifier = 0;
-		while (!numberModifier) {	numberModifier = alphanumeric( genes[cursor_string] ); cursor_string++; if (cursor_string > genesize) {return -1;} }
+		while (!numberModifier) {	numberModifier = alphanumeric( genes[cursor_string] ) / 2  ; cursor_string++; if (cursor_string > genesize) {return -1;} }
 
-		int repeats = numberModifier;
+		int repeats = numberModifier % 8;
+
 
 		// the character after that is the next thing to be arrayed
 		cursor_string++; if (cursor_string > genesize) {return -1;}
@@ -1088,7 +1157,7 @@ int drawCharacter ( std::string genes , unsigned int identity, int energyDebtSoF
 		{
 			while (1)
 			{
-				if ( drawCharacter(genes, identity, energyDebtSoFar) < 0)
+				if ( drawCharacter(genes, identity) < 0)
 				{
 					break;
 				}
@@ -1159,7 +1228,7 @@ int drawCharacter ( std::string genes , unsigned int identity, int energyDebtSoF
 			{
 				if (  magnitude_int (  i - cursor_grid.x , j - cursor_grid.y )  < radius )
 				{
-					v.push_back( vec_u2(i, j) );
+					v.push_back( ProposedLifeParticle(cursor_color, vec_u2(i, j) ));
 
 				}
 			}
@@ -1171,112 +1240,91 @@ int drawCharacter ( std::string genes , unsigned int identity, int energyDebtSoF
 
 	case 'l':
 	{
-		printf("draw a line\n");
+		printf("draw a line ");
 		// rasters a line, taking into account the accumulated rotation
 		cursor_string++; if (cursor_string > genesize) {return -1;}
 
 		// set the previous x and y, which will be the start of the line
 		prevCursor_grid = cursor_grid;
 
-		bool chosenSignX = false;
-		int signX = 1;
 
-		while (!chosenSignX)
+		int numberModifier = 0;
+
+		// while (!numberModifier)
+		// {
+		numberModifier = alphanumeric( genes[cursor_string] ) ;
+
+		printf("length %c %i , ", genes[cursor_string] , numberModifier);
+		cursor_string++; if (cursor_string > genesize) {return -1;}
+		// }
+
+
+		cursor_grid.x +=  (numberModifier ) * cos(accumulatedRotation);
+
+		if (numberModifier > 0)
 		{
-			cursor_string++; if (cursor_string > genesize) {return -1;}
-			signX = alphanumeric( genes[cursor_string]);
-			if (signX > 13) { signX = 1; } else { signX = -1; }
-			chosenSignX = true;
-		}
-
-		bool chosenSignY = false;
-		int signY = 1;
-
-		while (!chosenSignY)
-		{
-			cursor_string++; if (cursor_string > genesize) {return -1;}
-			signY = alphanumeric( genes[cursor_string]);
-			if (signY > 13) { signY = 1; }
-			else {
-				signY = 1; // signY = -1; // i made it this way so the plants always grow up. instead of into the ground.
-			}
-			chosenSignY = true;
-		}
-
-		unsigned int numberModifier = 0;
-
-		while (!numberModifier)
-		{
-			cursor_string++; if (cursor_string > genesize) {return -1;}
-			numberModifier = alphanumeric( genes[cursor_string] );
-		}
-
-		bool inRange = true;
-
-		if (cursor_grid.x + numberModifier  > sizeX && signX > 0)
-		{
-			cursor_grid.x = sizeX - 1;
-			inRange = false;
-		}
-		if (numberModifier > cursor_grid.x && signX < 0 )
-		{
-			cursor_grid.x = 0;
-			inRange = false;
-		}
-		if (inRange)
-		{
-			if (signX > 0)
+			if (cursor_grid.x > sizeX)
 			{
-				cursor_grid.x += (numberModifier );
+				cursor_grid.x = sizeX;
 			}
-			else
+		}
+		else
+		{
+
+			if (cursor_grid.x > sizeX)
 			{
-				cursor_grid.x -= (numberModifier );
+				cursor_grid.x = 0;
 			}
 		}
-		numberModifier = 0;
 
-		while (!numberModifier)
-		{
-			cursor_string++; if (cursor_string > genesize) {return -1;}
-			numberModifier = alphanumeric( genes[cursor_string] );
-		}
 
-		inRange = true;
-		if (cursor_grid.y + numberModifier  > sizeY && signY > 0)
-		{
-			cursor_grid.y = sizeY - 1;
-			inRange = false;
-		}
-		if (numberModifier > cursor_grid.y && signY < 0 )
-		{
-			cursor_grid.y = 0;
-			inRange = false;
-		}
 
-		if (inRange)
+		// numberModifier = 0;
+
+		// while (!numberModifier)
+		// // {
+		// 	numberModifier = alphanumeric( genes[cursor_string] ) - 13;
+
+		// printf("ymod %c %i \n", genes[cursor_string] , numberModifier);
+		// 	cursor_string++; if (cursor_string > genesize) {return -1;}
+		// // }
+
+
+
+
+		cursor_grid.y += (numberModifier ) * sin(accumulatedRotation);
+
+		if (numberModifier > 0)
 		{
-			if (signY > 0)
+			if (cursor_grid.y > sizeY)
 			{
-				cursor_grid.y += (numberModifier );
+				cursor_grid.y = sizeY;
 			}
-			else
+		}
+		else
+		{
+
+			if (cursor_grid.y > sizeY)
 			{
-				cursor_grid.y -= (numberModifier );
+				cursor_grid.y = 0;
 			}
 		}
 
-		vec_f2 rotatedPoint = rotatePointPrecomputed( vec_f2(prevCursor_grid.x, prevCursor_grid.y),  accumulatedRotation_precomputedSin,  accumulatedRotation_precomputedCos, vec_f2(  cursor_grid.x, cursor_grid.y));
 
-		if 		(rotatedPoint.x > 0 && rotatedPoint.x < sizeX - 1) 	{ cursor_grid.x = rotatedPoint.x;}
-		else if (rotatedPoint.x < 0) 								{ cursor_grid.x = 0;}
-		else if (rotatedPoint.x > sizeX - 1) 						{ cursor_grid.x = sizeX - 1; }
 
-		if 		(rotatedPoint.y > 0 && rotatedPoint.y < sizeY - 1) 	{ cursor_grid.y = rotatedPoint.y;}
-		else if (rotatedPoint.y < 0) 								{ cursor_grid.y = 0;}
-		else if (rotatedPoint.y > sizeY - 1) 						{ cursor_grid.y = sizeY - 1; }
+		// vec_f2 rotatedPoint = rotatePointPrecomputed( vec_f2(prevCursor_grid.x, prevCursor_grid.y),  accumulatedRotation_precomputedSin,  accumulatedRotation_precomputedCos, vec_f2(  cursor_grid.x, cursor_grid.y));
 
-		v = EFLA_E( prevCursor_grid, cursor_grid);
+		// if 		(rotatedPoint.x > 0 && rotatedPoint.x < sizeX - 1) 	{ cursor_grid.x = rotatedPoint.x;}
+		// else if (rotatedPoint.x < 0) 								{ cursor_grid.x = 0;}
+		// else if (rotatedPoint.x > sizeX - 1) 						{ cursor_grid.x = sizeX - 1; }
+
+		// if 		(rotatedPoint.y > 0 && rotatedPoint.y < sizeY - 1) 	{ cursor_grid.y = rotatedPoint.y;}
+		// else if (rotatedPoint.y < 0) 								{ cursor_grid.y = 0;}
+		// else if (rotatedPoint.y > sizeY - 1) 						{ cursor_grid.y = sizeY - 1; }
+
+		// https://stackoverflow.com/questions/1449703/how-to-append-a-listt-object-to-another
+		// v = EFLA_E( prevCursor_grid, cursor_grid);
+		v.splice(v.end(), EFLA_E( prevCursor_grid, cursor_grid) );
 
 
 		break;
@@ -1285,8 +1333,10 @@ int drawCharacter ( std::string genes , unsigned int identity, int energyDebtSoF
 	// set immediate red value
 	case 'r':
 	{
+
 		cursor_string++; if (cursor_string > genesize) {return -1;}
 		float numberModifier = alphanumeric( genes[cursor_string] ) / 26;
+		printf("set color R %f\n", numberModifier);
 		cursor_color = Color(  numberModifier, cursor_color.g, cursor_color.b, 1.0f    );
 		break;
 	}
@@ -1296,6 +1346,7 @@ int drawCharacter ( std::string genes , unsigned int identity, int energyDebtSoF
 	{
 		cursor_string++; if (cursor_string > genesize) {return -1;}
 		float numberModifier = alphanumeric( genes[cursor_string] ) / 26;
+		printf("set color G %f\n", numberModifier);
 		cursor_color = Color(  cursor_color.r, numberModifier, cursor_color.b, 1.0f    );
 		break;
 	}
@@ -1305,9 +1356,25 @@ int drawCharacter ( std::string genes , unsigned int identity, int energyDebtSoF
 	{
 		cursor_string++; if (cursor_string > genesize) {return -1;}
 		float numberModifier = alphanumeric( genes[cursor_string] ) / 26;
+		printf("set color B %f\n", numberModifier);
 		cursor_color = Color(  cursor_color.r, cursor_color.g, numberModifier, 1.0f    );
 		break;
 	}
+
+
+	// modify angle
+	case 'o':
+	{
+		cursor_string++; if (cursor_string > genesize) {return -1;}
+		float numberModifier = alphanumeric( genes[cursor_string] ) - 13;
+		numberModifier = (numberModifier / 13) * 3.1415;
+		printf("modify angle %f\n", numberModifier);
+		accumulatedRotation += numberModifier;
+
+		cursor_string++; if (cursor_string > genesize) {return -1;}
+		break;
+	}
+
 
 	default:
 	{
@@ -1315,24 +1382,7 @@ int drawCharacter ( std::string genes , unsigned int identity, int energyDebtSoF
 	}
 	}
 
-	// paint in the points with material
-	// unsigned int n_points = 0;
-	for (std::list<vec_u2>::iterator it = v.begin(); it != v.end(); ++it)
-	{
-		unsigned int i = (it->y * sizeX) + it->x;
 
-		setLifeParticle(  genes, identity, i);
-		energyDebtSoFar--;
-	}
-
-	// unsigned int n_seeds = 0;
-	for (std::list<vec_u2>::iterator it = v_seeds.begin(); it != v_seeds.end(); ++it)
-	{
-		unsigned int i = (it->y * sizeX) + it->x;
-
-		setSeedParticle(  genes, identity, energyDebtSoFar, i);
-		mutateSentence(&(seedGrid[i].genes));
-	}
 
 	return 0;
 }
@@ -1347,37 +1397,73 @@ void drawPlantFromSeed( std::string genes, unsigned int i )
 	x = i % sizeX;
 	y = i / sizeX;
 
-	int energyDebtSoFar = 0;
-
 	printf("drawPlantFromSeed\n");
 	unsigned int identity = newIdentity();
-	cursor_string = 2;
+	cursor_string = 0;
 	cursor_grid = vec_u2(x, y);
 	origin = cursor_grid;
 	prevCursor_grid = cursor_grid;
-
+	accumulatedRotation = (0.5 * 3.1415);
 	cursor_color = color_grey;
 
 	drawActions = 0;
 
+	v.clear();
+	v_seeds.clear();
+
+
+
 	while ( true )
 	{
-		if ( drawCharacter (genes , identity, energyDebtSoFar) < 0) 
+		if ( drawCharacter (genes , identity) < 0)
 		{
-			if (cursor_string > genes.length()) 
+			if (cursor_string > genes.length())
 			{
 				// printf("broke out of the problem spot.\n");
 				break;
 			}
-		} 
+		}
 	}
+
+
+	energyDebtSoFar = 0.0f;
+
+	// paint in the points with material
+	// unsigned int n_points = 0;
+	for (std::list<ProposedLifeParticle>::iterator it = v.begin(); it != v.end(); ++it)
+	{
+		unsigned int i = (it->position.y * sizeX) + it->position.x;
+
+		setLifeParticle(  genes, identity, i, it->color);
+		energyDebtSoFar -= 1.0f;
+		// printf("energyDebtSoFar %f \n", energyDebtSoFar);
+	}
+
+	// unsigned int n_seeds = 0;
+	for (std::list<vec_u2>::iterator it = v_seeds.begin(); it != v_seeds.end(); ++it)
+	{
+		unsigned int i = (it->y * sizeX) + it->x;
+
+		setSeedParticle(  genes, identity, energyDebtSoFar, i);
+		mutateSentence(&(seedGrid[i].genes));
+	}
+
+
+	// cursor_energyDebt = 0;
 }
 
 void thread_life()
 {
+
+
+
+
 #ifdef THREAD_TIMING
 	auto start = std::chrono::steady_clock::now();
 #endif
+
+
+
 
 	unsigned int x = 0;
 	unsigned int y = 0;
@@ -1407,7 +1493,7 @@ void thread_life()
 			{
 				if (lifeGrid[neighbours[j]].identity == lifeGrid[i].identity)
 				{
-					int equalizedEnergy = ( lifeGrid[neighbours[j]].energy + lifeGrid[i].energy ) / 2;
+					float equalizedEnergy = ( lifeGrid[neighbours[j]].energy + lifeGrid[i].energy ) / 2;
 					lifeGrid[neighbours[j]].energy = equalizedEnergy;
 					lifeGrid[i].energy = equalizedEnergy;
 				}
@@ -1428,6 +1514,20 @@ void thread_seeds()
 #ifdef THREAD_TIMING
 	auto start = std::chrono::steady_clock::now();
 #endif
+
+
+// unsigned int nGerminatedSeeds = 0;
+// unsigned int germinatedSeedsLimit = 1000;
+	if ( nGerminatedSeeds > germinatedSeedsLimit )
+	{
+
+		sendLifeToBackground();
+		nGerminatedSeeds = 0;
+
+	}
+
+
+
 	for (unsigned int i = (sizeX + 1); i < (totalSize - (sizeX + 1)); ++i)
 	{
 		if (seedGrid[i].stage == STAGE_PHOTON)
@@ -1437,6 +1537,7 @@ void thread_seeds()
 			{
 				if (extremelyFastNumberFromZeroTo(8) == 0)
 				{
+					// printf("imblued on %u\n", lifeGrid[squareBelow].identity);
 					lifeGrid[squareBelow].energy += 1.0f;
 					clearSeedParticle(i);
 					continue;
@@ -1470,6 +1571,7 @@ void thread_seeds()
 			{
 				drawPlantFromSeed(seedGrid[i].genes, i);
 				clearSeedParticle(i);
+				nGerminatedSeeds ++;
 				break;
 			}
 
@@ -1482,8 +1584,8 @@ void thread_seeds()
 					squareBelow - 1,
 					squareBelow,
 					squareBelow + 1,
-					i - 1,
 					i + 1,
+					i - 1,
 					squareAbove - 1,
 					squareAbove,
 					squareAbove + 1
@@ -1491,33 +1593,41 @@ void thread_seeds()
 				unsigned int nSolidNeighbours = 0;
 				for (unsigned int j = 0; j < 8; ++j)
 				{
+
+					if (grid[neighbours[j]].material == MATERIAL_QUARTZ)
+					{
+						nSolidNeighbours++;
+					}
+
 					if (j < 5)
 					{
 						if (grid[neighbours[j]].phase == PHASE_VACUUM || grid[neighbours[j]].phase == PHASE_GAS )
 						{
-							if (extremelyFastNumberFromZeroTo(8) == 0)
+							if (extremelyFastNumberFromZeroTo(4) == 0)
 							{
 								swapSeedParticle( i, neighbours[j] );
 								break;
 							}
 						}
-						if (grid[neighbours[j]].material == MATERIAL_QUARTZ)
-						{
-							nSolidNeighbours++;
-						}
+
 					}
 
-					if (grid[neighbours[j]].phase == PHASE_LIQUID )
+					if (j > 2)
 					{
-						if (extremelyFastNumberFromZeroTo(8) == 0)
+
+						if (grid[neighbours[j]].phase == PHASE_LIQUID || grid[neighbours[j]].phase == PHASE_VACUUM || grid[neighbours[j]].phase == PHASE_GAS )
 						{
-							swapSeedParticle( i, neighbours[j] );
-							break;
+							if (extremelyFastNumberFromZeroTo(4) == 0)
+							{
+								swapSeedParticle( i, neighbours[j] );
+								break;
+							}
 						}
 					}
 				}
 				if (nSolidNeighbours > 2)
 				{
+					printf("germinated\n");
 					seedGrid[i].stage = STAGE_SEED;
 				}
 				continue;
@@ -1544,10 +1654,11 @@ void thread_seeds()
 				{
 					if (lifeGrid[neighbours[j]].identity == seedGrid[i].parentIdentity)
 					{
+						// printf("neighbour energy %f\n", lifeGrid[neighbours[j]].energy);
 						if (lifeGrid[neighbours[j]].energy > 0)
 						{
-							seedGrid[i].energy += (lifeGrid[neighbours[j]].energy/2);
-							lifeGrid[neighbours[j]].energy = (lifeGrid[neighbours[j]].energy/2);
+							seedGrid[i].energy += (lifeGrid[neighbours[j]].energy );
+							lifeGrid[neighbours[j]].energy = (lifeGrid[neighbours[j]].energy );
 						}
 						nFeedingCells++;
 					}
@@ -1559,9 +1670,13 @@ void thread_seeds()
 					continue;
 				}
 
-				if (seedGrid[i].energy > 0)
+				if (seedGrid[i].energy >= 0)
 				{
 					seedGrid[i].stage = STAGE_FRUIT;
+					printf("fruited\n");
+				}
+				else {
+					// printf("seed energy %f\n", seedGrid[i].energy);
 				}
 
 				continue;
@@ -1575,4 +1690,86 @@ void thread_seeds()
 	std::cout << "thread_seeds " << elapsed.count() << " microseconds." << std::endl;
 #endif
 
+}
+
+
+
+void sendLifeToBackground ()
+{
+
+
+	for (unsigned int i = 0; i < totalSize; ++i)
+	{
+
+
+		lifeColorGridB[ (i * numberOfFieldsPerVertex) + 0 ] = lifeColorGrid[(i * numberOfFieldsPerVertex) + 0];
+		lifeColorGridB[ (i * numberOfFieldsPerVertex) + 1 ] = lifeColorGrid[(i * numberOfFieldsPerVertex) + 1];
+		lifeColorGridB[ (i * numberOfFieldsPerVertex) + 2 ] = lifeColorGrid[(i * numberOfFieldsPerVertex) + 2];
+		lifeColorGridB[ (i * numberOfFieldsPerVertex) + 3 ] = lifeColorGrid[(i * numberOfFieldsPerVertex) + 3] * 0.5f;
+		lifeColorGridB[ (i * numberOfFieldsPerVertex) + 4 ] = lifeColorGrid[(i * numberOfFieldsPerVertex) + 4];
+		lifeColorGridB[ (i * numberOfFieldsPerVertex) + 5 ] = lifeColorGrid[(i * numberOfFieldsPerVertex) + 5];
+
+
+		lifeColorGrid[ (i * numberOfFieldsPerVertex) + 0 ] = 0.0f;
+		lifeColorGrid[ (i * numberOfFieldsPerVertex) + 1 ] = 0.0f;
+		lifeColorGrid[ (i * numberOfFieldsPerVertex) + 2 ] = 0.0f;
+		lifeColorGrid[ (i * numberOfFieldsPerVertex) + 3 ] = 0.0f;
+		// lifeColorGrid[ (i * numberOfFieldsPerVertex) + 4 ] = lifeColorGrid[(i * numberOfFieldsPerVertex) + 4];
+		// lifeColorGrid[ (i * numberOfFieldsPerVertex) + 5 ] = lifeColorGrid[(i * numberOfFieldsPerVertex) + 5];
+
+
+
+		lifeGrid[i].identity = 0;
+		lifeGrid[i].energy = 0.0f;
+		lifeGrid[i].genes = std::string("");
+
+
+		if (seedGrid[i].parentIdentity > 0)
+		{
+			if (extremelyFastNumberFromZeroTo(1) == 0)
+			{
+				seedGrid[i].stage = STAGE_FRUIT;
+				seedGrid[i].energy = 0;
+			}
+			else
+			{
+				clearSeedParticle(i);
+			}
+
+		}
+
+
+
+	}
+
+
+}
+
+void insertRandomSeed()
+{
+
+	unsigned int x = 0;
+	unsigned int y = 0;
+
+	unsigned int targetX = extremelyFastNumberFromZeroTo(sizeX);
+	unsigned int targetY = extremelyFastNumberFromZeroTo(sizeY / 2) + (sizeY / 2);
+
+	for (unsigned int i = (sizeX + 1); i < (totalSize - (sizeX + 1)); ++i)
+	{
+
+
+		x = i % sizeX;
+		if (!x) { y = i / sizeX; }
+
+
+
+		if (x == targetX && y == targetY)
+		{
+			setSeedParticle(exampleSentence, newIdentity() , 0, i);
+			seedGrid[i].stage = STAGE_FRUIT;
+		}
+
+
+
+	}
 }

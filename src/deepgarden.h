@@ -87,4 +87,12 @@ void thread_temperature2 ();
 
 void thread_life();
 void thread_seeds();
+
+
+void sendLifeToBackground ();
+
+void insertRandomSeed();
+
+void toggleEnergyGridDisplay ();
+
 #endif

@@ -67,6 +67,20 @@ void thread_interface()
 				setNeutralTemp();
 				break;
 
+			case SDLK_r:
+				sendLifeToBackground();
+				break;
+
+			case SDLK_n:
+				insertRandomSeed();
+				break;
+
+			case SDLK_t:
+				toggleEnergyGridDisplay();
+				break;
+
+
+
 			case SDLK_p:
 				togglePause();
 				break;
