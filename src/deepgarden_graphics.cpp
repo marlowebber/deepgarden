@@ -215,7 +215,7 @@ void setupGraphics()
 	glVertexAttribPointer( attrib_color, 4, GL_FLOAT, GL_FALSE, sizeof( float ) * 6, 0 );
 	glVertexAttribPointer( attrib_position, 2, GL_FLOAT, GL_FALSE, sizeof( float ) * 6, ( void * )(4 * sizeof(float)) );
 
-	glClearColor( 0.1f, 0.1f, 0.1f, 1.0f );
+	glClearColor( 0.05f, 0.05f, 0.05f, 1.0f );
 
 
 	glEnable(GL_BLEND);

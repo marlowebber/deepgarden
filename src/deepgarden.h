@@ -22,7 +22,7 @@ using namespace glm;
 #include "deepgarden_utilities.h"
 
 
-#define sizeX 1024
+#define sizeX 2048
 #define sizeY 256
 
 struct Color
@@ -56,9 +56,8 @@ struct Color
 #define PHASE_GAS    16
 #define PHASE_LIGHT 32
 
-#define DARK 0
-#define LIGHT 1
 
+#define STAGE_NULL 0
 #define STAGE_BUD 1
 #define STAGE_FRUIT 2
 #define STAGE_SEED 3
@@ -94,5 +93,13 @@ void sendLifeToBackground ();
 void insertRandomSeed();
 
 void toggleEnergyGridDisplay ();
+
+
+void increaseLampBrightness ();
+
+void decreaseLampBrightness ();
+
+
+void thread_plantDrawing();
 
 #endif

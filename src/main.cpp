@@ -79,6 +79,15 @@ void thread_interface()
 				toggleEnergyGridDisplay();
 				break;
 
+			case SDLK_LEFTBRACKET:
+				increaseLampBrightness();
+				break;
+
+			case SDLK_RIGHTBRACKET:
+				decreaseLampBrightness();
+				break;
+
+
 
 
 			case SDLK_p:
@@ -106,10 +115,29 @@ void thread_interface()
 	}
 }
 
+
+// plant drawing runs in variable time but is always slower than everything else. this threading arrangement lets it run forever, but at its own pace.
+void thread_supervisor_plantDrawing()
+{
+
+	while (true)
+	{
+		boost::thread t101 { thread_plantDrawing};
+		t101.join();
+	}
+}
+
+
+
 int main( int argc, char * argv[] )
 {
 	setupGraphics();
 	initialize();
+
+
+
+	boost::thread t100 { thread_supervisor_plantDrawing};
+
 
 	for ( ;; )
 	{
@@ -117,6 +145,8 @@ int main( int argc, char * argv[] )
 
 		// start all the threads and then wait for them to finish.
 		// start threads in order of chunkiest to least chunky.
+
+
 
 		boost::thread t99{ thread_temperature2 };
 
@@ -141,6 +171,8 @@ int main( int argc, char * argv[] )
 		t2.join();
 
 		t99.join();
+
+		// t100.join();
 
 		if (flagQuit)
 		{
