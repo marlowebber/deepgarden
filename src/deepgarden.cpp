@@ -49,7 +49,13 @@ float colorGrid[ totalSize * numberOfFieldsPerVertex ];
 float lifeColorGrid[totalSize * numberOfFieldsPerVertex ];
 float lifeColorGridB[totalSize * numberOfFieldsPerVertex ];
 float seedColorGrid[totalSize * numberOfFieldsPerVertex];
-int wind = 0;
+
+
+// int wind = 0;
+
+
+vec_i2 wind = vec_i2(0, 0);
+
 
 int defaultTemperature = 300;
 
@@ -250,6 +256,18 @@ void setLifeParticle( std::string genes, unsigned int identity, unsigned int i, 
 	lifeGrid[i].energy = 0.0f;
 
 	memcpy( (&lifeColorGrid[i * numberOfFieldsPerVertex]),  &(color),  sizeof(Color) );
+
+
+	// to draw 'shadows', find the particle that's one pixel down and one across, and set its color down by half.
+	if (i > sizeX)
+	{
+		unsigned int shadowIndex = (i - sizeX) + 1;
+		shadowIndex = (shadowIndex * numberOfFieldsPerVertex);
+
+		lifeColorGrid[shadowIndex + 0] = lifeColorGrid[ shadowIndex + 0] * 0.5f;
+		lifeColorGrid[shadowIndex + 1] = lifeColorGrid[ shadowIndex + 1] * 0.5f;
+		lifeColorGrid[shadowIndex + 2] = lifeColorGrid[ shadowIndex + 2] * 0.5f;
+	}
 }
 
 void swapLifeParticle(unsigned int a, unsigned int b)
@@ -928,12 +946,19 @@ void physics_sector (unsigned int from, unsigned int to)
 
 void thread_physics ()
 {
+
+	// blow the wind
 	uint16_t windChange = extremelyFastNumberFromZeroTo(100);
 
 	if (!windChange)
 	{
-		uint16_t windRand =  extremelyFastNumberFromZeroTo( 2);
-		wind = windRand - 1;
+		int16_t windRand =  extremelyFastNumberFromZeroTo( 2);
+		wind.x = windRand - 1;
+
+		windRand =  extremelyFastNumberFromZeroTo( 2);
+		wind.y = windRand - 1;
+
+		printf("CHAMGED WIMD %i %i \n", wind.x, wind.y);
 	}
 
 	// sprinkle rain
@@ -1403,7 +1428,7 @@ int drawCharacter ( std::string genes , unsigned int identity)
 		while (!numberModifier) {	numberModifier = alphanumeric( genes[cursor_string] ); cursor_string++; if (cursor_string > genesize) {return -1;} }
 
 		// get the circle radius (the next number in the string). nerfed on purpose otherwise there are giant blobs everywhere.
-		unsigned int radius = numberModifier /2;
+		unsigned int radius = numberModifier / 2;
 
 		// define the range of pixels you'll draw- so you don't have to navigate the entire, massive grid.
 		unsigned int drawingAreaLowerX = cursor_grid.x - radius;
@@ -1897,6 +1922,57 @@ void thread_seeds()
 				// {
 
 
+				if (extremelyFastNumberFromZeroTo(1) == 0) // get blown by the wind only some of the time
+				{
+					while (true) // this while loop is just here so you can 'break' out of it to end this sequence quickly.
+					{
+						unsigned int neighbour;
+						if (wind.x > 0)
+						{
+							neighbour = i + 1;
+							if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS  )
+							{
+								swapSeedParticle( i, neighbour );
+								break;
+							}
+						}
+						else if (wind.x < 0)
+						{
+							neighbour = i - 1;
+							if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS  )
+							{
+								swapSeedParticle( i, neighbour );
+								break;
+							}
+						}
+						break;
+					}
+
+					while (true) // this while loop is just here so you can 'break' out of it to end this sequence quickly.
+					{
+						unsigned int neighbour;
+						if (wind.y > 0)
+						{
+							neighbour = i + sizeX;
+							if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS  )
+							{
+								swapSeedParticle( i, neighbour );
+								break;
+							}
+						}
+						else if (wind.y < 0)
+						{
+							neighbour = i - sizeX;
+							if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS  )
+							{
+								swapSeedParticle( i, neighbour );
+								break;
+							}
+						}
+						break;
+					}
+				}
+
 				unsigned int j = extremelyFastNumberFromZeroTo(4);
 				unsigned int neighbour;
 
@@ -2145,38 +2221,38 @@ void insertRandomSeed()
 // // a mysterious urchin.
 // std::string plant_SpleenCoral = std::string( "rgggbuxuyuzu. cz. rmgmbw. azzlmcdf  " );
 
-std::string exampleSentence = std::string("");
+			std::string exampleSentence = std::string("");
 
 
 			unsigned int randomPlantIndex = extremelyFastNumberFromZeroTo(4);
 
-			switch (randomPlantIndex) 
+			switch (randomPlantIndex)
 			{
-				case 0:
-				{
-					exampleSentence = plant_Pycad;
-					break;
-				}
-				case 1:
-				{
-					exampleSentence = plant_Lomondra;
-					break;
-				}
-				case 2:
-				{
-					exampleSentence = plant_Worrage;
-					break;
-				}
-				case 3:
-				{
-					exampleSentence = plant_MilkWombler;
-					break;
-				}
-				case 4:
-				{
-					exampleSentence = plant_SpleenCoral;
-					break;
-				}
+			case 0:
+			{
+				exampleSentence = plant_Pycad;
+				break;
+			}
+			case 1:
+			{
+				exampleSentence = plant_Lomondra;
+				break;
+			}
+			case 2:
+			{
+				exampleSentence = plant_Worrage;
+				break;
+			}
+			case 3:
+			{
+				exampleSentence = plant_MilkWombler;
+				break;
+			}
+			case 4:
+			{
+				exampleSentence = plant_SpleenCoral;
+				break;
+			}
 
 			}
 
