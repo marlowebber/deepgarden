@@ -2387,39 +2387,43 @@ void thread_seeds()
 			if (seedGrid[i].stage == STAGE_BEE)
 			{
 
-				if (energy > 8.0f)
+
+				unsigned int squareBelow = i - sizeX;
+				unsigned int squareAbove = i + sizeX;
+				unsigned int neighbours[] =
 				{
-					unsigned int squareBelow = i - sizeX;
-					unsigned int squareAbove = i + sizeX;
-					unsigned int neighbours[] =
-					{
-						squareBelow - 1,
-						squareBelow,
-						squareBelow + 1,
-						i - 1,
-						i + 1,
-						squareAbove - 1,
-						squareAbove,
-						squareAbove +1
-					};
+					squareBelow - 1,
+					squareBelow,
+					squareBelow + 1,
+					i - 1,
+					i + 1,
+					squareAbove - 1,
+					squareAbove,
+					squareAbove + 1
+				};
 
-					unsigned int neighbour = extremelyFastNumberFromZeroTo(7);
+				unsigned int neighbour = extremelyFastNumberFromZeroTo(7);
 
+				if (seedGrid[i].energy < 8.0f)
+				{
 					// if the neighbour is actually a seed
-					if (seedGrid[neighbour].stage > 0 &&   seedGrid[neighbour].stage < 1000) 
+					if (seedGrid[neighbour].stage > 0 &&   seedGrid[neighbour].stage < 1000)
 					{
-
+						seedGrid[i].energy += seedGrid[neighbour].energy;
+						clearSeedParticle(neighbour);
 
 					}
-
-
-					if (seedGrid[neighbour].stage == 0x00 && (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS) ) 
-					{
-
-					}
-
-					
 				}
+
+				// if the neighbour is empty
+				if (seedGrid[neighbour].stage == 0x00 && (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS) )
+				{
+					swapSeedParticle(i, neighbour);
+				}
+
+
+
+
 
 
 			}
@@ -2672,20 +2676,44 @@ void decreaseLampBrightness ()
 
 
 
+/*
+
+void saveFishToFile(const std::string& file_name, fishDescriptor_t& data) {
+	std::ofstream out(file_name.c_str());
+	out.write(reinterpret_cast<char*>(&data), sizeof(fishDescriptor_t));
+}
+
+void loadFishFromFile(const std::string& file_name, fishDescriptor_t& data) {
+	std::ifstream in(file_name.c_str());
+	in.read(reinterpret_cast<char*>(&data), sizeof(fishDescriptor_t));
+}
+
+*/
 
 
-void save () 
+void save ()
 {
 
 	// transcribe the entire world state to file.
 
 	// lifegrid
+	std::ofstream out(std::string("lifeGrid").c_str());
+	out.write(reinterpret_cast<char*>lifeGrid, sizeof(LifeParticle) * totalSize);
 
 	// seed grid
+	std::ofstream out(std::string("seedGrid").c_str());
+	out.write(reinterpret_cast<char*>seedGrid, sizeof(SeedParticle) * totalSize);
 
 	// color grids
+	std::ofstream out(std::string("colorGrid").c_str());
+	out.write(reinterpret_cast<char*>colorGrid, sizeof(float) * numberOfFieldsPerVertex *  totalSize);
+	
+	std::ofstream out(std::string("colorGridB").c_str());
+	out.write(reinterpret_cast<char*>colorGrid, sizeof(float) * numberOfFieldsPerVertex *  totalSize);
+
 
 	// gene grid (array of strings)
+	// https://stackoverflow.com/questions/11872302/array-of-strings-to-output-file
 
 }
 
@@ -2693,7 +2721,7 @@ void save ()
 
 
 
-void load () 
+void load ()
 {
 
 }
