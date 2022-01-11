@@ -60,6 +60,8 @@ struct Color
 #define STAGE_FRUIT  		 2
 #define STAGE_SEED   		 3
 #define STAGE_PHOTON 		 4
+#define STAGE_ANT			 1000
+#define STAGE_BEE			 1001
 
 #define ENERGYSOURCE_LIGHT   0
 #define ENERGYSOURCE_MINERAL 1

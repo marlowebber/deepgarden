@@ -305,6 +305,14 @@ void swapLifeParticle(unsigned int a, unsigned int b)
 	memcpy( &lifeColorGrid[ a_offset ], temp_color, sizeof(Color) );
 }
 
+void setInsect( unsigned int i, unsigned int bugType )
+{
+
+	seedGrid[i].stage = bugType;
+	memcpy( (&seedColorGrid[i * numberOfFieldsPerVertex]) ,  &(color_yellow),  sizeof(Color) );
+
+}
+
 void setSeedParticle( std::string genes, unsigned int parentIdentity, float energyDebt, unsigned int i)
 {
 	seedGrid[i].genes = genes;
@@ -1185,7 +1193,7 @@ std::list<ProposedLifeParticle> EFLA_E(vec_u2 start, vec_u2 end)
 	}
 	longLen += x;
 	for (int j = 0x80 + (y << 8); x >= longLen; --x) {
-		v.push_back( ProposedLifeParticle(cursor_color, vec_u2(x, j >> 8) ,cursor_energySource));
+		v.push_back( ProposedLifeParticle(cursor_color, vec_u2(x, j >> 8) , cursor_energySource));
 		j -= decInc;
 	}
 	return v;
@@ -1942,7 +1950,7 @@ void drawPlantFromSeed( std::string genes, unsigned int i )
 	prevCursor_grid = cursor_grid;
 	accumulatedRotation = (0.5 * 3.1415);
 
-	cursor_energySource = ENERGYSOURCE_LIGHT; 
+	cursor_energySource = ENERGYSOURCE_LIGHT;
 
 	lengthNoise = ( RNG() - 0.5 ) * 0.25 ;
 
@@ -2194,7 +2202,7 @@ void thread_seeds()
 	// if ( nGerminatedSeeds > germinatedSeedsLimit )
 	// {
 	// 	sendLifeToBackground();
-		
+
 	// }
 
 	for (unsigned int i = (sizeX + 1); i < (totalSize - (sizeX + 1)); ++i)
@@ -2374,6 +2382,47 @@ void thread_seeds()
 
 				continue;
 			}
+
+
+			if (seedGrid[i].stage == STAGE_BEE)
+			{
+
+				if (energy > 8.0f)
+				{
+					unsigned int squareBelow = i - sizeX;
+					unsigned int squareAbove = i + sizeX;
+					unsigned int neighbours[] =
+					{
+						squareBelow - 1,
+						squareBelow,
+						squareBelow + 1,
+						i - 1,
+						i + 1,
+						squareAbove - 1,
+						squareAbove,
+						squareAbove +1
+					};
+
+					unsigned int neighbour = extremelyFastNumberFromZeroTo(7);
+
+					// if the neighbour is actually a seed
+					if (seedGrid[neighbour].stage > 0 &&   seedGrid[neighbour].stage < 1000) 
+					{
+
+
+					}
+
+
+					if (seedGrid[neighbour].stage == 0x00 && (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS) ) 
+					{
+
+					}
+
+					
+				}
+
+
+			}
 		}
 	}
 
@@ -2453,6 +2502,58 @@ void sendLifeToBackground ()
 
 
 }
+
+
+
+
+void insertRandomInsect()
+{
+
+
+	unsigned int x = 0;
+	unsigned int y = 0;
+
+	unsigned int targetX = extremelyFastNumberFromZeroTo(sizeX);
+	unsigned int targetY = extremelyFastNumberFromZeroTo(sizeY / 2) + (sizeY / 2);
+
+	for (unsigned int i = (sizeX + 1); i < (totalSize - (sizeX + 1)); ++i)
+	{
+
+
+		x = i % sizeX;
+		if (!x) { y = i / sizeX; }
+
+
+
+		if (x == targetX && y == targetY)
+		{
+
+
+			unsigned int randomBugIndex = extremelyFastNumberFromZeroTo(1);
+
+			if (randomBugIndex == 0)
+			{
+
+			}
+			else if (randomBugIndex == 1)
+			{
+
+			}
+
+
+
+
+		}
+	}
+
+
+
+
+
+}
+
+
+
 
 void insertRandomSeed()
 {
@@ -2566,4 +2667,33 @@ void increaseLampBrightness ()
 void decreaseLampBrightness ()
 {
 	lampBrightness--;
+}
+
+
+
+
+
+
+void save () 
+{
+
+	// transcribe the entire world state to file.
+
+	// lifegrid
+
+	// seed grid
+
+	// color grids
+
+	// gene grid (array of strings)
+
+}
+
+
+
+
+
+void load () 
+{
+
 }
