@@ -36,32 +36,36 @@ struct Color
 }__attribute__((packed));
 
 
-#define MATERIAL_VACUUM		1
-#define MATERIAL_PHOTON  	2       
-#define MATERIAL_SEED 		3
-#define MATERIAL_IRON 		4
-#define MATERIAL_STONE 		5
-#define MATERIAL_OXYGEN 	6
-#define MATERIAL_GOLD 		7
-#define MATERIAL_WATER 		8
-#define MATERIAL_QUARTZ 	9
-#define MATERIAL_AMPHIBOLE 	10
-#define MATERIAL_OLIVINE 	11
+#define MATERIAL_VACUUM		 1
+#define MATERIAL_PHOTON  	 2       
+#define MATERIAL_SEED 		 3
+#define MATERIAL_IRON 		 4
+#define MATERIAL_STONE 		 5
+#define MATERIAL_OXYGEN 	 6
+#define MATERIAL_GOLD 		 7
+#define MATERIAL_WATER 		 8
+#define MATERIAL_QUARTZ 	 9
+#define MATERIAL_AMPHIBOLE 	 10
+#define MATERIAL_OLIVINE 	 11
 
+#define PHASE_VACUUM 		 1
+#define PHASE_SOLID  		 2
+#define PHASE_POWDER 		 4
+#define PHASE_LIQUID 		 8
+#define PHASE_GAS    		 16
+#define PHASE_LIGHT  		 32
+		 
+#define STAGE_NULL   		 0
+#define STAGE_BUD    		 1
+#define STAGE_FRUIT  		 2
+#define STAGE_SEED   		 3
+#define STAGE_PHOTON 		 4
 
-#define PHASE_VACUUM 1
-#define PHASE_SOLID 2
-#define PHASE_POWDER 4
-#define PHASE_LIQUID 8
-#define PHASE_GAS    16
-#define PHASE_LIGHT 32
+#define ENERGYSOURCE_LIGHT   0
+#define ENERGYSOURCE_MINERAL 1
+#define ENERGYSOURCE_SEED    2
+#define ENERGYSOURCE_PLANT   3
 
-
-#define STAGE_NULL 0
-#define STAGE_BUD 1
-#define STAGE_FRUIT 2
-#define STAGE_SEED 3
-#define STAGE_PHOTON 4
 
 float RNG();
 
