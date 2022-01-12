@@ -11,9 +11,12 @@ int mouseY;
 float panSpeed = 0.5f;
 unsigned int pixelSize = 3;
 
+bool crudOps = false;
 
 bool flagSave = false;
 bool flagLoad = false;
+
+unsigned int loadCooldown = 0;
 
 void quit ()
 {
@@ -91,13 +94,13 @@ void thread_interface()
 
 			case SDLK_s:
 				// save();
-			flagSave = true;
+				flagSave = true;
 				break;
 
 
 
 			case SDLK_l:
-				load();
+				// load();
 				flagLoad = true;
 				break;
 
@@ -170,49 +173,61 @@ int main( int argc, char * argv[] )
 		// start threads in order of chunkiest to least chunky.
 
 
+		if (!crudOps)
+		{
 
-		boost::thread t99{ thread_temperature2 };
 
-		boost::thread t2{ thread_physics };
+			boost::thread t99{ thread_temperature2 };
 
-		boost::thread t6{ thread_interface };
+			boost::thread t2{ thread_physics };
 
-		boost::thread t7 { thread_life};
+			boost::thread t6{ thread_interface };
 
-		boost::thread t8 { thread_seeds};
+			boost::thread t7 { thread_life};
 
-		// graphics only seems to work in this thread, so we can just say that's what this thread is for.
+			boost::thread t8 { thread_seeds};
 
-		thread_graphics();
+			// graphics only seems to work in this thread, so we can just say that's what this thread is for.
 
-		t8.join();
+			thread_graphics();
 
-		t7.join();
+			t8.join();
 
-		t6.join();
+			t7.join();
 
-		t2.join();
+			t6.join();
 
-		t99.join();
+			t2.join();
+
+			t99.join();
+
+		}
 
 		// t100.join();
 
 
 		// these operations can't be done while threading is happening. wait for the turn to finish, then use them.
-		if (flagSave) 
+		if (flagSave)
 		{
+			crudOps = true;
 			save();
 			flagSave = false;
+			crudOps = false;
 		}
 
-		if (flagLoad) 
+		if (flagLoad && loadCooldown == 0)
 		{
-			load();
+			crudOps = true;
 			flagLoad = false;
+			load();
+			crudOps = false;
 		}
+
+		if (loadCooldown > 0) {loadCooldown--;}
 
 		if (flagQuit)
 		{
+			crudOps = true;
 			flagQuit = false;
 			return 0;
 		}

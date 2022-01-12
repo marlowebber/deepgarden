@@ -24,6 +24,7 @@ using namespace glm;
 
 #define sizeX 2048
 #define sizeY 256
+#define maxGenomeSize 64
 
 struct Color
 {

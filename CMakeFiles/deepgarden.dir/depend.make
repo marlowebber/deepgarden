@@ -5,6 +5,7 @@ CMakeFiles/deepgarden.dir/src/deepgarden.cpp.o: src/deepgarden.cpp
 CMakeFiles/deepgarden.dir/src/deepgarden.cpp.o: src/deepgarden.h
 CMakeFiles/deepgarden.dir/src/deepgarden.cpp.o: src/deepgarden_graphics.h
 CMakeFiles/deepgarden.dir/src/deepgarden.cpp.o: src/deepgarden_utilities.h
+CMakeFiles/deepgarden.dir/src/deepgarden.cpp.o: src/main.h
 CMakeFiles/deepgarden.dir/src/deepgarden.cpp.o: /usr/local/include/SDL2/SDL.h
 CMakeFiles/deepgarden.dir/src/deepgarden.cpp.o: /usr/local/include/SDL2/SDL_assert.h
 CMakeFiles/deepgarden.dir/src/deepgarden.cpp.o: /usr/local/include/SDL2/SDL_atomic.h

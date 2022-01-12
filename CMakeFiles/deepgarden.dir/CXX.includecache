@@ -6,20 +6,6 @@
 
 #IncludeRegexTransform: 
 
-/home/marlo/Documents/deepgarden/src/deepgarden.cpp
-deepgarden.h
-/home/marlo/Documents/deepgarden/src/deepgarden.h
-deepgarden_graphics.h
-/home/marlo/Documents/deepgarden/src/deepgarden_graphics.h
-ctime
--
-chrono
--
-iostream
--
-fstream
--
-
 /home/marlo/Documents/deepgarden/src/deepgarden.h
 stdio.h
 -
@@ -55,6 +41,18 @@ deepgarden.h
 /home/marlo/Documents/deepgarden/src/deepgarden_utilities.h
 deepgarden.h
 /home/marlo/Documents/deepgarden/src/deepgarden.h
+
+/home/marlo/Documents/deepgarden/src/main.cpp
+deepgarden.h
+/home/marlo/Documents/deepgarden/src/deepgarden.h
+deepgarden_graphics.h
+/home/marlo/Documents/deepgarden/src/deepgarden_graphics.h
+ctime
+-
+chrono
+-
+iostream
+-
 
 /usr/local/include/SDL2/SDL.h
 SDL_main.h

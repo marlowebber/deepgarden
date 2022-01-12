@@ -6,6 +6,8 @@
 #include <iostream>
 #include <fstream>
 
+#include "main.h"
+
 // #define THREAD_TIMING
 #define RENDERING_THREADS 4
 #define PLANT_DRAWING_READOUT 1
@@ -246,6 +248,8 @@ Color materialColor ( unsigned int material )
 	return color_black;
 }
 
+
+
 void setParticle(unsigned int material, unsigned int i)
 {
 	grid[i].temperature = defaultTemperature;
@@ -390,6 +394,43 @@ void retireIdentity (unsigned int identityToRetire)
 	identities.remove (identityToRetire);
 }
 
+void clearColorGrids(unsigned int i)
+{
+
+	unsigned int x = i % sizeX;
+	unsigned int y = i / sizeX;
+	float fx = x;
+	float fy = y;
+
+
+	unsigned int a_offset = (i * numberOfFieldsPerVertex) ;
+	colorGrid[ 		a_offset + 0] = 0.0f;
+	colorGrid[ 		a_offset + 1] = 0.0f;
+	colorGrid[ 		a_offset + 2] = 0.0f;
+	colorGrid[ 		a_offset + 3] = 0.0f;
+	colorGrid[ 		a_offset + 4] = fx;
+	colorGrid[ 		a_offset + 5] = fy;
+	lifeColorGrid[ 	a_offset + 0] = 0.0f;
+	lifeColorGrid[ 	a_offset + 1] = 0.0f;
+	lifeColorGrid[ 	a_offset + 2] = 0.0f;
+	lifeColorGrid[ 	a_offset + 3] = 0.0f;
+	lifeColorGrid[ 	a_offset + 4] = fx;
+	lifeColorGrid[ 	a_offset + 5] = fy;
+	lifeColorGridB[ a_offset + 0] = 0.0f;
+	lifeColorGridB[ a_offset + 1] = 0.0f;
+	lifeColorGridB[ a_offset + 2] = 0.0f;
+	lifeColorGridB[ a_offset + 3] = 0.0f;
+	lifeColorGridB[ a_offset + 4] = fx;
+	lifeColorGridB[ a_offset + 5] = fy;
+	seedColorGrid[ 	a_offset + 0] = 0.0f;
+	seedColorGrid[ 	a_offset + 1] = 0.0f;
+	seedColorGrid[ 	a_offset + 2] = 0.0f;
+	seedColorGrid[ 	a_offset + 3] = 0.0f;
+	seedColorGrid[ 	a_offset + 4] = fx;
+	seedColorGrid[ 	a_offset + 5] = fy;
+
+}
+
 void initialize ()
 {
 	setupExtremelyFastNumberGenerators();
@@ -407,7 +448,7 @@ void initialize ()
 	for (unsigned int i = 0; i < totalSize; ++i)
 	{
 		x = i % sizeX;
-		y = i / sizeX; 
+		y = i / sizeX;
 		float fx = x;
 		float fy = y;
 
@@ -417,24 +458,7 @@ void initialize ()
 
 		// RGBA color occupies the first 4 places.
 		// also, initialize the color alpha to 1.
-
-
-		lifeColorGridB[ (i * numberOfFieldsPerVertex) + 3] = 0.0f;
-		lifeColorGridB[ (i * numberOfFieldsPerVertex) + 4] = fx;
-		lifeColorGridB[ (i * numberOfFieldsPerVertex) + 5] = fy;
-
-
-		colorGrid[ (i * numberOfFieldsPerVertex) + 3] = 0.0f;
-		colorGrid[ (i * numberOfFieldsPerVertex) + 4] = fx;
-		colorGrid[ (i * numberOfFieldsPerVertex) + 5] = fy;
-
-		lifeColorGrid[ (i * numberOfFieldsPerVertex) + 3] = 0.0f;
-		lifeColorGrid[ (i * numberOfFieldsPerVertex) + 4] = fx;
-		lifeColorGrid[ (i * numberOfFieldsPerVertex) + 5] = fy;
-
-		seedColorGrid[ (i * numberOfFieldsPerVertex) + 3] = 0.0f;
-		seedColorGrid[ (i * numberOfFieldsPerVertex) + 4] = fx;
-		seedColorGrid[ (i * numberOfFieldsPerVertex) + 5] = fy;
+		clearColorGrids(i);
 
 		if (true)
 		{
@@ -1202,6 +1226,11 @@ std::list<ProposedLifeParticle> EFLA_E(vec_u2 start, vec_u2 end)
 
 int drawCharacter ( std::string genes , unsigned int identity)
 {
+
+	while (crudOps) {
+		;
+	}
+	
 	char c = genes[cursor_string];
 
 #ifdef PLANT_DRAWING_READOUT
@@ -1935,6 +1964,11 @@ int drawCharacter ( std::string genes , unsigned int identity)
 
 void drawPlantFromSeed( std::string genes, unsigned int i )
 {
+
+	while (crudOps) {
+		;
+	}
+
 	unsigned int x = 0;
 	unsigned int y = 0;
 
@@ -2512,12 +2546,48 @@ void sendLifeToBackground ()
 
 
 // repaint the color grids from scratch with new data.
-void updateColorGrids()
-{
+// void updateColorGrids()
+// {
+
+// 	for (unsigned int i = 0; i < totalSize; ++i)
+// 	{
+// 		unsigned int a_offset = (i * numberOfFieldsPerVertex);
+
+// 		memcpy( &colorGrid[ a_offset ], &color_clear, 16 );
+// 		memcpy( &lifeColorGrid[ a_offset ], &color_clear, 16 );
+// 		memcpy( &lifeColorGridB[ a_offset ], &color_clear, 16 );
+// 		memcpy( &seedColorGrid[ a_offset ], &color_clear, 16 );
+
+// 		// set material color
+// 		if (grid[i].phase != PHASE_VACUUM )
+// 		{
+// 			Color temp_color = materialColor(grid[i].material );
+// 			memcpy( &colorGrid[ a_offset ], &temp_color, 16 );
+// 		}
+
+
+// 		// set life color
+// 		if (lifeGrid[i].identity > 0x00)
+// 		{
+// 			// lifeColorGrid[i] = lifeGrid[i].color;
+// 			Color temp_color = lifeGrid[i].color ;
+// 			memcpy( &lifeColorGrid[ a_offset ], &temp_color, 16 );
+// 		}
+
+
+// 	// set seeds color
+// 		if (seedGrid[i].stage > STAGE_NULL)
+// 		{
+// 			// lifeColorGrid[i] = lifeGrid[i].color;
+// 			memcpy( &lifeColorGrid[ a_offset ], &temp_color, 16 );
+// 		}
 
 
 
-}
+
+// 	}
+
+// }
 
 
 void insertRandomInsect()
@@ -2693,6 +2763,10 @@ void save ()
 {
 
 	// transcribe the entire world state to file.
+	std::ofstream out6(std::string("save/grid").c_str());
+	out6.write(reinterpret_cast<char*>(& (grid[0]) ), sizeof(Particle) *  totalSize);
+	out6.close();
+
 
 	// lifegrid
 	std::ofstream out1( std::string("save/lifeGrid").c_str()  );
@@ -2704,14 +2778,7 @@ void save ()
 	out2.write(reinterpret_cast<char*>(& (seedGrid[0]) ), sizeof(SeedParticle) * totalSize);
 	out2.close();
 
-	// // color grids
-	// std::ofstream out3(std::string("save/lifeColorGrid").c_str());
-	// out3.write(reinterpret_cast<char*>(& (lifeColorGrid[0]) ), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
-	// out3.close();
 
-	// std::ofstream out4(std::string("save/lifeColorGridB").c_str());
-	// out4.write(reinterpret_cast<char*>(& (lifeColorGridB[0]) ), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
-	// out4.close();
 
 
 	// gene grid (array of strings)
@@ -2733,69 +2800,148 @@ void save ()
 
 		if (lifeGrid[i].genes.length() > 0)
 		{
-			out5 << lifeGrid[i].genes  << std::endl;
+			out5 << lifeGrid[i].genes.c_str()  << '\n';
 		}
-		else 
+		else
 		{
-			out5 << std::endl;
+			out5 << '\n';
 		}
 	}
 	out5.close();
 
 
-	std::ofstream out6(std::string("save/grid").c_str());
-	out6.write(reinterpret_cast<char*>(& (grid[0]) ), sizeof(Particle) *  totalSize);
-	out6.close();
+	std::ofstream out7(std::string("save/colorGrid").c_str());
+	out7.write(reinterpret_cast<char*>(& (colorGrid[0]) ), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
+	out7.close();
+
+	// color grids
+	std::ofstream out3(std::string("save/lifeColorGrid").c_str());
+	out3.write(reinterpret_cast<char*>(& (lifeColorGrid[0]) ), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
+	out3.close();
+
+	std::ofstream out4(std::string("save/lifeColorGridB").c_str());
+	out4.write(reinterpret_cast<char*>(& (lifeColorGridB[0]) ), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
+	out4.close();
 
 
-	// std::ofstream out7(std::string("save/colorGrid").c_str());
-	// out7.write(reinterpret_cast<char*>(& (colorGrid[0]) ), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
-	// out7.close();
 
 }
 
 
-
+std::istream &diy_getline(std::istream &is, std::string &s, char delim = '\n')
+{
+	s.clear();
+	int ch;
+	while ((ch = is.get()) != EOF && ch != delim)
+		s.push_back(ch);
+	return is;
+}
 
 
 void load ()
 {
 
 
-	std::ifstream in1(std::string("save/lifeGrid").c_str());
-	in1.read(reinterpret_cast<char*>((& (lifeGrid[0]) )), sizeof(LifeParticle) * totalSize);
-	in1.close();
-
-
-	std::ifstream in2(std::string("save/seedGrid").c_str());
-	in2.read(reinterpret_cast<char*>((& (seedGrid[0]) )), sizeof(SeedParticle) * totalSize);
-	in2.close();
-
-	// std::ifstream in3(std::string("save/lifeColorGrid").c_str());
-	// in3.read(reinterpret_cast<char*>((& (lifeColorGrid[0]) )), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
-	// in3.close();
-
-	// std::ifstream in4(std::string("save/lifeColorGridB").c_str());
-	// in4.read(reinterpret_cast<char*>((& (lifeColorGridB[0]) )), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
-	// in4.close();
-
-	std::ifstream in5(std::string("save/geneGrid").c_str());
-	for (int i = 0; i < totalSize; ++i)
+	for (unsigned int i = 0; i < totalSize; ++i)
 	{
-		std::string strang = std::string("");
-		std::getline(in5, strang);
-		lifeGrid[i].genes = strang;
-		seedGrid[i].genes = strang;
+		lifeGrid[i].genes.clear();
+		seedGrid[i].genes.clear();
 	}
-	in5.close();
+
 
 
 	std::ifstream in6(std::string("save/grid").c_str());
 	in6.read(reinterpret_cast<char*>((& (grid[0]) )), sizeof(Particle) *  totalSize);
 	in6.close();
+	printf("loaded grid\n");
 
-	// std::ifstream in7(std::string("save/colorGrid").c_str());
-	// in7.read(reinterpret_cast<char*>((& (colorGrid[0]) )), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
-	// in7.close();
+
+	std::ifstream in1(std::string("save/lifeGrid").c_str());
+	in1.read(reinterpret_cast<char*>((& (lifeGrid[0]) )), sizeof(LifeParticle) * totalSize);
+	in1.close();
+	printf("loaded lifeGrid\n");
+
+
+	std::ifstream in2(std::string("save/seedGrid").c_str());
+	in2.read(reinterpret_cast<char*>((& (seedGrid[0]) )), sizeof(SeedParticle) * totalSize);
+	in2.close();
+	printf("loaded seedGrid\n");
+
+
+	std::ifstream in5(std::string("save/geneGrid").c_str());
+	// for (unsigned int i = 0; i < totalSize; ++i)
+	// {
+	std::string line;
+	unsigned int i = 0;
+	while (diy_getline(in5, line))
+	{
+
+		if (line.length() > 0) 
+		{
+			if (i < totalSize) 
+			{
+				printf("%u ", i);
+				// std::cout << line << std::endl;
+
+
+				printf("%s ", line.c_str());
+				lifeGrid[i].genes = line;
+				seedGrid[i].genes = line;
+
+			}
+
+
+		}
+
+
+		i++;
+	}
+// }
+
+
+
+	// 	// clearColorGrids(i);
+	// 	printf("a, index %u ", i);
+	// 	std::string strang = std::string("");
+	// 	printf("b ");
+
+	// 	std::getline(in5, strang);
+
+	// 	printf(" %s ", strang);
+
+	// 	printf("c ");
+	// 	lifeGrid[i].genes = strang;
+	// 	printf("d ");
+	// 	seedGrid[i].genes = strang;
+	// }
+	// in5.close();
+	// printf("loaded geneGrid\n");
+
+	std::ifstream in7(std::string("save/colorGrid").c_str());
+	in7.read(reinterpret_cast<char*>((& (colorGrid[0]) )), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
+	in7.close();
+
+	// for (int i = 0; i < totalSize; ++i)
+	// {
+	// 	Color temp_color = materialColor( grid[i].material);
+	// 	unsigned int a_offset = (i * numberOfFieldsPerVertex);
+	// 	memcpy( &colorGrid[ a_offset ], &temp_color, 16 );
+	// }
+
+	printf("loaded colorGrid\n");
+
+	std::ifstream in3(std::string("save/lifeColorGrid").c_str());
+	in3.read(reinterpret_cast<char*>((& (lifeColorGrid[0]) )), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
+	in3.close();
+
+
+	printf("loaded lifeColorGrid\n");
+
+
+	std::ifstream in4(std::string("save/lifeColorGridB").c_str());
+	in4.read(reinterpret_cast<char*>((& (lifeColorGridB[0]) )), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
+	in4.close();
+
+	printf("loaded lifeColorGridB\n");
 
 }
