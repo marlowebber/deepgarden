@@ -17,6 +17,8 @@ chrono
 -
 iostream
 -
+fstream
+-
 
 /home/marlo/Documents/deepgarden/src/deepgarden.h
 stdio.h

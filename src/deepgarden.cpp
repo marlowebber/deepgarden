@@ -4,6 +4,7 @@
 #include <ctime>
 #include <chrono>
 #include <iostream>
+#include <fstream>
 
 // #define THREAD_TIMING
 #define RENDERING_THREADS 4
@@ -406,7 +407,7 @@ void initialize ()
 	for (unsigned int i = 0; i < totalSize; ++i)
 	{
 		x = i % sizeX;
-		if (!x) { y = i / sizeX; }
+		y = i / sizeX; 
 		float fx = x;
 		float fy = y;
 
@@ -2510,6 +2511,15 @@ void sendLifeToBackground ()
 
 
 
+// repaint the color grids from scratch with new data.
+void updateColorGrids()
+{
+
+
+
+}
+
+
 void insertRandomInsect()
 {
 
@@ -2676,19 +2686,7 @@ void decreaseLampBrightness ()
 
 
 
-/*
 
-void saveFishToFile(const std::string& file_name, fishDescriptor_t& data) {
-	std::ofstream out(file_name.c_str());
-	out.write(reinterpret_cast<char*>(&data), sizeof(fishDescriptor_t));
-}
-
-void loadFishFromFile(const std::string& file_name, fishDescriptor_t& data) {
-	std::ifstream in(file_name.c_str());
-	in.read(reinterpret_cast<char*>(&data), sizeof(fishDescriptor_t));
-}
-
-*/
 
 
 void save ()
@@ -2697,23 +2695,62 @@ void save ()
 	// transcribe the entire world state to file.
 
 	// lifegrid
-	std::ofstream out(std::string("lifeGrid").c_str());
-	out.write(reinterpret_cast<char*>lifeGrid, sizeof(LifeParticle) * totalSize);
+	std::ofstream out1( std::string("save/lifeGrid").c_str()  );
+	out1.write(  reinterpret_cast<char*>(& (lifeGrid[0]) ),   sizeof(LifeParticle) * totalSize);
+	out1.close();
 
 	// seed grid
-	std::ofstream out(std::string("seedGrid").c_str());
-	out.write(reinterpret_cast<char*>seedGrid, sizeof(SeedParticle) * totalSize);
+	std::ofstream out2(std::string("save/seedGrid").c_str());
+	out2.write(reinterpret_cast<char*>(& (seedGrid[0]) ), sizeof(SeedParticle) * totalSize);
+	out2.close();
 
-	// color grids
-	std::ofstream out(std::string("colorGrid").c_str());
-	out.write(reinterpret_cast<char*>colorGrid, sizeof(float) * numberOfFieldsPerVertex *  totalSize);
-	
-	std::ofstream out(std::string("colorGridB").c_str());
-	out.write(reinterpret_cast<char*>colorGrid, sizeof(float) * numberOfFieldsPerVertex *  totalSize);
+	// // color grids
+	// std::ofstream out3(std::string("save/lifeColorGrid").c_str());
+	// out3.write(reinterpret_cast<char*>(& (lifeColorGrid[0]) ), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
+	// out3.close();
+
+	// std::ofstream out4(std::string("save/lifeColorGridB").c_str());
+	// out4.write(reinterpret_cast<char*>(& (lifeColorGridB[0]) ), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
+	// out4.close();
 
 
 	// gene grid (array of strings)
 	// https://stackoverflow.com/questions/11872302/array-of-strings-to-output-file
+
+	/*
+	ofstream ofs("C:\\Test\\MyStrings.txt");
+	for(int i = 0; i < num_elem ; ++i) {
+
+	    ofs << MyStringArray[i] << endl; // I also tried replacing endl with a "\n"
+	}
+	ofs.close();
+	*/
+
+
+	std::ofstream out5("save/geneGrid");
+	for (unsigned int i = 0; i < totalSize; ++i)
+	{
+
+		if (lifeGrid[i].genes.length() > 0)
+		{
+			out5 << lifeGrid[i].genes  << std::endl;
+		}
+		else 
+		{
+			out5 << std::endl;
+		}
+	}
+	out5.close();
+
+
+	std::ofstream out6(std::string("save/grid").c_str());
+	out6.write(reinterpret_cast<char*>(& (grid[0]) ), sizeof(Particle) *  totalSize);
+	out6.close();
+
+
+	// std::ofstream out7(std::string("save/colorGrid").c_str());
+	// out7.write(reinterpret_cast<char*>(& (colorGrid[0]) ), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
+	// out7.close();
 
 }
 
@@ -2723,5 +2760,42 @@ void save ()
 
 void load ()
 {
+
+
+	std::ifstream in1(std::string("save/lifeGrid").c_str());
+	in1.read(reinterpret_cast<char*>((& (lifeGrid[0]) )), sizeof(LifeParticle) * totalSize);
+	in1.close();
+
+
+	std::ifstream in2(std::string("save/seedGrid").c_str());
+	in2.read(reinterpret_cast<char*>((& (seedGrid[0]) )), sizeof(SeedParticle) * totalSize);
+	in2.close();
+
+	// std::ifstream in3(std::string("save/lifeColorGrid").c_str());
+	// in3.read(reinterpret_cast<char*>((& (lifeColorGrid[0]) )), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
+	// in3.close();
+
+	// std::ifstream in4(std::string("save/lifeColorGridB").c_str());
+	// in4.read(reinterpret_cast<char*>((& (lifeColorGridB[0]) )), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
+	// in4.close();
+
+	std::ifstream in5(std::string("save/geneGrid").c_str());
+	for (int i = 0; i < totalSize; ++i)
+	{
+		std::string strang = std::string("");
+		std::getline(in5, strang);
+		lifeGrid[i].genes = strang;
+		seedGrid[i].genes = strang;
+	}
+	in5.close();
+
+
+	std::ifstream in6(std::string("save/grid").c_str());
+	in6.read(reinterpret_cast<char*>((& (grid[0]) )), sizeof(Particle) *  totalSize);
+	in6.close();
+
+	// std::ifstream in7(std::string("save/colorGrid").c_str());
+	// in7.read(reinterpret_cast<char*>((& (colorGrid[0]) )), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
+	// in7.close();
 
 }

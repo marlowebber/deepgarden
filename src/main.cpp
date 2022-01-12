@@ -11,6 +11,10 @@ int mouseY;
 float panSpeed = 0.5f;
 unsigned int pixelSize = 3;
 
+
+bool flagSave = false;
+bool flagLoad = false;
+
 void quit ()
 {
 	shutdownGraphics();
@@ -22,6 +26,10 @@ void togglePause ()
 {
 	paused = !paused;
 }
+
+
+
+
 
 void thread_interface()
 {
@@ -78,6 +86,21 @@ void thread_interface()
 			case SDLK_t:
 				toggleEnergyGridDisplay();
 				break;
+
+
+
+			case SDLK_s:
+				// save();
+			flagSave = true;
+				break;
+
+
+
+			case SDLK_l:
+				load();
+				flagLoad = true;
+				break;
+
 
 			case SDLK_LEFTBRACKET:
 				increaseLampBrightness();
@@ -173,6 +196,20 @@ int main( int argc, char * argv[] )
 		t99.join();
 
 		// t100.join();
+
+
+		// these operations can't be done while threading is happening. wait for the turn to finish, then use them.
+		if (flagSave) 
+		{
+			save();
+			flagSave = false;
+		}
+
+		if (flagLoad) 
+		{
+			load();
+			flagLoad = false;
+		}
 
 		if (flagQuit)
 		{

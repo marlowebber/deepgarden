@@ -108,4 +108,8 @@ void decreaseLampBrightness ();
 
 void thread_plantDrawing();
 
+void save();
+
+void load();
+
 #endif
