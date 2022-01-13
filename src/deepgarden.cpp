@@ -234,19 +234,37 @@ std::list<ProposedLifeParticle> v_extrudedParticles;
 
 
 
-std::string randomSentence(unsigned int length)
+
+
+struct animal
 {
+	std::string genes;
+	std::list<vec_u2> frameA;
+	std::list<vec_u2> frameB;
+	std::list<vec_u2> frameC;
 
-	std::string s = std::string("");
+};
 
-	for (int i = 0; i < length; ++i)
-	{
-		s.push_back((char)(' ' + rand() % 59));
-	}
 
-	return s;
 
-}
+
+
+
+
+
+// std::string randomSentence(unsigned int length)
+// {
+
+// 	std::string s = std::string("");
+
+// 	for (int i = 0; i < length; ++i)
+// 	{
+// 		s.push_back((char)(' ' + rand() % 59));
+// 	}
+
+// 	return s;
+
+// }
 
 void mutateSentence ( std::string * genes )
 {
@@ -426,6 +444,14 @@ void swapParticle (unsigned int a, unsigned int b)
 	Particle tempParticle = grid[b];
 	grid[b] = grid[a];
 	grid[a] = tempParticle;
+}
+
+void copyParticle(unsigned int from, unsigned int to)
+{
+	grid[to] = grid[from];
+	unsigned int from_offset = (from * numberOfFieldsPerVertex);
+	unsigned int to_offset = (to * numberOfFieldsPerVertex);
+	memcpy( &colorGrid[ to_offset ],  &colorGrid[ from_offset ], 16 );
 }
 
 void setLifeParticle( std::string genes, unsigned int identity, unsigned int i, Color color, unsigned int energySource)
@@ -678,7 +704,7 @@ void initialize ()
 		if (true)
 		{
 			// sprinkle some material on it to make a default scene.
-			if (i > (10 * sizeX) && i < (50 * sizeX))
+			if (i > (10 * sizeX) && i < (100 * sizeX))
 			{
 				if (RNG() < 0.5)
 				{
@@ -687,7 +713,7 @@ void initialize ()
 			}
 
 			// sprinkle some material on it to make a default scene.
-			if (i > (50 * sizeX) && i < (75 * sizeX))
+			if (i > (100 * sizeX) && i < (200 * sizeX))
 			{
 				if (RNG() < 0.5)
 				{
@@ -696,7 +722,7 @@ void initialize ()
 			}
 
 			// sprinkle some material on it to make a default scene.
-			if (i > (75 * sizeX) && i < (100 * sizeX))
+			if (i > (200 * sizeX) && i < (300 * sizeX))
 			{
 				if (RNG() < 0.5)
 				{
@@ -808,17 +834,17 @@ void thread_temperature2 ()
 					unsigned int squareAbove = i + sizeX;
 					unsigned int neighbours[] =
 					{
-						//squareBelow - 1,
+						squareBelow - 1,
 						squareBelow,
-						//	squareBelow + 1,
+						squareBelow + 1,
 						i - 1,
 						i + 1,
-						//	squareAbove - 1,
+						squareAbove - 1,
 						squareAbove,
-						//	squareAbove + 1
+						squareAbove + 1
 					};
 					unsigned int nSolidNeighbours = 0;
-					for (int i = 0; i < 4; ++i)
+					for (unsigned int i = 0; i < 8; ++i)
 					{
 						if ( grid[neighbours[i]].material == MATERIAL_QUARTZ )
 						{
@@ -828,7 +854,7 @@ void thread_temperature2 ()
 							}
 						}
 					}
-					if (nSolidNeighbours > 2)
+					if (nSolidNeighbours > 1)
 					{
 						grid[i].phase = PHASE_SOLID;
 					}
@@ -853,38 +879,7 @@ void thread_temperature2 ()
 			{
 				if (grid[i].temperature > 2330)
 				{
-					unsigned int squareBelow = i - sizeX;
-					unsigned int squareAbove = i + sizeX;
-					unsigned int neighbours[] =
-					{
-						squareBelow - 1,
-						squareBelow,
-						squareBelow + 1,
-						i - 1,
-						i + 1,
-						squareAbove - 1,
-						squareAbove,
-						squareAbove + 1
-					};
-					unsigned int nGaseousNeighbours = 0;
-					for (int i = 0; i < 8; ++i)
-					{
-						if ( grid[neighbours[i]].material == MATERIAL_QUARTZ )
-						{
-							if (grid[neighbours[i]].phase == PHASE_GAS )
-							{
-								nGaseousNeighbours++;
-							}
-						}
-					}
-					if (nGaseousNeighbours > 3)
-					{
-						grid[i].phase = PHASE_GAS;
-					}
-					else if (extremelyFastNumberFromZeroTo(1000) == 0)
-					{
-						grid[i].phase = PHASE_GAS;
-					}
+					grid[i].phase = PHASE_LIQUID;
 				}
 
 			}
@@ -917,16 +912,16 @@ void thread_temperature2 ()
 					unsigned int neighbours[] =
 					{
 						squareBelow - 1,
-						//squareBelow,
+						squareBelow,
 						squareBelow + 1,
-						//i - 1,
-						//i + 1,
+						i - 1,
+						i + 1,
 						squareAbove - 1,
-						//squareAbove,
+						squareAbove,
 						squareAbove + 1
 					};
 					unsigned int nSolidNeighbours = 0;
-					for (int i = 0; i < 4; ++i)
+					for (unsigned int i = 0; i < 8; ++i)
 					{
 						if ( grid[neighbours[i]].material == MATERIAL_AMPHIBOLE )
 						{
@@ -940,7 +935,7 @@ void thread_temperature2 ()
 					{
 						grid[i].phase = PHASE_SOLID;
 					}
-					else if (extremelyFastNumberFromZeroTo(1000) == 0)
+					else if (extremelyFastNumberFromZeroTo(10000) == 0)
 					{
 						grid[i].phase = PHASE_SOLID;
 					}
@@ -958,6 +953,15 @@ void thread_temperature2 ()
 				{
 					grid[i].phase = PHASE_LIQUID;
 				}
+			}
+
+			else if (grid[i].phase == PHASE_SOLID )
+			{
+				if (grid[i].temperature > 2330)
+				{
+					grid[i].phase = PHASE_LIQUID;
+				}
+
 			}
 		}
 
@@ -984,17 +988,18 @@ void thread_temperature2 ()
 					unsigned int squareAbove = i + sizeX;
 					unsigned int neighbours[] =
 					{
-						//	squareBelow - 1,
+						squareBelow - 1,
 						squareBelow,
-						//	squareBelow + 1,
-						//i - 1,
-						//	i + 1,
-						//	squareAbove - 1,
+						squareBelow + 1,
+						i - 1,
+						i + 1,
+						squareAbove - 1,
 						squareAbove,
-						//	squareAbove + 1
+						squareAbove + 1
 					};
 					unsigned int nSolidNeighbours = 0;
-					for (int i = 0; i < 2; ++i)
+					unsigned int dissimilarNeighbours = 0;
+					for (unsigned int i = 0; i < 8; ++i)
 					{
 						if ( grid[neighbours[i]].material == MATERIAL_OLIVINE )
 						{
@@ -1003,14 +1008,26 @@ void thread_temperature2 ()
 								nSolidNeighbours++;
 							}
 						}
+						else {
+							dissimilarNeighbours++;
+						}
 					}
-					if (nSolidNeighbours > 1)
+					if (nSolidNeighbours == 4 || (nSolidNeighbours == 3 && extremelyFastNumberFromZeroTo(100)) )
 					{
 						grid[i].phase = PHASE_SOLID;
 					}
 					else if (extremelyFastNumberFromZeroTo(1000) == 0)
 					{
-						grid[i].phase = PHASE_SOLID;
+						if (extremelyFastNumberFromZeroTo(100) == 0) // this function only works up to 34464, so run it twice to multiply probabilities.
+						{
+							for (unsigned int i = 0; i < 8; ++i)
+							{
+								if (grid[neighbours[i]].material == MATERIAL_OLIVINE )
+								{
+									grid[neighbours[i]].phase = PHASE_SOLID;
+								}
+							}
+						}
 					}
 
 				}
@@ -1025,6 +1042,14 @@ void thread_temperature2 ()
 				{
 					grid[i].phase = PHASE_LIQUID;
 				}
+			}
+			else if (grid[i].phase == PHASE_SOLID )
+			{
+				if (grid[i].temperature > 2330)
+				{
+					grid[i].phase = PHASE_LIQUID;
+				}
+
 			}
 		}
 
@@ -2173,10 +2198,14 @@ void drawPlantFromSeed( std::string genes, unsigned int i )
 
 	cursor_energySource = ENERGYSOURCE_LIGHT;
 
-	lengthNoise = ( RNG() - 0.5 ) * 0.25 ;
+
+	float randomN =  extremelyFastNumberFromZeroTo(100) ;
+
+	lengthNoise = ( (randomN / 100) - 0.5 ) * 0.25 ;
 
 	// color noise helps a forest to look a bit more interesting. It is not genetically heritable.
-	float colorNoiseLevel = (RNG() - 0.5) * 0.1;
+	randomN =  extremelyFastNumberFromZeroTo(100) ;
+	float colorNoiseLevel = ((randomN / 100) - 0.5) * 0.1;
 
 	cursor_color =  Color(
 	                    color_defaultColor.r + colorNoiseLevel,
@@ -2185,7 +2214,8 @@ void drawPlantFromSeed( std::string genes, unsigned int i )
 	                    1.0f
 	                );
 
-	float seedColorNoiseLevel = (RNG() - 0.5) * 0.1;
+	randomN =  extremelyFastNumberFromZeroTo(100) ;
+	float seedColorNoiseLevel = ((randomN / 100) - 0.5) * 0.1;
 
 
 	cursor_seedColor =  Color(
@@ -2231,7 +2261,6 @@ void drawPlantFromSeed( std::string genes, unsigned int i )
 	// 		energyDebtSoFar -= 1.0f;
 	// 	}
 	// }
-
 
 
 
@@ -2614,49 +2643,49 @@ void thread_seeds()
 			}
 
 
-			if (seedGrid[i].stage == STAGE_BEE)
-			{
+			// if (seedGrid[i].stage == STAGE_BEE)
+			// {
 
 
-				unsigned int squareBelow = i - sizeX;
-				unsigned int squareAbove = i + sizeX;
-				unsigned int neighbours[] =
-				{
-					squareBelow - 1,
-					squareBelow,
-					squareBelow + 1,
-					i - 1,
-					i + 1,
-					squareAbove - 1,
-					squareAbove,
-					squareAbove + 1
-				};
+			// 	unsigned int squareBelow = i - sizeX;
+			// 	unsigned int squareAbove = i + sizeX;
+			// 	unsigned int neighbours[] =
+			// 	{
+			// 		squareBelow - 1,
+			// 		squareBelow,
+			// 		squareBelow + 1,
+			// 		i - 1,
+			// 		i + 1,
+			// 		squareAbove - 1,
+			// 		squareAbove,
+			// 		squareAbove + 1
+			// 	};
 
-				unsigned int neighbour = extremelyFastNumberFromZeroTo(7);
+			// 	unsigned int neighbour = extremelyFastNumberFromZeroTo(7);
 
-				if (seedGrid[i].energy < 8.0f)
-				{
-					// if the neighbour is actually a seed
-					if (seedGrid[neighbour].stage > 0 &&   seedGrid[neighbour].stage < 1000)
-					{
-						seedGrid[i].energy += seedGrid[neighbour].energy;
-						clearSeedParticle(neighbour);
+			// 	if (seedGrid[i].energy < 8.0f)
+			// 	{
+			// 		// if the neighbour is actually a seed
+			// 		if (seedGrid[neighbour].stage > 0 &&   seedGrid[neighbour].stage < 1000)
+			// 		{
+			// 			seedGrid[i].energy += seedGrid[neighbour].energy;
+			// 			clearSeedParticle(neighbour);
 
-					}
-				}
+			// 		}
+			// 	}
 
-				// if the neighbour is empty
-				if (seedGrid[neighbour].stage == 0x00 && (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS) )
-				{
-					swapSeedParticle(i, neighbour);
-				}
-
-
-
+			// 	// if the neighbour is empty
+			// 	if (seedGrid[neighbour].stage == 0x00 && (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS) )
+			// 	{
+			// 		swapSeedParticle(i, neighbour);
+			// 	}
 
 
 
-			}
+
+
+
+			// }
 		}
 	}
 
@@ -3275,5 +3304,141 @@ void load ()
 	// in4.close();
 
 	// printf("loaded lifeColorGridB\n");
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+void setPlayerCursor (unsigned int x, unsigned int y)
+{
+
+
+	playerCursor = vec_u2(x, y);
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+void drawAHill(unsigned int hillXIndex, unsigned int hillWidth)
+{
+	// a part of the map is located. the ground there is lifted in a triangular manner.
+
+	// unsigned int hillXIndex = 1000; //RNG() * sizeX;
+	// unsigned int hillWidth =  RNG() * 100;
+	// // unsigned int hillHeight = 10;//RNG() * 100;
+
+
+	for (unsigned int j = 0; j < hillWidth; ++j)
+	{
+
+
+
+		for (unsigned int k = sizeY; k > 0 ; --k)
+		{
+
+
+
+			unsigned int indexA = (k * sizeX) + (hillXIndex + j - (hillWidth / 2)) + sizeX;
+			unsigned int indexB = (k * sizeX) + (hillXIndex + j - (hillWidth / 2)) ;
+			unsigned int indexC = extremelyFastNumberFromZeroTo(sizeX);
+			if (indexA > totalSize || indexB > totalSize) {continue;}
+			swapParticle( indexA, indexB); // centered on hillXIndex, move all cells that are hillWidth in either direction up by 1 square.
+			swapParticle( indexB, indexC);
+
+		}
+
+
+
+	}
+}
+
+
+
+
+
+void drawRandomLandscape() 
+{
+
+
+// draw some hills
+
+	for (int i = 0; i < extremelyFastNumberFromZeroTo(7); ++i)
+	{
+			
+
+
+			unsigned int randomHillX = extremelyFastNumberFromZeroTo(sizeX);
+			unsigned int randomHillWidth = extremelyFastNumberFromZeroTo(500);
+
+			for (int i = 0; i < extremelyFastNumberFromZeroTo(1000); ++i)
+			{
+				drawAHill(randomHillX, randomHillWidth);
+				// std::this_thread::sleep_for(std::chrono::milliseconds(100));
+			}
+
+
+
+	}
+
+
+
+
+
+}
+
+
+
+
+void drawLandscapeFromString(std::string genes)
+{
+
+	unsigned int i = 0;
+
+	while (i < genes.length())
+	{
+
+		char c = genes[i];
+
+		switch (c)
+		{
+		case 'h': // a hill
+
+
+
+
+
+			break;
+
+		}
+
+	}
+
+
+
+
 
 }

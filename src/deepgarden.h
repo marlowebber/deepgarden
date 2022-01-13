@@ -63,6 +63,7 @@ struct Color
 #define STAGE_PHOTON 		 4
 #define STAGE_ANT			 1000
 #define STAGE_BEE			 1001
+#define STAGE_PLAYER		 19000
 
 #define ENERGYSOURCE_LIGHT   0
 #define ENERGYSOURCE_MINERAL 1
@@ -113,4 +114,7 @@ void save();
 
 void load();
 
+
+void drawAHill();
+void drawRandomLandscape();
 #endif

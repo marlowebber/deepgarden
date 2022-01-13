@@ -18,6 +18,13 @@ bool flagLoad = false;
 
 unsigned int loadCooldown = 0;
 
+
+
+
+
+
+
+
 void quit ()
 {
 	shutdownGraphics();
@@ -111,6 +118,12 @@ void thread_interface()
 
 			case SDLK_RIGHTBRACKET:
 				decreaseLampBrightness();
+				break;
+
+
+
+				case SDLK_v:
+				drawRandomLandscape();
 				break;
 
 
