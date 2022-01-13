@@ -48,15 +48,20 @@ std::string plant_MilkWombler = std::string( "rmggbmxuyuzu. cz. lz sgagofldf " )
 std::string plant_SpleenCoral = std::string( "rgggbuxuyuzu. cz. rmgmbw. azzlmcdf  " );
 
 // a thick obelisk.
-std::string plant_parbasarbTree = std::string( "rgggbuxuyuzu. lzeeeflaf  " );
+std::string plant_ParbasarbTree = std::string( "rgggbuxuyuzu. lzeeeflaf  " );
+
+// a short, dense grass.
+std::string plant_LardGrass = std::string( "rgggbuxuyuzu. oiilfflbflbf  " );
 
 
 
+//int* p = new int[10];
+// std::memset(p, 0, sizeof *p * 10);
 
-float colorGrid[ totalSize * numberOfFieldsPerVertex ];
-float lifeColorGrid[totalSize * numberOfFieldsPerVertex ];
-float lifeColorGridB[totalSize * numberOfFieldsPerVertex ];
-float seedColorGrid[totalSize * numberOfFieldsPerVertex];
+float * colorGrid = new float[totalSize * numberOfFieldsPerVertex ];
+float * lifeColorGrid  	= new float[totalSize * numberOfFieldsPerVertex ];
+float * lifeColorGridB 	= new float[totalSize * numberOfFieldsPerVertex ];
+float * seedColorGrid  	= new float[totalSize * numberOfFieldsPerVertex];
 
 
 // int wind = 0;
@@ -87,7 +92,7 @@ vec_u2 cursor_grid = vec_u2(0, 0);
 vec_u2 prevCursor_grid = vec_u2(0, 0);
 vec_u2 origin = vec_u2(0, 0);
 
-uint16_t cursor_energySource = ENERGYSOURCE_LIGHT;
+unsigned int cursor_energySource = ENERGYSOURCE_LIGHT;
 
 unsigned int cursor_string = 0;
 Color cursor_color = Color(0.1f, 0.1f, 0.1f, 1.0f);
@@ -111,9 +116,9 @@ unsigned int germinatedSeedsLimit = 1000;
 unsigned int lampBrightness = 250;
 struct Particle
 {
-	uint8_t material;
-	uint8_t phase;
-	uint16_t temperature;
+	unsigned int material;
+	unsigned int phase;
+	unsigned int temperature;
 	Particle();
 };
 
@@ -127,9 +132,9 @@ Particle::Particle()
 struct LifeParticle
 {
 	std::string genes;
-	uint16_t identity;
+	unsigned int identity;
 	float energy;
-	uint8_t energySource;
+	unsigned int energySource;
 	LifeParticle();
 };
 
@@ -141,19 +146,36 @@ LifeParticle::LifeParticle()
 	this->energySource = ENERGYSOURCE_LIGHT;
 }
 
+struct transportableLifeParticle
+{
+	// std::string genes;
+	unsigned int identity;
+	float energy;
+	unsigned int energySource;
+	transportableLifeParticle();
+};
+
+transportableLifeParticle::transportableLifeParticle()
+{
+	// this->genes = std::string("");
+	this->identity = 0x00;
+	this->energy = 0.0f;
+	this->energySource = ENERGYSOURCE_LIGHT;
+}
+
+
 struct ProposedLifeParticle
 {
 	Color color = Color(0.5f, 0.5f, 0.5f, 1.0f);
 	vec_u2 position = vec_u2(0, 0);
-	uint8_t energySource = ENERGYSOURCE_LIGHT;
+	unsigned int energySource = ENERGYSOURCE_LIGHT;
 
-	ProposedLifeParticle(Color color, vec_u2 position, uint8_t energySource);
-
-
+	ProposedLifeParticle(Color color, vec_u2 position, unsigned int energySource);
 };
 
 
-ProposedLifeParticle::ProposedLifeParticle(Color color, vec_u2 position, uint8_t energySource)
+
+ProposedLifeParticle::ProposedLifeParticle(Color color, vec_u2 position, unsigned int energySource)
 {
 	this->position = position;
 	this->color = color;
@@ -162,16 +184,15 @@ ProposedLifeParticle::ProposedLifeParticle(Color color, vec_u2 position, uint8_t
 
 struct SeedParticle
 {
-	uint16_t parentIdentity;
+	unsigned int parentIdentity;
 	std::string genes;
 	float energy;
-	uint8_t stage;
+	unsigned int stage;
 
 
 	SeedParticle();
 
 };
-
 SeedParticle::SeedParticle()
 {
 	this->genes = std::string("");
@@ -181,12 +202,34 @@ SeedParticle::SeedParticle()
 }
 
 
-Particle grid[totalSize];
-LifeParticle lifeGrid[totalSize];
-SeedParticle seedGrid[totalSize];
+struct transportableSeed
+{
+	unsigned int parentIdentity;
+	// std::string genes;
+	float energy;
+	unsigned int stage;
 
+
+	transportableSeed();
+};
+
+
+transportableSeed::transportableSeed()
+{
+	// this->genes = std::string("");
+	this->parentIdentity = 0x00;
+	this->energy = 0.0f;
+	this->stage = STAGE_NULL;
+}
+
+
+
+
+
+Particle *  grid = new Particle[totalSize];
+LifeParticle * lifeGrid = new LifeParticle[totalSize];
+SeedParticle * seedGrid = new SeedParticle[totalSize];
 std::list<ProposedLifeParticle> v;
-
 std::list<ProposedLifeParticle> v_extrudedParticles;
 
 
@@ -211,25 +254,137 @@ void mutateSentence ( std::string * genes )
 
 	for (int i = 0; i < genesLength; ++i)
 	{
-		// swap a letter
-		if (extremelyFastNumberFromZeroTo(100) == 0)
-		{
-			// https://stackoverflow.com/questions/20132650/how-to-select-random-letters-in-c
-			(*genes)[i] = (char)(' ' + rand() % 59);
-		}
+		// // swap a letter
+		// if (extremelyFastNumberFromZeroTo(256) == 0)
+		// {
+		// 	// https://stackoverflow.com/questions/20132650/how-to-select-random-letters-in-c
+		// 	(*genes)[i] = (char)('a' + rand() % 26);
+		// }
 
-		// add a letter
-		if (extremelyFastNumberFromZeroTo(100) == 0)
-		{
-			char randomCharacter = (char)(' ' + rand() % 59);
-			genes->insert(    extremelyFastNumberFromZeroTo( (genes->length() - 1) )  ,  &randomCharacter  );
-		}
+		// // add a letter
+		// if (extremelyFastNumberFromZeroTo(256) == 0)
+		// {
+		// 	// char randomCharacter = (char)('a' + rand() % 26);
+		// 	// genes->insert(    extremelyFastNumberFromZeroTo( (genes->length() - 1) )  ,  &randomCharacter  );
+		// 	genes->push_back(  (char)('a' + rand() % 26)  );
+		// }
 
-		// delete a letter
-		if (extremelyFastNumberFromZeroTo(100) == 0)
-		{
-			genes->erase (  extremelyFastNumberFromZeroTo( (genes->length() - 1) )  , 1);
-		}
+		// // add a punctuation
+		// if (extremelyFastNumberFromZeroTo(256) == 0)
+		// {
+
+		// 	char randomCharacter = ' '; ;//= (char)('a' + rand() % 26);
+
+		// 	unsigned int randomCharacterIndex = extremelyFastNumberFromZeroTo(3);
+		// 	switch (randomCharacterIndex)
+		// 	{
+		// 	case 0:
+		// 	{
+		// 		randomCharacter = ' ';
+		// 		break;
+		// 	}
+		// 	case 1:
+		// 	{
+		// 		randomCharacter = '.';
+		// 		break;
+		// 	}
+
+		// 	case 3:
+		// 	{
+		// 		randomCharacter = ',';
+		// 		break;
+		// 	}
+		// 	}
+
+
+		// 	// char randomCharacter = (char)('a' + rand() % 26);
+		// 	// genes->insert(    extremelyFastNumberFromZeroTo( (genes->length() - 1) )  ,  &randomCharacter  );
+		// 	genes->push_back( randomCharacter );
+
+		// }
+
+		// // swap a punctuation
+		// if (extremelyFastNumberFromZeroTo(256) == 0)
+		// {
+
+		// 	char randomCharacter = ' '; ;//= (char)('a' + rand() % 26);
+
+		// 	unsigned int randomCharacterIndex = extremelyFastNumberFromZeroTo(3);
+		// 	switch (randomCharacterIndex)
+		// 	{
+		// 	case 0:
+		// 	{
+		// 		randomCharacter = ' ';
+		// 		break;
+		// 	}
+		// 	case 1:
+		// 	{
+		// 		randomCharacter = '.';
+		// 		break;
+		// 	}
+
+		// 	case 3:
+		// 	{
+		// 		randomCharacter = ',';
+		// 		break;
+		// 	}
+
+		// 	}
+
+		// 	// char randomCharacter = (char)('a' + rand() % 26);
+		// 	// genes->insert(    extremelyFastNumberFromZeroTo( (genes->length() - 1) )  ,  &randomCharacter  );
+		// 	genes[i] = randomCharacter ;
+		// }
+
+
+
+		// // delete a letter
+		// if (extremelyFastNumberFromZeroTo(256) == 0)
+		// {
+		// 	genes->erase (  extremelyFastNumberFromZeroTo( (genes->length() - 1) )  , 1);
+		// }
+
+
+		// // add punctuation
+		// if (extremelyFastNumberFromZeroTo(256) == 0)
+		// {
+		// 	char randomCharacter = ' '; ;//= (char)('a' + rand() % 26);
+
+		// 	unsigned int randomCharacterIndex = extremelyFastNumberFromZeroTo(3);
+		// 	switch (randomCharacterIndex)
+		// 	{
+		// 	case 0:
+		// 	{
+		// 		randomCharacter = ' ';
+		// 		break;
+		// 	}
+		// 	case 1:
+		// 	{
+		// 		randomCharacter = '.';
+		// 		break;
+		// 	}
+
+		// 	case 3:
+		// 	{
+		// 		randomCharacter = ',';
+		// 		break;
+		// 	}
+
+
+
+		// 	}
+
+
+		// 	genes->insert(    extremelyFastNumberFromZeroTo( (genes->length() - 1) )  ,  &randomCharacter  );
+		// }
+
+
+
+
+
+
+
+
 	}
 }
 
@@ -273,7 +428,7 @@ void swapParticle (unsigned int a, unsigned int b)
 	grid[a] = tempParticle;
 }
 
-void setLifeParticle( std::string genes, unsigned int identity, unsigned int i, Color color, uint8_t energySource)
+void setLifeParticle( std::string genes, unsigned int identity, unsigned int i, Color color, unsigned int energySource)
 {
 	lifeGrid[i].identity = identity;
 	lifeGrid[i].genes  = genes;
@@ -431,18 +586,11 @@ void clearColorGrids(unsigned int i)
 
 }
 
-void initialize ()
+
+void clearGrids()
 {
-	setupExtremelyFastNumberGenerators();
-	// https://stackoverflow.com/questions/9459035/why-does-rand-yield-the-same-sequence-of-numbers-on-every-run
-	srand((unsigned int)time(NULL));
-
-	// memset(grid, 0x00, sizeof(Particle) * ( totalSize));
 
 
-	cursor_seedColor = color_yellow;
-
-	// // setup the x and y positions in the color grid. these never change so you can just calculate them once.
 	unsigned int x = 0;
 	unsigned int y = 0;
 	for (unsigned int i = 0; i < totalSize; ++i)
@@ -459,6 +607,44 @@ void initialize ()
 		// RGBA color occupies the first 4 places.
 		// also, initialize the color alpha to 1.
 		clearColorGrids(i);
+
+	}
+
+}
+
+
+void initialize ()
+{
+	setupExtremelyFastNumberGenerators();
+	// https://stackoverflow.com/questions/9459035/why-does-rand-yield-the-same-sequence-of-numbers-on-every-run
+	srand((unsigned int)time(NULL));
+
+	// memset(grid, 0x00, sizeof(Particle) * ( totalSize));
+
+
+	cursor_seedColor = color_yellow;
+
+
+
+	clearGrids();
+
+	// // setup the x and y positions in the color grid. these never change so you can just calculate them once.
+	unsigned int x = 0;
+	unsigned int y = 0;
+	for (unsigned int i = 0; i < totalSize; ++i)
+	{
+		x = i % sizeX;
+		y = i / sizeX;
+		float fx = x;
+		float fy = y;
+
+		// grid[i] = Particle();
+		// seedGrid[i] = SeedParticle();
+		// lifeGrid[i] = LifeParticle();
+
+		// // RGBA color occupies the first 4 places.
+		// // also, initialize the color alpha to 1.
+		// clearColorGrids(i);
 
 		if (true)
 		{
@@ -880,9 +1066,9 @@ void physics_sector (unsigned int from, unsigned int to)
 				squareBelow + 1
 			};
 
-			for (uint8_t k = 0; k < 1; ++k) // instead of checking all of them every turn, you can check half or less and it doesn't make a difference for gameplay.
+			for (unsigned int k = 0; k < 1; ++k) // instead of checking all of them every turn, you can check half or less and it doesn't make a difference for gameplay.
 			{
-				uint8_t index = extremelyFastNumberFromZeroTo(2);
+				unsigned int index = extremelyFastNumberFromZeroTo(2);
 				// chemistry(i, neighbours[index]);
 				if ((grid[neighbours[index]].phase == PHASE_VACUUM) ||  (grid[neighbours[index]].phase == PHASE_GAS) ||  (grid[neighbours[index]].phase == PHASE_LIQUID)  )
 				{
@@ -905,8 +1091,8 @@ void physics_sector (unsigned int from, unsigned int to)
 			};
 
 
-			uint8_t offset = extremelyFastNumberFromZeroTo(4);
-			for (uint8_t k = 0; k < 5; ++k)
+			unsigned int offset = extremelyFastNumberFromZeroTo(4);
+			for (unsigned int k = 0; k < 5; ++k)
 			{
 
 				unsigned int index = (k + offset) % 5;
@@ -927,7 +1113,7 @@ void physics_sector (unsigned int from, unsigned int to)
 							i + 1
 						};
 
-						for (uint8_t k = 0; k < 3; ++k)
+						for (unsigned int k = 0; k < 3; ++k)
 						{
 							if ( grid[erosionNeighbours[k]].phase == PHASE_SOLID )
 							{
@@ -959,9 +1145,9 @@ void physics_sector (unsigned int from, unsigned int to)
 				squareAbove + 1
 			};
 
-			for (uint8_t j = 0; j < 3; ++j)
+			for (unsigned int j = 0; j < 3; ++j)
 			{
-				uint8_t index = extremelyFastNumberFromZeroTo(7);
+				unsigned int index = extremelyFastNumberFromZeroTo(7);
 
 				if (grid[i].material == MATERIAL_WATER)
 				{
@@ -1004,7 +1190,7 @@ void thread_physics ()
 {
 
 	// blow the wind
-	uint16_t windChange = extremelyFastNumberFromZeroTo(100);
+	unsigned int windChange = extremelyFastNumberFromZeroTo(100);
 
 	if (!windChange)
 	{
@@ -1230,7 +1416,7 @@ int drawCharacter ( std::string genes , unsigned int identity)
 	while (crudOps) {
 		;
 	}
-	
+
 	char c = genes[cursor_string];
 
 #ifdef PLANT_DRAWING_READOUT
@@ -2230,6 +2416,8 @@ void thread_plantDrawing()
 void thread_seeds()
 {
 
+
+
 #ifdef THREAD_TIMING
 	auto start = std::chrono::steady_clock::now();
 #endif
@@ -2299,7 +2487,7 @@ void thread_seeds()
 
 
 		// SEEDS. Some of the particles on the seed grid are seeds that fall downwards.
-		if (seedGrid[i].parentIdentity > 0)
+		if (seedGrid[i].parentIdentity > 0 )
 		{
 			if (seedGrid[i].stage == STAGE_FRUIT)
 			{
@@ -2363,20 +2551,28 @@ void thread_seeds()
 				else if (	j == 3)		{ neighbour = i + 1 		;	}
 				else if (	j == 4)		{ neighbour = i - 1  		;	}
 
-				if (grid[neighbour].material == MATERIAL_QUARTZ)
-				{
+// 				if (grid[neighbour].material == MATERIAL_QUARTZ)
+// 				{
 
 
-#ifdef PLANT_DRAWING_READOUT
-					printf("germinated\n");
-#endif
-					seedGrid[i].stage = STAGE_SEED;
-				}
+// #ifdef PLANT_DRAWING_READOUT
+// 					printf("germinated\n");
+// #endif
+// 					seedGrid[i].stage = STAGE_SEED;
+// 				}
 
 				if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS  )
 				{
 					swapSeedParticle( i, neighbour );
 					continue;
+				}
+				else
+				{
+
+#ifdef PLANT_DRAWING_READOUT
+					printf("germinated\n");
+#endif
+					seedGrid[i].stage = STAGE_SEED;
 				}
 				continue;
 			}
@@ -2687,7 +2883,7 @@ void insertRandomSeed()
 			std::string exampleSentence = std::string("");
 
 
-			unsigned int randomPlantIndex = extremelyFastNumberFromZeroTo(5);
+			unsigned int randomPlantIndex = extremelyFastNumberFromZeroTo(6);
 
 			switch (randomPlantIndex)
 			{
@@ -2713,14 +2909,21 @@ void insertRandomSeed()
 			}
 			case 4:
 			{
-				// exampleSentence = plant_SpleenCoral;
+				exampleSentence = plant_SpleenCoral;
 				break;
 			}
 			case 5:
 			{
-				// exampleSentence = plant_parbasarbTree;
+				exampleSentence = plant_ParbasarbTree;
 				break;
 			}
+
+			case 6:
+			{
+				exampleSentence = plant_LardGrass;
+				break;
+			}
+
 
 			}
 
@@ -2762,53 +2965,85 @@ void decreaseLampBrightness ()
 void save ()
 {
 
+	printf("SAVING GAME\n");
+
 	// transcribe the entire world state to file.
 	std::ofstream out6(std::string("save/grid").c_str());
-	out6.write(reinterpret_cast<char*>(& (grid[0]) ), sizeof(Particle) *  totalSize);
+	out6.write( (char*)(grid), sizeof(Particle) *  totalSize);
 	out6.close();
 
 
-	// lifegrid
-	std::ofstream out1( std::string("save/lifeGrid").c_str()  );
-	out1.write(  reinterpret_cast<char*>(& (lifeGrid[0]) ),   sizeof(LifeParticle) * totalSize);
-	out1.close();
+	// life grid
+	// you must make a 'transportable life grid' which unlike the real lifegrid does not contain any pointer information.
+	// transportableLifeParticle transportableLifeGrid[totalSize];
 
-	// seed grid
-	std::ofstream out2(std::string("save/seedGrid").c_str());
-	out2.write(reinterpret_cast<char*>(& (seedGrid[0]) ), sizeof(SeedParticle) * totalSize);
+	transportableLifeParticle* transportableLifeGrid = new transportableLifeParticle[totalSize];
+	std::memset(transportableLifeGrid, 0x00, sizeof(transportableLifeParticle) * totalSize);
+
+
+	for (unsigned int i = 0; i < totalSize; ++i)
+	{
+		transportableLifeGrid[i] = transportableLifeParticle();
+		transportableLifeGrid[i].identity = lifeGrid[i].identity;
+		transportableLifeGrid[i].energy = lifeGrid[i].energy;
+		transportableLifeGrid[i].energySource = lifeGrid[i].energySource;
+	}
+	std::ofstream out9(std::string("save/transportableLifeGrid").c_str());
+	out9.write(  (char*)(transportableLifeGrid), sizeof(transportableLifeParticle) * totalSize);
+	out9.close();
+
+
+	delete [] transportableLifeGrid;
+
+	printf("- saved transportable life grid\n");
+
+
+	// // seed grid
+	// // you must make a 'transportable grid' which unlike the real seedgrid does not contain any pointer information.
+
+	// transportableSeed transportableSeedGrid[totalSize];
+
+	transportableSeed* transportableSeedGrid = new transportableSeed[totalSize];
+	std::memset(transportableSeedGrid, 0x00, sizeof(transportableSeed) * totalSize);
+
+
+	for (unsigned int i = 0; i < totalSize; ++i)
+	{
+		transportableSeedGrid[i] = transportableSeed();
+		transportableSeedGrid[i].parentIdentity = seedGrid[i].parentIdentity;
+		transportableSeedGrid[i].energy = seedGrid[i].energy;
+		transportableSeedGrid[i].stage = seedGrid[i].stage;
+	}
+	std::ofstream out2(std::string("save/transportableSeedGrid").c_str());
+	out2.write(  (char*)(transportableSeedGrid), sizeof(transportableSeed) * totalSize);
 	out2.close();
 
 
+	delete [] transportableSeedGrid;
+
+	printf("- saved transportable seed grid\n");
 
 
-	// gene grid (array of strings)
-	// https://stackoverflow.com/questions/11872302/array-of-strings-to-output-file
-
-	/*
-	ofstream ofs("C:\\Test\\MyStrings.txt");
-	for(int i = 0; i < num_elem ; ++i) {
-
-	    ofs << MyStringArray[i] << endl; // I also tried replacing endl with a "\n"
-	}
-	ofs.close();
-	*/
-
-
-	std::ofstream out5("save/geneGrid");
+	std::ofstream out5("save/lifeGeneGrid");
 	for (unsigned int i = 0; i < totalSize; ++i)
 	{
-
-		if (lifeGrid[i].genes.length() > 0)
-		{
-			out5 << lifeGrid[i].genes.c_str()  << '\n';
-		}
-		else
-		{
-			out5 << '\n';
-		}
+		out5 << lifeGrid[i].genes.c_str() << '\n';
 	}
+
 	out5.close();
 
+
+	printf("- saved life gene grid\n");
+
+	std::ofstream out89("save/seedGeneGrid");
+	for (unsigned int i = 0; i < totalSize; ++i)
+	{
+		out89 << seedGrid[i].genes.c_str()  << '\n';
+	}
+	out89.close();
+
+
+	printf("- saved seed gene grid\n");
 
 	std::ofstream out7(std::string("save/colorGrid").c_str());
 	out7.write(reinterpret_cast<char*>(& (colorGrid[0]) ), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
@@ -2823,125 +3058,223 @@ void save ()
 	out4.write(reinterpret_cast<char*>(& (lifeColorGridB[0]) ), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
 	out4.close();
 
+	std::ofstream out41(std::string("save/seedColorGrid").c_str());
+	out41.write(reinterpret_cast<char*>(& (seedColorGrid[0]) ), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
+	out41.close();
 
+
+
+	printf("- saved color grids\n");
 
 }
 
 
-std::istream &diy_getline(std::istream &is, std::string &s, char delim = '\n')
-{
-	s.clear();
-	int ch;
-	while ((ch = is.get()) != EOF && ch != delim)
-		s.push_back(ch);
-	return is;
-}
+// std::istream &diy_getline(std::istream &is, std::string &s, char delim = '\n')
+// {
+// 	s.clear();
+// 	int ch;
+// 	while ((ch = is.get()) != EOF && ch != delim)
+// 		s.push_back(ch);
+// 	return is;
+// }
 
 
 void load ()
 {
 
 
-	for (unsigned int i = 0; i < totalSize; ++i)
-	{
-		lifeGrid[i].genes.clear();
-		seedGrid[i].genes.clear();
-	}
+	printf("LOAD GAME\n");
+
+	clearGrids() ;
 
 
+	printf("- cleared grids\n");
 
 	std::ifstream in6(std::string("save/grid").c_str());
-	in6.read(reinterpret_cast<char*>((& (grid[0]) )), sizeof(Particle) *  totalSize);
+	in6.read( (char *)(grid), sizeof(Particle) *  totalSize);
 	in6.close();
-	printf("loaded grid\n");
+
+	for (int i = 0; i < totalSize; ++i)
+	{
+		Color temp_color = materialColor(grid[i].material);
+		unsigned int a_offset = (i * numberOfFieldsPerVertex);
+		memcpy( &colorGrid[ a_offset ], &temp_color, 16 );
+	}
+
+	printf("loaded material grid and material colors\n");
+
 
 
 	std::ifstream in1(std::string("save/lifeGrid").c_str());
-	in1.read(reinterpret_cast<char*>((& (lifeGrid[0]) )), sizeof(LifeParticle) * totalSize);
+	in1.read(  (char *)(lifeGrid) , sizeof(LifeParticle) * totalSize);
 	in1.close();
-	printf("loaded lifeGrid\n");
+
+	std::ifstream in3(std::string("save/lifeColorGrid").c_str());
+	in3.read( (char *)(lifeColorGrid), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
+	in3.close();
+
+	std::ifstream in4(std::string("save/lifeColorGridB").c_str());
+	in4.read( (char *)(lifeColorGridB), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
+	in4.close();
+
+	std::ifstream in41(std::string("save/seedColorGrid").c_str());
+	in41.read( (char *)(seedColorGrid), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
+	in41.close();
 
 
-	std::ifstream in2(std::string("save/seedGrid").c_str());
-	in2.read(reinterpret_cast<char*>((& (seedGrid[0]) )), sizeof(SeedParticle) * totalSize);
-	in2.close();
-	printf("loaded seedGrid\n");
+	printf("- loaded color grids\n");
 
 
-	std::ifstream in5(std::string("save/geneGrid").c_str());
-	// for (unsigned int i = 0; i < totalSize; ++i)
-	// {
-	std::string line;
-	unsigned int i = 0;
-	while (diy_getline(in5, line))
+
+
+	// transportableLifeParticle transportableLifeGrid[totalSize];
+
+	transportableLifeParticle* transportableLifeGrid = new transportableLifeParticle[totalSize];
+	std::memset(transportableLifeGrid, 0x00, sizeof(transportableLifeParticle) * totalSize);
+
+
+	std::ifstream in22(std::string("save/transportableLifeGrid").c_str());
+	in22.read( (char*)(transportableLifeGrid), sizeof(transportableLifeParticle) * totalSize);
+	in22.close();
+	for (unsigned int i = 0; i < totalSize; ++i)
 	{
+		lifeGrid[i].energySource = transportableLifeGrid[i].energySource;
+		lifeGrid[i].energy = transportableLifeGrid[i].energy;
+		lifeGrid[i].identity = transportableLifeGrid[i].identity;
+	}
 
-		if (line.length() > 0) 
+	delete [] transportableLifeGrid;
+
+	printf("- loaded transportable life\n");
+
+
+
+	// transportableSeed transportableSeedGrid[totalSize];
+	transportableSeed* transportableSeedGrid = new transportableSeed[totalSize];
+	std::memset(transportableSeedGrid, 0x00, sizeof(transportableSeed) * totalSize);
+
+
+	std::ifstream in2(std::string("save/transportableSeedGrid").c_str());
+	in2.read( (char*)(transportableSeedGrid), sizeof(transportableSeed) * totalSize);
+	in2.close();
+	for (unsigned int i = 0; i < totalSize; ++i)
+	{
+		seedGrid[i].stage = transportableSeedGrid[i].stage;
+		seedGrid[i].energy = transportableSeedGrid[i].energy;
+		seedGrid[i].parentIdentity = transportableSeedGrid[i].parentIdentity;
+	}
+
+
+	delete [] transportableSeedGrid;
+
+	printf("- loaded transportable seeds\n");
+
+
+
+
+	if (true)
+	{
+		std::ifstream in5(std::string("save/lifeGeneGrid").c_str());
+		std::string line = std::string("");
+		unsigned int i = 0;
+		for (std::string line; std::getline(in5, line, '\n'); )
 		{
-			if (i < totalSize) 
+			i++;
+		}
+
+		printf("lifeGeneGrid lines: %u\n", i);
+
+		std::ifstream in500(std::string("save/seedGeneGrid").c_str());
+		// std::string line = std::string("");
+		i = 0;
+		for (std::string line; std::getline(in500, line, '\n'); )
+		{
+			i++;
+		}
+
+		printf("seedGeneGrid lines: %u\n", i);
+	}
+
+
+
+	if (true)
+	{
+		std::ifstream in5(std::string("save/lifeGeneGrid").c_str());
+		std::string line = std::string("");
+		unsigned int i = 0;
+		for (std::string line; std::getline(in5, line, '\n'); )
+		{
+			// printf("%u ", i);
+			// printf("%s ", line.c_str());
+			lifeGrid[i].genes.clear();
+			if (i < totalSize)
 			{
-				printf("%u ", i);
-				// std::cout << line << std::endl;
-
-
-				printf("%s ", line.c_str());
-				lifeGrid[i].genes = line;
-				seedGrid[i].genes = line;
-
+				lifeGrid[i].genes.assign(line);
 			}
-
-
+			in5.clear();
+			i++;
 		}
 
 
-		i++;
+		printf("- loaded life genomes\n");
+
+
+
 	}
-// }
+
+
+	if (true)
+	{
+		std::ifstream in500(std::string("save/seedGeneGrid").c_str());
+		std::string line = std::string("");
+		unsigned int i = 0;
+		for (std::string line; std::getline(in500, line, '\n'); )
+		{
+			// printf("%u ", i);
+			// printf("%s ", line.c_str());
+			// seedGrid[i].genes.clear();
+			if (i < totalSize)
+			{
+				seedGrid[i].genes.assign(line);
+			}
+			in500.clear();
+			i++;
+		}
+
+
+		printf("- loaded seed genomes\n");
+
+	}
 
 
 
-	// 	// clearColorGrids(i);
-	// 	printf("a, index %u ", i);
-	// 	std::string strang = std::string("");
-	// 	printf("b ");
-
-	// 	std::getline(in5, strang);
-
-	// 	printf(" %s ", strang);
-
-	// 	printf("c ");
-	// 	lifeGrid[i].genes = strang;
-	// 	printf("d ");
-	// 	seedGrid[i].genes = strang;
-	// }
-	// in5.close();
-	// printf("loaded geneGrid\n");
-
-	std::ifstream in7(std::string("save/colorGrid").c_str());
-	in7.read(reinterpret_cast<char*>((& (colorGrid[0]) )), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
-	in7.close();
-
-	// for (int i = 0; i < totalSize; ++i)
-	// {
-	// 	Color temp_color = materialColor( grid[i].material);
-	// 	unsigned int a_offset = (i * numberOfFieldsPerVertex);
-	// 	memcpy( &colorGrid[ a_offset ], &temp_color, 16 );
-	// }
-
-	printf("loaded colorGrid\n");
-
-	std::ifstream in3(std::string("save/lifeColorGrid").c_str());
-	in3.read(reinterpret_cast<char*>((& (lifeColorGrid[0]) )), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
-	in3.close();
 
 
-	printf("loaded lifeColorGrid\n");
 
 
-	std::ifstream in4(std::string("save/lifeColorGridB").c_str());
-	in4.read(reinterpret_cast<char*>((& (lifeColorGridB[0]) )), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
-	in4.close();
 
-	printf("loaded lifeColorGridB\n");
+
+
+	// std::ifstream in7(std::string("save/colorGrid").c_str());
+	// in7.read(reinterpret_cast<char*>((& (colorGrid[0]) )), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
+	// in7.close();
+
+
+
+	// printf("loaded colorGrid\n");
+
+	// std::ifstream in3(std::string("save/lifeColorGrid").c_str());
+	// in3.read(reinterpret_cast<char*>((& (lifeColorGrid[0]) )), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
+	// in3.close();
+
+
+	// printf("loaded lifeColorGrid\n");
+
+
+	// std::ifstream in4(std::string("save/lifeColorGridB").c_str());
+	// in4.read(reinterpret_cast<char*>((& (lifeColorGridB[0]) )), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
+	// in4.close();
+
+	// printf("loaded lifeColorGridB\n");
 
 }

@@ -8,7 +8,7 @@ bool paused = false;
 bool flagQuit = false;
 int mouseX;
 int mouseY;
-float panSpeed = 0.5f;
+float panSpeed = 0.25f;
 unsigned int pixelSize = 3;
 
 bool crudOps = false;
