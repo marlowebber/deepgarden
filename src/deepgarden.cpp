@@ -10,7 +10,7 @@
 
 // #define THREAD_TIMING
 #define RENDERING_THREADS 4
-#define PLANT_DRAWING_READOUT 1
+// #define PLANT_DRAWING_READOUT 1
 
 const unsigned int totalSize = sizeX * sizeY;
 const unsigned int numberOfFieldsPerVertex = 6; /*  R, G, B, A, X, Y  */
@@ -252,22 +252,22 @@ void mutateSentence ( std::string * genes )
 {
 	size_t genesLength = genes->length();
 
-	for (int i = 0; i < genesLength; ++i)
+	for (unsigned int i = 0; i < genesLength; ++i)
 	{
 		// // swap a letter
-		// if (extremelyFastNumberFromZeroTo(256) == 0)
-		// {
-		// 	// https://stackoverflow.com/questions/20132650/how-to-select-random-letters-in-c
-		// 	(*genes)[i] = (char)('a' + rand() % 26);
-		// }
+		if (extremelyFastNumberFromZeroTo(256) == 0)
+		{
+			// 	// https://stackoverflow.com/questions/20132650/how-to-select-random-letters-in-c
+			(*genes)[i] = (char)('a' + rand() % 26);
+		}
 
 		// // add a letter
-		// if (extremelyFastNumberFromZeroTo(256) == 0)
-		// {
-		// 	// char randomCharacter = (char)('a' + rand() % 26);
-		// 	// genes->insert(    extremelyFastNumberFromZeroTo( (genes->length() - 1) )  ,  &randomCharacter  );
-		// 	genes->push_back(  (char)('a' + rand() % 26)  );
-		// }
+		if (extremelyFastNumberFromZeroTo(256) == 0)
+		{
+			// char randomCharacter = (char)('a' + rand() % 26);
+			// genes->insert(    extremelyFastNumberFromZeroTo( (genes->length() - 1) )  ,  &randomCharacter  );
+			genes->push_back(  (char)('a' + rand() % 26)  );
+		}
 
 		// // add a punctuation
 		// if (extremelyFastNumberFromZeroTo(256) == 0)
@@ -2599,7 +2599,6 @@ void thread_seeds()
 						lifeGrid[neighbour].energy = (lifeGrid[neighbour].energy );
 					}
 
-					lifeGrid[neighbour].energy -= 0.005f; // upkeep cost of the seed, balances the number of seeds vs leaf area.
 				}
 
 				if (seedGrid[i].energy >= 0)
