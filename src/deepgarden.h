@@ -49,6 +49,7 @@ struct Color
 #define MATERIAL_AMPHIBOLE 	 10
 #define MATERIAL_OLIVINE 	 11
 
+#define PHASE_NULL			 0
 #define PHASE_VACUUM 		 1
 #define PHASE_SOLID  		 2
 #define PHASE_POWDER 		 4
@@ -61,9 +62,9 @@ struct Color
 #define STAGE_FRUIT  		 2
 #define STAGE_SEED   		 3
 #define STAGE_PHOTON 		 4
-#define STAGE_ANT			 1000
-#define STAGE_BEE			 1001
-#define STAGE_PLAYER		 19000
+#define STAGE_ANIMALSEED	 5
+#define STAGE_ANIMAL         6
+#define STAGE_PLAYER		 7
 
 #define ENERGYSOURCE_LIGHT   0
 #define ENERGYSOURCE_MINERAL 1

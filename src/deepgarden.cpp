@@ -15,21 +15,21 @@
 const unsigned int totalSize = sizeX * sizeY;
 const unsigned int numberOfFieldsPerVertex = 6; /*  R, G, B, A, X, Y  */
 
-const Color color_lightblue = Color( 0.1f, 0.3f, 0.65f, 1.0f );
-const Color color_yellow    = Color( 1.0f, 1.0f, 0.0f, 1.0f );
-const Color color_lightgrey = Color( 0.75f, 0.75f, 0.75f, 1.0f );
-const Color color_grey      = Color( 0.50f, 0.50f, 0.50f, 1.0f );
-const Color color_darkgrey  = Color( 0.25f, 0.25f, 0.25f, 1.0f );
-const Color color_black     = Color( 0.0f, 0.0f, 0.0f, 1.0f );
-const Color color_white_clear     = Color( 1.0f, 1.0f, 1.0f, 0.25f );
-const Color color_purple     = Color( 0.8f, 0.0f, 0.8f, 1.0f );
+const Color color_lightblue 		= Color( 0.1f, 0.3f, 0.65f, 1.0f );
+const Color color_yellow    		= Color( 1.0f, 1.0f, 0.0f, 1.0f );
+const Color color_lightgrey 		= Color( 0.75f, 0.75f, 0.75f, 1.0f );
+const Color color_grey      		= Color( 0.50f, 0.50f, 0.50f, 1.0f );
+const Color color_darkgrey  		= Color( 0.25f, 0.25f, 0.25f, 1.0f );
+const Color color_black     		= Color( 0.0f, 0.0f, 0.0f, 1.0f );
+const Color color_white_clear     	= Color( 1.0f, 1.0f, 1.0f, 0.25f );
+const Color color_purple     		= Color( 0.8f, 0.0f, 0.8f, 1.0f );
+const Color color_brightred			= Color( 1.0f, 0.1f, 0.0f, 1.0f);
+const Color color_clear     		= Color( 0.0f, 0.0f, 0.0f, 0.0f );
 
-const Color color_clear     = Color( 0.0f, 0.0f, 0.0f, 0.0f );
 
+const Color color_defaultSeedColor  = Color( 0.75f, 0.35f, 0.1f, 1.0f );
 
-const Color color_defaultSeedColor     = Color( 0.75f, 0.35f, 0.1f, 1.0f );
-
-const Color color_defaultColor     = Color( 0.35f, 0.35f, 0.35f, 1.0f );
+const Color color_defaultColor     	= Color( 0.35f, 0.35f, 0.35f, 1.0f );
 
 
 // a tree with a long stem and a fan of branches.
@@ -234,16 +234,100 @@ std::list<ProposedLifeParticle> v_extrudedParticles;
 
 
 
-
-
-struct animal
+struct AnimalParticle
 {
-	std::string genes;
-	std::list<vec_u2> frameA;
-	std::list<vec_u2> frameB;
-	std::list<vec_u2> frameC;
-
+	unsigned int position;
+	Color color = Color(1.0f, 1.0f, 1.0f, 1.0f);
+	AnimalParticle();
 };
+
+AnimalParticle::AnimalParticle()
+{
+	this->position = 0;
+	this->color = Color(1.0f, 1.0f, 1.0f, 1.0f);
+}
+
+
+struct Animal
+{
+	// std::string genes; // animal is simply expression of seedgrid pixel which holds genetic information.
+	float energy;
+	unsigned int position;
+	unsigned int segments;
+	unsigned int reach;
+	std::list<unsigned int> segmentPositions;
+	std::list<AnimalParticle> frameA;
+	std::list<AnimalParticle> frameB;
+	std::list<AnimalParticle> frameC;
+	Animal();
+};
+
+Animal::Animal()
+{
+	// this->genes = std::string("");
+	this->position = 0;
+	this->energy = 0.0f;
+	this->position = 0;
+	this->segments = 0;
+	this->reach = 0;
+}
+
+
+
+std::list<Animal> animals;
+std::string exampleAnimal = std::string("  ");
+unsigned int animalFrameDrawingCursor = 0;
+unsigned int legLengthCursor;
+unsigned int bodySegmentRadiusCursor;
+
+// return 0 to continue drawing sequence, return 1 to break sequence by one level.
+int drawAnimalFromChar ()
+{
+	char c;
+
+	switch (c)
+	{
+	case 's':
+	{
+		// sequence
+		return 0;
+		break;
+	}
+	case ' ':
+	{
+		// break sequence
+		return -1;
+		break;
+	}
+	case 'c':
+	{
+		// body segment part
+		return 0;
+		break;
+	}
+	case 'l':
+	{
+		// limb
+		return 0;
+		break;
+	}
+	}
+	return 0;
+}
+
+
+// given an animal seed at position i (the method by which they are transported and reproduced), turn it into a complete animal
+void drawAnimalFromSeed(unsigned int i)
+{
+
+	Animal newAnimal = Animal();
+
+	while ( drawAnimalFromChar() )
+	{
+
+	}
+
+}
 
 
 
@@ -541,6 +625,24 @@ void swapSeedParticle(unsigned int a, unsigned int b)
 	memcpy( &seedColorGrid[ a_offset ], temp_color, 					sizeof(Color) );
 }
 
+
+void setAnimal(unsigned int i)
+{
+	seedGrid[i].genes = exampleAnimal;
+	seedGrid[i].parentIdentity = 0x00;
+	seedGrid[i].stage = STAGE_ANIMAL;
+	seedGrid[i].energy = 0.0f;
+
+#ifdef PLANT_DRAWING_READOUT
+	printf("seed with energy debt %f \n", energyDebt);
+#endif
+
+	memcpy( (&seedColorGrid[i * numberOfFieldsPerVertex]) ,  &(color_brightred),  sizeof(Color) );
+
+
+}
+
+
 unsigned int newIdentity ()
 {
 	unsigned int identityCursor = 1; // zero is reserved
@@ -704,7 +806,7 @@ void initialize ()
 		if (true)
 		{
 			// sprinkle some material on it to make a default scene.
-			if (i > (10 * sizeX) && i < (100 * sizeX))
+			if (i > (1 * sizeX) && i < (10 * sizeX))
 			{
 				if (RNG() < 0.5)
 				{
@@ -713,7 +815,7 @@ void initialize ()
 			}
 
 			// sprinkle some material on it to make a default scene.
-			if (i > (100 * sizeX) && i < (200 * sizeX))
+			if (i > (10 * sizeX) && i < (20 * sizeX))
 			{
 				if (RNG() < 0.5)
 				{
@@ -722,7 +824,7 @@ void initialize ()
 			}
 
 			// sprinkle some material on it to make a default scene.
-			if (i > (200 * sizeX) && i < (300 * sizeX))
+			if (i > (20 * sizeX) && i < (30 * sizeX))
 			{
 				if (RNG() < 0.5)
 				{
@@ -745,6 +847,9 @@ void initialize ()
 
 			// setSeedParticle(exampleSentence, newIdentity() , 0, i);
 			// seedGrid[i].stage = STAGE_FRUIT;
+
+			setAnimal( i);
+
 		}
 	}
 }
@@ -2514,6 +2619,80 @@ void thread_seeds()
 			}
 		}
 
+		if (seedGrid[i].stage == STAGE_ANIMAL)
+		{
+			// printf("bondoign\n");
+
+			unsigned int squareBelow = i - sizeX;
+			unsigned int squareAbove = i + sizeX;
+
+			// these are now in COUNTERCLOCKWISE ORDER.
+			unsigned int neighbours[] =
+			{
+				squareBelow - 1,
+				squareBelow,
+				squareBelow + 1,
+				i + 1,
+				squareAbove + 1,
+				squareAbove,
+				squareAbove - 1,
+				i - 1,
+			};
+
+			bool spentTurn = false;
+			unsigned int prevNeighbourPhase = PHASE_NULL;
+			for (unsigned int k = 0; k < 8; ++k)
+			{
+				if (k == 0) {prevNeighbourPhase = grid[neighbours[k]].phase; }
+
+				if (grid[neighbours[k]].phase == PHASE_VACUUM || grid[neighbours[k]].phase == PHASE_GAS )
+				{
+					// find a neighbour that is the edge of a solid surface.
+					if (prevNeighbourPhase == PHASE_SOLID || prevNeighbourPhase == PHASE_POWDER)
+					{
+
+
+						swapSeedParticle( i, neighbours[k] );
+						spentTurn = true;
+						break;
+					}
+				}
+				prevNeighbourPhase = grid[neighbours[k]].phase;
+			}
+
+			if (spentTurn) {continue;} // only take one action per turn.
+
+			// printf("spolmein\n");
+
+			// if you couldn't go forward, walk back the other way.
+			prevNeighbourPhase = PHASE_NULL;
+			for ( int k = 7; k >= 0; --k)
+			{
+				if (k == 7) {prevNeighbourPhase = grid[neighbours[k]].phase; }
+				if (grid[neighbours[k]].phase == PHASE_VACUUM || grid[neighbours[k]].phase == PHASE_GAS )
+				{
+					// find a neighbour that is the edge of a solid surface.
+					if (prevNeighbourPhase == PHASE_SOLID || prevNeighbourPhase == PHASE_POWDER)
+					{
+						swapSeedParticle( i, neighbours[k] );
+						spentTurn = true;
+						break;
+					}
+				}
+				prevNeighbourPhase = grid[neighbours[k]].phase;
+			}
+
+			if (spentTurn) {continue;} // only take one action per turn.
+
+
+			// printf("ramsleigh\n");
+			// if you couldn't move any direction, fall down a square.
+			if (grid[squareBelow].phase == PHASE_VACUUM || grid[squareBelow].phase == PHASE_GAS )
+			{
+				swapSeedParticle( i, squareBelow );
+			}
+		}
+
 
 		// SEEDS. Some of the particles on the seed grid are seeds that fall downwards.
 		if (seedGrid[i].parentIdentity > 0 )
@@ -2643,49 +2822,7 @@ void thread_seeds()
 			}
 
 
-			// if (seedGrid[i].stage == STAGE_BEE)
-			// {
 
-
-			// 	unsigned int squareBelow = i - sizeX;
-			// 	unsigned int squareAbove = i + sizeX;
-			// 	unsigned int neighbours[] =
-			// 	{
-			// 		squareBelow - 1,
-			// 		squareBelow,
-			// 		squareBelow + 1,
-			// 		i - 1,
-			// 		i + 1,
-			// 		squareAbove - 1,
-			// 		squareAbove,
-			// 		squareAbove + 1
-			// 	};
-
-			// 	unsigned int neighbour = extremelyFastNumberFromZeroTo(7);
-
-			// 	if (seedGrid[i].energy < 8.0f)
-			// 	{
-			// 		// if the neighbour is actually a seed
-			// 		if (seedGrid[neighbour].stage > 0 &&   seedGrid[neighbour].stage < 1000)
-			// 		{
-			// 			seedGrid[i].energy += seedGrid[neighbour].energy;
-			// 			clearSeedParticle(neighbour);
-
-			// 		}
-			// 	}
-
-			// 	// if the neighbour is empty
-			// 	if (seedGrid[neighbour].stage == 0x00 && (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS) )
-			// 	{
-			// 		swapSeedParticle(i, neighbour);
-			// 	}
-
-
-
-
-
-
-			// }
 		}
 	}
 
@@ -3380,7 +3517,7 @@ void drawAHill(unsigned int hillXIndex, unsigned int hillWidth)
 
 
 
-void drawRandomLandscape() 
+void drawRandomLandscape()
 {
 
 
@@ -3388,17 +3525,17 @@ void drawRandomLandscape()
 
 	for (int i = 0; i < extremelyFastNumberFromZeroTo(7); ++i)
 	{
-			
 
 
-			unsigned int randomHillX = extremelyFastNumberFromZeroTo(sizeX);
-			unsigned int randomHillWidth = extremelyFastNumberFromZeroTo(500);
 
-			for (int i = 0; i < extremelyFastNumberFromZeroTo(1000); ++i)
-			{
-				drawAHill(randomHillX, randomHillWidth);
-				// std::this_thread::sleep_for(std::chrono::milliseconds(100));
-			}
+		unsigned int randomHillX = extremelyFastNumberFromZeroTo(sizeX);
+		unsigned int randomHillWidth = extremelyFastNumberFromZeroTo(500);
+
+		for (int i = 0; i < extremelyFastNumberFromZeroTo(1000); ++i)
+		{
+			drawAHill(randomHillX, randomHillWidth);
+			// std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		}
 
 
 
