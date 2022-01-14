@@ -224,6 +224,39 @@ transportableSeed::transportableSeed()
 
 
 
+unsigned int newIdentity ()
+{
+	unsigned int identityCursor = 1; // zero is reserved
+	while (true)
+	{
+		bool used = false;
+		for (std::list<unsigned int>::iterator it = identities.begin(); it != identities.end(); ++it)
+		{
+			if (identityCursor == *it)
+			{
+				used = true;
+			}
+		}
+
+		if (!used)
+		{
+			identities.push_back(identityCursor);
+
+#ifdef PLANT_DRAWING_READOUT
+			printf("claimed new ID: %u\n", identityCursor);
+#endif
+
+			return identityCursor;
+		}
+		identityCursor++;
+	}
+	return identityCursor;
+}
+
+void retireIdentity (unsigned int identityToRetire)
+{
+	identities.remove (identityToRetire);
+}
 
 
 Particle *  grid = new Particle[totalSize];
@@ -236,15 +269,15 @@ std::list<ProposedLifeParticle> v_extrudedParticles;
 
 struct AnimalParticle
 {
-	unsigned int position;
+	unsigned int localPosition = 0;
 	Color color = Color(1.0f, 1.0f, 1.0f, 1.0f);
-	AnimalParticle();
+	AnimalParticle(unsigned int localPosition, Color color);
 };
 
-AnimalParticle::AnimalParticle()
+AnimalParticle::AnimalParticle( unsigned int localPosition, Color color)
 {
-	this->position = 0;
-	this->color = Color(1.0f, 1.0f, 1.0f, 1.0f);
+	this->localPosition = localPosition;
+	this->color = color ;// Color(1.0f, 1.0f, 1.0f, 1.0f);
 }
 
 
@@ -255,35 +288,46 @@ struct Animal
 	unsigned int position;
 	unsigned int segments;
 	unsigned int reach;
+	unsigned int identity;
 	std::list<unsigned int> segmentPositions;
+	unsigned int animationPhase;
 	std::list<AnimalParticle> frameA;
 	std::list<AnimalParticle> frameB;
 	std::list<AnimalParticle> frameC;
-	Animal();
+	Animal(unsigned int i);
 };
 
-Animal::Animal()
+Animal::Animal(unsigned int i)
 {
-	// this->genes = std::string("");
-	this->position = 0;
 	this->energy = 0.0f;
-	this->position = 0;
 	this->segments = 0;
 	this->reach = 0;
+	this->animationPhase = 0;
+
+
+	this->position = i;
+	this->identity = newIdentity();
+	seedGrid[i].parentIdentity = this->identity;
+
 }
 
 
 
 std::list<Animal> animals;
 std::string exampleAnimal = std::string("  ");
-unsigned int animalFrameDrawingCursor = 0;
-unsigned int legLengthCursor;
-unsigned int bodySegmentRadiusCursor;
+unsigned int animalCursorFrame = 0;
+unsigned int animalCursorString = 0;
+unsigned int animalCursorSegmentRadius = 10;
+unsigned int animalCursorLegThickness = 1;
+unsigned int animalCursorLegLength = 10;
+
+Color 		 animalCursorColor = Color(0.5f, 0.5f, 0.5f, 1.0f);
 
 // return 0 to continue drawing sequence, return 1 to break sequence by one level.
-int drawAnimalFromChar ()
+int drawAnimalFromChar (Animal* a)
 {
-	char c;
+	char c = 'c';
+
 
 	switch (c)
 	{
@@ -302,6 +346,31 @@ int drawAnimalFromChar ()
 	case 'c':
 	{
 		// body segment part
+
+
+		// raster a circle
+		unsigned int radius = animalCursorSegmentRadius;
+		int drawingAreaLowerX = -radius;
+		int drawingAreaLowerY = -radius;
+		int drawingAreaUpperX = +radius;
+		int drawingAreaUpperY = +radius;
+		for ( int i = drawingAreaLowerX; i < drawingAreaUpperX; ++i)
+		{
+			for ( int j = drawingAreaLowerY; j < drawingAreaUpperY; ++j)
+			{
+				if (  magnitude_int (  i , j )  < radius )
+				{
+
+					unsigned int pixel = (j * sizeX) + i;
+
+					a->frameA.push_back( AnimalParticle(pixel  , animalCursorColor ));
+				}
+			}
+		}
+
+
+
+
 		return 0;
 		break;
 	}
@@ -320,19 +389,73 @@ int drawAnimalFromChar ()
 void drawAnimalFromSeed(unsigned int i)
 {
 
-	Animal newAnimal = Animal();
 
-	while ( drawAnimalFromChar() )
-	{
 
-	}
 
+
+	Animal newAnimal = Animal(i);
+	animals.push_back(newAnimal);
+	drawAnimalFromChar( &(animals.back()) );
 }
 
 
 
 
+// void thread_animals()
+// {
+// 	clearColorGridB();
+// 	std::list<Animal>::iterator a;
+// 	for (a = animals.begin(); a !=  animals.end(); ++a)
+// 	{
+// 		std::list<AnimalParticle>::iterator p;
+// 		for (p = a.frameA.begin(); p !=  a.frameA.end(); ++p)
+// 		{
 
+// 		}
+// 	}
+// }
+
+
+void setAnimalSpritePixel ( AnimalParticle p, unsigned int i )
+{
+	unsigned int j_offset = ((i + p.localPosition) * numberOfFieldsPerVertex) ;
+	memcpy( &lifeColorGridB[ j_offset], 	&(p.color) , 	sizeof(Color) );
+}
+
+
+void swapAnimalSpritePixel (unsigned int a, unsigned int b)
+{
+	float temp_color[4];
+	unsigned int a_offset = (a * numberOfFieldsPerVertex) ;
+	unsigned int b_offset = (b * numberOfFieldsPerVertex) ;
+	memcpy( temp_color, 				&lifeColorGridB[ b_offset ] , 		sizeof(Color) ); // 4x floats of 4 bytes each
+	memcpy( &lifeColorGridB[ b_offset], 	&lifeColorGridB[ a_offset] , 	sizeof(Color) );
+	memcpy( &lifeColorGridB[ a_offset ], temp_color, 						sizeof(Color) );
+}
+
+
+void clearAnimalSpritePixel(unsigned int i)
+{
+	unsigned int a_offset = (i * numberOfFieldsPerVertex) ;
+	memcpy( &lifeColorGridB[ a_offset], 	&(color_clear) , 	sizeof(Color) );
+}
+
+
+void updateAnimalDrawing(unsigned int i)
+{
+	std::list<Animal>::iterator a;
+	for (a = animals.begin(); a !=  animals.end(); ++a)
+	{
+		if (a->identity == seedGrid[i].parentIdentity)
+		{
+			std::list<AnimalParticle>::iterator p;
+			for (p = a->frameA.begin(); p !=  a->frameA.end(); ++p)
+			{
+				setAnimalSpritePixel(*p, i);
+			}
+		}
+	}
+}
 
 
 
@@ -643,39 +766,8 @@ void setAnimal(unsigned int i)
 }
 
 
-unsigned int newIdentity ()
-{
-	unsigned int identityCursor = 1; // zero is reserved
-	while (true)
-	{
-		bool used = false;
-		for (std::list<unsigned int>::iterator it = identities.begin(); it != identities.end(); ++it)
-		{
-			if (identityCursor == *it)
-			{
-				used = true;
-			}
-		}
 
-		if (!used)
-		{
-			identities.push_back(identityCursor);
 
-#ifdef PLANT_DRAWING_READOUT
-			printf("claimed new ID: %u\n", identityCursor);
-#endif
-
-			return identityCursor;
-		}
-		identityCursor++;
-	}
-	return identityCursor;
-}
-
-void retireIdentity (unsigned int identityToRetire)
-{
-	identities.remove (identityToRetire);
-}
 
 void clearColorGrids(unsigned int i)
 {
@@ -712,6 +804,32 @@ void clearColorGrids(unsigned int i)
 	seedColorGrid[ 	a_offset + 4] = fx;
 	seedColorGrid[ 	a_offset + 5] = fy;
 
+}
+
+
+
+void clearColorGridB()
+{
+
+	memset( lifeColorGridB, 0.0f, sizeof(float) * numberOfFieldsPerVertex * totalSize );
+
+	unsigned int x = 0;
+	unsigned int y = 0;
+	for (unsigned int i = 0; i < totalSize; ++i)
+	{
+		x = i % sizeX;
+		y = i / sizeX;
+		float fx = x;
+		float fy = y;
+
+		unsigned int a_offset = (i * numberOfFieldsPerVertex) ;
+		// lifeColorGridB[ a_offset + 0] = 0.0f;
+		// lifeColorGridB[ a_offset + 1] = 0.0f;
+		// lifeColorGridB[ a_offset + 2] = 0.0f;
+		// lifeColorGridB[ a_offset + 3] = 0.0f;
+		lifeColorGridB[ a_offset + 4] = fx;
+		lifeColorGridB[ a_offset + 5] = fy;
+	}
 }
 
 
@@ -842,13 +960,14 @@ void initialize ()
 			// }
 		}
 
-		if (x == 500 && y == 100)
+		if (x > 500 && x < 600 && y == 100)
 		{
 
 			// setSeedParticle(exampleSentence, newIdentity() , 0, i);
 			// seedGrid[i].stage = STAGE_FRUIT;
 
 			setAnimal( i);
+			drawAnimalFromSeed(i);
 
 		}
 	}
@@ -1454,8 +1573,7 @@ void thread_graphics()
 		unsigned int nVertsToRenderThisTurn = 1 * totalSize;
 		long unsigned int totalNumberOfFields = nVertsToRenderThisTurn * numberOfFieldsPerVertex;
 
-		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, lifeColorGridB, GL_DYNAMIC_DRAW );
-		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
+
 
 		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, colorGrid, GL_DYNAMIC_DRAW );
 		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
@@ -1464,6 +1582,11 @@ void thread_graphics()
 		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
 
 		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, seedColorGrid, GL_DYNAMIC_DRAW );
+		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
+
+
+
+		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, lifeColorGridB, GL_DYNAMIC_DRAW );
 		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
 
 		postDraw();
@@ -2562,6 +2685,9 @@ void thread_seeds()
 
 	// }
 
+
+	clearColorGridB(); // color gridB is used for animal pictures and is repopulated during this thread.
+
 	for (unsigned int i = (sizeX + 1); i < (totalSize - (sizeX + 1)); ++i)
 	{
 		// PHOTONS. Some of the particles on the seed grid are particles of light that fall downwards.
@@ -2621,6 +2747,12 @@ void thread_seeds()
 
 		if (seedGrid[i].stage == STAGE_ANIMAL)
 		{
+
+
+
+			updateAnimalDrawing(i);
+
+
 			// printf("bondoign\n");
 
 			unsigned int squareBelow = i - sizeX;
