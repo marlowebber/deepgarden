@@ -27,6 +27,7 @@ const Color color_white_clear     	= Color( 1.0f, 1.0f, 1.0f, 0.25f );
 const Color color_purple     		= Color( 0.8f, 0.0f, 0.8f, 1.0f );
 const Color color_brightred			= Color( 1.0f, 0.1f, 0.0f, 1.0f);
 const Color color_clear     		= Color( 0.0f, 0.0f, 0.0f, 0.0f );
+const Color color_shadow 	    	= Color( 0.0f, 0.0f, 0.0f, 0.5f);
 
 const Color color_defaultSeedColor  = Color( 0.75f, 0.35f, 0.1f, 1.0f );
 const Color color_defaultColor     	= Color( 0.35f, 0.35f, 0.35f, 1.0f );
@@ -479,15 +480,15 @@ int drawAnimalFromChar (unsigned int i)
 
 						// if (animalCursorFrame == FRAME_A)
 						// {
-							a->segments[animalCursorSegmentNumber].frameA.push_back( AnimalParticle(pixel  , animalCursorColor ));
+						a->segments[animalCursorSegmentNumber].frameA.push_back( AnimalParticle(pixel  , animalCursorColor ));
 						// }
 						// else if (animalCursorFrame == FRAME_B)
 						// {
-							a->segments[animalCursorSegmentNumber].frameB.push_back( AnimalParticle(pixel  , animalCursorColor ));
+						a->segments[animalCursorSegmentNumber].frameB.push_back( AnimalParticle(pixel  , animalCursorColor ));
 						// }
 						// else if (animalCursorFrame == FRAME_C)
 						// {
-							a->segments[animalCursorSegmentNumber].frameC.push_back( AnimalParticle(pixel  , animalCursorColor ));
+						a->segments[animalCursorSegmentNumber].frameC.push_back( AnimalParticle(pixel  , animalCursorColor ));
 						// }
 
 						animalCursorEnergyDebt += 1.0f;
@@ -562,23 +563,48 @@ int drawAnimalFromChar (unsigned int i)
 
 				for (std::list<ProposedLifeParticle>::iterator it = v.begin(); it != v.end(); ++it)
 				{
-					unsigned int i = (it->position.y * sizeX) + it->position.x;
+					unsigned int i 			 = (it->position.y * sizeX) + it->position.x;
+					unsigned int shadowIndex = ( (it->position.y-1) * sizeX) + (it->position.x);
+
 					if ( i < totalSize)
 					{
 						if (animalCursorFrame == FRAME_A)
 						{
-							a->segments[animalCursorSegmentNumber].frameA.push_back( AnimalParticle(i  , animalCursorColor ));
+							a->segments[animalCursorSegmentNumber].frameA.push_back( AnimalParticle(i  ,		   animalCursorColor ));
+							a->segments[animalCursorSegmentNumber].frameA.push_back( AnimalParticle(shadowIndex  , color_shadow ));
 						}
 						else if (animalCursorFrame == FRAME_B)
 						{
 							a->segments[animalCursorSegmentNumber].frameB.push_back( AnimalParticle(i  , animalCursorColor ));
+							a->segments[animalCursorSegmentNumber].frameB.push_back( AnimalParticle(shadowIndex  , color_shadow ));
 						}
 						else if (animalCursorFrame == FRAME_C)
 						{
 							a->segments[animalCursorSegmentNumber].frameC.push_back( AnimalParticle(i  , animalCursorColor ));
+							a->segments[animalCursorSegmentNumber].frameC.push_back( AnimalParticle(shadowIndex  , color_shadow ));
 						}
 					}
 				}
+
+
+
+
+				// place a pixel of shadow on the grid.
+
+				// unsigned int x = j_offset % sizeX;
+				// unsigned int y = j_offset / sizeX;
+
+				// x += 1;
+				// y += 1;
+
+				// unsigned int shadow_offset = (y * sizeX) + x;
+				// unsigned int shadow_color_offset = (j_offset * numberOfFieldsPerVertex) ;
+
+
+				// lifeColorGridB[ shadow_color_offset + 0] *= 0.5;
+				// lifeColorGridB[ shadow_color_offset + 1] *= 0.5;
+				// lifeColorGridB[ shadow_color_offset + 2] *= 0.5;
+
 
 
 
@@ -737,6 +763,9 @@ void setAnimalSpritePixel ( Animal * a, AnimalParticle p, unsigned int i )
 	}
 
 	memcpy( &lifeColorGridB[ j__color_offset], 	&(p.color) , 	sizeof(Color) );
+
+
+
 }
 
 
