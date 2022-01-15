@@ -71,6 +71,9 @@ struct Color
 #define ENERGYSOURCE_SEED    2
 #define ENERGYSOURCE_PLANT   3
 
+#define FRAME_A 1
+#define FRAME_B 2
+#define FRAME_C 3
 
 float RNG();
 

@@ -8,9 +8,10 @@
 
 #include "main.h"
 
-// #define THREAD_TIMING
+#define THREAD_TIMING
 #define RENDERING_THREADS 4
 // #define PLANT_DRAWING_READOUT 1
+// #define ANIMAL_DRAWING_READOUT 1
 
 const unsigned int totalSize = sizeX * sizeY;
 const unsigned int numberOfFieldsPerVertex = 6; /*  R, G, B, A, X, Y  */
@@ -281,105 +282,192 @@ AnimalParticle::AnimalParticle( unsigned int localPosition, Color color)
 }
 
 
+struct AnimalSegment
+{
+	unsigned int position;
+	std::vector<AnimalParticle> frameA;
+	std::vector<AnimalParticle> frameB;
+	std::vector<AnimalParticle> frameC;
+
+	AnimalSegment();
+};
+
+AnimalSegment::AnimalSegment()
+{
+	this->position = 0;
+}
+
+
 struct Animal
 {
 	// std::string genes; // animal is simply expression of seedgrid pixel which holds genetic information.
 	float energy;
-	unsigned int position;
-	unsigned int segments;
+	float reproductionCost;
 	unsigned int reach;
 	unsigned int identity;
-	std::list<unsigned int> segmentPositions;
+	std::vector<AnimalSegment> segments;
 	unsigned int animationPhase;
-	std::list<AnimalParticle> frameA;
-	std::list<AnimalParticle> frameB;
-	std::list<AnimalParticle> frameC;
-	Animal(unsigned int i);
+
+	Animal();
 };
 
-Animal::Animal(unsigned int i)
+
+std::vector<Animal> animals;
+
+Animal::Animal()
 {
 	this->energy = 0.0f;
-	this->segments = 0;
-	this->reach = 0;
+	this->reach = 8;
 	this->animationPhase = 0;
-
-
-	this->position = i;
-	this->identity = newIdentity();
-	seedGrid[i].parentIdentity = this->identity;
+	// this->position = i;
+	this->identity = animals.size();
+	this->segments.push_back(AnimalSegment());
 
 }
 
 
 
-std::list<Animal> animals;
-std::string exampleAnimal = std::string("  ");
-unsigned int animalCursorFrame = 0;
+std::string exampleAnimal = std::string("c.c.c.c.");
+unsigned int animalCursorFrame = FRAME_A;
 unsigned int animalCursorString = 0;
 unsigned int animalCursorSegmentRadius = 10;
+float animalCursorSegmentAngle = 0.0f;
+unsigned int animalCursor = 0;
 unsigned int animalCursorLegThickness = 1;
 unsigned int animalCursorLegLength = 10;
-
 Color 		 animalCursorColor = Color(0.5f, 0.5f, 0.5f, 1.0f);
+unsigned int animalCursorSegmentNumber = 0;
+float animalCursorEnergyDebt = 0.0f;
 
 // return 0 to continue drawing sequence, return 1 to break sequence by one level.
-int drawAnimalFromChar (Animal* a)
+int drawAnimalFromChar (unsigned int i)
 {
-	char c = 'c';
 
+	if (seedGrid[i].parentIdentity < animals.size() )
+	{
+		Animal * a = &(animals[seedGrid[i].parentIdentity]);
 
-	switch (c)
-	{
-	case 's':
-	{
-		// sequence
-		return 0;
-		break;
-	}
-	case ' ':
-	{
-		// break sequence
-		return -1;
-		break;
-	}
-	case 'c':
-	{
-		// body segment part
+		printf("i %u, id %u, nani %lu\n", i, seedGrid[i].parentIdentity, animals.size() );
 
+		if (animalCursorString > seedGrid[i].genes.length()) {return -1;}
 
-		// raster a circle
-		unsigned int radius = animalCursorSegmentRadius;
-		int drawingAreaLowerX = -radius;
-		int drawingAreaLowerY = -radius;
-		int drawingAreaUpperX = +radius;
-		int drawingAreaUpperY = +radius;
-		for ( int i = drawingAreaLowerX; i < drawingAreaUpperX; ++i)
+		if (animalCursorSegmentNumber >= a->segments.size()) {return -1;}
+
+		char c = seedGrid[i].genes[animalCursorString];
+
+		switch (c)
 		{
-			for ( int j = drawingAreaLowerY; j < drawingAreaUpperY; ++j)
+		case 's':
+		{
+#ifdef ANIMAL_DRAWING_READOUT
+			printf("sequence\n");
+#endif
+			animalCursorString++;
+			// sequence
+			return 0;
+			break;
+		}
+		case ' ':
+		{
+#ifdef ANIMAL_DRAWING_READOUT
+			printf("break\n");
+#endif
+			animalCursorString++;
+			// break sequence
+			return -1;
+			break;
+		}
+		case '.':
+		{
+#ifdef ANIMAL_DRAWING_READOUT
+			printf("break sequence and go to next segment\n");
+#endif
+			animalCursorString++;
+			// break sequence
+
+			a->segments.push_back(AnimalSegment());
+
+			animalCursorSegmentNumber++;
+			return -1;
+			break;
+		}
+		case 'c':
+		{
+			animalCursorString++;
+			// body segment part
+
+#ifdef ANIMAL_DRAWING_READOUT
+			printf("draw a circle\n");
+#endif
+
+
+			// raster a circle
+			unsigned int radius = animalCursorSegmentRadius;
+			int drawingAreaLowerX = -radius;
+			int drawingAreaLowerY = -radius;
+			int drawingAreaUpperX = +radius;
+			int drawingAreaUpperY = +radius;
+			for ( int k = drawingAreaLowerX; k < drawingAreaUpperX; ++k)
 			{
-				if (  magnitude_int (  i , j )  < radius )
+				for ( int j = drawingAreaLowerY; j < drawingAreaUpperY; ++j)
 				{
+					if (  magnitude_int (  k , j )  < radius )
+					{
 
-					unsigned int pixel = (j * sizeX) + i;
+						unsigned int pixel = animalCursor + ((j * sizeX) + k);
 
-					a->frameA.push_back( AnimalParticle(pixel  , animalCursorColor ));
+						if (animalCursorFrame == FRAME_A)
+						{
+							a->segments[animalCursorSegmentNumber].frameA.push_back( AnimalParticle(pixel  , animalCursorColor ));
+						}
+						else if (animalCursorFrame == FRAME_B)
+						{
+							a->segments[animalCursorSegmentNumber].frameB.push_back( AnimalParticle(pixel  , animalCursorColor ));
+						}
+						else if (animalCursorFrame == FRAME_C)
+						{
+							a->segments[animalCursorSegmentNumber].frameC.push_back( AnimalParticle(pixel  , animalCursorColor ));
+						}
+
+						animalCursorEnergyDebt += 1.0f;
+					}
 				}
 			}
+
+
+
+			int shiftX = animalCursorSegmentRadius * cos(animalCursorSegmentAngle);
+			int shiftY = animalCursorSegmentRadius * sin(animalCursorSegmentAngle);
+			int shiftI = ((shiftY * sizeX) + shiftX);
+
+			animalCursor += shiftI;
+
+
+
+			return 0;
+			break;
+		}
+		case 'l':
+		{
+			animalCursorString++;
+#ifdef ANIMAL_DRAWING_READOUT
+			printf("draw a limb\n");
+#endif
+			// limb
+			return 0;
+			break;
+		}
+		default:
+		{
+			animalCursorString++;
+			break;
+		}
 		}
 
-
-
-
-		return 0;
-		break;
 	}
-	case 'l':
+	else
 	{
-		// limb
-		return 0;
-		break;
-	}
+		return -1;
 	}
 	return 0;
 }
@@ -388,15 +476,54 @@ int drawAnimalFromChar (Animal* a)
 // given an animal seed at position i (the method by which they are transported and reproduced), turn it into a complete animal
 void drawAnimalFromSeed(unsigned int i)
 {
+	// printf("gluuuuuugh\n");
+
+
+	animalCursorFrame = FRAME_A;
+	animalCursorString = 0;
+	animalCursorSegmentRadius = 10;
+	animalCursorSegmentAngle = 0.0f;
+	animalCursor = 0;
+	animalCursorLegThickness = 1;
+	animalCursorLegLength = 10;
+	animalCursorColor = Color(0.5f, 0.5f, 0.5f, 1.0f);
+	animalCursorSegmentNumber = 0;
+	animalCursorEnergyDebt = 0.0f;
+
+// 	std::vector<Animal>::iterator a;
+// 	for (a = animals.begin(); a !=  animals.end(); ++a)
+// 	{
+// //
+// 		if (a->identity == seedGrid[i].parentIdentity)
+// 		{
+
+
+	if (seedGrid[i].parentIdentity < animals.size() && seedGrid[i].stage == STAGE_ANIMAL)
+	{
+		Animal * a = &(animals[seedGrid[i].parentIdentity]);
+		printf("seedGrid[i].parentIdentity %u \n", seedGrid[i].parentIdentity);
+
+		while ( 1)
+		{
+			if (drawAnimalFromChar(i) < 0 )
+			{
+				break;
+
+			}
+		}
+
+		a->reproductionCost = animalCursorEnergyDebt;
+		a->energy = 0; //a->reproductionCost * -1;
+
+		// break;
+
+	}
 
 
 
-
-
-	Animal newAnimal = Animal(i);
-	animals.push_back(newAnimal);
-	drawAnimalFromChar( &(animals.back()) );
 }
+
+
 
 
 
@@ -415,11 +542,67 @@ void drawAnimalFromSeed(unsigned int i)
 // 	}
 // }
 
-
-void setAnimalSpritePixel ( AnimalParticle p, unsigned int i )
+void setSeedParticle( std::string genes, unsigned int parentIdentity, float energyDebt, unsigned int i)
 {
-	unsigned int j_offset = ((i + p.localPosition) * numberOfFieldsPerVertex) ;
-	memcpy( &lifeColorGridB[ j_offset], 	&(p.color) , 	sizeof(Color) );
+	seedGrid[i].genes = genes;
+	seedGrid[i].parentIdentity = parentIdentity;
+	seedGrid[i].stage = STAGE_BUD;
+	seedGrid[i].energy = energyDebt;
+
+#ifdef PLANT_DRAWING_READOUT
+	printf("seed with energy debt %f \n", energyDebt);
+#endif
+
+	memcpy( (&seedColorGrid[i * numberOfFieldsPerVertex]) ,  &(cursor_seedColor),  sizeof(Color) );
+}
+
+void setPhoton(  unsigned int i)
+{
+	seedGrid[i].stage = STAGE_PHOTON;
+	memcpy( (&seedColorGrid[i * numberOfFieldsPerVertex]) ,  &(color_white_clear),  sizeof(Color) );
+}
+
+void clearSeedParticle( unsigned int i)
+{
+	seedGrid[i].stage = 0x00;
+	seedGrid[i].parentIdentity = 0x00;
+	seedGrid[i].energy = 0.0f;
+	seedGrid[i].genes = std::string("");
+	memset( &(seedColorGrid[ i * numberOfFieldsPerVertex ]) , 0x00, 16 );
+}
+
+void swapSeedParticle(unsigned int a, unsigned int b)
+{
+	SeedParticle tempSeed = seedGrid[b];
+	seedGrid[b] = seedGrid[a];
+	seedGrid[a] = tempSeed;
+	float temp_color[4];
+	unsigned int a_offset = (a * numberOfFieldsPerVertex) ;
+	unsigned int b_offset = (b * numberOfFieldsPerVertex) ;
+	memcpy( temp_color, 				&seedColorGrid[ b_offset ] , 	sizeof(Color) ); // 4x floats of 4 bytes each
+	memcpy( &seedColorGrid[ b_offset], 	&seedColorGrid[ a_offset] , 	sizeof(Color) );
+	memcpy( &seedColorGrid[ a_offset ], temp_color, 					sizeof(Color) );
+}
+
+void setAnimalSpritePixel ( Animal * a, AnimalParticle p, unsigned int i )
+{
+	unsigned int j_offset = (i + p.localPosition) ;
+	unsigned int j__color_offset = (j_offset * numberOfFieldsPerVertex) ;
+	// printf("j_offset %u\n", j_offset);
+
+	if (seedGrid[j_offset].stage == STAGE_BUD || seedGrid[j_offset].stage == STAGE_FRUIT ||  seedGrid[j_offset].stage == STAGE_SEED )
+	{
+		a->energy += 10.0f ;//seedGrid[j_offset].energy;
+		// seedGrid[j_offset].energy = 0.0f;
+
+		printf("fed animal. Energy %f, reproduces at %f\n", a->energy, a->reproductionCost);
+
+		// if (seedGrid[j_offset].stage == STAGE_FRUIT) {
+		clearSeedParticle(j_offset);
+		// }
+	}
+
+	memcpy( &lifeColorGridB[ j__color_offset], 	&(p.color) , 	sizeof(Color) );
 }
 
 
@@ -441,20 +624,115 @@ void clearAnimalSpritePixel(unsigned int i)
 }
 
 
+
+
+void setAnimal(unsigned int i)
+{
+	seedGrid[i].genes = exampleAnimal;
+	// seedGrid[i].parentIdentity = 0x00;
+	seedGrid[i].stage = STAGE_ANIMAL;
+	seedGrid[i].energy = 0.0f;
+
+
+	Animal newAnimal = Animal();
+	animals.push_back(newAnimal);
+	seedGrid[i].parentIdentity = animals.back().identity;
+
+#ifdef PLANT_DRAWING_READOUT
+	printf("seed with energy debt %f \n", energyDebt);
+#endif
+
+	memcpy( (&seedColorGrid[i * numberOfFieldsPerVertex]) ,  &(color_brightred),  sizeof(Color) );
+
+
+
+	drawAnimalFromSeed(i);
+
+
+}
+
+void incrementAnimalSegmentPositions (Animal * a, unsigned int i)
+{
+	// set the position of the 0th segment to the new index, and everyone elses position is shifted forward by 1.
+	a->segments[0].position = i;
+
+	unsigned int lastPosition = a->segments[ (a->segments.size() - 1) ].position;
+
+	for (int j = 1; j < a->segments.size(); ++j)
+	{
+		a->segments[j].position = a->segments[j - 1].position;
+	}
+
+	if (a->energy > a->reproductionCost)
+	{
+
+
+		// find a neighbour to place the child.
+
+		unsigned int squareBelow = i - sizeX;
+		unsigned int squareAbove = i + sizeX;
+		unsigned int neighbours[] =
+		{
+			squareBelow - 1,
+			squareBelow,
+			squareBelow + 1,
+			i - 1,
+			i + 1,
+			squareAbove - 1,
+			squareAbove,
+			squareAbove + 1
+		};
+		unsigned int nSolidNeighbours = 0;
+		for (unsigned int j = 0; j < 8; ++j)
+		{
+
+			if (grid[neighbours[j]].phase == PHASE_VACUUM || grid[neighbours[j]].phase == PHASE_GAS )
+			{
+				// nSolidNeighbours++;
+				printf("animal reproduced\n");
+				setAnimal( neighbours[j]);
+				a->energy = 0.0f;
+				break;
+			}
+
+		}
+
+
+	}
+}
+
+
 void updateAnimalDrawing(unsigned int i)
 {
-	std::list<Animal>::iterator a;
-	for (a = animals.begin(); a !=  animals.end(); ++a)
+	// std::vector<Animal>::iterator a;
+	// for (a = animals.begin(); a !=  animals.end(); ++a)
+	// {
+
+	if (seedGrid[i].parentIdentity < animals.size())
 	{
-		if (a->identity == seedGrid[i].parentIdentity)
+		Animal * a = &(animals[seedGrid[i].parentIdentity]);
+
+		// if (a->identity == seedGrid[i].parentIdentity)
+		// {
+		// a->position = i;
+
+		incrementAnimalSegmentPositions ( a, i);
+
+
+		std::vector<AnimalSegment>::iterator s;
+
+		for (s = a->segments.begin(); s !=  a->segments.end(); ++s)
 		{
-			std::list<AnimalParticle>::iterator p;
-			for (p = a->frameA.begin(); p !=  a->frameA.end(); ++p)
+			std::vector<AnimalParticle>::iterator p;
+
+			for (p = s->frameA.begin(); p !=  s->frameA.end(); ++p)
 			{
-				setAnimalSpritePixel(*p, i);
+
+				setAnimalSpritePixel( a, *p, i);
 			}
 		}
 	}
+	// }
 }
 
 
@@ -706,64 +984,8 @@ void setInsect( unsigned int i, unsigned int bugType )
 
 }
 
-void setSeedParticle( std::string genes, unsigned int parentIdentity, float energyDebt, unsigned int i)
-{
-	seedGrid[i].genes = genes;
-	seedGrid[i].parentIdentity = parentIdentity;
-	seedGrid[i].stage = STAGE_BUD;
-	seedGrid[i].energy = energyDebt;
-
-#ifdef PLANT_DRAWING_READOUT
-	printf("seed with energy debt %f \n", energyDebt);
-#endif
-
-	memcpy( (&seedColorGrid[i * numberOfFieldsPerVertex]) ,  &(cursor_seedColor),  sizeof(Color) );
-}
-
-void setPhoton(  unsigned int i)
-{
-	seedGrid[i].stage = STAGE_PHOTON;
-	memcpy( (&seedColorGrid[i * numberOfFieldsPerVertex]) ,  &(color_white_clear),  sizeof(Color) );
-}
-
-void clearSeedParticle( unsigned int i)
-{
-	seedGrid[i].stage = 0x00;
-	seedGrid[i].parentIdentity = 0x00;
-	seedGrid[i].energy = 0.0f;
-	seedGrid[i].genes = std::string("");
-	memset( &(seedColorGrid[ i * numberOfFieldsPerVertex ]) , 0x00, 16 );
-}
-
-void swapSeedParticle(unsigned int a, unsigned int b)
-{
-	SeedParticle tempSeed = seedGrid[b];
-	seedGrid[b] = seedGrid[a];
-	seedGrid[a] = tempSeed;
-	float temp_color[4];
-	unsigned int a_offset = (a * numberOfFieldsPerVertex) ;
-	unsigned int b_offset = (b * numberOfFieldsPerVertex) ;
-	memcpy( temp_color, 				&seedColorGrid[ b_offset ] , 	sizeof(Color) ); // 4x floats of 4 bytes each
-	memcpy( &seedColorGrid[ b_offset], 	&seedColorGrid[ a_offset] , 	sizeof(Color) );
-	memcpy( &seedColorGrid[ a_offset ], temp_color, 					sizeof(Color) );
-}
 
 
-void setAnimal(unsigned int i)
-{
-	seedGrid[i].genes = exampleAnimal;
-	seedGrid[i].parentIdentity = 0x00;
-	seedGrid[i].stage = STAGE_ANIMAL;
-	seedGrid[i].energy = 0.0f;
-
-#ifdef PLANT_DRAWING_READOUT
-	printf("seed with energy debt %f \n", energyDebt);
-#endif
-
-	memcpy( (&seedColorGrid[i * numberOfFieldsPerVertex]) ,  &(color_brightred),  sizeof(Color) );
-
-
-}
 
 
 
@@ -960,14 +1182,13 @@ void initialize ()
 			// }
 		}
 
-		if (x > 500 && x < 600 && y == 100)
+		if (x >  500 && y == 100)
 		{
 
 			// setSeedParticle(exampleSentence, newIdentity() , 0, i);
 			// seedGrid[i].stage = STAGE_FRUIT;
 
 			setAnimal( i);
-			drawAnimalFromSeed(i);
 
 		}
 	}
@@ -1590,7 +1811,7 @@ void thread_graphics()
 		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
 
 		postDraw();
-
+		clearColorGridB();
 
 	}
 
@@ -1720,8 +1941,12 @@ int drawCharacter ( std::string genes , unsigned int identity)
 		while (!numberModifier) {	numberModifier = alphanumeric( genes[cursor_string] ); cursor_string++; if (cursor_string > genesize) {return -1;} }
 
 		cursor_energySource = numberModifier % 4; // or however many there are (plus one);
-		printf("set energy source to %u\n", cursor_energySource);
 
+
+
+#ifdef PLANT_DRAWING_READOUT
+		printf("set energy source to %u\n", cursor_energySource);
+#endif
 		break;
 
 
@@ -2121,7 +2346,12 @@ int drawCharacter ( std::string genes , unsigned int identity)
 			if ( i < totalSize)
 			{
 				setLifeParticle(  genes, identity, i, it->color, it->energySource);
-				clearSeedParticle(i);
+
+				if (seedGrid[i].stage != STAGE_ANIMAL)
+				{
+					clearSeedParticle(i);
+				}
+
 				energyDebtSoFar -= 1.0f;
 			}
 		}
@@ -2183,7 +2413,7 @@ int drawCharacter ( std::string genes , unsigned int identity)
 				setLifeParticle(  genes, identity, i, it->color, it->energySource);
 				energyDebtSoFar -= 1.0f;
 
-				if (seedGrid[i].stage != STAGE_FRUIT)
+				if (seedGrid[i].stage != STAGE_FRUIT && seedGrid[i].stage != STAGE_ANIMAL)
 				{
 					clearSeedParticle(i);
 				}
@@ -2257,7 +2487,7 @@ int drawCharacter ( std::string genes , unsigned int identity)
 				setLifeParticle(  genes, identity, i, it->color, it->energySource);
 				energyDebtSoFar -= 1.0f;
 
-				if (seedGrid[i].stage != STAGE_FRUIT)
+				if (seedGrid[i].stage != STAGE_FRUIT && seedGrid[i].stage != STAGE_ANIMAL)
 				{
 					clearSeedParticle(i);
 				}
@@ -2669,7 +2899,6 @@ void thread_plantDrawing()
 
 
 
-
 void thread_seeds()
 {
 
@@ -2686,7 +2915,6 @@ void thread_seeds()
 	// }
 
 
-	clearColorGridB(); // color gridB is used for animal pictures and is repopulated during this thread.
 
 	for (unsigned int i = (sizeX + 1); i < (totalSize - (sizeX + 1)); ++i)
 	{
@@ -2748,8 +2976,6 @@ void thread_seeds()
 		if (seedGrid[i].stage == STAGE_ANIMAL)
 		{
 
-
-
 			updateAnimalDrawing(i);
 
 
@@ -2771,47 +2997,52 @@ void thread_seeds()
 				i - 1,
 			};
 
+
 			bool spentTurn = false;
-			unsigned int prevNeighbourPhase = PHASE_NULL;
-			for (unsigned int k = 0; k < 8; ++k)
+
+			if (extremelyFastNumberFromZeroTo(animals[seedGrid[i].parentIdentity].reach) == 0)
 			{
-				if (k == 0) {prevNeighbourPhase = grid[neighbours[k]].phase; }
-
-				if (grid[neighbours[k]].phase == PHASE_VACUUM || grid[neighbours[k]].phase == PHASE_GAS )
+				unsigned int prevNeighbourPhase = PHASE_NULL;
+				for (unsigned int k = 0; k < 8; ++k)
 				{
-					// find a neighbour that is the edge of a solid surface.
-					if (prevNeighbourPhase == PHASE_SOLID || prevNeighbourPhase == PHASE_POWDER)
+					if (k == 0) {prevNeighbourPhase = grid[neighbours[k]].phase; }
+
+					if (grid[neighbours[k]].phase == PHASE_VACUUM || grid[neighbours[k]].phase == PHASE_GAS )
 					{
+						// find a neighbour that is the edge of a solid surface.
+						if (prevNeighbourPhase == PHASE_SOLID || prevNeighbourPhase == PHASE_POWDER)
+						{
 
+							swapSeedParticle( i, neighbours[k] );
 
-						swapSeedParticle( i, neighbours[k] );
-						spentTurn = true;
-						break;
+							spentTurn = true;
+							break;
+						}
 					}
+					prevNeighbourPhase = grid[neighbours[k]].phase;
 				}
-				prevNeighbourPhase = grid[neighbours[k]].phase;
-			}
 
-			if (spentTurn) {continue;} // only take one action per turn.
+				if (spentTurn) {continue;} // only take one action per turn.
 
-			// printf("spolmein\n");
+				// printf("spolmein\n");
 
-			// if you couldn't go forward, walk back the other way.
-			prevNeighbourPhase = PHASE_NULL;
-			for ( int k = 7; k >= 0; --k)
-			{
-				if (k == 7) {prevNeighbourPhase = grid[neighbours[k]].phase; }
-				if (grid[neighbours[k]].phase == PHASE_VACUUM || grid[neighbours[k]].phase == PHASE_GAS )
+				// if you couldn't go forward, walk back the other way.
+				prevNeighbourPhase = PHASE_NULL;
+				for ( int k = 7; k >= 0; --k)
 				{
-					// find a neighbour that is the edge of a solid surface.
-					if (prevNeighbourPhase == PHASE_SOLID || prevNeighbourPhase == PHASE_POWDER)
+					if (k == 7) {prevNeighbourPhase = grid[neighbours[k]].phase; }
+					if (grid[neighbours[k]].phase == PHASE_VACUUM || grid[neighbours[k]].phase == PHASE_GAS )
 					{
-						swapSeedParticle( i, neighbours[k] );
-						spentTurn = true;
-						break;
+						// find a neighbour that is the edge of a solid surface.
+						if (prevNeighbourPhase == PHASE_SOLID || prevNeighbourPhase == PHASE_POWDER)
+						{
+							swapSeedParticle( i, neighbours[k] );
+							spentTurn = true;
+							break;
+						}
 					}
+					prevNeighbourPhase = grid[neighbours[k]].phase;
 				}
-				prevNeighbourPhase = grid[neighbours[k]].phase;
 			}
 
 			if (spentTurn) {continue;} // only take one action per turn.
