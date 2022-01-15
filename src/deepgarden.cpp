@@ -339,6 +339,86 @@ Color 		 animalCursorColor = Color(0.5f, 0.5f, 0.5f, 1.0f);
 unsigned int animalCursorSegmentNumber = 0;
 float animalCursorEnergyDebt = 0.0f;
 
+
+
+
+
+
+
+void recursiveFill (AnimalSegment * s,  int pixel)
+{
+	 int squareBelow = pixel - sizeX;
+	 int squareAbove = pixel + sizeX;
+	 int neighbours[] =
+	{
+		squareBelow - 1,
+		squareBelow,
+		squareBelow + 1,
+		pixel - 1,
+		pixel + 1,
+		squareAbove - 1,
+		squareAbove,
+		squareAbove + 1
+	};
+
+	for (int i = 0; i < 8; ++i)
+	{
+		bool alreadyFilled = false;
+		std::vector<AnimalParticle>::iterator p;
+		for (p = s->frameA.begin(); p !=  s->frameA.end(); ++p)
+		{
+			if (p->localPosition == neighbours[i])
+			{
+				alreadyFilled = true;
+
+			}
+		}
+		if (!alreadyFilled)
+		{
+			 recursiveFill ( s, neighbours[i]);
+		}
+	}
+}
+
+
+
+
+void fillSegmentOutline(AnimalSegment * s)
+{
+
+
+// iterate through the pixels in the image in horizontal scans.
+
+	// if you pass through an existing line, start filling.
+	// if you pass through again, stop filling.
+
+
+	int fillradius = animalCursorSegmentRadius;
+	int drawingAreaLowerX = -fillradius;
+	int drawingAreaLowerY = -fillradius;
+	int drawingAreaUpperX = +fillradius;
+	int drawingAreaUpperY = +fillradius;
+	// for ( int k = drawingAreaLowerX; k < drawingAreaUpperX; ++k)
+	// {
+	// 	for ( int j = drawingAreaLowerY; j < drawingAreaUpperY; ++j)
+	// 	{
+
+
+	 recursiveFill (s, 0);
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
 // return 0 to continue drawing sequence, return 1 to break sequence by one level.
 int drawAnimalFromChar (unsigned int i)
 {
@@ -1182,7 +1262,7 @@ void initialize ()
 			// }
 		}
 
-		if (x >  500 && y == 100)
+		if (x ==  500 && y == 100)
 		{
 
 			// setSeedParticle(exampleSentence, newIdentity() , 0, i);
