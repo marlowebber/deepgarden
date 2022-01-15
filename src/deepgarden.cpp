@@ -8,10 +8,11 @@
 
 #include "main.h"
 
-#define THREAD_TIMING
-#define RENDERING_THREADS 4
+// #define THREAD_TIMING
 // #define PLANT_DRAWING_READOUT 1
 // #define ANIMAL_DRAWING_READOUT 1
+
+#define RENDERING_THREADS 4
 
 const unsigned int totalSize = sizeX * sizeY;
 const unsigned int numberOfFieldsPerVertex = 6; /*  R, G, B, A, X, Y  */
@@ -27,9 +28,7 @@ const Color color_purple     		= Color( 0.8f, 0.0f, 0.8f, 1.0f );
 const Color color_brightred			= Color( 1.0f, 0.1f, 0.0f, 1.0f);
 const Color color_clear     		= Color( 0.0f, 0.0f, 0.0f, 0.0f );
 
-
 const Color color_defaultSeedColor  = Color( 0.75f, 0.35f, 0.1f, 1.0f );
-
 const Color color_defaultColor     	= Color( 0.35f, 0.35f, 0.35f, 1.0f );
 
 
@@ -55,17 +54,10 @@ std::string plant_ParbasarbTree = std::string( "rgggbuxuyuzu. lzeeeflaf  " );
 std::string plant_LardGrass = std::string( "rgggbuxuyuzu. oiilfflbflbf  " );
 
 
-
-//int* p = new int[10];
-// std::memset(p, 0, sizeof *p * 10);
-
 float * colorGrid = new float[totalSize * numberOfFieldsPerVertex ];
 float * lifeColorGrid  	= new float[totalSize * numberOfFieldsPerVertex ];
 float * lifeColorGridB 	= new float[totalSize * numberOfFieldsPerVertex ];
 float * seedColorGrid  	= new float[totalSize * numberOfFieldsPerVertex];
-
-
-// int wind = 0;
 
 
 vec_i2 wind = vec_i2(0, 0);
@@ -111,6 +103,11 @@ std::list<unsigned int> identities;
 std::list<vec_u2> v_seeds;
 
 bool showEnergyGrid = false;
+
+
+
+unsigned int animationChangeCount = 0;
+unsigned int animationGlobalFrame = FRAME_A;
 
 unsigned int nGerminatedSeeds = 0;
 unsigned int germinatedSeedsLimit = 1000;
@@ -270,12 +267,12 @@ std::list<ProposedLifeParticle> v_extrudedParticles;
 
 struct AnimalParticle
 {
-	unsigned int localPosition = 0;
+	int localPosition = 0;
 	Color color = Color(1.0f, 1.0f, 1.0f, 1.0f);
-	AnimalParticle(unsigned int localPosition, Color color);
+	AnimalParticle( int localPosition, Color color);
 };
 
-AnimalParticle::AnimalParticle( unsigned int localPosition, Color color)
+AnimalParticle::AnimalParticle(  int localPosition, Color color)
 {
 	this->localPosition = localPosition;
 	this->color = color ;// Color(1.0f, 1.0f, 1.0f, 1.0f);
@@ -300,7 +297,6 @@ AnimalSegment::AnimalSegment()
 
 struct Animal
 {
-	// std::string genes; // animal is simply expression of seedgrid pixel which holds genetic information.
 	float energy;
 	float reproductionCost;
 	unsigned int reach;
@@ -310,7 +306,6 @@ struct Animal
 
 	Animal();
 };
-
 
 std::vector<Animal> animals;
 
@@ -327,95 +322,80 @@ Animal::Animal()
 
 
 
-std::string exampleAnimal = std::string("c.c.c.c.");
+
+// THE EXTREMELY FAST LINE ALGORITHM Variation E (Addition Fixed Point PreCalc Small Display)
+// Small Display (256x256) resolution.
+std::list<ProposedLifeParticle> EFLA_E(vec_i2 start, vec_i2 end)
+{
+	int x  = start.x;
+	int y  = start.y;
+	int x2 = end.x;
+	int y2 = end.y;
+
+	std::list<ProposedLifeParticle> v;
+
+	bool yLonger = false;
+	int shortLen = y2 - y;
+	int longLen = x2 - x;
+	if (abs(shortLen) > abs(longLen))
+	{
+		int swap = shortLen;
+		shortLen = longLen;
+		longLen = swap;
+		yLonger = true;
+	}
+	int decInc;
+	if (longLen == 0) decInc = 0;
+	else decInc = (shortLen << 8) / longLen;
+
+	if (yLonger) {
+		if (longLen > 0) {
+			longLen += y;
+			for (int j = 0x80 + (x << 8); y <= longLen; ++y) {
+				v.push_back(   ProposedLifeParticle(cursor_color, vec_u2(j >> 8, y), cursor_energySource)   );
+				j += decInc;
+			}
+			return v;
+		}
+		longLen += y;
+		for (int j = 0x80 + (x << 8); y >= longLen; --y) {
+			v.push_back( ProposedLifeParticle(cursor_color, vec_u2(j >> 8, y), cursor_energySource ));
+			j -= decInc;
+		}
+		return v;
+	}
+
+	if (longLen > 0) {
+		longLen += x;
+		for (int j = 0x80 + (y << 8); x <= longLen; ++x) {
+			v.push_back( ProposedLifeParticle(cursor_color, vec_u2(x, j >> 8) , cursor_energySource) );
+			j += decInc;
+		}
+		return v;
+	}
+	longLen += x;
+	for (int j = 0x80 + (y << 8); x >= longLen; --x) {
+		v.push_back( ProposedLifeParticle(cursor_color, vec_u2(x, j >> 8) , cursor_energySource));
+		j -= decInc;
+	}
+	return v;
+}
+
+
+std::string exampleAnimal = std::string("cl.c.c.c.");
 unsigned int animalCursorFrame = FRAME_A;
 unsigned int animalCursorString = 0;
-unsigned int animalCursorSegmentRadius = 10;
+int animalCursorSegmentRadius = 5;
 float animalCursorSegmentAngle = 0.0f;
 unsigned int animalCursor = 0;
-unsigned int animalCursorLegThickness = 1;
-unsigned int animalCursorLegLength = 10;
+int animalCursorLegThickness = 1;
+int animalCursorLegLength = 10;
 Color 		 animalCursorColor = Color(0.5f, 0.5f, 0.5f, 1.0f);
 unsigned int animalCursorSegmentNumber = 0;
 float animalCursorEnergyDebt = 0.0f;
 
-
-
-
-
-
-
-void recursiveFill (AnimalSegment * s,  int pixel)
-{
-	 int squareBelow = pixel - sizeX;
-	 int squareAbove = pixel + sizeX;
-	 int neighbours[] =
-	{
-		squareBelow - 1,
-		squareBelow,
-		squareBelow + 1,
-		pixel - 1,
-		pixel + 1,
-		squareAbove - 1,
-		squareAbove,
-		squareAbove + 1
-	};
-
-	for (int i = 0; i < 8; ++i)
-	{
-		bool alreadyFilled = false;
-		std::vector<AnimalParticle>::iterator p;
-		for (p = s->frameA.begin(); p !=  s->frameA.end(); ++p)
-		{
-			if (p->localPosition == neighbours[i])
-			{
-				alreadyFilled = true;
-
-			}
-		}
-		if (!alreadyFilled)
-		{
-			 recursiveFill ( s, neighbours[i]);
-		}
-	}
-}
-
-
-
-
-void fillSegmentOutline(AnimalSegment * s)
-{
-
-
-// iterate through the pixels in the image in horizontal scans.
-
-	// if you pass through an existing line, start filling.
-	// if you pass through again, stop filling.
-
-
-	int fillradius = animalCursorSegmentRadius;
-	int drawingAreaLowerX = -fillradius;
-	int drawingAreaLowerY = -fillradius;
-	int drawingAreaUpperX = +fillradius;
-	int drawingAreaUpperY = +fillradius;
-	// for ( int k = drawingAreaLowerX; k < drawingAreaUpperX; ++k)
-	// {
-	// 	for ( int j = drawingAreaLowerY; j < drawingAreaUpperY; ++j)
-	// 	{
-
-
-	 recursiveFill (s, 0);
-
-
-}
-
-
-
-
-
-
-
-
+float animalCursorLimbLowerAngle = 0.0f;
+float animalCursorLimbUpperAngle = 0.0f;
 
 
 
@@ -471,6 +451,7 @@ int drawAnimalFromChar (unsigned int i)
 			return -1;
 			break;
 		}
+
 		case 'c':
 		{
 			animalCursorString++;
@@ -482,32 +463,32 @@ int drawAnimalFromChar (unsigned int i)
 
 
 			// raster a circle
-			unsigned int radius = animalCursorSegmentRadius;
-			int drawingAreaLowerX = -radius;
-			int drawingAreaLowerY = -radius;
-			int drawingAreaUpperX = +radius;
-			int drawingAreaUpperY = +radius;
+			// int radius = animalCursorSegmentRadius;
+			int drawingAreaLowerX = -animalCursorSegmentRadius;
+			int drawingAreaLowerY = -animalCursorSegmentRadius;
+			int drawingAreaUpperX = +animalCursorSegmentRadius;
+			int drawingAreaUpperY = +animalCursorSegmentRadius;
 			for ( int k = drawingAreaLowerX; k < drawingAreaUpperX; ++k)
 			{
 				for ( int j = drawingAreaLowerY; j < drawingAreaUpperY; ++j)
 				{
-					if (  magnitude_int (  k , j )  < radius )
+					if (  magnitude_int (  k , j )  < animalCursorSegmentRadius )
 					{
 
 						unsigned int pixel = animalCursor + ((j * sizeX) + k);
 
-						if (animalCursorFrame == FRAME_A)
-						{
+						// if (animalCursorFrame == FRAME_A)
+						// {
 							a->segments[animalCursorSegmentNumber].frameA.push_back( AnimalParticle(pixel  , animalCursorColor ));
-						}
-						else if (animalCursorFrame == FRAME_B)
-						{
+						// }
+						// else if (animalCursorFrame == FRAME_B)
+						// {
 							a->segments[animalCursorSegmentNumber].frameB.push_back( AnimalParticle(pixel  , animalCursorColor ));
-						}
-						else if (animalCursorFrame == FRAME_C)
-						{
+						// }
+						// else if (animalCursorFrame == FRAME_C)
+						// {
 							a->segments[animalCursorSegmentNumber].frameC.push_back( AnimalParticle(pixel  , animalCursorColor ));
-						}
+						// }
 
 						animalCursorEnergyDebt += 1.0f;
 					}
@@ -534,6 +515,79 @@ int drawAnimalFromChar (unsigned int i)
 			printf("draw a limb\n");
 #endif
 			// limb
+
+
+
+			for (int frame = 0; frame < 3; ++frame)
+			{
+				/* code */
+
+				if (frame == 0 ) {animalCursorFrame = FRAME_A;}
+				if (frame == 1 ) {animalCursorFrame = FRAME_B;}
+				if (frame == 2 ) {animalCursorFrame = FRAME_C;}
+
+
+				// draw a line at an angle from the center of the segment
+				float limbAngle = 0.0f;
+				float limbAccumulatedAngle = 0.0f;
+
+				if (  animalCursorFrame == FRAME_A)
+				{
+					limbAngle = (0.3 * 3.1415) + (0.5 * 3.1415);
+				}
+				else if (  animalCursorFrame == FRAME_B)
+				{
+					limbAngle = (-0.3 * 3.1415) + (0.5 * 3.1415);
+				}
+
+				else if (  animalCursorFrame == FRAME_C)
+				{
+					limbAngle = (1 * 3.1415) + (0.5 * 3.1415);
+				}
+
+				limbAccumulatedAngle = limbAngle;
+				vec_i2 elbow = vec_i2(animalCursorLegLength * cos(limbAccumulatedAngle), animalCursorLegLength * sin(limbAccumulatedAngle)  );
+				limbAccumulatedAngle += limbAngle;
+				vec_i2 wrist = vec_i2( elbow.x +   ( animalCursorLegLength * cos(limbAccumulatedAngle) ) ,
+				                       elbow.y +   ( animalCursorLegLength * sin(limbAccumulatedAngle)  ));
+
+
+
+				std::list<ProposedLifeParticle> v;
+				v.splice(v.end(), EFLA_E( vec_i2(0, 0),  elbow) );
+				v.splice(v.end(), EFLA_E( elbow,		 wrist) );
+
+
+
+
+				for (std::list<ProposedLifeParticle>::iterator it = v.begin(); it != v.end(); ++it)
+				{
+					unsigned int i = (it->position.y * sizeX) + it->position.x;
+					if ( i < totalSize)
+					{
+						if (animalCursorFrame == FRAME_A)
+						{
+							a->segments[animalCursorSegmentNumber].frameA.push_back( AnimalParticle(i  , animalCursorColor ));
+						}
+						else if (animalCursorFrame == FRAME_B)
+						{
+							a->segments[animalCursorSegmentNumber].frameB.push_back( AnimalParticle(i  , animalCursorColor ));
+						}
+						else if (animalCursorFrame == FRAME_C)
+						{
+							a->segments[animalCursorSegmentNumber].frameC.push_back( AnimalParticle(i  , animalCursorColor ));
+						}
+					}
+				}
+
+
+
+
+			}
+
+
+
+
 			return 0;
 			break;
 		}
@@ -561,7 +615,7 @@ void drawAnimalFromSeed(unsigned int i)
 
 	animalCursorFrame = FRAME_A;
 	animalCursorString = 0;
-	animalCursorSegmentRadius = 10;
+	animalCursorSegmentRadius = 5;
 	animalCursorSegmentAngle = 0.0f;
 	animalCursor = 0;
 	animalCursorLegThickness = 1;
@@ -718,6 +772,8 @@ void setAnimal(unsigned int i)
 	animals.push_back(newAnimal);
 	seedGrid[i].parentIdentity = animals.back().identity;
 
+	animals.back().animationPhase = FRAME_A;
+
 #ifdef PLANT_DRAWING_READOUT
 	printf("seed with energy debt %f \n", energyDebt);
 #endif
@@ -805,11 +861,32 @@ void updateAnimalDrawing(unsigned int i)
 		{
 			std::vector<AnimalParticle>::iterator p;
 
-			for (p = s->frameA.begin(); p !=  s->frameA.end(); ++p)
+			if (a->animationPhase == FRAME_A)
 			{
-
-				setAnimalSpritePixel( a, *p, i);
+				for (p = s->frameA.begin(); p !=  s->frameA.end(); ++p)
+				{
+					setAnimalSpritePixel( a, *p, i);
+				}
+				a->animationPhase = animationGlobalFrame;
 			}
+			if (a->animationPhase == FRAME_B)
+			{
+				for (p = s->frameB.begin(); p !=  s->frameB.end(); ++p)
+				{
+					setAnimalSpritePixel( a, *p, i);
+				}
+				a->animationPhase = animationGlobalFrame;
+			}
+			if (a->animationPhase == FRAME_C)
+			{
+				for (p = s->frameC.begin(); p !=  s->frameC.end(); ++p)
+				{
+					setAnimalSpritePixel( a, *p, i);
+				}
+				// a->animationPhase = FRAME_A;
+			}
+
+
 		}
 	}
 	// }
@@ -1906,64 +1983,6 @@ void thread_graphics()
 #endif
 }
 
-// THE EXTREMELY FAST LINE ALGORITHM Variation E (Addition Fixed Point PreCalc Small Display)
-// Small Display (256x256) resolution.
-std::list<ProposedLifeParticle> EFLA_E(vec_u2 start, vec_u2 end)
-{
-	int x  = start.x;
-	int y  = start.y;
-	int x2 = end.x;
-	int y2 = end.y;
-
-	std::list<ProposedLifeParticle> v;
-
-	bool yLonger = false;
-	int shortLen = y2 - y;
-	int longLen = x2 - x;
-	if (abs(shortLen) > abs(longLen))
-	{
-		int swap = shortLen;
-		shortLen = longLen;
-		longLen = swap;
-		yLonger = true;
-	}
-	int decInc;
-	if (longLen == 0) decInc = 0;
-	else decInc = (shortLen << 8) / longLen;
-
-	if (yLonger) {
-		if (longLen > 0) {
-			longLen += y;
-			for (int j = 0x80 + (x << 8); y <= longLen; ++y) {
-				v.push_back(   ProposedLifeParticle(cursor_color, vec_u2(j >> 8, y), cursor_energySource)   );
-				j += decInc;
-			}
-			return v;
-		}
-		longLen += y;
-		for (int j = 0x80 + (x << 8); y >= longLen; --y) {
-			v.push_back( ProposedLifeParticle(cursor_color, vec_u2(j >> 8, y), cursor_energySource ));
-			j -= decInc;
-		}
-		return v;
-	}
-
-	if (longLen > 0) {
-		longLen += x;
-		for (int j = 0x80 + (y << 8); x <= longLen; ++x) {
-			v.push_back( ProposedLifeParticle(cursor_color, vec_u2(x, j >> 8) , cursor_energySource) );
-			j += decInc;
-		}
-		return v;
-	}
-	longLen += x;
-	for (int j = 0x80 + (y << 8); x >= longLen; --x) {
-		v.push_back( ProposedLifeParticle(cursor_color, vec_u2(x, j >> 8) , cursor_energySource));
-		j -= decInc;
-	}
-	return v;
-}
-
 int drawCharacter ( std::string genes , unsigned int identity)
 {
 
@@ -2520,18 +2539,12 @@ int drawCharacter ( std::string genes , unsigned int identity)
 
 		v.clear();
 
-
 		// rasters a line, taking into account the accumulated rotation
 		cursor_string++; if (cursor_string > genesize) {return -1;}
 
 		// set the previous x and y, which will be the start of the line
 		prevCursor_grid = cursor_grid;
-
-
 		int numberModifier = 0;
-
-		// while (!numberModifier)
-		// {
 		numberModifier = alphanumeric( genes[cursor_string] ) ;
 
 
@@ -2541,8 +2554,6 @@ int drawCharacter ( std::string genes , unsigned int identity)
 #endif
 
 		cursor_string++; if (cursor_string > genesize) {return -1;}
-
-		// numberModifier = numberModifier;
 
 		accumulatedRotation += ( RNG() - 0.5 ) * 0.1; // angle noise is not heritable, and just serves to make the world more natural-looking.
 
@@ -2555,7 +2566,7 @@ int drawCharacter ( std::string genes , unsigned int identity)
 		cursor_grid.x += deltaX;
 		cursor_grid.y += deltaY;
 
-		v.splice(v.end(), EFLA_E( prevCursor_grid, cursor_grid) );
+		v.splice(v.end(), EFLA_E( vec_i2(prevCursor_grid.x, prevCursor_grid.y), vec_i2(cursor_grid.x, cursor_grid.y)) );
 
 
 
@@ -2993,6 +3004,17 @@ void thread_seeds()
 	// 	sendLifeToBackground();
 
 	// }
+
+	if (animationChangeCount > 10)
+	{
+		if (animationGlobalFrame == FRAME_A ) {animationGlobalFrame = FRAME_B;}
+		else if (animationGlobalFrame == FRAME_B ) {animationGlobalFrame = FRAME_A;}
+		animationChangeCount = 0;
+	}
+	else
+	{
+		animationChangeCount++;
+	}
 
 
 
