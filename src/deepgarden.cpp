@@ -10,7 +10,7 @@
 
 // #define THREAD_TIMING
 // #define PLANT_DRAWING_READOUT 1
-// #define ANIMAL_DRAWING_READOUT 1
+#define ANIMAL_DRAWING_READOUT 1
 
 #define RENDERING_THREADS 4
 
@@ -383,7 +383,7 @@ std::list<ProposedLifeParticle> EFLA_E(vec_i2 start, vec_i2 end)
 }
 
 
-std::string exampleAnimal = std::string("cl.c.c.c.");
+std::string exampleAnimal = std::string("cl.cl.cl.cl.cl.cl.cl.cl.cl.cl.cl.cl.cl.cl.cl.cl.cl.cl.cl.cl.cl.");
 unsigned int animalCursorFrame = FRAME_A;
 unsigned int animalCursorString = 0;
 int animalCursorSegmentRadius = 5;
@@ -398,22 +398,22 @@ float animalCursorEnergyDebt = 0.0f;
 float animalCursorLimbLowerAngle = 0.0f;
 float animalCursorLimbUpperAngle = 0.0f;
 
-
+unsigned int animalRecursionLevel = 0;
 
 // return 0 to continue drawing sequence, return 1 to break sequence by one level.
 int drawAnimalFromChar (unsigned int i)
 {
-
+// printf("draw a limb\n");
 	if (seedGrid[i].parentIdentity < animals.size() )
 	{
 		Animal * a = &(animals[seedGrid[i].parentIdentity]);
 
-		printf("i %u, id %u, nani %lu\n", i, seedGrid[i].parentIdentity, animals.size() );
+		// printf("i %u, id %u, nani %lu\n", i, seedGrid[i].parentIdentity, animals.size() );
 
-		if (animalCursorString > seedGrid[i].genes.length()) {return -1;}
-
+		if (animalCursorString >= seedGrid[i].genes.length()) {return -1;}
 		if (animalCursorSegmentNumber >= a->segments.size()) {return -1;}
 
+		animalCursorString++;
 		char c = seedGrid[i].genes[animalCursorString];
 
 		switch (c)
@@ -423,9 +423,8 @@ int drawAnimalFromChar (unsigned int i)
 #ifdef ANIMAL_DRAWING_READOUT
 			printf("sequence\n");
 #endif
-			animalCursorString++;
+			// animalCursorString++;
 			// sequence
-			return 0;
 			break;
 		}
 		case ' ':
@@ -433,29 +432,29 @@ int drawAnimalFromChar (unsigned int i)
 #ifdef ANIMAL_DRAWING_READOUT
 			printf("break\n");
 #endif
-			animalCursorString++;
-			// break sequence
+			// animalCursorString++;
 			return -1;
+
 			break;
 		}
 		case '.':
 		{
 #ifdef ANIMAL_DRAWING_READOUT
-			printf("break sequence and go to next segment\n");
+			printf("go to new segment\n");
 #endif
-			animalCursorString++;
-			// break sequence
+			// animalCursorString++;
 
 			a->segments.push_back(AnimalSegment());
 
 			animalCursorSegmentNumber++;
-			return -1;
+
+
 			break;
 		}
 
 		case 'c':
 		{
-			animalCursorString++;
+			// animalCursorString++;
 			// body segment part
 
 #ifdef ANIMAL_DRAWING_READOUT
@@ -464,7 +463,6 @@ int drawAnimalFromChar (unsigned int i)
 
 
 			// raster a circle
-			// int radius = animalCursorSegmentRadius;
 			int drawingAreaLowerX = -animalCursorSegmentRadius;
 			int drawingAreaLowerY = -animalCursorSegmentRadius;
 			int drawingAreaUpperX = +animalCursorSegmentRadius;
@@ -478,18 +476,10 @@ int drawAnimalFromChar (unsigned int i)
 
 						unsigned int pixel = animalCursor + ((j * sizeX) + k);
 
-						// if (animalCursorFrame == FRAME_A)
-						// {
+
 						a->segments[animalCursorSegmentNumber].frameA.push_back( AnimalParticle(pixel  , animalCursorColor ));
-						// }
-						// else if (animalCursorFrame == FRAME_B)
-						// {
 						a->segments[animalCursorSegmentNumber].frameB.push_back( AnimalParticle(pixel  , animalCursorColor ));
-						// }
-						// else if (animalCursorFrame == FRAME_C)
-						// {
 						a->segments[animalCursorSegmentNumber].frameC.push_back( AnimalParticle(pixel  , animalCursorColor ));
-						// }
 
 						animalCursorEnergyDebt += 1.0f;
 					}
@@ -498,20 +488,19 @@ int drawAnimalFromChar (unsigned int i)
 
 
 
-			int shiftX = animalCursorSegmentRadius * cos(animalCursorSegmentAngle);
-			int shiftY = animalCursorSegmentRadius * sin(animalCursorSegmentAngle);
-			int shiftI = ((shiftY * sizeX) + shiftX);
+			// int shiftX = animalCursorSegmentRadius * cos(animalCursorSegmentAngle);
+			// int shiftY = animalCursorSegmentRadius * sin(animalCursorSegmentAngle);
+			// int shiftI = ((shiftY * sizeX) + shiftX);
 
-			animalCursor += shiftI;
+			// animalCursor += shiftI;
 
 
 
-			return 0;
 			break;
 		}
 		case 'l':
 		{
-			animalCursorString++;
+			// animalCursorString++;
 #ifdef ANIMAL_DRAWING_READOUT
 			printf("draw a limb\n");
 #endif
@@ -546,16 +535,24 @@ int drawAnimalFromChar (unsigned int i)
 					limbAngle = (1 * 3.1415) + (0.5 * 3.1415);
 				}
 
+
+				unsigned int x = a->segments[animalCursorSegmentNumber].position % sizeX;
+				unsigned int y = a->segments[animalCursorSegmentNumber].position / sizeX;
+
 				limbAccumulatedAngle = limbAngle;
-				vec_i2 elbow = vec_i2(animalCursorLegLength * cos(limbAccumulatedAngle), animalCursorLegLength * sin(limbAccumulatedAngle)  );
+				vec_i2 elbow = vec_i2(
+				                   x + (animalCursorLegLength * cos(limbAccumulatedAngle)),
+				                   y +  (animalCursorLegLength * sin(limbAccumulatedAngle) )
+				               );
 				limbAccumulatedAngle += limbAngle;
 				vec_i2 wrist = vec_i2( elbow.x +   ( animalCursorLegLength * cos(limbAccumulatedAngle) ) ,
-				                       elbow.y +   ( animalCursorLegLength * sin(limbAccumulatedAngle)  ));
+				                       elbow.y +   ( animalCursorLegLength * sin(limbAccumulatedAngle)  )
+				                     );
 
 
 
 				std::list<ProposedLifeParticle> v;
-				v.splice(v.end(), EFLA_E( vec_i2(0, 0),  elbow) );
+				v.splice(v.end(), EFLA_E( vec_i2(x, y),  elbow) );
 				v.splice(v.end(), EFLA_E( elbow,		 wrist) );
 
 
@@ -564,7 +561,12 @@ int drawAnimalFromChar (unsigned int i)
 				for (std::list<ProposedLifeParticle>::iterator it = v.begin(); it != v.end(); ++it)
 				{
 					unsigned int i 			 = (it->position.y * sizeX) + it->position.x;
-					unsigned int shadowIndex = ( (it->position.y-1) * sizeX) + (it->position.x);
+					unsigned int shadowIndex = ( (it->position.y - 1) * sizeX) + (it->position.x);
+
+					if (animalCursorSegmentNumber == 0 ) {animalCursorColor = color_yellow;}
+					if (animalCursorSegmentNumber == 1 ) {animalCursorColor = color_lightblue;}
+					if (animalCursorSegmentNumber == 2 ) {animalCursorColor = color_brightred;}
+
 
 					if ( i < totalSize)
 					{
@@ -573,12 +575,12 @@ int drawAnimalFromChar (unsigned int i)
 							a->segments[animalCursorSegmentNumber].frameA.push_back( AnimalParticle(i  ,		   animalCursorColor ));
 							a->segments[animalCursorSegmentNumber].frameA.push_back( AnimalParticle(shadowIndex  , color_shadow ));
 						}
-						else if (animalCursorFrame == FRAME_B)
+						if (animalCursorFrame == FRAME_B)
 						{
 							a->segments[animalCursorSegmentNumber].frameB.push_back( AnimalParticle(i  , animalCursorColor ));
 							a->segments[animalCursorSegmentNumber].frameB.push_back( AnimalParticle(shadowIndex  , color_shadow ));
 						}
-						else if (animalCursorFrame == FRAME_C)
+						if (animalCursorFrame == FRAME_C)
 						{
 							a->segments[animalCursorSegmentNumber].frameC.push_back( AnimalParticle(i  , animalCursorColor ));
 							a->segments[animalCursorSegmentNumber].frameC.push_back( AnimalParticle(shadowIndex  , color_shadow ));
@@ -614,21 +616,17 @@ int drawAnimalFromChar (unsigned int i)
 
 
 
-			return 0;
 			break;
 		}
 		default:
 		{
-			animalCursorString++;
+			// animalCursorString++;
 			break;
 		}
 		}
 
 	}
-	else
-	{
-		return -1;
-	}
+
 	return 0;
 }
 
@@ -670,7 +668,9 @@ void drawAnimalFromSeed(unsigned int i)
 				break;
 
 			}
+			if (animalCursorString >= seedGrid[i].genes.length()) {break;}
 		}
+// printf("gg");
 
 		a->reproductionCost = animalCursorEnergyDebt;
 		a->energy = 0; //a->reproductionCost * -1;
@@ -744,25 +744,32 @@ void swapSeedParticle(unsigned int a, unsigned int b)
 	memcpy( &seedColorGrid[ a_offset ], temp_color, 					sizeof(Color) );
 }
 
-void setAnimalSpritePixel ( Animal * a, AnimalParticle p, unsigned int i )
+void setAnimalSpritePixel ( Animal * a, AnimalSegment * s, AnimalParticle p, unsigned int i )
 {
-	unsigned int j_offset = (i + p.localPosition) ;
+	// printf("setAnimalSpritePixel segment pos %u\n", s->position);
+	unsigned int j_offset = (s->position + p.localPosition) ;
 	unsigned int j__color_offset = (j_offset * numberOfFieldsPerVertex) ;
 	// printf("j_offset %u\n", j_offset);
 
-	if (seedGrid[j_offset].stage == STAGE_BUD || seedGrid[j_offset].stage == STAGE_FRUIT ||  seedGrid[j_offset].stage == STAGE_SEED )
+	if (j_offset < totalSize)
 	{
-		a->energy += 10.0f ;//seedGrid[j_offset].energy;
-		// seedGrid[j_offset].energy = 0.0f;
+		if (seedGrid[j_offset].stage == STAGE_BUD || seedGrid[j_offset].stage == STAGE_FRUIT ||  seedGrid[j_offset].stage == STAGE_SEED )
+		{
+			a->energy += 10.0f ;//seedGrid[j_offset].energy;
+			// seedGrid[j_offset].energy = 0.0f;
 
-		printf("fed animal. Energy %f, reproduces at %f\n", a->energy, a->reproductionCost);
+			printf("fed animal. Energy %f, reproduces at %f\n", a->energy, a->reproductionCost);
 
-		// if (seedGrid[j_offset].stage == STAGE_FRUIT) {
-		clearSeedParticle(j_offset);
-		// }
+			// if (seedGrid[j_offset].stage == STAGE_FRUIT) {
+			clearSeedParticle(j_offset);
+			// }
+		}
+
+		memcpy( &lifeColorGridB[ j__color_offset], 	&(p.color) , 	sizeof(Color) );
+
+
 	}
 
-	memcpy( &lifeColorGridB[ j__color_offset], 	&(p.color) , 	sizeof(Color) );
 
 
 
@@ -818,15 +825,8 @@ void setAnimal(unsigned int i)
 
 void incrementAnimalSegmentPositions (Animal * a, unsigned int i)
 {
-	// set the position of the 0th segment to the new index, and everyone elses position is shifted forward by 1.
-	a->segments[0].position = i;
 
-	unsigned int lastPosition = a->segments[ (a->segments.size() - 1) ].position;
 
-	for (int j = 1; j < a->segments.size(); ++j)
-	{
-		a->segments[j].position = a->segments[j - 1].position;
-	}
 
 	if (a->energy > a->reproductionCost)
 	{
@@ -850,7 +850,6 @@ void incrementAnimalSegmentPositions (Animal * a, unsigned int i)
 		unsigned int nSolidNeighbours = 0;
 		for (unsigned int j = 0; j < 8; ++j)
 		{
-
 			if (grid[neighbours[j]].phase == PHASE_VACUUM || grid[neighbours[j]].phase == PHASE_GAS )
 			{
 				// nSolidNeighbours++;
@@ -859,20 +858,30 @@ void incrementAnimalSegmentPositions (Animal * a, unsigned int i)
 				a->energy = 0.0f;
 				break;
 			}
+		}
+	}
 
+
+	// Update animal segment positions. Only do this if the animal has actually moved (otherwise it will pile into one square).
+	if (a->segments[0].position != i)
+	{
+		// set the position of the 0th segment to the new index, and everyone elses position is shifted forward by 1.
+
+		for (int j = (a->segments.size() - 1); j > 0; --j)
+		{
+			// printf( "new segment position %u, old segment position %u\n" , a->segments[j - 1].position, a->segments[j].position );
+			a->segments[j].position = a->segments[j - 1].position;
 		}
 
+		a->segments[0].position = i;
 
 	}
+
 }
 
 
 void updateAnimalDrawing(unsigned int i)
 {
-	// std::vector<Animal>::iterator a;
-	// for (a = animals.begin(); a !=  animals.end(); ++a)
-	// {
-
 	if (seedGrid[i].parentIdentity < animals.size())
 	{
 		Animal * a = &(animals[seedGrid[i].parentIdentity]);
@@ -881,61 +890,47 @@ void updateAnimalDrawing(unsigned int i)
 		// {
 		// a->position = i;
 
-		incrementAnimalSegmentPositions ( a, i);
 
 
 		std::vector<AnimalSegment>::iterator s;
 
+		unsigned int count = 0;
 		for (s = a->segments.begin(); s !=  a->segments.end(); ++s)
 		{
+			// printf("updating segment %u\n", count);
+
+			// if (count != 1) {continue;}
+
 			std::vector<AnimalParticle>::iterator p;
 
 			if (a->animationPhase == FRAME_A)
 			{
 				for (p = s->frameA.begin(); p !=  s->frameA.end(); ++p)
 				{
-					setAnimalSpritePixel( a, *p, i);
+					setAnimalSpritePixel( a, &(*s), *p, i);
 				}
-				a->animationPhase = animationGlobalFrame;
 			}
 			if (a->animationPhase == FRAME_B)
 			{
 				for (p = s->frameB.begin(); p !=  s->frameB.end(); ++p)
 				{
-					setAnimalSpritePixel( a, *p, i);
+					setAnimalSpritePixel( a, &(*s), *p, i);
 				}
-				a->animationPhase = animationGlobalFrame;
 			}
 			if (a->animationPhase == FRAME_C)
 			{
 				for (p = s->frameC.begin(); p !=  s->frameC.end(); ++p)
 				{
-					setAnimalSpritePixel( a, *p, i);
+					setAnimalSpritePixel( a, &(*s), *p, i);
 				}
-				// a->animationPhase = FRAME_A;
 			}
-
+			count++;
 
 		}
 	}
-	// }
 }
 
 
-
-// std::string randomSentence(unsigned int length)
-// {
-
-// 	std::string s = std::string("");
-
-// 	for (int i = 0; i < length; ++i)
-// 	{
-// 		s.push_back((char)(' ' + rand() % 59));
-// 	}
-
-// 	return s;
-
-// }
 
 void mutateSentence ( std::string * genes )
 {
@@ -3034,16 +3029,16 @@ void thread_seeds()
 
 	// }
 
-	if (animationChangeCount > 10)
-	{
-		if (animationGlobalFrame == FRAME_A ) {animationGlobalFrame = FRAME_B;}
-		else if (animationGlobalFrame == FRAME_B ) {animationGlobalFrame = FRAME_A;}
-		animationChangeCount = 0;
-	}
-	else
-	{
-		animationChangeCount++;
-	}
+	// if (animationChangeCount > 10)
+	// {
+	// 	if (animationGlobalFrame == FRAME_A ) {animationGlobalFrame = FRAME_B;}
+	// 	else if (animationGlobalFrame == FRAME_B ) {animationGlobalFrame = FRAME_A;}
+	// 	animationChangeCount = 0;
+	// }
+	// else
+	// {
+	// 	animationChangeCount++;
+	// }
 
 
 
@@ -3144,6 +3139,17 @@ void thread_seeds()
 						if (prevNeighbourPhase == PHASE_SOLID || prevNeighbourPhase == PHASE_POWDER)
 						{
 
+
+							if (animals[seedGrid[i].parentIdentity].animationPhase == FRAME_A)
+							{
+								animals[seedGrid[i].parentIdentity].animationPhase = FRAME_B;
+							}
+							else {
+								animals[seedGrid[i].parentIdentity].animationPhase = FRAME_A;
+							}
+
+
+							incrementAnimalSegmentPositions ( &(animals[seedGrid[i].parentIdentity]), i);
 							swapSeedParticle( i, neighbours[k] );
 
 							spentTurn = true;
@@ -3167,6 +3173,17 @@ void thread_seeds()
 						// find a neighbour that is the edge of a solid surface.
 						if (prevNeighbourPhase == PHASE_SOLID || prevNeighbourPhase == PHASE_POWDER)
 						{
+
+							if (animals[seedGrid[i].parentIdentity].animationPhase == FRAME_A)
+							{
+								animals[seedGrid[i].parentIdentity].animationPhase = FRAME_B;
+							}
+							else {
+								animals[seedGrid[i].parentIdentity].animationPhase = FRAME_A;
+							}
+
+
+							incrementAnimalSegmentPositions ( &(animals[seedGrid[i].parentIdentity]), i);
 							swapSeedParticle( i, neighbours[k] );
 							spentTurn = true;
 							break;
@@ -3183,6 +3200,11 @@ void thread_seeds()
 			// if you couldn't move any direction, fall down a square.
 			if (grid[squareBelow].phase == PHASE_VACUUM || grid[squareBelow].phase == PHASE_GAS )
 			{
+
+				animals[seedGrid[i].parentIdentity].animationPhase = FRAME_C;
+
+
+				incrementAnimalSegmentPositions ( &(animals[seedGrid[i].parentIdentity]), i);
 				swapSeedParticle( i, squareBelow );
 			}
 		}
