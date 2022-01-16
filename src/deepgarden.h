@@ -75,6 +75,12 @@ struct Color
 #define FRAME_B 2
 #define FRAME_C 3
 
+#define MOVEMENT_ONPOWDER  1
+#define MOVEMENT_SWIMS	   2
+#define MOVEMENT_ONPLANTS  3
+#define MOVEMENT_FLYING    4
+#define MOVEMENT_SCHOOLING 5
+
 float RNG();
 
 void initialize ();
