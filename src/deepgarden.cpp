@@ -353,14 +353,14 @@ std::list<ProposedLifeParticle> EFLA_E(vec_i2 start, vec_i2 end)
 	return v;
 }
 
-std::string exampleAnimal = std::string("cl.c.c.c.c.cl.c.c.c.c.cl.");
+std::string exampleAnimal = std::string("cl.c.c.cl.c.c.cl.");
 unsigned int animalCursorFrame = FRAME_A;
 unsigned int animalCursorString = 0;
 int animalCursorSegmentRadius = 5;
 float animalCursorSegmentAngle = 0.0f;
 unsigned int animalCursor = 0;
 int animalCursorLegThickness = 1;
-int animalCursorLegLength = 10;
+int animalCursorLegLength = 5;
 Color animalCursorColor = Color(0.5f, 0.5f, 0.5f, 1.0f);
 unsigned int animalCursorSegmentNumber = 0;
 float animalCursorEnergyDebt = 0.0f;
@@ -542,7 +542,7 @@ void drawAnimalFromSeed(unsigned int i)
 	animalCursorSegmentAngle = 0.0f;
 	animalCursor = 0;
 	animalCursorLegThickness = 1;
-	animalCursorLegLength = 20;
+	animalCursorLegLength = 10;
 	animalCursorColor = Color(0.5f, 0.5f, 0.5f, 1.0f);
 	animalCursorSegmentNumber = 0;
 	animalCursorEnergyDebt = 0.0f;
@@ -682,6 +682,7 @@ void incrementAnimalSegmentPositions (Animal * a, unsigned int i, bool falling)
 				printf("animal reproduced\n");
 				setAnimal( neighbours[j]);
 				a->energy = 0.0f;
+				return;
 				break;
 			}
 		}
@@ -690,8 +691,9 @@ void incrementAnimalSegmentPositions (Animal * a, unsigned int i, bool falling)
 	bool segmentPhase = 0;
 
 	// Update animal segment positions. Only do this if the animal has actually moved (otherwise it will pile into one square).
-	if (a->segments.size() > 0 )
+	if (!(a->segments.empty()) )
 	{
+		// printf("KUUUUNNNN %lu\n", a->segments.size());
 		if (a->segments[0].position != i)
 		{
 			// set the position of the 0th segment to the new index, and everyone elses position is shifted forward by 1.
