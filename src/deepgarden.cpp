@@ -2411,66 +2411,73 @@ void thread_plantDrawing()
 
 unsigned int walkAnAnimal(unsigned int i)
 {
-
-
 	int currentPosition = i;
 	int squareBelow = currentPosition - sizeX;
 
-
-
 	if (seedGrid[i].parentIdentity < animals.size())
 	{
-
 		Animal * a = &(animals[seedGrid[i].parentIdentity]);
 
 		bool movedAtAll = false;
+		bool haveAWalkableNeighbour = false;
 
 		// repeat <reach> times.
 		int reach_int = a->reach;
 
-		for (int move = 0; move < reach_int; ++move)
+		if (extremelyFastNumberFromZeroTo(a->movementChance) == 0)
 		{
-			bool movedThisTurn = false;
-
-			// check the neighbour cells starting in the direction of travel.
-			// then, check the cells closest to the direction of travel.
-			// then, the cells at right angles to the direction of travel. and so on. this is vital to coherent movement.
-			int sign = 1;
-			for (int j = 0; j < N_NEIGHBOURS; ++j)
+			for (int move = 0; move < reach_int; ++move)
 			{
-				// starting at a place in the neighbours array, move n steps to the right, then n+1 steps left.. access it with neighbourOffsets[k];
-				int k = ( (a->direction) + (j * sign)) % N_NEIGHBOURS;
-				k += (extremelyFastNumberFromZeroTo(2) - 1); // also, do it with some jitter or else you will get stuck constantly.
-				k = k%N_NEIGHBOURS;
-				if (k<0) {k += N_NEIGHBOURS;}
-				if (sign == 1) { sign = -1; } else { sign = 1; }
+				bool movedThisTurn = false;
 
-				printf("neighbour k %i\n", k);
-
-				// if one of the neighbouring cells is a material type and phase that the animal can exist within
-				int neighbour = currentPosition + neighbourOffsets[k];
-				if (grid[neighbour].phase == PHASE_VACUUM)
+				// check the neighbour cells starting in the direction of travel.
+				// then, check the cells closest to the direction of travel.
+				// then, the cells at right angles to the direction of travel. and so on. this is vital to coherent movement.
+				int sign = 1;
+				for (int j = 0; j < N_NEIGHBOURS; ++j)
 				{
-					// and it has a neighbour of a type and phase the animal can walk on
-					for (int l = 0; l < N_NEIGHBOURS; ++l)
+					// starting at a place in the neighbours array, move n steps to the right, then n+1 steps left.. access it with neighbourOffsets[k];
+					int k = ( (a->direction) + (j * sign)) % N_NEIGHBOURS;
+					k += (extremelyFastNumberFromZeroTo(2) - 1); // also, do it with some jitter or else you will get stuck constantly.
+					k = k % N_NEIGHBOURS;
+					if (k < 0) {k += N_NEIGHBOURS;}
+					if (sign == 1) { sign = -1; } else { sign = 1; }
+
+					// if one of the neighbouring cells is a material type and phase that the animal can exist within
+					int neighbour = currentPosition + neighbourOffsets[k];
+					if (grid[neighbour].phase == PHASE_VACUUM)
 					{
-						int neighboursNeighbour = (neighbour + neighbourOffsets[l]);
-						if (neighboursNeighbour == currentPosition || neighboursNeighbour == i) {continue;}
-						if (  grid[ neighboursNeighbour ] .phase == PHASE_POWDER )
+						// and it has a neighbour of a type and phase the animal can walk on
+						for (int l = 0; l < N_NEIGHBOURS; ++l)
 						{
-							// say that this cell is the current position, and then break.
+							int neighboursNeighbour = (neighbour + neighbourOffsets[l]);
+							if (neighboursNeighbour == currentPosition || neighboursNeighbour == i) {continue;}
+							if (  grid[ neighboursNeighbour ] .phase == PHASE_POWDER )
+							{
+								// say that this cell is the current position, and then break.
+								currentPosition = neighbour;
+								movedAtAll = true;
+								movedThisTurn = true;
+								haveAWalkableNeighbour = true;
+								break;
 
-							currentPosition = neighbour;
-
-							printf("found a place to move! %i\n", currentPosition);
-							movedAtAll = true;
-							movedThisTurn = true;
-							break;
-
+							}
 						}
 					}
+					if (movedThisTurn) {break;}
 				}
-				if (movedThisTurn) {break;}
+			}
+		}
+		else
+		{
+			for (int l = 0; l < N_NEIGHBOURS; ++l)
+			{
+				int neighbour = (neighbourOffsets[l] + currentPosition);
+				if (  grid[ neighbour ] .phase == PHASE_POWDER )
+				{
+					haveAWalkableNeighbour = true;
+					break;
+				}
 			}
 		}
 
@@ -2480,7 +2487,8 @@ unsigned int walkAnAnimal(unsigned int i)
 			swapSeedParticle(i, currentPosition);
 			incrementAnimalSegmentPositions( a, i, false );
 		}
-		else
+
+		if (!haveAWalkableNeighbour)
 		{
 			if (grid[squareBelow].phase == PHASE_VACUUM)
 			{
