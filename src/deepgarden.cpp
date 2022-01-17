@@ -720,27 +720,14 @@ void incrementAnimalSegmentPositions (Animal * a, unsigned int i, bool falling)
 {
 	if (a->energy > a->reproductionCost)
 	{
-		// find a neighbour to place the child.
-		unsigned int squareBelow = i - sizeX;
-		unsigned int squareAbove = i + sizeX;
-		unsigned int neighbours[] =
-		{
-			squareBelow - 1,
-			squareBelow,
-			squareBelow + 1,
-			i + 1,
-			squareAbove + 1,
-			squareAbove,
-			squareAbove - 1,
-			i - 1,
-		};
 		unsigned int nSolidNeighbours = 0;
-		for (unsigned int j = 0; j < 8; ++j)
+		for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
 		{
-			if (grid[neighbours[j]].phase == PHASE_VACUUM || grid[neighbours[j]].phase == PHASE_GAS )
+			unsigned int neighbour = neighbourOffsets[j] + i;
+			if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS )
 			{
 				printf("animal reproduced\n");
-				setAnimal( neighbours[j]);
+				setAnimal( neighbour );
 				a->energy = 0.0f;
 				return;
 				break;
@@ -1187,25 +1174,14 @@ void thread_temperature2 ()
 				}
 				else if (grid[i].temperature > 600 && grid[i].temperature < 700)
 				{
-					unsigned int squareBelow = i - sizeX;
-					unsigned int squareAbove = i + sizeX;
-					unsigned int neighbours[] =
-					{
-						squareBelow - 1,
-						squareBelow,
-						squareBelow + 1,
-						i + 1,
-						squareAbove + 1,
-						squareAbove,
-						squareAbove - 1,
-						i - 1,
-					};
 					unsigned int nSolidNeighbours = 0;
-					for (unsigned int i = 0; i < 8; ++i)
+					for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
 					{
-						if ( grid[neighbours[i]].material == MATERIAL_QUARTZ )
+
+						unsigned int neighbour = neighbourOffsets[j] + i;
+						if ( grid[neighbour].material == MATERIAL_QUARTZ )
 						{
-							if (grid[neighbours[i]].phase == PHASE_SOLID )
+							if (grid[neighbour].phase == PHASE_SOLID )
 							{
 								nSolidNeighbours++;
 							}
@@ -1258,25 +1234,14 @@ void thread_temperature2 ()
 				}
 				else if (grid[i].temperature > 800 && grid[i].temperature < 900)
 				{
-					unsigned int squareBelow = i - sizeX;
-					unsigned int squareAbove = i + sizeX;
-					unsigned int neighbours[] =
-					{
-						squareBelow - 1,
-						squareBelow,
-						squareBelow + 1,
-						i + 1,
-						squareAbove + 1,
-						squareAbove,
-						squareAbove - 1,
-						i - 1,
-					};
 					unsigned int nSolidNeighbours = 0;
-					for (unsigned int i = 0; i < 8; ++i)
+					for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
 					{
-						if ( grid[neighbours[i]].material == MATERIAL_AMPHIBOLE )
+
+						unsigned int neighbour = neighbourOffsets[j] + i;
+						if ( grid[neighbour].material == MATERIAL_AMPHIBOLE )
 						{
-							if (grid[neighbours[i]].phase == PHASE_SOLID )
+							if (grid[neighbourOffsets[j] + i].phase == PHASE_SOLID )
 							{
 								nSolidNeighbours++;
 							}
@@ -1335,26 +1300,14 @@ void thread_temperature2 ()
 				else if (grid[i].temperature > 1000 && grid[i].temperature < 1100)
 				{
 
-					unsigned int squareBelow = i - sizeX;
-					unsigned int squareAbove = i + sizeX;
-					unsigned int neighbours[] =
-					{
-						squareBelow - 1,
-						squareBelow,
-						squareBelow + 1,
-						i + 1,
-						squareAbove + 1,
-						squareAbove,
-						squareAbove - 1,
-						i - 1,
-					};
 					unsigned int nSolidNeighbours = 0;
 					unsigned int dissimilarNeighbours = 0;
-					for (unsigned int i = 0; i < 8; ++i)
+					for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
 					{
-						if ( grid[neighbours[i]].material == MATERIAL_OLIVINE )
+						unsigned int neighbour = neighbourOffsets[j] + i;
+						if ( grid[neighbour].material == MATERIAL_OLIVINE )
 						{
-							if (grid[neighbours[i]].phase == PHASE_SOLID )
+							if (grid[neighbour].phase == PHASE_SOLID )
 							{
 								nSolidNeighbours++;
 							}
@@ -1371,11 +1324,12 @@ void thread_temperature2 ()
 					{
 						if (extremelyFastNumberFromZeroTo(100) == 0) // this function only works up to 34464, so run it twice to multiply probabilities.
 						{
-							for (unsigned int i = 0; i < 8; ++i)
+							for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
 							{
-								if (grid[neighbours[i]].material == MATERIAL_OLIVINE )
+								unsigned int neighbour = neighbourOffsets[j] + i;
+								if (grid[neighbour].material == MATERIAL_OLIVINE )
 								{
-									grid[neighbours[i]].phase = PHASE_SOLID;
+									grid[neighbour].phase = PHASE_SOLID;
 								}
 							}
 						}
@@ -1998,7 +1952,7 @@ int drawCharacter ( std::string genes , unsigned int identity)
 					squareAbove - 1,
 					i - 1,
 				};
-				for (unsigned int j = 0; j < 8; ++j)
+				for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
 				{
 					unsigned int xScan = neighbours[j] % sizeX;
 					unsigned int yScan = neighbours[j] / sizeX;
@@ -2342,28 +2296,29 @@ void thread_life()
 			x = i % sizeX;
 			if (!x) { y = i / sizeX; }
 
-			unsigned int squareBelow = i - sizeX;
-			unsigned int squareAbove = i + sizeX;
-			unsigned int neighbours[] =
-			{
-				squareBelow - 1,
-				squareBelow,
-				squareBelow + 1,
-				i + 1,
-				squareAbove + 1,
-				squareAbove,
-				squareAbove - 1,
-				i - 1,
-			};
+			// unsigned int squareBelow = i - sizeX;
+			// unsigned int squareAbove = i + sizeX;
+			// unsigned int neighbours[] =
+			// {
+			// 	squareBelow - 1,
+			// 	squareBelow,
+			// 	squareBelow + 1,
+			// 	i + 1,
+			// 	squareAbove + 1,
+			// 	squareAbove,
+			// 	squareAbove - 1,
+			// 	i - 1,
+			// };
 			unsigned int neighbourMaterialA = MATERIAL_VACUUM;
 
-			for (unsigned int j = 0; j < 8; ++j)
+			for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
 			{
+				unsigned int neighbour = neighbourOffsets[j] + i;
 				// if there is a neighbouring cell from the same plant, equalize energy with it.
-				if (lifeGrid[neighbours[j]].identity == lifeGrid[i].identity)
+				if (lifeGrid[neighbour].identity == lifeGrid[i].identity)
 				{
-					float equalizedEnergy = ( lifeGrid[neighbours[j]].energy + lifeGrid[i].energy ) / 2;
-					lifeGrid[neighbours[j]].energy = equalizedEnergy;
+					float equalizedEnergy = ( lifeGrid[neighbour].energy + lifeGrid[i].energy ) / 2;
+					lifeGrid[neighbour].energy = equalizedEnergy;
 					lifeGrid[i].energy = equalizedEnergy;
 				}
 
@@ -2391,14 +2346,14 @@ void thread_life()
 				// some cells can steal energy from neighbouring plants.
 				else if (lifeGrid[i].energySource == ENERGYSOURCE_PLANT )
 				{
-					if (lifeGrid[neighbours[j]].identity != lifeGrid[i].identity )
+					if (lifeGrid[neighbour].identity != lifeGrid[i].identity )
 					{
-						if (lifeGrid[neighbours[j]].energy > 0.0f)
+						if (lifeGrid[neighbour].energy > 0.0f)
 						{
 							if (extremelyFastNumberFromZeroTo(64) == 0x00)
 							{
-								lifeGrid[i].energy = lifeGrid[neighbours[j]].energy;
-								lifeGrid[neighbours[j]].energy = 0.0f;
+								lifeGrid[i].energy = lifeGrid[neighbour].energy;
+								lifeGrid[neighbour].energy = 0.0f;
 							}
 						}
 					}
@@ -2407,9 +2362,9 @@ void thread_life()
 				// some cells can consume piles of old seeds on the ground..
 				else if (lifeGrid[i].energySource == ENERGYSOURCE_SEED )
 				{
-					if (seedGrid[neighbours[j]].stage < 0x00)
+					if (seedGrid[neighbour].stage < 0x00)
 					{
-						if (seedGrid[neighbours[j]].parentIdentity != lifeGrid[i].identity )
+						if (seedGrid[neighbour].parentIdentity != lifeGrid[i].identity )
 						{
 							if (extremelyFastNumberFromZeroTo(64) == 0x00)
 							{
@@ -2485,7 +2440,7 @@ unsigned int walkAnAnimal(unsigned int i)
 			{
 				// starting at a place in the neighbours array, move n steps to the right, then n+1 steps left.. access it with neighbourOffsets[k];
 				int k = ( (a->direction) + (j * sign)) % N_NEIGHBOURS;
-				k += (extremelyFastNumberFromZeroTo(2)-1);
+				k += (extremelyFastNumberFromZeroTo(2) - 1);
 				if (sign == 1) { sign = -1; } else { sign = 1; }
 
 				printf("neighbour k %i\n", k);
