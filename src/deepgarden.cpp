@@ -33,6 +33,18 @@ const Color color_defaultSeedColor  = Color( 0.75f, 0.35f, 0.1f, 1.0f );
 const Color color_defaultColor     	= Color( 0.35f, 0.35f, 0.35f, 1.0f );
 
 
+int neighbourOffsets[] =
+{
+	- sizeX - 1,
+	- sizeX ,
+	- sizeX  + 1,
+	+ 1,
+	+sizeX + 1,
+	+sizeX,
+	+sizeX - 1,
+	- 1,
+};
+
 // a tree with a long stem and a fan of branches.
 std::string plant_Pycad = std::string( "rqgqbqxuydzb. lz addlzf." );
 
@@ -53,6 +65,23 @@ std::string plant_ParbasarbTree = std::string( "rgggbuxuyuzu. lzeeeflaf  " );
 
 // a short, dense grass.
 std::string plant_LardGrass = std::string( "rgggbuxuyuzu. oiilfflbflbf  " );
+
+
+std::string exampleAnimal = std::string(" rzgzcl.c.c.cl.c.c.cl.");
+unsigned int animalCursorFrame = FRAME_A;
+unsigned int animalCursorString = 0;
+int animalCursorSegmentRadius = 5;
+float animalCursorSegmentAngle = 0.0f;
+unsigned int animalCursor = 0;
+int animalCursorLegThickness = 1;
+int animalCursorLegLength = 5;
+Color animalCursorColor = Color(0.5f, 0.5f, 0.5f, 1.0f);
+unsigned int animalCursorSegmentNumber = 0;
+float animalCursorEnergyDebt = 0.0f;
+float animalCursorLimbLowerAngle = 0.0f;
+float animalCursorLimbUpperAngle = 0.0f;
+unsigned int animalRecursionLevel = 0;
+
 
 
 float * colorGrid = new float[totalSize * numberOfFieldsPerVertex ];
@@ -281,6 +310,7 @@ struct Animal
 	unsigned int movementChance;
 	std::vector<AnimalSegment> segments;
 	unsigned int movementFlags;
+	unsigned int direction;
 	Animal();
 };
 
@@ -288,6 +318,7 @@ std::vector<Animal> animals;
 
 Animal::Animal()
 {
+	this->direction = 4;
 	this->energy = 0.0f;
 	this->reach = 5;
 	this->movementChance = 16;
@@ -353,20 +384,6 @@ std::list<ProposedLifeParticle> EFLA_E(vec_i2 start, vec_i2 end)
 	return v;
 }
 
-std::string exampleAnimal = std::string("cl.c.c.cl.c.c.cl.");
-unsigned int animalCursorFrame = FRAME_A;
-unsigned int animalCursorString = 0;
-int animalCursorSegmentRadius = 5;
-float animalCursorSegmentAngle = 0.0f;
-unsigned int animalCursor = 0;
-int animalCursorLegThickness = 1;
-int animalCursorLegLength = 5;
-Color animalCursorColor = Color(0.5f, 0.5f, 0.5f, 1.0f);
-unsigned int animalCursorSegmentNumber = 0;
-float animalCursorEnergyDebt = 0.0f;
-float animalCursorLimbLowerAngle = 0.0f;
-float animalCursorLimbUpperAngle = 0.0f;
-unsigned int animalRecursionLevel = 0;
 
 // return 0 to continue drawing sequence, return 1 to break sequence by one level.
 int drawAnimalFromChar (unsigned int i)
@@ -460,19 +477,20 @@ int drawAnimalFromChar (unsigned int i)
 				// draw a line at an angle from the center of the segment
 				float limbAngle = 0.0f;
 				float limbAccumulatedAngle = 0.0f;
+				float limbAngleOffset = -(1 * 3.1415);
 
 				if (  animalCursorFrame == FRAME_A)
 				{
-					limbAngle = (0.3 * 3.1415) + (0.5 * 3.1415);
+					limbAngle = (0.3 * 3.1415) + limbAngleOffset;
 				}
 				else if (  animalCursorFrame == FRAME_B)
 				{
-					limbAngle = (-0.3 * 3.1415) + (0.5 * 3.1415);
+					limbAngle = (-0.3 * 3.1415) + limbAngleOffset;
 				}
 
 				else if (  animalCursorFrame == FRAME_C)
 				{
-					limbAngle = (1 * 3.1415) + (0.5 * 3.1415);
+					limbAngle = (1 * 3.1415) + limbAngleOffset;
 				}
 
 				unsigned int x = a->segments[animalCursorSegmentNumber].position % sizeX;
@@ -521,6 +539,48 @@ int drawAnimalFromChar (unsigned int i)
 			}
 			break;
 		}
+
+
+		case 'r':
+		{
+			animalCursorString++; if (animalCursorString > seedGrid[i].genes.length()) { return -1; }
+			float numberModifier = alphanumeric( seedGrid[i].genes[animalCursorString] );
+			numberModifier = numberModifier / 26;
+#ifdef ANIMAL_DRAWING_READOUT
+			printf("set color R %f, char '%c'\n", numberModifier, seedGrid[i].genes[animalCursorString] );
+#endif
+			animalCursorColor = Color(  numberModifier, animalCursorColor.g, animalCursorColor.b, 1.0f    );
+			// animalCursorString++; if (animalCursorString > seedGrid[i].genes.length()) { return -1; }
+			break;
+		}
+
+		case 'g':
+		{
+			animalCursorString++; if (animalCursorString > seedGrid[i].genes.length()) { return -1; }
+			float numberModifier = alphanumeric( seedGrid[i].genes[animalCursorString] );
+			numberModifier = numberModifier / 26;
+#ifdef ANIMAL_DRAWING_READOUT
+			printf("set color G %f, char '%c'\n", numberModifier, seedGrid[i].genes[animalCursorString] );
+#endif
+			animalCursorColor = Color(  animalCursorColor.r, numberModifier, animalCursorColor.b, 1.0f    );
+			// animalCursorString++; if (animalCursorString > seedGrid[i].genes.length()) { return -1; }
+			break;
+		}
+
+		case 'b':
+		{
+			animalCursorString++; if (animalCursorString > seedGrid[i].genes.length()) { return -1; }
+			float numberModifier = alphanumeric( seedGrid[i].genes[animalCursorString] );
+			numberModifier = numberModifier / 26;
+#ifdef ANIMAL_DRAWING_READOUT
+			printf("set color B %f, char '%c'\n", numberModifier, seedGrid[i].genes[animalCursorString] );
+#endif
+			animalCursorColor = Color(  animalCursorColor.r, animalCursorColor.g, numberModifier, 1.0f    );
+			// animalCursorString++; if (animalCursorString > seedGrid[i].genes.length()) { return -1; }
+			break;
+		}
+
+
 		default:
 		{
 			break;
@@ -1019,6 +1079,26 @@ void initialize ()
 				}
 			}
 		}
+
+
+
+
+
+		if (x >  200 && x < 300  && y < 100)
+		{
+			setParticle( MATERIAL_OLIVINE, i);
+			grid[i].phase = PHASE_SOLID;
+		}
+
+		if (x >  900 && x < 1000  && y < 100)
+		{
+			setParticle( MATERIAL_OLIVINE, i);
+			grid[i].phase = PHASE_SOLID;
+		}
+
+
+
+
 
 		if (x ==  500 && y == 100)
 		{
@@ -1604,7 +1684,7 @@ void thread_graphics()
 
 int drawCharacter ( std::string genes , unsigned int identity)
 {
-	while (crudOps) 
+	while (crudOps)
 	{
 		;
 	}
@@ -2125,7 +2205,7 @@ int drawCharacter ( std::string genes , unsigned int identity)
 		cursor_string++; if (cursor_string > genesize) {return -1;}
 		break;
 	}
-	
+
 	case 'y': // set seed green
 	{
 		cursor_string++; if (cursor_string > genesize) {return -1;}
@@ -2376,84 +2456,85 @@ void thread_plantDrawing()
 
 unsigned int walkAnAnimal(unsigned int i)
 {
-	Animal * a = &(animals[seedGrid[i].parentIdentity]);
-	unsigned int currentPosition = i;
-	unsigned int squareBelow = currentPosition - sizeX;
 
-	// if you couldn't move any direction, fall down a square.
-	if (grid[squareBelow].phase == PHASE_VACUUM || grid[squareBelow].phase == PHASE_GAS )
+
+	int currentPosition = i;
+	int squareBelow = currentPosition - sizeX;
+
+
+
+	if (seedGrid[i].parentIdentity < animals.size())
 	{
-		incrementAnimalSegmentPositions ( a, currentPosition, true);
-		swapSeedParticle( currentPosition, squareBelow );
-		currentPosition = squareBelow;
-	}
-	else 
-	{
-		// if the animal could move a->reach units every turn, it would be extremely fast. the movementchance number is used to divide this down.
-		if (extremelyFastNumberFromZeroTo(a->movementChance) == 0x00 )
+
+		Animal * a = &(animals[seedGrid[i].parentIdentity]);
+
+		bool movedAtAll = false;
+
+		// repeat <reach> times.
+		int reach_int = a->reach;
+
+		for (int move = 0; move < reach_int; ++move)
 		{
-			for (unsigned int move = 0; move < a->reach; ++move)
+			bool movedThisTurn = false;
+
+			// check the neighbour cells starting in the direction of travel.
+			// then, check the cells closest to the direction of travel.
+			// then, the cells at right angles to the direction of travel. and so on. this is vital to coherent movement.
+			int sign = 1;
+			for (int j = 0; j < N_NEIGHBOURS; ++j)
 			{
-				squareBelow = currentPosition - sizeX;
-				unsigned int squareAbove = currentPosition + sizeX;
-				unsigned int neighbours[] =
-				{
-					squareBelow - 1,
-					squareBelow,
-					squareBelow + 1,
-					currentPosition + 1,
-					squareAbove + 1,
-					squareAbove,
-					squareAbove - 1,
-					currentPosition - 1,
-				};
+				// starting at a place in the neighbours array, move n steps to the right, then n+1 steps left.. access it with neighbourOffsets[k];
+				int k = ( (a->direction) + (j * sign)) % N_NEIGHBOURS;
+				k += (extremelyFastNumberFromZeroTo(2)-1);
+				if (sign == 1) { sign = -1; } else { sign = 1; }
 
-				bool spentTurn = false;
-				unsigned int prevNeighbourPhase = PHASE_NULL;
-				for (unsigned int k = 0; k < 8; ++k)
-				{
-					if (k == 0) {prevNeighbourPhase = grid[neighbours[k]].phase; }
+				printf("neighbour k %i\n", k);
 
-					if (grid[neighbours[k]].phase == PHASE_VACUUM || grid[neighbours[k]].phase == PHASE_GAS )
+				// if one of the neighbouring cells is a material type and phase that the animal can exist within
+				int neighbour = currentPosition + neighbourOffsets[k];
+				if (grid[neighbour].phase == PHASE_VACUUM)
+				{
+					// and it has a neighbour of a type and phase the animal can walk on
+					for (int l = 0; l < N_NEIGHBOURS; ++l)
 					{
-						// find a neighbour that is the edge of a solid surface.
-						if (prevNeighbourPhase == PHASE_SOLID || prevNeighbourPhase == PHASE_POWDER)
+						int neighboursNeighbour = (neighbour + neighbourOffsets[l]);
+						if (neighboursNeighbour == currentPosition || neighboursNeighbour == i) {continue;}
+						if (  grid[ neighboursNeighbour ] .phase == PHASE_POWDER )
 						{
-							swapSeedParticle( currentPosition, neighbours[k] );
-							currentPosition = neighbours[k];
-							spentTurn = true;
+							// say that this cell is the current position, and then break.
+
+							currentPosition = neighbour;
+
+							printf("found a place to move! %i\n", currentPosition);
+							movedAtAll = true;
+							movedThisTurn = true;
 							break;
+
 						}
 					}
-					prevNeighbourPhase = grid[neighbours[k]].phase;
 				}
-
-				if (spentTurn) {continue;} // only take one action per turn.
-
-				
-				prevNeighbourPhase = PHASE_NULL;
-				for ( int k = 7; k >= 0; --k) // if you couldn't go forward, walk back the other way.
-				{
-					if (k == 7) {prevNeighbourPhase = grid[neighbours[k]].phase; }
-					if (grid[neighbours[k]].phase == PHASE_VACUUM || grid[neighbours[k]].phase == PHASE_GAS )
-					{
-						// find a neighbour that is the edge of a solid surface.
-						if (prevNeighbourPhase == PHASE_SOLID || prevNeighbourPhase == PHASE_POWDER)
-						{
-							swapSeedParticle( currentPosition, neighbours[k] );
-							currentPosition = neighbours[k];
-							spentTurn = true;
-							break;
-						}
-					}
-					prevNeighbourPhase = grid[neighbours[k]].phase;
-				}
-				if (spentTurn) {continue;} // only take one action per turn.
+				if (movedThisTurn) {break;}
 			}
-			incrementAnimalSegmentPositions ( a, currentPosition, false);
+		}
+
+		// after having repeated <reach> moves, swap the cell and update the segment positions.
+		if (movedAtAll)
+		{
+			swapSeedParticle(i, currentPosition);
+			updateAnimalDrawing(currentPosition);
+		}
+		else
+		{
+			if (grid[squareBelow].phase == PHASE_VACUUM)
+			{
+				swapSeedParticle(i, squareBelow);
+				updateAnimalDrawing(squareBelow);
+			}
 		}
 	}
-	return currentPosition;
+
+	unsigned int result = currentPosition;
+	return result;
 }
 
 void thread_seeds()
@@ -2519,8 +2600,9 @@ void thread_seeds()
 
 		if (seedGrid[i].stage == STAGE_ANIMAL)
 		{
-			updateAnimalDrawing(i);
 			walkAnAnimal(i);
+
+			updateAnimalDrawing(i);
 		}
 
 		// SEEDS. Some of the particles on the seed grid are seeds that fall downwards.
