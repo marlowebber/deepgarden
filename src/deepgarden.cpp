@@ -79,7 +79,7 @@ Color animalCursorColor = Color(0.5f, 0.5f, 0.5f, 1.0f);
 unsigned int animalCursorSegmentNumber = 0;
 float animalCursorEnergyDebt = 0.0f;
 float animalCursorLimbLowerAngle = 0.0f;
-float animalCursorLimbUpperAngle = 0.0f;
+float animalCursorLimbUpperAngle = 0.5 * 3.1415f;
 unsigned int animalRecursionLevel = 0;
 
 
@@ -475,38 +475,50 @@ int drawAnimalFromChar (unsigned int i)
 				if (frame == 2 ) {animalCursorFrame = FRAME_C;}
 
 				// draw a line at an angle from the center of the segment
-				float limbAngle = 0.0f;
-				float limbAccumulatedAngle = 0.0f;
-				float limbAngleOffset = -(1 * 3.1415);
+				float upperLimbAngle = 0.0f;
+				float lowerLimbAngle = 0.0f;
+				// float limbAccumulatedAngle = 0.0f;
+				float limbAngleOffset = (0.5 * 3.1415); // rotate the global zero to one that makes sense for our maths.
 
+float limbAngleDelta = 0.0f;
+				// the ANGLE OF THE UPPER LIMB is determined from the vertical
 				if (  animalCursorFrame == FRAME_A)
 				{
-					limbAngle = (0.3 * 3.1415) + limbAngleOffset;
+					 limbAngleDelta = (0.35f * animalCursorLimbUpperAngle) + animalCursorLimbLowerAngle;
+
 				}
 				else if (  animalCursorFrame == FRAME_B)
 				{
-					limbAngle = (-0.3 * 3.1415) + limbAngleOffset;
+					 limbAngleDelta = (0.65f * animalCursorLimbUpperAngle) + animalCursorLimbLowerAngle;
+					// upperLimbAngle =  limbAngleDelta + limbAngleOffset ;
 				}
 
 				else if (  animalCursorFrame == FRAME_C)
 				{
-					limbAngle = (1 * 3.1415) + limbAngleOffset;
+					 limbAngleDelta = (0.0f * animalCursorLimbUpperAngle) + animalCursorLimbLowerAngle;
+					// upperLimbAngle =  limbAngleDelta + limbAngleOffset ;
 				}
+					upperLimbAngle =  limbAngleDelta + limbAngleOffset ;
+					lowerLimbAngle = upperLimbAngle - (2*limbAngleDelta) - 3.1415;
 
-				unsigned int x = a->segments[animalCursorSegmentNumber].position % sizeX;
+
+				// the ANGLE OF THE LOWER LIMB simply reflects that angle
+
+				// float lowerLimbAngle = limbAngleOffset -
+
+				                       unsigned int x = a->segments[animalCursorSegmentNumber].position % sizeX;
 				unsigned int y = a->segments[animalCursorSegmentNumber].position / sizeX;
-
 				unsigned int animalCursorX = animalCursor % sizeX;
 				unsigned int animalCursorY = animalCursor / sizeX;
 
-				limbAccumulatedAngle = limbAngle;
+				// limbAccumulatedAngle = limbAngle;
 				vec_i2 elbow = vec_i2(
-				                   x + animalCursorX + (animalCursorLegLength * cos(limbAccumulatedAngle)),
-				                   y + animalCursorY + (animalCursorLegLength * sin(limbAccumulatedAngle) )
+				                   x + animalCursorX + (animalCursorLegLength * cos(upperLimbAngle)),
+				                   y + animalCursorY + (animalCursorLegLength * sin(upperLimbAngle) )
 				               );
-				limbAccumulatedAngle += limbAngle;
-				vec_i2 wrist = vec_i2( elbow.x +   ( animalCursorLegLength * cos(limbAccumulatedAngle) ) ,
-				                       elbow.y +   ( animalCursorLegLength * sin(limbAccumulatedAngle)  )
+				// limbAccumulatedAngle += limbAngle;
+				vec_i2 wrist = vec_i2( elbow.x +   ( animalCursorLegLength * cos(lowerLimbAngle) ) ,
+				                       elbow.y +   ( animalCursorLegLength * sin(lowerLimbAngle)  )
 				                     );
 
 				std::list<ProposedLifeParticle> v;
