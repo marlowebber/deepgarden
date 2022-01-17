@@ -2440,7 +2440,9 @@ unsigned int walkAnAnimal(unsigned int i)
 			{
 				// starting at a place in the neighbours array, move n steps to the right, then n+1 steps left.. access it with neighbourOffsets[k];
 				int k = ( (a->direction) + (j * sign)) % N_NEIGHBOURS;
-				k += (extremelyFastNumberFromZeroTo(2) - 1);
+				k += (extremelyFastNumberFromZeroTo(2) - 1); // also, do it with some jitter or else you will get stuck constantly.
+				k = k%N_NEIGHBOURS;
+				if (k<0) {k += N_NEIGHBOURS;}
 				if (sign == 1) { sign = -1; } else { sign = 1; }
 
 				printf("neighbour k %i\n", k);
@@ -2476,14 +2478,14 @@ unsigned int walkAnAnimal(unsigned int i)
 		if (movedAtAll)
 		{
 			swapSeedParticle(i, currentPosition);
-			updateAnimalDrawing(currentPosition);
+			incrementAnimalSegmentPositions( a, i, false );
 		}
 		else
 		{
 			if (grid[squareBelow].phase == PHASE_VACUUM)
 			{
 				swapSeedParticle(i, squareBelow);
-				updateAnimalDrawing(squareBelow);
+				incrementAnimalSegmentPositions( a, i, true );
 			}
 		}
 	}
@@ -2555,9 +2557,23 @@ void thread_seeds()
 
 		if (seedGrid[i].stage == STAGE_ANIMAL)
 		{
-			walkAnAnimal(i);
 
-			updateAnimalDrawing(i);
+
+			if (seedGrid[i].parentIdentity < animals.size())
+			{
+				Animal * a = &(animals[seedGrid[i].parentIdentity]);
+
+				if (extremelyFastNumberFromZeroTo(64) == 0)
+				{
+
+					a->direction = extremelyFastNumberFromZeroTo(7);
+
+				}
+
+				walkAnAnimal(i);
+				updateAnimalDrawing(i);
+
+			}
 		}
 
 		// SEEDS. Some of the particles on the seed grid are seeds that fall downwards.
