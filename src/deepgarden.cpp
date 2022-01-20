@@ -11,6 +11,7 @@
 // #define THREAD_TIMING
 // #define PLANT_DRAWING_READOUT 1
 #define ANIMAL_DRAWING_READOUT 1
+// #define DRAW_ANIMALS 1
 
 #define RENDERING_THREADS 4
 
@@ -125,13 +126,15 @@ float lengthNoise = 0.0f;
 
 float energyDebtSoFar = 0.0f;
 
-float maximumDisplayEnergy = 1;
+float maximumDisplayEnergy = 1.0f;
+float maximumDisplayTemperature = 1000.0f;
 
 std::list<unsigned int> identities;
 
 std::list<vec_u2> v_seeds;
 
 bool showEnergyGrid = false;
+bool showTemperatureGrid = false;
 
 unsigned int animationChangeCount = 0;
 unsigned int animationGlobalFrame = FRAME_A;
@@ -311,6 +314,7 @@ struct Animal
 	std::vector<AnimalSegment> segments;
 	unsigned int movementFlags;
 	unsigned int direction;
+	unsigned int energyFlags;
 	Animal();
 };
 
@@ -318,12 +322,13 @@ std::vector<Animal> animals;
 
 Animal::Animal()
 {
+	this->energyFlags = ENERGYSOURCE_PLANT;
 	this->direction = 4;
 	this->energy = 0.0f;
 	this->reach = 5;
 	this->movementChance = 16;
 	this->segments.push_back(AnimalSegment());
-	this->movementFlags = 0x00;
+	this->movementFlags = MOVEMENT_ONPOWDER;
 }
 
 // THE EXTREMELY FAST LINE ALGORITHM Variation E (Addition Fixed Point PreCalc Small Display)
@@ -480,33 +485,33 @@ int drawAnimalFromChar (unsigned int i)
 				// float limbAccumulatedAngle = 0.0f;
 				float limbAngleOffset = (0.5 * 3.1415); // rotate the global zero to one that makes sense for our maths.
 
-float limbAngleDelta = 0.0f;
+				float limbAngleDelta = 0.0f;
 				// the ANGLE OF THE UPPER LIMB is determined from the vertical
 				if (  animalCursorFrame == FRAME_A)
 				{
-					 limbAngleDelta = (0.35f * animalCursorLimbUpperAngle) + animalCursorLimbLowerAngle;
+					limbAngleDelta = (0.35f * animalCursorLimbUpperAngle) + animalCursorLimbLowerAngle;
 
 				}
 				else if (  animalCursorFrame == FRAME_B)
 				{
-					 limbAngleDelta = (0.65f * animalCursorLimbUpperAngle) + animalCursorLimbLowerAngle;
+					limbAngleDelta = (0.65f * animalCursorLimbUpperAngle) + animalCursorLimbLowerAngle;
 					// upperLimbAngle =  limbAngleDelta + limbAngleOffset ;
 				}
 
 				else if (  animalCursorFrame == FRAME_C)
 				{
-					 limbAngleDelta = (0.0f * animalCursorLimbUpperAngle) + animalCursorLimbLowerAngle;
+					limbAngleDelta = (0.0f * animalCursorLimbUpperAngle) + animalCursorLimbLowerAngle;
 					// upperLimbAngle =  limbAngleDelta + limbAngleOffset ;
 				}
-					upperLimbAngle =  limbAngleDelta + limbAngleOffset ;
-					lowerLimbAngle = upperLimbAngle - (2*limbAngleDelta) - 3.1415;
+				upperLimbAngle =  limbAngleDelta + limbAngleOffset ;
+				lowerLimbAngle = upperLimbAngle - (2 * limbAngleDelta) - 3.1415;
 
 
 				// the ANGLE OF THE LOWER LIMB simply reflects that angle
 
 				// float lowerLimbAngle = limbAngleOffset -
 
-				                       unsigned int x = a->segments[animalCursorSegmentNumber].position % sizeX;
+				unsigned int x = a->segments[animalCursorSegmentNumber].position % sizeX;
 				unsigned int y = a->segments[animalCursorSegmentNumber].position / sizeX;
 				unsigned int animalCursorX = animalCursor % sizeX;
 				unsigned int animalCursorY = animalCursor / sizeX;
@@ -685,12 +690,13 @@ void setAnimalSpritePixel ( Animal * a, AnimalSegment * s, AnimalParticle p, uns
 	unsigned int j__color_offset = (j_offset * numberOfFieldsPerVertex) ;
 	if (j_offset < totalSize)
 	{
-		if (seedGrid[j_offset].stage == STAGE_BUD || seedGrid[j_offset].stage == STAGE_FRUIT ||  seedGrid[j_offset].stage == STAGE_SEED )
-		{
-			a->energy += 10.0f ;
-			printf("fed animal. Energy %f, reproduces at %f\n", a->energy, a->reproductionCost);
-			clearSeedParticle(j_offset);
-		}
+		// don't feed the animal here. the animal system should work even when sprites are not being drawn.
+		// if (seedGrid[j_offset].stage == STAGE_BUD || seedGrid[j_offset].stage == STAGE_FRUIT ||  seedGrid[j_offset].stage == STAGE_SEED )
+		// {
+		// 	a->energy += 10.0f ;
+		// 	printf("fed animal. Energy %f, reproduces at %f\n", a->energy, a->reproductionCost);
+		// 	clearSeedParticle(j_offset);
+		// }
 		memcpy( &lifeColorGridB[ j__color_offset], 	&(p.color) , 	sizeof(Color) );
 	}
 }
@@ -902,6 +908,17 @@ void setParticle(unsigned int material, unsigned int i)
 	memcpy( &colorGrid[ a_offset ], &temp_color, 16 );
 }
 
+
+void clearParticle( unsigned int i)
+{
+	grid[i].temperature = defaultTemperature;
+	grid[i].material = MATERIAL_VACUUM;
+	grid[i].phase = PHASE_VACUUM;
+	unsigned int a_offset = (i * numberOfFieldsPerVertex);
+	memcpy( &colorGrid[ a_offset ], &color_clear, 16 );
+}
+
+
 void swapParticle (unsigned int a, unsigned int b)
 {
 	float temp_color[4];
@@ -957,6 +974,20 @@ void swapLifeParticle(unsigned int a, unsigned int b)
 	memcpy( temp_color, &lifeColorGrid[ b_offset ] , sizeof(Color) ); // 4x floats of 4 bytes each
 	memcpy( &lifeColorGrid[ b_offset], &lifeColorGrid[ a_offset] , sizeof(Color) );
 	memcpy( &lifeColorGrid[ a_offset ], temp_color, sizeof(Color) );
+}
+
+
+
+void clearLifeParticle(unsigned int i)
+{
+	lifeGrid[i].identity = 0x00;
+	lifeGrid[i].genes.clear();
+	lifeGrid[i].energy = 0.0f;
+	lifeGrid[i].energySource = ENERGYSOURCE_LIGHT;
+
+	memcpy( (&lifeColorGrid[i * numberOfFieldsPerVertex]),  &(color_clear),  sizeof(Color) );
+
+
 }
 
 void clearColorGrids(unsigned int i)
@@ -1049,32 +1080,60 @@ void initialize ()
 		float fx = x;
 		float fy = y;
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 		if (true)
 		{
 			// sprinkle some material on it to make a default scene.
-			if (i > (1 * sizeX) && i < (10 * sizeX))
+			if (i > (1 * sizeX) && i < (50 * sizeX))
 			{
 				if (RNG() < 0.5)
 				{
 					setParticle( MATERIAL_OLIVINE, i);
+					grid[i].temperature = 10090.0f;
 				}
 			}
 
 			// sprinkle some material on it to make a default scene.
-			if (i > (10 * sizeX) && i < (20 * sizeX))
+			if (i > (50 * sizeX) && i < (100 * sizeX))
 			{
 				if (RNG() < 0.5)
 				{
 					setParticle( MATERIAL_AMPHIBOLE, i);
+
+					grid[i].temperature = 8090.0f;
 				}
 			}
 
 			// sprinkle some material on it to make a default scene.
-			if (i > (20 * sizeX) && i < (30 * sizeX))
+			if (i > (100 * sizeX) && i < (150 * sizeX))
 			{
 				if (RNG() < 0.5)
 				{
 					setParticle( MATERIAL_QUARTZ, i);
+
+					grid[i].temperature = 6090.0f;
+				}
+			}
+
+			if (i > (150 * sizeX) && i < (170 * sizeX))
+			{
+				if (RNG() < 0.5)
+				{
+					setParticle( MATERIAL_WATER, i);
 				}
 			}
 		}
@@ -1103,6 +1162,13 @@ void initialize ()
 		{
 			setAnimal( i);
 		}
+
+		if (x ==  600 && y == 100)
+		{
+			setAnimal( i);
+			animals[1].movementFlags = MOVEMENT_INPLANTS;
+		}
+
 	}
 }
 
@@ -1110,7 +1176,18 @@ void heatEverything ()
 {
 	for (unsigned int i = 0; i < totalSize; ++i)
 	{
-		grid[i].temperature += 25;
+		if (grid[i].phase != PHASE_VACUUM)
+		{
+			if (grid[i].temperature < (0xFFFFFFFF - 25) )
+			{
+				grid[i].temperature += 25;
+			}
+			else {
+				grid[i].temperature = (0xFFFFFFFF);
+			}
+		}
+
+
 	}
 }
 
@@ -1118,7 +1195,16 @@ void coolEverything ()
 {
 	for (unsigned int i = 0; i < totalSize; ++i)
 	{
-		grid[i].temperature -= 25;
+		if (grid[i].phase != PHASE_VACUUM)
+		{
+			if (grid[i].temperature > 25)
+			{
+				grid[i].temperature -= 25;
+			}
+			else {
+				grid[i].temperature = 0;
+			}
+		}
 	}
 }
 
@@ -1138,6 +1224,49 @@ void thread_temperature2 ()
 
 	for (unsigned int i = (sizeX + 1); i < (totalSize - (sizeX + 1)); ++i)
 	{
+
+
+		if (true)
+		{
+
+
+			// equalize temp with neighbours
+			unsigned int squareAbove = i + sizeX;
+			unsigned int squareBelow = i - sizeX;
+			unsigned int neighbours[] =
+			{
+				squareBelow - 1,
+				squareBelow,
+				squareBelow + 1,
+				i + 1,
+				squareAbove + 1,
+				squareAbove,
+				squareAbove - 1,
+				i - 1,
+			};
+			for (int j = 0; j < 8; ++j)
+			{
+				if ( grid[i].phase != PHASE_VACUUM &&  grid[neighbours[j]].phase != PHASE_VACUUM)
+				{
+
+
+
+					// if ( grid[i].temperature > grid[neighbours[j]].temperature )
+					// {
+
+					unsigned int avgTemp = (((grid[i].temperature) + (grid[neighbours[j]].temperature)) / 2) ;
+					grid[neighbours[j]].temperature = avgTemp;
+					grid[i].temperature = avgTemp;
+					// }
+
+					// unsigned int avgTemp = (((grid[i].temperature) + (grid[neighbours[j]].temperature))/2) ;
+					// grid[neighbours[j]].temperature += tempDiff;
+					// grid[i].temperature -= tempDiff;
+				}
+			}
+		}
+
+
 		// MATERIAL_WATER
 		if (grid[i].material == MATERIAL_WATER)
 		{
@@ -1417,49 +1546,36 @@ void physics_sector (unsigned int from, unsigned int to)
 		// movement instructions for LIQUIDS
 		else if (grid[i].phase == PHASE_LIQUID)
 		{
-			unsigned int neighbours[] =
+
+			unsigned int currentPosition = i;
+			for (unsigned int j = 0; j < 1; ++j)
 			{
-				squareBelow - 1,
-				squareBelow,
-				squareBelow + 1,
-				i - 1,
-				i + 1
-			};
-
-			unsigned int offset = extremelyFastNumberFromZeroTo(4);
-			for (unsigned int k = 0; k < 5; ++k)
-			{
-
-				unsigned int index = (k + offset) % 5;
-
-				// chemistry(i, neighbours[index]) ;
-				if ((grid[neighbours[index]].phase == PHASE_VACUUM) || (grid[neighbours[index]].phase == PHASE_GAS) ||  (grid[neighbours[index]].phase == PHASE_LIQUID)     )
+				bool movedThisTurn = false;
+				unsigned int neighbours[] =
 				{
-					swapParticle(i, neighbours[index]);
+					currentPosition - sizeX - 1,
+					currentPosition - sizeX,
+					currentPosition - sizeX + 1,
+					currentPosition - 1,
+					currentPosition + 1
+				};
 
-					if (false)
+				unsigned int offset = extremelyFastNumberFromZeroTo(4);
+				for (unsigned int k = 0; k < 5; ++k)
+				{
+					unsigned int index = (k + offset) % 5;
+					if ((grid[neighbours[index]].phase == PHASE_VACUUM) || (grid[neighbours[index]].phase == PHASE_GAS) ||  (grid[neighbours[index]].phase == PHASE_LIQUID)     )
 					{
-						unsigned int erosionNeighbours[] =
-						{
-							squareBelow,
-							i - 1,
-							i + 1
-						};
-
-						for (unsigned int k = 0; k < 3; ++k)
-						{
-							if ( grid[erosionNeighbours[k]].phase == PHASE_SOLID )
-							{
-								if (extremelyFastNumberFromZeroTo(10) == 0 )
-								{
-									grid[erosionNeighbours[k]].phase = PHASE_POWDER;
-								}
-							}
-						}
+						movedThisTurn = true;
+						currentPosition = neighbours[index];
+						break;
 					}
-					break;
 				}
+
+				if (!movedThisTurn) {break;}
 			}
+			swapParticle(i, currentPosition);
+
 		}
 
 		// movement instructions for GASES
@@ -1578,7 +1694,26 @@ void setPointSize (unsigned int pointSize)
 
 void toggleEnergyGridDisplay ()
 {
-	showEnergyGrid = !showEnergyGrid;
+
+
+	if (showEnergyGrid)
+	{
+		showEnergyGrid = false;
+		showTemperatureGrid = true;
+	}
+
+	else if (showTemperatureGrid)
+	{
+		showEnergyGrid = false;
+		showTemperatureGrid = false;
+
+	}
+	else
+	{
+		showEnergyGrid = true;
+	}
+
+
 }
 
 void thread_graphics()
@@ -1607,6 +1742,37 @@ void thread_graphics()
 			energyColorGrid[ (i * numberOfFieldsPerVertex) + 0 ] = lifeGrid[i].energy / maximumDisplayEnergy;
 			energyColorGrid[ (i * numberOfFieldsPerVertex) + 1 ] = lifeGrid[i].energy / maximumDisplayEnergy;
 			energyColorGrid[ (i * numberOfFieldsPerVertex) + 2 ] = lifeGrid[i].energy / maximumDisplayEnergy;
+			energyColorGrid[ (i * numberOfFieldsPerVertex) + 3 ] = 1.0f;
+			energyColorGrid[ (i * numberOfFieldsPerVertex) + 4 ] = fx;
+			energyColorGrid[ (i * numberOfFieldsPerVertex) + 5 ] = fy;
+		}
+
+		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, energyColorGrid, GL_DYNAMIC_DRAW );
+		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
+
+		postDraw();
+
+		delete [] energyColorGrid;
+	}
+
+	else if (showTemperatureGrid)
+	{
+		unsigned int nVertsToRenderThisTurn = 1 * totalSize;
+		long unsigned int totalNumberOfFields = nVertsToRenderThisTurn * numberOfFieldsPerVertex;
+
+		float * energyColorGrid = new float[totalNumberOfFields];
+
+		unsigned int x = 0;
+		unsigned int y = 0;
+		for (unsigned int i = 0; i < totalSize; ++i)
+		{
+			x = i % sizeX;
+			if (!x) { y = i / sizeX; }
+			float fx = x;
+			float fy = y;
+			energyColorGrid[ (i * numberOfFieldsPerVertex) + 0 ] = grid[i].temperature / maximumDisplayTemperature;
+			energyColorGrid[ (i * numberOfFieldsPerVertex) + 1 ] = grid[i].temperature / maximumDisplayTemperature;
+			energyColorGrid[ (i * numberOfFieldsPerVertex) + 2 ] = grid[i].temperature / maximumDisplayTemperature;
 			energyColorGrid[ (i * numberOfFieldsPerVertex) + 3 ] = 1.0f;
 			energyColorGrid[ (i * numberOfFieldsPerVertex) + 4 ] = fx;
 			energyColorGrid[ (i * numberOfFieldsPerVertex) + 5 ] = fy;
@@ -2441,6 +2607,7 @@ unsigned int walkAnAnimal(unsigned int i)
 			for (int move = 0; move < reach_int; ++move)
 			{
 				bool movedThisTurn = false;
+				bool ateANeighbour = false;
 
 				// check the neighbour cells starting in the direction of travel.
 				// then, check the cells closest to the direction of travel.
@@ -2455,28 +2622,210 @@ unsigned int walkAnAnimal(unsigned int i)
 					if (k < 0) {k += N_NEIGHBOURS;}
 					if (sign == 1) { sign = -1; } else { sign = 1; }
 
-					// if one of the neighbouring cells is a material type and phase that the animal can exist within
+
 					int neighbour = currentPosition + neighbourOffsets[k];
-					if (grid[neighbour].phase == PHASE_VACUUM)
+
+
+					// if the neighbour is a food the animal can eat, eat it
+					// switch (a->energySource)
+					// {
+
+					if (  (a->energyFlags & ENERGYSOURCE_LIGHT ) == a->movementFlags   )
 					{
-						// and it has a neighbour of a type and phase the animal can walk on
-						for (int l = 0; l < N_NEIGHBOURS; ++l)
+						if (seedGrid[neighbour].stage == STAGE_PHOTON )
 						{
-							int neighboursNeighbour = (neighbour + neighbourOffsets[l]);
-							if (neighboursNeighbour == currentPosition || neighboursNeighbour == i) {continue;}
-							if (  grid[ neighboursNeighbour ] .phase == PHASE_POWDER )
+							a->energy += 1.0f;
+							clearSeedParticle(neighbour);
+							if (!ateANeighbour) {a->direction = k;} // if this is the first p
+							ateANeighbour = true;
+						}
+
+						break;
+					}
+
+					if (  (a->energyFlags & ENERGYSOURCE_SEED ) == a->movementFlags   )
+					{
+						if (seedGrid[neighbour].stage == STAGE_BUD || seedGrid[neighbour].stage == STAGE_FRUIT ||  seedGrid[neighbour].stage == STAGE_SEED )
+						{
+							a->energy += 10.0f ;
+							// printf("fed animal. Energy %f, reproduces at %f\n", a->energy, a->reproductionCost);
+							clearSeedParticle(neighbour);
+							if (!ateANeighbour) {a->direction = k;} // if this is the first p
+							ateANeighbour = true;
+						}
+
+						break;
+					}
+
+					if (  (a->energyFlags & ENERGYSOURCE_SEED ) == a->movementFlags   )
+					{
+
+						if (lifeGrid[neighbour].identity > 0x00)
+						{
+							a->energy += lifeGrid[neighbour].energy;
+							lifeGrid[neighbour].energy = 0;
+							// a->energy += 10.0f;
+							// printf("fed animal. Energy %f, reproduces at %f\n", a->energy, a->reproductionCost);
+							// clearLifeParticle(neighbour);
+							// a->direction = k; // go get the rest of it
+
+							if (!ateANeighbour) {a->direction = k;} // if this is the first p
+							// printf("direction %u, k %u\n", a->direction, k);
+							ateANeighbour = true;
+						}
+
+						break;
+					}
+
+					if (  (a->energyFlags & ENERGYSOURCE_MINERAL ) == a->movementFlags   )
+					{
+						if (grid[neighbour].phase != PHASE_VACUUM)
+						{
+							a->energy += 1.0f;
+
+							clearParticle( neighbour);
+							a->direction = k;
+							ateANeighbour = true;
+
+						}
+						break;
+					}
+
+					if (  (a->energyFlags & ENERGYSOURCE_ANIMAL ) == a->movementFlags   )
+					{
+
+						if (seedGrid[neighbour].stage == STAGE_ANIMAL )
+						{
+							a->energy += animals[seedGrid[neighbour].parentIdentity].energy;
+							printf("an animal ate another animal!\n");
+							clearSeedParticle(neighbour);
+							ateANeighbour = true;
+
+						}
+
+						break;
+					}
+
+
+					// }
+
+
+					// // can't eat and move in the same turn. also can't eat twice in the same turn (although can eat once for each point of reach).
+					// if (ateANeighbour) {break;}
+
+
+					// animal movement, see what kind of terrain it is allowed into
+					// switch (a->movementType)
+					// {
+
+
+					if (  (a->movementFlags & MOVEMENT_ONPOWDER ) == a->movementFlags   )
+					{
+						if (grid[neighbour].phase == PHASE_VACUUM) // if one of the neighbouring cells is a material type and phase that the animal can exist within
+						{
+							for (int l = 0; l < N_NEIGHBOURS; ++l) // and it has a neighbour of a type and phase the animal can walk on
 							{
-								// say that this cell is the current position, and then break.
-								currentPosition = neighbour;
+								int neighboursNeighbour = (neighbour + neighbourOffsets[l]);
+								if (neighboursNeighbour == currentPosition || neighboursNeighbour == i) {continue;}
+								if (  grid[ neighboursNeighbour ] .phase == PHASE_POWDER )
+								{
+									currentPosition = neighbour; // say that this cell is the current position, and then break.
+									movedAtAll = true;
+									movedThisTurn = true;
+									haveAWalkableNeighbour = true;
+									break;
+								}
+							}
+						}
+						break;
+					}
+
+
+
+					if (  (a->movementFlags & MOVEMENT_INPLANTS ) == a->movementFlags   )
+					{
+						if (grid[neighbour].phase == PHASE_VACUUM) // if one of the neighbouring cells is a material type and phase that the animal can exist within
+						{
+							if (lifeGrid[neighbour].identity > 0x00)
+							{
+								currentPosition = neighbour; // say that this cell is the current position, and then break.
 								movedAtAll = true;
 								movedThisTurn = true;
 								haveAWalkableNeighbour = true;
 								break;
-
 							}
 						}
+
+						break;
 					}
-					if (movedThisTurn) {break;}
+
+
+					if (  (a->movementFlags & MOVEMENT_INWATER ) == a->movementFlags   )
+					{
+						if (grid[neighbour].phase == PHASE_LIQUID && grid[neighbour].material == MATERIAL_WATER) // if one of the neighbouring cells is a material type and phase that the animal can exist within
+						{
+							currentPosition = neighbour; // say that this cell is the current position, and then break.
+							movedAtAll = true;
+							movedThisTurn = true;
+							haveAWalkableNeighbour = true;
+							break;
+						}
+
+						break;
+					}
+
+
+					if (  (a->movementFlags & MOVEMENT_INAIR ) == a->movementFlags   )
+					{
+						if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS) // if one of the neighbouring cells is a material type and phase that the animal can exist within
+						{
+							currentPosition = neighbour; // say that this cell is the current position, and then break.
+							movedAtAll = true;
+							movedThisTurn = true;
+							haveAWalkableNeighbour = true;
+							break;
+						}
+
+						break;
+					}
+
+
+					if (  (a->movementFlags & MOVEMENT_ONSOLID ) == a->movementFlags   )
+					{
+						if (grid[neighbour].phase == PHASE_VACUUM) // if one of the neighbouring cells is a material type and phase that the animal can exist within
+						{
+							for (int l = 0; l < N_NEIGHBOURS; ++l) // and it has a neighbour of a type and phase the animal can walk on
+							{
+								int neighboursNeighbour = (neighbour + neighbourOffsets[l]);
+								if (neighboursNeighbour == currentPosition || neighboursNeighbour == i) {continue;}
+								if (  grid[ neighboursNeighbour ] .phase == PHASE_SOLID )
+								{
+									currentPosition = neighbour; // say that this cell is the current position, and then break.
+									movedAtAll = true;
+									movedThisTurn = true;
+									haveAWalkableNeighbour = true;
+									break;
+								}
+							}
+						}
+
+						break;
+					}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+					// }
 				}
 			}
 		}
@@ -2500,7 +2849,7 @@ unsigned int walkAnAnimal(unsigned int i)
 			incrementAnimalSegmentPositions( a, i, false );
 		}
 
-		if (!haveAWalkableNeighbour)
+		if (!haveAWalkableNeighbour && a->movementFlags != MOVEMENT_INAIR)
 		{
 			if (grid[squareBelow].phase == PHASE_VACUUM)
 			{
@@ -2556,8 +2905,8 @@ void thread_seeds()
 				}
 			}
 
-			// the photon falls downward if nothing is below it.
-			if (grid[squareBelow].phase != PHASE_VACUUM)
+			// the photon falls downward if nothing is below it. They can travel into water.
+			if (grid[squareBelow].phase != PHASE_VACUUM && grid[squareBelow].phase != PHASE_GAS && grid[squareBelow].material != MATERIAL_WATER)
 			{
 				clearSeedParticle(i);
 				continue;
@@ -2591,7 +2940,10 @@ void thread_seeds()
 				}
 
 				walkAnAnimal(i);
+
+#ifdef DRAW_ANIMALS
 				updateAnimalDrawing(i);
+#endif
 
 			}
 		}
@@ -3076,6 +3428,12 @@ void drawAHill(unsigned int hillXIndex, unsigned int hillWidth)
 			if (indexA > totalSize || indexB > totalSize) {continue;}
 			swapParticle( indexA, indexB); // centered on hillXIndex, move all cells that are hillWidth in either direction up by 1 square.
 			swapParticle( indexB, indexC);
+
+			if (grid[indexB].phase == PHASE_VACUUM && grid[indexB].material == MATERIAL_VACUUM)
+			{
+				setParticle(MATERIAL_OLIVINE, indexB);
+				grid[indexB].temperature = 10000;
+			}
 		}
 	}
 }
@@ -3083,15 +3441,16 @@ void drawAHill(unsigned int hillXIndex, unsigned int hillWidth)
 void drawRandomLandscape()
 {
 	// draw some hills
-	for (int i = 0; i < extremelyFastNumberFromZeroTo(7); ++i)
+	// for (int i = 0; i < extremelyFastNumberFromZeroTo(3); ++i)
+	// {
+	unsigned int randomHillX = extremelyFastNumberFromZeroTo(sizeX);
+	unsigned int randomHillWidth = extremelyFastNumberFromZeroTo(500);
+	for (int i = 0; i < extremelyFastNumberFromZeroTo(500); ++i)
 	{
-		unsigned int randomHillX = extremelyFastNumberFromZeroTo(sizeX);
-		unsigned int randomHillWidth = extremelyFastNumberFromZeroTo(500);
-		for (int i = 0; i < extremelyFastNumberFromZeroTo(1000); ++i)
-		{
-			drawAHill(randomHillX, randomHillWidth);
-		}
+		unsigned int hillWidthNoise = (RNG() - 0.5) * 100;
+		drawAHill(randomHillX, randomHillWidth + hillWidthNoise);
 	}
+	// }
 }
 
 void drawLandscapeFromString(std::string genes)
