@@ -1249,6 +1249,21 @@ void setNeutralTemp ()
 	}
 }
 
+
+void setExtremeTempPoint (unsigned int x ,unsigned  int y)
+{
+
+	unsigned int i = ((y * sizeX) + x) % totalSize;
+
+	// printf("set extreme temp %i\n", i);
+
+
+
+	grid[i].temperature = 10000000; 
+
+}
+
+
 void thread_temperature2 ()
 {
 #ifdef THREAD_TIMING
@@ -2623,17 +2638,18 @@ void thread_life()
 			// };
 			unsigned int neighbourMaterialA = MATERIAL_VACUUM;
 
-			bool burned = false;
 			for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
 			{
 
 
+				unsigned int neighbour = neighbourOffsets[j] + i;
 
 				// hot plants light on fire
 				if (true)
 				{
-					if (grid[j].temperature > 600 )
+					if (grid[neighbour].temperature > 600 )
 					{
+						// printf("a plant lit on fire\n");
 						clearLifeParticle(i);
 						setParticle(MATERIAL_FIRE, i);
 						grid[i].phase = PHASE_GAS;
@@ -2644,7 +2660,6 @@ void thread_life()
 
 
 
-				unsigned int neighbour = neighbourOffsets[j] + i;
 				// if there is a neighbouring cell from the same plant, equalize energy with it.
 				if (lifeGrid[neighbour].identity == lifeGrid[i].identity)
 				{

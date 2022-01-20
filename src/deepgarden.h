@@ -110,6 +110,7 @@ void thread_life();
 void thread_seeds();
 
 
+void setExtremeTempPoint (unsigned int x ,unsigned  int y);
 void sendLifeToBackground ();
 
 void insertRandomSeed();

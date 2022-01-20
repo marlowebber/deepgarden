@@ -122,13 +122,13 @@ void thread_interface()
 
 
 
-				case SDLK_v:
+			case SDLK_v:
 				drawRandomLandscape();
 				break;
 
 
-					case SDLK_e:
-					toggleErodingRain();
+			case SDLK_e:
+				toggleErodingRain();
 				break;
 
 
@@ -150,11 +150,26 @@ void thread_interface()
 			{
 			case SDL_BUTTON_LEFT:
 			{
+				// printf("x %i, y %i", mouseX, mouseY);
+
+				unsigned int mouseusu = mouseX;
+				unsigned int mousewewe = mouseY;
+
+				setExtremeTempPoint (mouseusu, mousewewe);
 				break;
 			}
 
 			}
 			break;
+		}
+
+		case SDL_MOUSEMOTION:
+		{
+			mouseX = event.motion.x;
+			mouseY = event.motion.y;
+
+
+
 		}
 		}
 	}
