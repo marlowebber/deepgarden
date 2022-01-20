@@ -127,6 +127,12 @@ void thread_interface()
 				break;
 
 
+					case SDLK_e:
+					toggleErodingRain();
+				break;
+
+
+
 
 
 			case SDLK_p:

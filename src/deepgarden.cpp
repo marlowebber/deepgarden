@@ -27,6 +27,7 @@ const Color color_black     		= Color( 0.0f, 0.0f, 0.0f, 1.0f );
 const Color color_white_clear     	= Color( 1.0f, 1.0f, 1.0f, 0.25f );
 const Color color_purple     		= Color( 0.8f, 0.0f, 0.8f, 1.0f );
 const Color color_brightred			= Color( 1.0f, 0.1f, 0.0f, 1.0f);
+const Color color_orange			= Color( 1.0f, 0.8f, 0.0f, 1.0f);
 const Color color_clear     		= Color( 0.0f, 0.0f, 0.0f, 0.0f );
 const Color color_shadow 	    	= Color( 0.0f, 0.0f, 0.0f, 0.5f);
 
@@ -135,6 +136,9 @@ std::list<vec_u2> v_seeds;
 
 bool showEnergyGrid = false;
 bool showTemperatureGrid = false;
+
+bool sprinkleErodingRain = false;
+
 
 unsigned int animationChangeCount = 0;
 unsigned int animationGlobalFrame = FRAME_A;
@@ -275,6 +279,9 @@ LifeParticle * lifeGrid = new LifeParticle[totalSize];
 SeedParticle * seedGrid = new SeedParticle[totalSize];
 std::list<ProposedLifeParticle> v;
 std::list<ProposedLifeParticle> v_extrudedParticles;
+
+
+
 
 struct AnimalParticle
 {
@@ -662,6 +669,14 @@ void setPhoton(  unsigned int i)
 	memcpy( (&seedColorGrid[i * numberOfFieldsPerVertex]) ,  &(color_white_clear),  sizeof(Color) );
 }
 
+void setErodingRain(  unsigned int i)
+{
+
+	seedGrid[i].energy = 0.0f;
+	seedGrid[i].stage = STAGE_ERODINGRAIN;
+	memcpy( (&seedColorGrid[i * numberOfFieldsPerVertex]) ,  &(color_purple),  sizeof(Color) );
+}
+
 void clearSeedParticle( unsigned int i)
 {
 	seedGrid[i].stage = 0x00;
@@ -669,6 +684,23 @@ void clearSeedParticle( unsigned int i)
 	seedGrid[i].energy = 0.0f;
 	seedGrid[i].genes = std::string("");
 	memset( &(seedColorGrid[ i * numberOfFieldsPerVertex ]) , 0x00, 16 );
+}
+
+void toggleErodingRain ()
+{
+	sprinkleErodingRain = !sprinkleErodingRain ;
+
+	if (!sprinkleErodingRain)
+	{
+
+		for (int i = 0; i < totalSize; ++i)
+		{
+			if (seedGrid[i].stage == STAGE_ERODINGRAIN)
+			{
+				clearSeedParticle(i);
+			}
+		}
+	}
 }
 
 void swapSeedParticle(unsigned int a, unsigned int b)
@@ -895,6 +927,7 @@ Color materialColor ( unsigned int material )
 	if ((material == MATERIAL_OLIVINE))     {    return color_darkgrey;   }
 	if ((material == MATERIAL_GOLD))        {    return color_yellow;     }
 	if ((material == MATERIAL_SEED))        {    return color_yellow;     }
+	if ((material == MATERIAL_FIRE))        {    return color_orange;     }
 	return color_black;
 }
 
@@ -1133,7 +1166,7 @@ void initialize ()
 			{
 				if (RNG() < 0.5)
 				{
-					setParticle( MATERIAL_WATER, i);
+					// setParticle( MATERIAL_WATER, i);
 				}
 			}
 		}
@@ -1226,11 +1259,40 @@ void thread_temperature2 ()
 	{
 
 
+
+		// further up the screen is naturally colder
 		if (true)
 		{
 
 
-			// equalize temp with neighbours
+			float y = i / sizeX;
+			float naturalY = (1 - (y / sizeY));
+			naturalY = naturalY * defaultTemperature * 2;
+			unsigned int AltitudeNaturalTemp = naturalY;
+			// printf("AltitudeNaturalTemp %u\n", AltitudeNaturalTemp);
+
+			// unsigned int avgTemp = ((grid[i].temperature+ AltitudeNaturalTemp) / 2) ;
+			// // grid[neighbours[j]].temperature = avgTemp;
+			// grid[i].temperature = avgTemp;
+
+
+			if (grid[i].temperature > AltitudeNaturalTemp)
+			{
+				grid[i].temperature -= 1;
+			}
+			else
+			{
+				grid[i].temperature += 1;
+			}
+
+		}
+
+
+		// equalize temp with neighbours
+		if (true)
+		{
+
+
 			unsigned int squareAbove = i + sizeX;
 			unsigned int squareBelow = i - sizeX;
 			unsigned int neighbours[] =
@@ -1263,6 +1325,23 @@ void thread_temperature2 ()
 					// grid[neighbours[j]].temperature += tempDiff;
 					// grid[i].temperature -= tempDiff;
 				}
+			}
+		}
+
+
+
+		// MATERIAL_FIRE
+		if (grid[i].material == MATERIAL_FIRE)
+		{
+
+			if (seedGrid[i].parentIdentity > 0x00) 
+			{
+				clearSeedParticle(i);
+			}
+
+			if (grid[i].temperature < 600)
+			{
+				clearParticle(i);
 			}
 		}
 
@@ -1495,6 +1574,47 @@ void thread_temperature2 ()
 				{
 					grid[i].phase = PHASE_LIQUID;
 				}
+
+				else if (grid[i].temperature > 1000 && grid[i].temperature < 1100)
+				{
+					if (extremelyFastNumberFromZeroTo(100) == 0)
+					{
+
+
+						unsigned int nMaterialNeighbours = 0;
+						for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
+						{
+							unsigned int neighbour = neighbourOffsets[j] + i;
+							if ( grid[neighbour].material == MATERIAL_OLIVINE )
+							{
+								nMaterialNeighbours++;
+							}
+						}
+						for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
+						{
+							unsigned int neighbour = (neighbourOffsets[j] + i) % totalSize;
+							if ( grid[neighbour].material != MATERIAL_OLIVINE )
+							{
+								unsigned int nMaterialNeighbourNeighbours = 0;
+								for (unsigned int k = 0; k < N_NEIGHBOURS; ++k)
+								{
+									unsigned int neighboursNeighbour = (neighbour + neighbourOffsets[k]) % totalSize;
+									if ( grid[neighboursNeighbour].material == MATERIAL_OLIVINE )
+									{
+										nMaterialNeighbourNeighbours ++;
+									}
+
+
+								}
+								if (nMaterialNeighbourNeighbours > nMaterialNeighbours)
+								{
+									swapParticle(i, neighbour);
+									break;
+								}
+							}
+						}
+					}
+				}
 			}
 		}
 	}
@@ -1662,8 +1782,22 @@ void thread_physics ()
 		}
 	}
 
-	// sprinkle photons
-	if (true)
+
+	// sprinkle eroding rain
+	if (sprinkleErodingRain)
+	{
+		for (int i = (sizeY - 2) * sizeX; i < (sizeY - 1)*sizeX; ++i)
+		{
+			if (extremelyFastNumberFromZeroTo(lampBrightness) == 0)
+			{
+				setErodingRain(   i);
+			}
+		}
+	}
+
+	else
+		// sprinkle photons
+		// if (true)
 	{
 		for (int i = (sizeY - 2) * sizeX; i < (sizeY - 1)*sizeX; ++i)
 		{
@@ -2489,8 +2623,27 @@ void thread_life()
 			// };
 			unsigned int neighbourMaterialA = MATERIAL_VACUUM;
 
+			bool burned = false;
 			for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
 			{
+
+
+
+				// hot plants light on fire
+				if (true)
+				{
+					if (grid[j].temperature > 600 )
+					{
+						clearLifeParticle(i);
+						setParticle(MATERIAL_FIRE, i);
+						grid[i].phase = PHASE_GAS;
+						grid[i].temperature = 1000;
+						break;
+					}
+				}
+
+
+
 				unsigned int neighbour = neighbourOffsets[j] + i;
 				// if there is a neighbouring cell from the same plant, equalize energy with it.
 				if (lifeGrid[neighbour].identity == lifeGrid[i].identity)
@@ -2870,6 +3023,88 @@ void thread_seeds()
 #endif
 	for (unsigned int i = (sizeX + 1); i < (totalSize - (sizeX + 1)); ++i)
 	{
+
+
+		if (seedGrid[i].stage == STAGE_ERODINGRAIN)
+		{
+			unsigned int currentPosition = i;
+			bool movedThisTurn = false;
+			unsigned int neighbours[] =
+			{
+
+				currentPosition - 1,
+				currentPosition - sizeX - 1,
+				currentPosition - sizeX,
+				currentPosition - sizeX + 1,
+				currentPosition + 1
+			};
+
+			unsigned int offset = extremelyFastNumberFromZeroTo(4);
+			for (unsigned int k = 0; k < 5; ++k)
+			{
+				unsigned int index = (k + offset) % 5;
+				if ((grid[neighbours[index]].phase == PHASE_VACUUM) || (grid[neighbours[index]].phase == PHASE_GAS) ||  (grid[neighbours[index]].phase == PHASE_LIQUID)     )
+				{
+					movedThisTurn = true;
+					currentPosition = neighbours[index];
+
+
+
+					if (extremelyFastNumberFromZeroTo(8) == 0 )
+					{
+						// if you moved, consume the neighbours closest to you.
+						if (extremelyFastNumberFromZeroTo(1) == 0)
+						{
+							if (index > 0) { clearParticle(neighbours[index - 1]); seedGrid[i].energy += 1.0f;}
+						}
+						else
+						{
+							if (index < 4) { clearParticle(neighbours[index + 1]); seedGrid[i].energy += 1.0f;}
+						}
+
+						if (extremelyFastNumberFromZeroTo(8) == 0 )
+						{
+							clearSeedParticle(currentPosition);
+							continue;
+						}
+
+					}
+
+
+					break;
+				}
+			}
+
+			// if (seedGrid[currentPosition].energy > 1.0f)
+			// {
+			// 	// if you didn't move, deposit sediment in an empty neighbour.
+			// 	// unsigned int offset = extremelyFastNumberFromZeroTo(4);
+			// 	for (unsigned int k = 0; k < 5; ++k)
+			// 	{
+			// 		if (grid[neighbours[k]].phase == PHASE_VACUUM)
+			// 		{
+			// 			setParticle( MATERIAL_GOLD, neighbours[k] );
+			// 			seedGrid[currentPosition].energy -= 1.0f;
+
+			// 			if (seedGrid[currentPosition].energy < 1.0f)
+			// 			{
+			// 				// setParticle( MATERIAL_GOLD, currentPosition );
+			// 				clearSeedParticle(currentPosition);
+
+			// 				continue;
+			// 			}
+			// 		}
+			// 	}
+
+			// }
+
+			swapSeedParticle( i, currentPosition);
+
+
+
+
+		}
+
 		// PHOTONS. Some of the particles on the seed grid are particles of light that fall downwards.
 		if (seedGrid[i].stage == STAGE_PHOTON)
 		{

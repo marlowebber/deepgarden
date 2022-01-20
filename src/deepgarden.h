@@ -49,6 +49,7 @@ struct Color
 #define MATERIAL_QUARTZ 	 9
 #define MATERIAL_AMPHIBOLE 	 10
 #define MATERIAL_OLIVINE 	 11
+#define MATERIAL_FIRE        12
 
 #define PHASE_NULL			 0
 #define PHASE_VACUUM 		 1
@@ -66,6 +67,7 @@ struct Color
 #define STAGE_ANIMALSEED	 5
 #define STAGE_ANIMAL         6
 #define STAGE_PLAYER		 7
+#define STAGE_ERODINGRAIN    8
 
 #define ENERGYSOURCE_LIGHT   1
 #define ENERGYSOURCE_MINERAL 2
@@ -87,7 +89,7 @@ float RNG();
 
 void initialize ();
 
-
+void toggleErodingRain () ;
 void setPointSize (unsigned int pointSize) ;
 
 void thread_graphics () ;
