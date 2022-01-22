@@ -8,9 +8,9 @@
 
 #include "main.h"
 
-// #define THREAD_TIMING
+#define THREAD_TIMING_READOUT 1
 // #define PLANT_DRAWING_READOUT 1
-#define ANIMAL_DRAWING_READOUT 1
+// #define ANIMAL_DRAWING_READOUT 1
 // #define DRAW_ANIMALS 1
 
 #define RENDERING_THREADS 4
@@ -116,7 +116,7 @@ float scalingFactor = 1.0f;
 vec_u2 cursor_grid = vec_u2(0, 0);
 vec_u2 prevCursor_grid = vec_u2(0, 0);
 vec_u2 origin = vec_u2(0, 0);
-
+unsigned int cursor_germinationMaterial = MATERIAL_QUARTZ;
 unsigned int cursor_energySource = ENERGYSOURCE_LIGHT;
 
 unsigned int cursor_string = 0;
@@ -134,8 +134,16 @@ std::list<unsigned int> identities;
 
 std::list<vec_u2> v_seeds;
 
-bool showEnergyGrid = false;
-bool showTemperatureGrid = false;
+
+
+// bool showEnergyGrid = false;
+// bool showTemperatureGrid = false;
+
+
+unsigned int visualizer = VISUALIZE_MATERIAL;
+
+
+
 
 bool sprinkleErodingRain = false;
 
@@ -144,7 +152,7 @@ unsigned int animationChangeCount = 0;
 unsigned int animationGlobalFrame = FRAME_A;
 
 unsigned int nGerminatedSeeds = 0;
-unsigned int germinatedSeedsLimit = 1000;
+// unsigned int germinatedSeedsLimit = 1000;
 unsigned int lampBrightness = 250;
 struct Particle
 {
@@ -215,6 +223,7 @@ struct SeedParticle
 	std::string genes;
 	float energy;
 	unsigned int stage;
+	unsigned int germinationMaterial;
 	SeedParticle();
 };
 SeedParticle::SeedParticle()
@@ -223,6 +232,7 @@ SeedParticle::SeedParticle()
 	this->parentIdentity = 0x00;
 	this->energy = 0.0f;
 	this->stage = STAGE_NULL;
+	this->germinationMaterial = MATERIAL_QUARTZ;
 }
 
 struct transportableSeed
@@ -409,7 +419,7 @@ int drawAnimalFromChar (unsigned int i)
 		char c = seedGrid[i].genes[animalCursorString];
 		switch (c)
 		{
-		case 'm': // movement modification.
+		case 'j': // movement modification.
 		{
 			animalCursorString++;
 
@@ -1136,7 +1146,7 @@ void initialize ()
 				if (RNG() < 0.5)
 				{
 					setParticle( MATERIAL_OLIVINE, i);
-					grid[i].temperature = 10090.0f;
+					// grid[i].temperature = 10090.0f;
 				}
 			}
 
@@ -1147,7 +1157,7 @@ void initialize ()
 				{
 					setParticle( MATERIAL_AMPHIBOLE, i);
 
-					grid[i].temperature = 8090.0f;
+					// grid[i].temperature = 8090.0f;
 				}
 			}
 
@@ -1158,7 +1168,7 @@ void initialize ()
 				{
 					setParticle( MATERIAL_QUARTZ, i);
 
-					grid[i].temperature = 6090.0f;
+					// grid[i].temperature = 6090.0f;
 				}
 			}
 
@@ -1166,7 +1176,7 @@ void initialize ()
 			{
 				if (RNG() < 0.5)
 				{
-					// setParticle( MATERIAL_WATER, i);
+					setParticle( MATERIAL_WATER, i);
 				}
 			}
 		}
@@ -1250,7 +1260,7 @@ void setNeutralTemp ()
 }
 
 
-void setExtremeTempPoint (unsigned int x ,unsigned  int y)
+void setExtremeTempPoint (unsigned int x , unsigned  int y)
 {
 
 	unsigned int i = ((y * sizeX) + x) % totalSize;
@@ -1259,14 +1269,14 @@ void setExtremeTempPoint (unsigned int x ,unsigned  int y)
 
 
 
-	grid[i].temperature = 10000000; 
+	grid[i].temperature = 10000000;
 
 }
 
 
 void thread_temperature2 ()
 {
-#ifdef THREAD_TIMING
+#ifdef THREAD_TIMING_READOUT
 	auto start = std::chrono::steady_clock::now();
 #endif
 
@@ -1274,357 +1284,367 @@ void thread_temperature2 ()
 	{
 
 
-
-		// further up the screen is naturally colder
-		if (true)
+		if (grid[i].phase != PHASE_VACUUM)
 		{
 
 
-			float y = i / sizeX;
-			float naturalY = (1 - (y / sizeY));
-			naturalY = naturalY * defaultTemperature * 2;
-			unsigned int AltitudeNaturalTemp = naturalY;
-			// printf("AltitudeNaturalTemp %u\n", AltitudeNaturalTemp);
-
-			// unsigned int avgTemp = ((grid[i].temperature+ AltitudeNaturalTemp) / 2) ;
-			// // grid[neighbours[j]].temperature = avgTemp;
-			// grid[i].temperature = avgTemp;
 
 
-			if (grid[i].temperature > AltitudeNaturalTemp)
+			// further up the screen is naturally colder
+			if (true)
 			{
-				grid[i].temperature -= 1;
-			}
-			else
-			{
-				grid[i].temperature += 1;
-			}
-
-		}
 
 
-		// equalize temp with neighbours
-		if (true)
-		{
+				float y = i / sizeX;
+				float naturalY = (1 - (y / sizeY));
+				naturalY = naturalY * defaultTemperature * 2;
+				unsigned int AltitudeNaturalTemp = naturalY;
+				// printf("AltitudeNaturalTemp %u\n", AltitudeNaturalTemp);
+
+				// unsigned int avgTemp = ((grid[i].temperature+ AltitudeNaturalTemp) / 2) ;
+				// // grid[neighbours[j]].temperature = avgTemp;
+				// grid[i].temperature = avgTemp;
 
 
-			unsigned int squareAbove = i + sizeX;
-			unsigned int squareBelow = i - sizeX;
-			unsigned int neighbours[] =
-			{
-				squareBelow - 1,
-				squareBelow,
-				squareBelow + 1,
-				i + 1,
-				squareAbove + 1,
-				squareAbove,
-				squareAbove - 1,
-				i - 1,
-			};
-			for (int j = 0; j < 8; ++j)
-			{
-				if ( grid[i].phase != PHASE_VACUUM &&  grid[neighbours[j]].phase != PHASE_VACUUM)
+				if (grid[i].temperature > AltitudeNaturalTemp)
 				{
+					grid[i].temperature -= 1;
+				}
+				else
+				{
+					grid[i].temperature += 1;
+				}
+
+			}
+
+
+			// equalize temp with neighbours
+			if (true)
+			{
+
+
+				unsigned int squareAbove = i + sizeX;
+				unsigned int squareBelow = i - sizeX;
+				unsigned int neighbours[] =
+				{
+					squareBelow - 1,
+					squareBelow,
+					squareBelow + 1,
+					i + 1,
+					squareAbove + 1,
+					squareAbove,
+					squareAbove - 1,
+					i - 1,
+				};
+				for (unsigned int j = 0; j < 8; ++j)
+				{
+					// if ( grid[i].phase != PHASE_VACUUM &&  grid[neighbours[j]].phase != PHASE_VACUUM)
+					// {
 
 
 
 					// if ( grid[i].temperature > grid[neighbours[j]].temperature )
 					// {
+					if (grid[neighbours[j]].phase != PHASE_VACUUM)
+					{
+						unsigned int avgTemp = (((grid[i].temperature) + (grid[neighbours[j]].temperature)) / 2) ;
+						grid[neighbours[j]].temperature = avgTemp;
+						grid[i].temperature = avgTemp;
+					}
 
-					unsigned int avgTemp = (((grid[i].temperature) + (grid[neighbours[j]].temperature)) / 2) ;
-					grid[neighbours[j]].temperature = avgTemp;
-					grid[i].temperature = avgTemp;
 					// }
 
 					// unsigned int avgTemp = (((grid[i].temperature) + (grid[neighbours[j]].temperature))/2) ;
 					// grid[neighbours[j]].temperature += tempDiff;
 					// grid[i].temperature -= tempDiff;
+					// }
 				}
 			}
-		}
 
 
 
-		// MATERIAL_FIRE
-		if (grid[i].material == MATERIAL_FIRE)
-		{
-
-			if (seedGrid[i].parentIdentity > 0x00) 
+			// MATERIAL_FIRE
+			if (grid[i].material == MATERIAL_FIRE)
 			{
-				clearSeedParticle(i);
-			}
 
-			if (grid[i].temperature < 600)
-			{
-				clearParticle(i);
-			}
-		}
-
-
-		// MATERIAL_WATER
-		if (grid[i].material == MATERIAL_WATER)
-		{
-			if (grid[i].phase == PHASE_POWDER)
-			{
-				if (grid[i].temperature > 273)
+				if (seedGrid[i].parentIdentity > 0x00)
 				{
-					grid[i].phase = PHASE_LIQUID;
+					clearSeedParticle(i);
 				}
-			}
-			else if (grid[i].phase == PHASE_LIQUID)
-			{
-				if (grid[i].temperature < 273)
-				{
-					grid[i].phase = PHASE_POWDER;
-				}
-				else if (grid[i].temperature > 373)
-				{
-					grid[i].phase = PHASE_GAS;
-				}
-			}
-			else if (grid[i].phase == PHASE_GAS)
-			{
-				if (grid[i].temperature < 373)
-				{
-					grid[i].phase = PHASE_LIQUID;
-				}
-			}
-		}
 
-		// MATERIAL_QUARTZ
-		else if (grid[i].material == MATERIAL_QUARTZ)
-		{
-			if (grid[i].phase == PHASE_POWDER)
-			{
-				if (grid[i].temperature > 600)
-				{
-					grid[i].phase = PHASE_LIQUID;
-				}
-			}
-			else if (grid[i].phase == PHASE_LIQUID)
-			{
 				if (grid[i].temperature < 600)
 				{
-					grid[i].phase = PHASE_POWDER;
+					clearParticle(i);
 				}
-				else if (grid[i].temperature > 600 && grid[i].temperature < 700)
-				{
-					unsigned int nSolidNeighbours = 0;
-					for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
-					{
+			}
 
-						unsigned int neighbour = neighbourOffsets[j] + i;
-						if ( grid[neighbour].material == MATERIAL_QUARTZ )
+
+
+			// MATERIAL_WATER
+			else if (grid[i].material == MATERIAL_WATER)
+			{
+				if (grid[i].phase == PHASE_POWDER)
+				{
+					if (grid[i].temperature > 273)
+					{
+						grid[i].phase = PHASE_LIQUID;
+					}
+				}
+				else if (grid[i].phase == PHASE_LIQUID)
+				{
+					if (grid[i].temperature < 273)
+					{
+						grid[i].phase = PHASE_POWDER;
+					}
+					else if (grid[i].temperature > 373)
+					{
+						grid[i].phase = PHASE_GAS;
+					}
+				}
+				else if (grid[i].phase == PHASE_GAS)
+				{
+					if (grid[i].temperature < 373)
+					{
+						grid[i].phase = PHASE_LIQUID;
+					}
+				}
+			}
+
+			// MATERIAL_QUARTZ
+			else if (grid[i].material == MATERIAL_QUARTZ)
+			{
+				if (grid[i].phase == PHASE_POWDER)
+				{
+					if (grid[i].temperature > 600)
+					{
+						grid[i].phase = PHASE_LIQUID;
+					}
+				}
+				else if (grid[i].phase == PHASE_LIQUID)
+				{
+					if (grid[i].temperature < 600)
+					{
+						grid[i].phase = PHASE_POWDER;
+					}
+					else if (grid[i].temperature > 600 && grid[i].temperature < 700)
+					{
+						unsigned int nSolidNeighbours = 0;
+						for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
 						{
-							if (grid[neighbour].phase == PHASE_SOLID )
+
+							unsigned int neighbour = neighbourOffsets[j] + i;
+							if ( grid[neighbour].material == MATERIAL_QUARTZ )
 							{
-								nSolidNeighbours++;
-							}
-						}
-					}
-					if (nSolidNeighbours > 1)
-					{
-						grid[i].phase = PHASE_SOLID;
-					}
-					else if (extremelyFastNumberFromZeroTo(1000) == 0)
-					{
-						grid[i].phase = PHASE_SOLID;
-					}
-				}
-				else if (grid[i].temperature > 2330)
-				{
-					grid[i].phase = PHASE_GAS;
-				}
-			}
-			else if (grid[i].phase == PHASE_GAS)
-			{
-				if (grid[i].temperature < 2330)
-				{
-					grid[i].phase = PHASE_LIQUID;
-				}
-			}
-			else if (grid[i].phase == PHASE_SOLID )
-			{
-				if (grid[i].temperature > 2330)
-				{
-					grid[i].phase = PHASE_LIQUID;
-				}
-			}
-		}
-
-		else if (grid[i].material == MATERIAL_AMPHIBOLE)
-		{
-			if (grid[i].phase == PHASE_POWDER)
-			{
-				if (grid[i].temperature > 800)
-				{
-					grid[i].phase = PHASE_LIQUID;
-				}
-			}
-			else if (grid[i].phase == PHASE_LIQUID)
-			{
-				if (grid[i].temperature < 800)
-				{
-					grid[i].phase = PHASE_POWDER;
-				}
-				else if (grid[i].temperature > 800 && grid[i].temperature < 900)
-				{
-					unsigned int nSolidNeighbours = 0;
-					for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
-					{
-
-						unsigned int neighbour = neighbourOffsets[j] + i;
-						if ( grid[neighbour].material == MATERIAL_AMPHIBOLE )
-						{
-							if (grid[neighbourOffsets[j] + i].phase == PHASE_SOLID )
-							{
-								nSolidNeighbours++;
-							}
-						}
-					}
-					if (nSolidNeighbours > 2)
-					{
-						grid[i].phase = PHASE_SOLID;
-					}
-					else if (extremelyFastNumberFromZeroTo(10000) == 0)
-					{
-						grid[i].phase = PHASE_SOLID;
-					}
-
-				}
-				else if (grid[i].temperature > 2330)
-				{
-					grid[i].phase = PHASE_GAS;
-				}
-			}
-
-			else if (grid[i].phase == PHASE_GAS)
-			{
-				if (grid[i].temperature < 2330)
-				{
-					grid[i].phase = PHASE_LIQUID;
-				}
-			}
-
-			else if (grid[i].phase == PHASE_SOLID )
-			{
-				if (grid[i].temperature > 2330)
-				{
-					grid[i].phase = PHASE_LIQUID;
-				}
-
-			}
-		}
-
-
-		else if (grid[i].material == MATERIAL_OLIVINE)
-		{
-			if (grid[i].phase == PHASE_POWDER)
-			{
-				if (grid[i].temperature > 1000)
-				{
-					grid[i].phase = PHASE_LIQUID;
-				}
-			}
-			else if (grid[i].phase == PHASE_LIQUID)
-			{
-				if (grid[i].temperature < 1000)
-				{
-					grid[i].phase = PHASE_POWDER;
-				}
-				else if (grid[i].temperature > 1000 && grid[i].temperature < 1100)
-				{
-
-					unsigned int nSolidNeighbours = 0;
-					unsigned int dissimilarNeighbours = 0;
-					for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
-					{
-						unsigned int neighbour = neighbourOffsets[j] + i;
-						if ( grid[neighbour].material == MATERIAL_OLIVINE )
-						{
-							if (grid[neighbour].phase == PHASE_SOLID )
-							{
-								nSolidNeighbours++;
-							}
-						}
-						else {
-							dissimilarNeighbours++;
-						}
-					}
-					if (nSolidNeighbours == 4 || (nSolidNeighbours == 3 && extremelyFastNumberFromZeroTo(100)) )
-					{
-						grid[i].phase = PHASE_SOLID;
-					}
-					else if (extremelyFastNumberFromZeroTo(1000) == 0)
-					{
-						if (extremelyFastNumberFromZeroTo(100) == 0) // this function only works up to 34464, so run it twice to multiply probabilities.
-						{
-							for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
-							{
-								unsigned int neighbour = neighbourOffsets[j] + i;
-								if (grid[neighbour].material == MATERIAL_OLIVINE )
+								if (grid[neighbour].phase == PHASE_SOLID )
 								{
-									grid[neighbour].phase = PHASE_SOLID;
+									nSolidNeighbours++;
 								}
 							}
 						}
+						if (nSolidNeighbours > 1)
+						{
+							grid[i].phase = PHASE_SOLID;
+						}
+						else if (extremelyFastNumberFromZeroTo(1000) == 0)
+						{
+							grid[i].phase = PHASE_SOLID;
+						}
+					}
+					else if (grid[i].temperature > 2330)
+					{
+						grid[i].phase = PHASE_GAS;
+					}
+				}
+				else if (grid[i].phase == PHASE_GAS)
+				{
+					if (grid[i].temperature < 2330)
+					{
+						grid[i].phase = PHASE_LIQUID;
+					}
+				}
+				else if (grid[i].phase == PHASE_SOLID )
+				{
+					if (grid[i].temperature > 2330)
+					{
+						grid[i].phase = PHASE_LIQUID;
+					}
+				}
+			}
+
+			else if (grid[i].material == MATERIAL_AMPHIBOLE)
+			{
+				if (grid[i].phase == PHASE_POWDER)
+				{
+					if (grid[i].temperature > 800)
+					{
+						grid[i].phase = PHASE_LIQUID;
+					}
+				}
+				else if (grid[i].phase == PHASE_LIQUID)
+				{
+					if (grid[i].temperature < 800)
+					{
+						grid[i].phase = PHASE_POWDER;
+					}
+					else if (grid[i].temperature > 800 && grid[i].temperature < 900)
+					{
+						unsigned int nSolidNeighbours = 0;
+						for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
+						{
+
+							unsigned int neighbour = neighbourOffsets[j] + i;
+							if ( grid[neighbour].material == MATERIAL_AMPHIBOLE )
+							{
+								if (grid[neighbourOffsets[j] + i].phase == PHASE_SOLID )
+								{
+									nSolidNeighbours++;
+								}
+							}
+						}
+						if (nSolidNeighbours > 2)
+						{
+							grid[i].phase = PHASE_SOLID;
+						}
+						else if (extremelyFastNumberFromZeroTo(10000) == 0)
+						{
+							grid[i].phase = PHASE_SOLID;
+						}
+
+					}
+					else if (grid[i].temperature > 2330)
+					{
+						grid[i].phase = PHASE_GAS;
+					}
+				}
+
+				else if (grid[i].phase == PHASE_GAS)
+				{
+					if (grid[i].temperature < 2330)
+					{
+						grid[i].phase = PHASE_LIQUID;
+					}
+				}
+
+				else if (grid[i].phase == PHASE_SOLID )
+				{
+					if (grid[i].temperature > 2330)
+					{
+						grid[i].phase = PHASE_LIQUID;
 					}
 
 				}
-				else if (grid[i].temperature > 2330)
-				{
-					grid[i].phase = PHASE_GAS;
-				}
 			}
-			else if (grid[i].phase == PHASE_GAS)
-			{
-				if (grid[i].temperature < 2330)
-				{
-					grid[i].phase = PHASE_LIQUID;
-				}
-			}
-			else if (grid[i].phase == PHASE_SOLID )
-			{
-				if (grid[i].temperature > 2330)
-				{
-					grid[i].phase = PHASE_LIQUID;
-				}
 
-				else if (grid[i].temperature > 1000 && grid[i].temperature < 1100)
+
+			else if (grid[i].material == MATERIAL_OLIVINE)
+			{
+				if (grid[i].phase == PHASE_POWDER)
 				{
-					if (extremelyFastNumberFromZeroTo(100) == 0)
+					if (grid[i].temperature > 1000)
+					{
+						grid[i].phase = PHASE_LIQUID;
+					}
+				}
+				else if (grid[i].phase == PHASE_LIQUID)
+				{
+					if (grid[i].temperature < 1000)
+					{
+						grid[i].phase = PHASE_POWDER;
+					}
+					else if (grid[i].temperature > 1000 && grid[i].temperature < 1100)
 					{
 
-
-						unsigned int nMaterialNeighbours = 0;
+						unsigned int nSolidNeighbours = 0;
+						unsigned int dissimilarNeighbours = 0;
 						for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
 						{
 							unsigned int neighbour = neighbourOffsets[j] + i;
 							if ( grid[neighbour].material == MATERIAL_OLIVINE )
 							{
-								nMaterialNeighbours++;
+								if (grid[neighbour].phase == PHASE_SOLID )
+								{
+									nSolidNeighbours++;
+								}
+							}
+							else {
+								dissimilarNeighbours++;
 							}
 						}
-						for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
+						if (nSolidNeighbours == 4 || (nSolidNeighbours == 3 && extremelyFastNumberFromZeroTo(100)) )
 						{
-							unsigned int neighbour = (neighbourOffsets[j] + i) % totalSize;
-							if ( grid[neighbour].material != MATERIAL_OLIVINE )
+							grid[i].phase = PHASE_SOLID;
+						}
+						else if (extremelyFastNumberFromZeroTo(1000) == 0)
+						{
+							if (extremelyFastNumberFromZeroTo(100) == 0) // this function only works up to 34464, so run it twice to multiply probabilities.
 							{
-								unsigned int nMaterialNeighbourNeighbours = 0;
-								for (unsigned int k = 0; k < N_NEIGHBOURS; ++k)
+								for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
 								{
-									unsigned int neighboursNeighbour = (neighbour + neighbourOffsets[k]) % totalSize;
-									if ( grid[neighboursNeighbour].material == MATERIAL_OLIVINE )
+									unsigned int neighbour = neighbourOffsets[j] + i;
+									if (grid[neighbour].material == MATERIAL_OLIVINE )
 									{
-										nMaterialNeighbourNeighbours ++;
+										grid[neighbour].phase = PHASE_SOLID;
 									}
-
-
 								}
-								if (nMaterialNeighbourNeighbours > nMaterialNeighbours)
+							}
+						}
+
+					}
+					else if (grid[i].temperature > 2330)
+					{
+						grid[i].phase = PHASE_GAS;
+					}
+				}
+				else if (grid[i].phase == PHASE_GAS)
+				{
+					if (grid[i].temperature < 2330)
+					{
+						grid[i].phase = PHASE_LIQUID;
+					}
+				}
+				else if (grid[i].phase == PHASE_SOLID )
+				{
+					if (grid[i].temperature > 2330)
+					{
+						grid[i].phase = PHASE_LIQUID;
+					}
+
+					else if (grid[i].temperature > 1000 && grid[i].temperature < 1100)
+					{
+						if (extremelyFastNumberFromZeroTo(100) == 0)
+						{
+
+
+							unsigned int nMaterialNeighbours = 0;
+							for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
+							{
+								unsigned int neighbour = neighbourOffsets[j] + i;
+								if ( grid[neighbour].material == MATERIAL_OLIVINE )
 								{
-									swapParticle(i, neighbour);
-									break;
+									nMaterialNeighbours++;
+								}
+							}
+							for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
+							{
+								unsigned int neighbour = (neighbourOffsets[j] + i) % totalSize;
+								if ( grid[neighbour].material != MATERIAL_OLIVINE )
+								{
+									unsigned int nMaterialNeighbourNeighbours = 0;
+									for (unsigned int k = 0; k < N_NEIGHBOURS; ++k)
+									{
+										unsigned int neighboursNeighbour = (neighbour + neighbourOffsets[k]) % totalSize;
+										if ( grid[neighboursNeighbour].material == MATERIAL_OLIVINE )
+										{
+											nMaterialNeighbourNeighbours ++;
+										}
+
+
+									}
+									if (nMaterialNeighbourNeighbours > nMaterialNeighbours)
+									{
+										swapParticle(i, neighbour);
+										break;
+									}
 								}
 							}
 						}
@@ -1634,7 +1654,7 @@ void thread_temperature2 ()
 		}
 	}
 
-#ifdef THREAD_TIMING
+#ifdef THREAD_TIMING_READOUT
 	auto end = std::chrono::steady_clock::now();
 	auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 	std::cout << "thread_temperature " << elapsed.count() << " microseconds." << std::endl;
@@ -1649,15 +1669,16 @@ unsigned int randomIntegerInRange (unsigned int from, unsigned int to)
 
 void physics_sector (unsigned int from, unsigned int to)
 {
-#ifdef THREAD_TIMING
+#ifdef THREAD_TIMING_READOUT
 	auto start = std::chrono::steady_clock::now();
 #endif
 
 	for (unsigned int i = from; i < to; ++i)
 	{
-		unsigned int squareBelow = i - sizeX;
+		unsigned int currentPosition = i;
+		unsigned int squareBelow = currentPosition - sizeX;
 
-		if (grid[i].phase  == PHASE_POWDER)
+		if (grid[currentPosition].phase  == PHASE_POWDER)
 		{
 			unsigned int neighbours[] =
 			{
@@ -1669,100 +1690,237 @@ void physics_sector (unsigned int from, unsigned int to)
 			for (unsigned int k = 0; k < 1; ++k) // instead of checking all of them every turn, you can check half or less and it doesn't make a difference for gameplay.
 			{
 				unsigned int index = extremelyFastNumberFromZeroTo(2);
-				// chemistry(i, neighbours[index]);
+				// chemistry(currentPosition, neighbours[index]);
 				if ((grid[neighbours[index]].phase == PHASE_VACUUM) ||  (grid[neighbours[index]].phase == PHASE_GAS) ||  (grid[neighbours[index]].phase == PHASE_LIQUID)  )
 				{
-					swapParticle(i, neighbours[index]);
+					swapParticle(currentPosition, neighbours[index]);
+					currentPosition = neighbours[index];
 					break;
 				}
 			}
 		}
 
 		// movement instructions for LIQUIDS
-		else if (grid[i].phase == PHASE_LIQUID)
+		else if (grid[currentPosition].phase == PHASE_LIQUID)
 		{
 
-			unsigned int currentPosition = i;
-			for (unsigned int j = 0; j < 1; ++j)
+			// unsigned int nextPosition = currentPosition;
+			// for (unsigned int j = 0; j < 1; ++j)
+			// {
+			// bool movedThisTurn = false;
+			unsigned int neighbours[] =
 			{
-				bool movedThisTurn = false;
-				unsigned int neighbours[] =
-				{
-					currentPosition - sizeX - 1,
-					currentPosition - sizeX,
-					currentPosition - sizeX + 1,
-					currentPosition - 1,
-					currentPosition + 1
-				};
+				currentPosition - sizeX - 1,
+				currentPosition - sizeX,
+				currentPosition - sizeX + 1,
+				currentPosition - 1,
+				currentPosition + 1
+			};
 
-				unsigned int offset = extremelyFastNumberFromZeroTo(4);
-				for (unsigned int k = 0; k < 5; ++k)
+			unsigned int offset = extremelyFastNumberFromZeroTo(4);
+			for (unsigned int k = 0; k < 5; ++k)
+			{
+				unsigned int index = (k + offset) % 5;
+				if ((grid[neighbours[index]].phase == PHASE_VACUUM) || (grid[neighbours[index]].phase == PHASE_GAS) ||  (grid[neighbours[index]].phase == PHASE_LIQUID)     )
 				{
-					unsigned int index = (k + offset) % 5;
-					if ((grid[neighbours[index]].phase == PHASE_VACUUM) || (grid[neighbours[index]].phase == PHASE_GAS) ||  (grid[neighbours[index]].phase == PHASE_LIQUID)     )
-					{
-						movedThisTurn = true;
-						currentPosition = neighbours[index];
-						break;
-					}
+					// movedThisTurn = true;
+					swapParticle(currentPosition, neighbours[index]);
+
+					currentPosition = neighbours[index];
+					// currentPosition = nextPosition;
+					break;
 				}
-
-				if (!movedThisTurn) {break;}
 			}
-			swapParticle(i, currentPosition);
+
+			// if (!movedThisTurn) {break;}
+
+
 
 		}
 
 		// movement instructions for GASES
-		else if (grid[i].phase == PHASE_GAS)
+		else if (grid[currentPosition].phase == PHASE_GAS)
 		{
-			unsigned int squareAbove = i + sizeX;
+		
+
+
+			// if (true)
+			// {
+
+
+			// 	bool movedByTheWind = false;
+			// 	if (extremelyFastNumberFromZeroTo(1) == 0) 		// get blown by the wind only some of the time
+			// 	{
+			// 		while (true) 								// this while loop is just here so you can 'break' out of it to end this sequence quickly.
+			// 		{
+			// 			unsigned int neighbour;
+			// 			if (wind.x > 0)
+			// 			{
+			// 				neighbour = neighbours[3]; //currentPosition + 1;
+			// 				if ((grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS  ) && seedGrid[neighbour].stage == 0x00  )
+			// 				{
+			// 					swapSeedParticle( currentPosition, neighbour );
+			// 					currentPosition = neighbour;
+			// 					movedByTheWind = true;
+			// 					break;
+			// 				}
+			// 			}
+			// 			else if (wind.x < 0)
+			// 			{
+			// 				neighbour = neighbours[7]; //currentPosition - 1;
+			// 				if ((grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS  ) && seedGrid[neighbour].stage == 0x00  )
+			// 				{
+			// 					swapSeedParticle( currentPosition, neighbour );
+			// 					currentPosition = neighbour;
+
+			// 					movedByTheWind = true;
+			// 					break;
+			// 				}
+			// 			}
+			// 			break;
+			// 		}
+
+			// 		while (true) 								// this while loop is just here so you can 'break' out of it to end this sequence quickly.
+			// 		{
+			// 			unsigned int neighbour;
+			// 			if (wind.y > 0)
+			// 			{
+			// 				neighbour = squareAbove;
+			// 				if ((grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS  ) && seedGrid[neighbour].stage == 0x00  )
+			// 				{
+			// 					swapSeedParticle( currentPosition, neighbour );
+			// 					currentPosition = neighbour;
+
+			// 					movedByTheWind = true;
+			// 					break;
+			// 				}
+			// 			}
+			// 			else if (wind.y < 0)
+			// 			{
+			// 				neighbour = squareBelow;
+			// 				if ((grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS  ) && seedGrid[neighbour].stage == 0x00  )
+			// 				{
+			// 					swapSeedParticle( currentPosition, neighbour );
+			// 					currentPosition = neighbour;
+
+			// 					movedByTheWind = true;
+			// 					break;
+			// 				}
+			// 			}
+			// 			break;
+			// 		}
+			// 	}
+
+
+			// 	// if you were moved, there is still a chance to undergo a subsequent move, so you must update your position and neighbours.
+			// 	if (movedByTheWind)
+			// 	{
+			// 		squareAbove = currentPosition + sizeX;
+			// 		squareBelow = currentPosition - sizeX;
+			// 		unsigned int neighbours2[] =
+			// 		{
+			// 			squareBelow - 1,
+			// 			squareBelow,
+			// 			squareBelow + 1,
+			// 			currentPosition + 1,
+			// 			squareAbove + 1,
+			// 			squareAbove,
+			// 			squareAbove - 1,
+			// 			currentPosition - 1,
+			// 		};
+			// 		memcpy(neighbours, neighbours2, sizeof(unsigned int) * 8);
+			// 	}
+
+			// }
+
+
+	unsigned int squareAbove = currentPosition + sizeX;
 			unsigned int neighbours[] =
+			    // {
+			    // 	squareBelow - 1,
+			    // 	squareBelow,
+			    // 	squareBelow + 1,
+			    // 	currentPosition + 1,
+			    // 	squareAbove + 1,
+			    // 	squareAbove,
+			    // 	squareAbove - 1,
+			    // 	currentPosition - 1,
+			    // };
 			{
-				squareBelow - 1,
-				squareBelow,
-				squareBelow + 1,
-				i + 1,
-				squareAbove + 1,
-				squareAbove,
-				squareAbove - 1,
-				i - 1,
+
+				currentPosition - 1,
+				currentPosition - sizeX - 1,
+				currentPosition - sizeX ,
+				currentPosition - sizeX  + 1,
+				currentPosition + 1,
+				currentPosition + sizeX + 1,
+				currentPosition + sizeX,
+				currentPosition + sizeX - 1,
 			};
+
+
 
 			for (unsigned int j = 0; j < 3; ++j)
 			{
 				unsigned int index = extremelyFastNumberFromZeroTo(7);
 
-				if (grid[i].material == MATERIAL_WATER)
-				{
-					if (grid[neighbours[index]].material != MATERIAL_VACUUM)
+				// the wind pushes in a certain direction
+				// while (1)  // this is just here so i can break out of it quickly
+				// {
+					if (extremelyFastNumberFromZeroTo(1) == 0)
 					{
-						if (grid[i].temperature < 373 )
+						if (wind.y > 0)
 						{
-							grid[i].phase = PHASE_LIQUID;
+							index = 5; // directly up
+
+							if (wind.x > 0) 
+							{
+								index = 4;
+							}
+							else if (wind.x < 0) 
+							{
+								index = 7;
+							}
+
+						}
+						else if (wind.y < 0)
+						{
+							index = 1; // directly down
+
+							if (wind.x > 0) 
+							{
+								index = 3;
+							}
+							else if (wind.x < 0) 
+							{
+								index = 1;
+							}
+						}
+						else
+						{
+							if (wind.x > 0)
+							{
+								index = 4;
+							}
+							else if (wind.x < 0)
+							{
+								index = 0;
+							} 
 						}
 					}
-				}
-				if (grid[neighbours[index]].material == MATERIAL_WATER)
-				{
-					if (grid[i].material != MATERIAL_VACUUM)
-					{
-						if (grid[neighbours[index]].temperature < 373 )
-						{
-							grid[neighbours[index]].phase = PHASE_LIQUID;
-						}
-					}
-				}
+				// }
+
 
 				if (grid[neighbours[index]].phase  == PHASE_VACUUM || (grid[neighbours[index]].phase == PHASE_GAS) )
 				{
-					swapParticle(i, neighbours[index]);
+					swapParticle(currentPosition, neighbours[index]);
 					break;
 				}
 			}
+
 		}
 	}
-#ifdef THREAD_TIMING
+#ifdef THREAD_TIMING_READOUT
 	auto end = std::chrono::steady_clock::now();
 	auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 	std::cout << "thread_physics_sector " << elapsed.count() << " microseconds." << std::endl;
@@ -1843,37 +2001,18 @@ void setPointSize (unsigned int pointSize)
 
 void toggleEnergyGridDisplay ()
 {
-
-
-	if (showEnergyGrid)
-	{
-		showEnergyGrid = false;
-		showTemperatureGrid = true;
-	}
-
-	else if (showTemperatureGrid)
-	{
-		showEnergyGrid = false;
-		showTemperatureGrid = false;
-
-	}
-	else
-	{
-		showEnergyGrid = true;
-	}
-
-
+	visualizer = (visualizer + 1 ) % (NUMBER_OF_VISUALIZERS + 1);
 }
 
 void thread_graphics()
 {
-#ifdef THREAD_TIMING
+#ifdef THREAD_TIMING_READOUT
 	auto start = std::chrono::steady_clock::now();
 #endif
 
 	preDraw();
 
-	if (showEnergyGrid)
+	if (visualizer == VISUALIZE_ENERGY)
 	{
 		unsigned int nVertsToRenderThisTurn = 1 * totalSize;
 		long unsigned int totalNumberOfFields = nVertsToRenderThisTurn * numberOfFieldsPerVertex;
@@ -1904,7 +2043,7 @@ void thread_graphics()
 		delete [] energyColorGrid;
 	}
 
-	else if (showTemperatureGrid)
+	else if (visualizer == VISUALIZE_TEMPERATURE)
 	{
 		unsigned int nVertsToRenderThisTurn = 1 * totalSize;
 		long unsigned int totalNumberOfFields = nVertsToRenderThisTurn * numberOfFieldsPerVertex;
@@ -1922,6 +2061,71 @@ void thread_graphics()
 			energyColorGrid[ (i * numberOfFieldsPerVertex) + 0 ] = grid[i].temperature / maximumDisplayTemperature;
 			energyColorGrid[ (i * numberOfFieldsPerVertex) + 1 ] = grid[i].temperature / maximumDisplayTemperature;
 			energyColorGrid[ (i * numberOfFieldsPerVertex) + 2 ] = grid[i].temperature / maximumDisplayTemperature;
+			energyColorGrid[ (i * numberOfFieldsPerVertex) + 3 ] = 1.0f;
+			energyColorGrid[ (i * numberOfFieldsPerVertex) + 4 ] = fx;
+			energyColorGrid[ (i * numberOfFieldsPerVertex) + 5 ] = fy;
+		}
+
+		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, energyColorGrid, GL_DYNAMIC_DRAW );
+		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
+
+		postDraw();
+
+		delete [] energyColorGrid;
+	}
+
+	else if (visualizer == VISUALIZE_PHASE)
+	{
+		unsigned int nVertsToRenderThisTurn = 1 * totalSize;
+		long unsigned int totalNumberOfFields = nVertsToRenderThisTurn * numberOfFieldsPerVertex;
+
+		float * energyColorGrid = new float[totalNumberOfFields];
+
+		unsigned int x = 0;
+		unsigned int y = 0;
+		for (unsigned int i = 0; i < totalSize; ++i)
+		{
+			x = i % sizeX;
+			if (!x) { y = i / sizeX; }
+			float fx = x;
+			float fy = y;
+
+			if (grid[i].phase == PHASE_VACUUM)
+			{
+				energyColorGrid[ (i * numberOfFieldsPerVertex) + 0 ] = 0.0f;
+				energyColorGrid[ (i * numberOfFieldsPerVertex) + 1 ] = 0.0f;
+				energyColorGrid[ (i * numberOfFieldsPerVertex) + 2 ] = 0.0f;
+			}
+			else if (grid[i].phase == PHASE_GAS)
+			{
+				energyColorGrid[ (i * numberOfFieldsPerVertex) + 0 ] = 0.25f;
+				energyColorGrid[ (i * numberOfFieldsPerVertex) + 1 ] = 0.25f;
+				energyColorGrid[ (i * numberOfFieldsPerVertex) + 2 ] = 0.25f;
+			}
+			else if (grid[i].phase == PHASE_LIQUID)
+			{
+				energyColorGrid[ (i * numberOfFieldsPerVertex) + 0 ] = 0.5f;
+				energyColorGrid[ (i * numberOfFieldsPerVertex) + 1 ] = 0.5f;
+				energyColorGrid[ (i * numberOfFieldsPerVertex) + 2 ] = 0.5f;
+			}
+			else if (grid[i].phase == PHASE_POWDER)
+			{
+				energyColorGrid[ (i * numberOfFieldsPerVertex) + 0 ] = 0.75f;
+				energyColorGrid[ (i * numberOfFieldsPerVertex) + 1 ] = 0.75f;
+				energyColorGrid[ (i * numberOfFieldsPerVertex) + 2 ] = 0.75f;
+			}
+			else if (grid[i].phase == PHASE_SOLID)
+			{
+				energyColorGrid[ (i * numberOfFieldsPerVertex) + 0 ] = 1.0f;
+				energyColorGrid[ (i * numberOfFieldsPerVertex) + 1 ] = 1.0f;
+				energyColorGrid[ (i * numberOfFieldsPerVertex) + 2 ] = 1.0f;
+			}
+
+
+
+
+
+
 			energyColorGrid[ (i * numberOfFieldsPerVertex) + 3 ] = 1.0f;
 			energyColorGrid[ (i * numberOfFieldsPerVertex) + 4 ] = fx;
 			energyColorGrid[ (i * numberOfFieldsPerVertex) + 5 ] = fy;
@@ -1956,7 +2160,7 @@ void thread_graphics()
 		clearColorGridB();
 	}
 
-#ifdef THREAD_TIMING
+#ifdef THREAD_TIMING_READOUT
 	auto end = std::chrono::steady_clock::now();
 	auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 	std::cout << "thread_graphics " << elapsed.count() << " microseconds." << std::endl;
@@ -1998,6 +2202,38 @@ int drawCharacter ( std::string genes , unsigned int identity)
 	unsigned int genesize = genes.length();
 	switch (c)
 	{
+
+	case 'm':
+	{
+
+		cursor_string++; if (cursor_string > genesize) {return -1;}
+
+		int numberModifier = 0.0f;
+		while (!numberModifier) {	numberModifier = alphanumeric( genes[cursor_string] ); cursor_string++; if (cursor_string > genesize) {return -1;} }
+
+
+		/*
+		#define MATERIAL_WATER 		 8
+		#define MATERIAL_QUARTZ 	 9
+		#define MATERIAL_AMPHIBOLE 	 10
+		#define MATERIAL_OLIVINE 	 11
+		*/
+
+		numberModifier = numberModifier % 4;
+
+		if 		(numberModifier == 0) 	{cursor_germinationMaterial = MATERIAL_WATER;}
+		else if (numberModifier == 1)   {cursor_germinationMaterial = MATERIAL_QUARTZ;}
+		else if (numberModifier == 2)   {cursor_germinationMaterial = MATERIAL_AMPHIBOLE;}
+		else if (numberModifier == 3)   {cursor_germinationMaterial = MATERIAL_OLIVINE;}
+
+
+		printf("set germination material to %u\n", cursor_germinationMaterial);
+
+
+		// set germination material
+		break;
+	}
+
 	case 'q': // set energy source.
 	{
 		cursor_string++; if (cursor_string > genesize) {return -1;}
@@ -2552,6 +2788,7 @@ void drawPlantFromSeed( std::string genes, unsigned int i )
 	origin = cursor_grid;
 	prevCursor_grid = cursor_grid;
 	accumulatedRotation = (0.5 * 3.1415);
+	cursor_germinationMaterial = MATERIAL_QUARTZ;
 
 	cursor_energySource = ENERGYSOURCE_LIGHT;
 
@@ -2604,6 +2841,7 @@ void drawPlantFromSeed( std::string genes, unsigned int i )
 		if ( i < totalSize)
 		{
 			setSeedParticle(  genes, identity, energyDebtSoFar, i);
+			seedGrid[i].germinationMaterial = cursor_germinationMaterial;
 			mutateSentence(&(seedGrid[i].genes));
 		}
 	}
@@ -2611,7 +2849,7 @@ void drawPlantFromSeed( std::string genes, unsigned int i )
 
 void thread_life()
 {
-#ifdef THREAD_TIMING
+#ifdef THREAD_TIMING_READOUT
 	auto start = std::chrono::steady_clock::now();
 #endif
 	unsigned int x = 0;
@@ -2647,14 +2885,17 @@ void thread_life()
 				// hot plants light on fire
 				if (true)
 				{
-					if (grid[neighbour].temperature > 600 )
+					if (grid[neighbour].material != PHASE_VACUUM)
 					{
-						// printf("a plant lit on fire\n");
-						clearLifeParticle(i);
-						setParticle(MATERIAL_FIRE, i);
-						grid[i].phase = PHASE_GAS;
-						grid[i].temperature = 1000;
-						break;
+						if (grid[neighbour].temperature > 600 )
+						{
+							// printf("a plant lit on fire\n");
+							clearLifeParticle(i);
+							setParticle(MATERIAL_FIRE, i);
+							grid[i].phase = PHASE_GAS;
+							grid[i].temperature = 1000;
+							break;
+						}
 					}
 				}
 
@@ -2723,7 +2964,7 @@ void thread_life()
 		}
 	}
 
-#ifdef THREAD_TIMING
+#ifdef THREAD_TIMING_READOUT
 	auto end = std::chrono::steady_clock::now();
 	auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 	std::cout << "thread_life " << elapsed.count() << " microseconds." << std::endl;
@@ -2732,7 +2973,7 @@ void thread_life()
 
 void thread_plantDrawing()
 {
-#ifdef THREAD_TIMING
+#ifdef THREAD_TIMING_READOUT
 	auto start = std::chrono::steady_clock::now();
 #endif
 	for (unsigned int i =  0; i < totalSize; ++i)
@@ -2741,14 +2982,17 @@ void thread_plantDrawing()
 		{
 			if (seedGrid[i].stage == STAGE_SEED)
 			{
+				// if (grid[i].material == seedGrid[i].germinationMaterial)
+				// {
 				drawPlantFromSeed(seedGrid[i].genes, i);
 				clearSeedParticle(i);
 				nGerminatedSeeds ++;
 				continue;
+				// }
 			}
 		}
 	}
-#ifdef THREAD_TIMING
+#ifdef THREAD_TIMING_READOUT
 	auto end = std::chrono::steady_clock::now();
 	auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 	std::cout << "thread_plantDrawing " << elapsed.count() << " microseconds." << std::endl;
@@ -3033,7 +3277,7 @@ unsigned int walkAnAnimal(unsigned int i)
 
 void thread_seeds()
 {
-#ifdef THREAD_TIMING
+#ifdef THREAD_TIMING_READOUT
 	auto start = std::chrono::steady_clock::now();
 #endif
 	for (unsigned int i = (sizeX + 1); i < (totalSize - (sizeX + 1)); ++i)
@@ -3054,41 +3298,88 @@ void thread_seeds()
 				currentPosition + 1
 			};
 
+
+
+
 			unsigned int offset = extremelyFastNumberFromZeroTo(4);
+			unsigned int rainNeighbours = 0;
 			for (unsigned int k = 0; k < 5; ++k)
 			{
 				unsigned int index = (k + offset) % 5;
-				if ((grid[neighbours[index]].phase == PHASE_VACUUM) || (grid[neighbours[index]].phase == PHASE_GAS) ||  (grid[neighbours[index]].phase == PHASE_LIQUID)     )
+				if ((grid[neighbours[index]].phase == PHASE_VACUUM) || (grid[neighbours[index]].phase == PHASE_GAS )      )
 				{
+
+					if (seedGrid[currentPosition].energy >= 1.0f)
+					{
+
+						setParticle( MATERIAL_QUARTZ, currentPosition);
+						seedGrid[currentPosition].energy -= 1.0f;
+						continue;
+					}
+
+
 					movedThisTurn = true;
 					currentPosition = neighbours[index];
+					// seedGrid[currentPosition].parentIdentity = 0x00;
 
 
-
-					if (extremelyFastNumberFromZeroTo(8) == 0 )
+					if (seedGrid[currentPosition].energy < 1.0f)
 					{
-						// if you moved, consume the neighbours closest to you.
-						if (extremelyFastNumberFromZeroTo(1) == 0)
+
+
+						unsigned int neighbours2[] =
 						{
-							if (index > 0) { clearParticle(neighbours[index - 1]); seedGrid[i].energy += 1.0f;}
-						}
-						else
+							currentPosition - 1,
+							currentPosition - sizeX - 1,
+							currentPosition - sizeX,
+							currentPosition - sizeX + 1,
+							currentPosition + 1
+						};
+
+						for (unsigned int h = 0; h < 5; ++h)
 						{
-							if (index < 4) { clearParticle(neighbours[index + 1]); seedGrid[i].energy += 1.0f;}
+
+							unsigned int index2 = (h + offset) % 5;
+
+							if (neighbours2[index2] > totalSize) {continue;}
+
+							if (grid[neighbours2[index2]].phase == PHASE_SOLID )
+							{
+
+								clearParticle(neighbours2[index2]);
+								seedGrid[currentPosition].energy += 1.0f;
+								break;
+
+							}
 						}
 
-						if (extremelyFastNumberFromZeroTo(8) == 0 )
-						{
-							clearSeedParticle(currentPosition);
-							continue;
-						}
 
 					}
+
+
+
+
+
 
 
 					break;
 				}
 			}
+
+
+			// if (!movedThisTurn)
+			// {
+			// 	seedGrid[currentPosition].parentIdentity ++; // this is used to count the number of no-move turns
+			// }
+
+
+			// if (seedGrid[currentPosition].parentIdentity > 10)
+			// {
+			// 	clearSeedParticle(currentPosition);
+			// 	setParticle( MATERIAL_QUARTZ, currentPosition);
+			// 	continue;
+
+			// }
 
 			// if (seedGrid[currentPosition].energy > 1.0f)
 			// {
@@ -3116,7 +3407,7 @@ void thread_seeds()
 			swapSeedParticle( i, currentPosition);
 
 
-
+			continue;
 
 		}
 
@@ -3268,7 +3559,7 @@ void thread_seeds()
 					swapSeedParticle( i, neighbour );
 					continue;
 				}
-				else
+				else if (grid[neighbour].material == seedGrid[i].germinationMaterial)
 				{
 
 #ifdef PLANT_DRAWING_READOUT
@@ -3315,7 +3606,7 @@ void thread_seeds()
 		}
 	}
 
-#ifdef THREAD_TIMING
+#ifdef THREAD_TIMING_READOUT
 	auto end = std::chrono::steady_clock::now();
 	auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 	std::cout << "thread_seeds " << elapsed.count() << " microseconds." << std::endl;
@@ -3401,7 +3692,7 @@ void insertRandomSeed()
 			}
 			case 2:
 			{
-				exampleSentence = plant_Worrage;
+				// exampleSentence = plant_Worrage;
 				break;
 			}
 			case 3:
@@ -3411,12 +3702,12 @@ void insertRandomSeed()
 			}
 			case 4:
 			{
-				exampleSentence = plant_SpleenCoral;
+				// exampleSentence = plant_SpleenCoral;
 				break;
 			}
 			case 5:
 			{
-				exampleSentence = plant_ParbasarbTree;
+				// exampleSentence = plant_ParbasarbTree;
 				break;
 			}
 

@@ -38,6 +38,7 @@ struct Color
 }__attribute__((packed));
 
 
+// Material is what flavor a square can be. It controls color, melting temperature, and phase change rules.
 #define MATERIAL_VACUUM		 1
 #define MATERIAL_PHOTON  	 2       
 #define MATERIAL_SEED 		 3
@@ -51,6 +52,7 @@ struct Color
 #define MATERIAL_OLIVINE 	 11
 #define MATERIAL_FIRE        12
 
+// Phase is what set of physical rules are applied to each square each turn, and is used by the program to determine how to treat the square in many other situations.
 #define PHASE_NULL			 0
 #define PHASE_VACUUM 		 1
 #define PHASE_SOLID  		 2
@@ -59,6 +61,7 @@ struct Color
 #define PHASE_GAS    		 16
 #define PHASE_LIGHT  		 32
 		 
+// Stage is like material, but applies to the seed grid instead, which is used for objects that can fall or move in front of the other grids.
 #define STAGE_NULL   		 0
 #define STAGE_BUD    		 1
 #define STAGE_FRUIT  		 2
@@ -69,21 +72,36 @@ struct Color
 #define STAGE_PLAYER		 7
 #define STAGE_ERODINGRAIN    8
 
+// Energysource is the diet of a plant or animal.
 #define ENERGYSOURCE_LIGHT   1
 #define ENERGYSOURCE_MINERAL 2
 #define ENERGYSOURCE_SEED    4
 #define ENERGYSOURCE_PLANT   8
 #define ENERGYSOURCE_ANIMAL  16
 
+// Frames are the sprites used to animate animals. A and B are used to animate movement while C is used for idleness.
 #define FRAME_A 1
 #define FRAME_B 2
 #define FRAME_C 3
 
+// Movement controls where an animal is allowed to go. This is a hereditary, mutable quality.
 #define MOVEMENT_ONPOWDER  1
 #define MOVEMENT_INWATER   2
 #define MOVEMENT_INPLANTS  4
 #define MOVEMENT_INAIR     8
 #define MOVEMENT_ONSOLID   16
+
+// Visualizers are what picture is shown on the screen. They can be used for art or for scientific purposes.
+#define VISUALIZE_MATERIAL    1
+#define VISUALIZE_ENERGY      2
+#define VISUALIZE_TEMPERATURE 3
+#define VISUALIZE_PHASE       4
+
+#define NUMBER_OF_VISUALIZERS 4 // i use a ++ to scroll through the list of visualizers. Please keep the declarations in numeric order and update this if you add more.
+
+
+
+
 
 float RNG();
 
