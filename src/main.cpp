@@ -81,6 +81,12 @@ void thread_interface()
 				coolEverything();
 				break;
 
+			case SDLK_m:
+				setEverythingHot();
+				break;
+
+
+
 			case SDLK_b:
 				setNeutralTemp();
 				break;

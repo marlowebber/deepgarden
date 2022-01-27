@@ -23,5 +23,6 @@ void advanceIndexBuffers (unsigned int * index_buffer_data, unsigned int * index
 
 
 
+Color addColor (Color a, Color b);
 
 #endif

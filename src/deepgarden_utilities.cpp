@@ -150,6 +150,7 @@ int alphanumeric (char c)
 float RNG()
 {
 	static std::default_random_engine e;
+	e.seed(std::chrono::system_clock::now().time_since_epoch().count());
 	static std::uniform_real_distribution<> dis(0, 1);
 	return dis(e);
 }
@@ -209,4 +210,8 @@ void setupExtremelyFastNumberGenerators()
 	y = 0;
 	z = 0;
 	a = 1;
+
+	if (RNG() < 0.5)  {x = 1;}
+	if (RNG() < 0.5)  {y = 1;}
+	if (RNG() < 0.5)  {z = 1;}
 }
