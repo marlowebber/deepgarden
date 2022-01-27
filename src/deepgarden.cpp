@@ -1290,32 +1290,32 @@ void thread_temperature2 ()
 
 
 
-			// further up the screen is naturally colder
-			if (true)
-			{
+			// // further up the screen is naturally colder
+			// if (true)
+			// {
 
 
-				float y = i / sizeX;
-				float naturalY = (1 - (y / sizeY));
-				naturalY = naturalY * defaultTemperature * 2;
-				unsigned int AltitudeNaturalTemp = naturalY;
-				// printf("AltitudeNaturalTemp %u\n", AltitudeNaturalTemp);
+			// 	float y = i / sizeX;
+			// 	float naturalY = (1 - (y / sizeY));
+			// 	naturalY = naturalY * defaultTemperature * 2;
+			// 	unsigned int AltitudeNaturalTemp = naturalY;
+			// 	// printf("AltitudeNaturalTemp %u\n", AltitudeNaturalTemp);
 
-				// unsigned int avgTemp = ((grid[i].temperature+ AltitudeNaturalTemp) / 2) ;
-				// // grid[neighbours[j]].temperature = avgTemp;
-				// grid[i].temperature = avgTemp;
+			// 	// unsigned int avgTemp = ((grid[i].temperature+ AltitudeNaturalTemp) / 2) ;
+			// 	// // grid[neighbours[j]].temperature = avgTemp;
+			// 	// grid[i].temperature = avgTemp;
 
 
-				if (grid[i].temperature > AltitudeNaturalTemp)
-				{
-					grid[i].temperature -= 1;
-				}
-				else
-				{
-					grid[i].temperature += 1;
-				}
+			// 	if (grid[i].temperature > AltitudeNaturalTemp)
+			// 	{
+			// 		grid[i].temperature -= 1;
+			// 	}
+			// 	else
+			// 	{
+			// 		grid[i].temperature += 1;
+			// 	}
 
-			}
+			// }
 
 
 			// equalize temp with neighbours
@@ -1338,26 +1338,31 @@ void thread_temperature2 ()
 				};
 				for (unsigned int j = 0; j < 8; ++j)
 				{
-					// if ( grid[i].phase != PHASE_VACUUM &&  grid[neighbours[j]].phase != PHASE_VACUUM)
-					// {
 
 
-
-					// if ( grid[i].temperature > grid[neighbours[j]].temperature )
-					// {
 					if (grid[neighbours[j]].phase != PHASE_VACUUM)
 					{
-						unsigned int avgTemp = (((grid[i].temperature) + (grid[neighbours[j]].temperature)) / 2) ;
-						grid[neighbours[j]].temperature = avgTemp;
-						grid[i].temperature = avgTemp;
+
+
+
+						int avgTemp = (((grid[i].temperature ) - (grid[neighbours[j]].temperature)) ) ;
+						avgTemp = avgTemp / 2;
+						grid[neighbours[j]].temperature += avgTemp;
+						grid[i].temperature -= avgTemp;
+					}
+					else
+					{
+						// if neighbour is a vacuum, radiate heat away into space. more so if it is hotter.
+
+							int radiantHeat = grid[i].temperature / 100;
+							grid[i].temperature -= radiantHeat;
+						
+
+
+
 					}
 
-					// }
 
-					// unsigned int avgTemp = (((grid[i].temperature) + (grid[neighbours[j]].temperature))/2) ;
-					// grid[neighbours[j]].temperature += tempDiff;
-					// grid[i].temperature -= tempDiff;
-					// }
 				}
 			}
 
@@ -2182,62 +2187,75 @@ void thread_graphics()
 			else if (grid[i].temperature < 772)
 			{
 				// faint red
-				ppColor = Color(0.16f, 0.0f, 0.0f, 0.08f);
+				ppColor = Color(0.16f, 0.0f, 0.0f, 0.03f);
 			}
 			else if (grid[i].temperature < 852)
 			{
 				// blood red
-				ppColor = Color(0.33f, 0.0f, 0.0f, 0.16f);
+				ppColor = Color(0.33f, 0.0f, 0.0f, 0.11f);
 			}
 			else if (grid[i].temperature < 908)
 			{
 				// dark cherry
-				ppColor = Color(0.5f, 0.0f, 0.0f, 0.25f);
+				ppColor = Color(0.5f, 0.0f, 0.0f, 0.20f);
 			}
 			else if (grid[i].temperature < 963)
 			{
 				// medium cherry
-				ppColor = Color(0.66f, 0.0f, 0.0f, 0.33f);
+				ppColor = Color(0.66f, 0.0f, 0.0f, 0.27f);
 			}
 			else if (grid[i].temperature < 1019)
 			{
 				// cherry
-				ppColor = Color(0.833f, 0.0f, 0.0f, 0.41f);
+				ppColor = Color(0.833f, 0.0f, 0.0f, 0.36f);
 			}
 			else if (grid[i].temperature < 1060)
 			{
 				// bright cherry
-				ppColor = Color(1.0f, 0.0f, 0.0f, 0.5f);
+				ppColor = Color(1.0f, 0.0f, 0.0f, 0.45f);
 			}
 			else if (grid[i].temperature < 1116)
 			{
 				// salmon (??)
-				ppColor = Color(1.0f, 0.25f, 0.0f, 0.58f);
+				ppColor = Color(1.0f, 0.25f, 0.0f, 0.53f);
 			}
 			else if (grid[i].temperature < 1188)
 			{
 				// dark orange
-				ppColor = Color(1.0f, 0.5f, 0.0f, 0.66f);
+				ppColor = Color(1.0f, 0.5f, 0.0f, 0.61f);
 			}
 			else if (grid[i].temperature < 1213)
 			{
 				// orange
-				ppColor = Color(1.0f, 0.75f, 0.0f, 0.75f);
+				ppColor = Color(1.0f, 0.75f, 0.0f, 0.70f);
 			}
 			else if (grid[i].temperature < 1272)
 			{
 				// lemon
-				ppColor = Color(1.0f, 1.0f, 0.0f, 0.83f);
+				ppColor = Color(1.0f, 1.0f, 0.0f, 0.78f);
 			}
 			else if (grid[i].temperature < 1352)
 			{
 				// light yellow
-				ppColor = Color(1.0f, 1.0f, 0.5f, 0.91f);
+				ppColor = Color(1.0f, 1.0f, 0.5f, 0.86f);
 			}
-			else
+
+			else if (grid[i].temperature < 5000)
 			{
 				// white
-				ppColor = Color(1.0f, 1.0f, 1.0f, 1.0f);
+				ppColor = Color(1.0f, 1.0f, 1.0f, 0.91f);
+			}
+
+			else if (grid[i].temperature < 10000)
+			{
+				// cool white
+				ppColor = Color(0.9f, 0.9f, 1.0f, 1.0f);
+			}
+
+			else
+			{
+				// blue
+				ppColor = Color(0.8f, 0.8f, 1.0f, 1.0f);
 			}
 
 
@@ -2251,6 +2269,7 @@ void thread_graphics()
 
 
 
+			// because this is emitted light, ADD to the original color (it should never make it darker)
 
 			postProcessingGrid[ (i * numberOfFieldsPerVertex) + 0 ] = colorGrid[i * numberOfFieldsPerVertex + 0] + ppColor.r;
 			postProcessingGrid[ (i * numberOfFieldsPerVertex) + 1 ] = colorGrid[i * numberOfFieldsPerVertex + 0] + ppColor.g;
