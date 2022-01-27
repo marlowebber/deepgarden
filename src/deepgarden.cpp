@@ -1176,7 +1176,7 @@ void initialize ()
 			{
 				if (RNG() < 0.5)
 				{
-					setParticle( MATERIAL_WATER, i);
+					// setParticle( MATERIAL_WATER, i);
 				}
 			}
 		}
@@ -1741,7 +1741,7 @@ void physics_sector (unsigned int from, unsigned int to)
 		// movement instructions for GASES
 		else if (grid[currentPosition].phase == PHASE_GAS)
 		{
-		
+
 
 
 			// if (true)
@@ -1834,7 +1834,7 @@ void physics_sector (unsigned int from, unsigned int to)
 			// }
 
 
-	unsigned int squareAbove = currentPosition + sizeX;
+			unsigned int squareAbove = currentPosition + sizeX;
 			unsigned int neighbours[] =
 			    // {
 			    // 	squareBelow - 1,
@@ -1864,52 +1864,51 @@ void physics_sector (unsigned int from, unsigned int to)
 			{
 				unsigned int index = extremelyFastNumberFromZeroTo(7);
 
-				// the wind pushes in a certain direction
-				// while (1)  // this is just here so i can break out of it quickly
-				// {
-					if (extremelyFastNumberFromZeroTo(1) == 0)
+				// alternate between wind movement and random scatter movement, to look more natural.
+				if (extremelyFastNumberFromZeroTo(1) == 0)
+				{
+					// the wind pushes in a certain direction.
+					// however wind is expressed as a vec_i2, and we need it as a single number.
+					// this is basically a very fast lookup table to tell you the answer.
+
+					if (wind.y > 0)
 					{
-						if (wind.y > 0)
+						index = 5; // directly up
+
+						if (wind.x > 0)
 						{
-							index = 5; // directly up
-
-							if (wind.x > 0) 
-							{
-								index = 4;
-							}
-							else if (wind.x < 0) 
-							{
-								index = 7;
-							}
-
+							index = 4; // up and to the right
 						}
-						else if (wind.y < 0)
+						else if (wind.x < 0)
 						{
-							index = 1; // directly down
-
-							if (wind.x > 0) 
-							{
-								index = 3;
-							}
-							else if (wind.x < 0) 
-							{
-								index = 1;
-							}
+							index = 7; // and so on, allowing the index to remain at its original random value if the wind in that axis was 0.
 						}
-						else
+
+					}
+					else if (wind.y < 0)
+					{
+						index = 1; // directly down
+						if (wind.x > 0)
 						{
-							if (wind.x > 0)
-							{
-								index = 4;
-							}
-							else if (wind.x < 0)
-							{
-								index = 0;
-							} 
+							index = 3;
+						}
+						else if (wind.x < 0)
+						{
+							index = 1;
 						}
 					}
-				// }
-
+					else
+					{
+						if (wind.x > 0)
+						{
+							index = 4;
+						}
+						else if (wind.x < 0)
+						{
+							index = 0;
+						}
+					}
+				}
 
 				if (grid[neighbours[index]].phase  == PHASE_VACUUM || (grid[neighbours[index]].phase == PHASE_GAS) )
 				{
@@ -2155,6 +2154,119 @@ void thread_graphics()
 
 		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, lifeColorGridB, GL_DYNAMIC_DRAW );
 		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
+
+
+		// perform a variety of post processing artistic styles.
+		// things like 'glowing because of temperature' need to be calculated all the time, because things are constantly changing temperature.
+		float * postProcessingGrid = new float[totalNumberOfFields];
+
+		unsigned int x = 0;
+		unsigned int y = 0;
+		for (unsigned int i = 0; i < totalSize; ++i)
+		{
+			x = i % sizeX;
+			if (!x) { y = i / sizeX; }
+			float fx = x;
+			float fy = y;
+
+
+
+			// figure out the blackbody temperature.
+			// https://www.iforgeiron.com/uploads/monthly_2015_08/ForgingTemperatureColors.jpg.2948a8585818155020d14fe17038cf33.jpg
+			// it is drawn directly over the top of the
+			Color ppColor = Color(0.0f, 0.0f, 0.0f, 0.0f);
+			if (grid[i].temperature > 0 && grid[i].temperature < 600 )
+			{
+				;
+			}
+			else if (grid[i].temperature < 772)
+			{
+				// faint red
+				ppColor = Color(0.16f, 0.0f, 0.0f, 0.08f);
+			}
+			else if (grid[i].temperature < 852)
+			{
+				// blood red
+				ppColor = Color(0.33f, 0.0f, 0.0f, 0.16f);
+			}
+			else if (grid[i].temperature < 908)
+			{
+				// dark cherry
+				ppColor = Color(0.5f, 0.0f, 0.0f, 0.25f);
+			}
+			else if (grid[i].temperature < 963)
+			{
+				// medium cherry
+				ppColor = Color(0.66f, 0.0f, 0.0f, 0.33f);
+			}
+			else if (grid[i].temperature < 1019)
+			{
+				// cherry
+				ppColor = Color(0.833f, 0.0f, 0.0f, 0.41f);
+			}
+			else if (grid[i].temperature < 1060)
+			{
+				// bright cherry
+				ppColor = Color(1.0f, 0.0f, 0.0f, 0.5f);
+			}
+			else if (grid[i].temperature < 1116)
+			{
+				// salmon (??)
+				ppColor = Color(1.0f, 0.25f, 0.0f, 0.58f);
+			}
+			else if (grid[i].temperature < 1188)
+			{
+				// dark orange
+				ppColor = Color(1.0f, 0.5f, 0.0f, 0.66f);
+			}
+			else if (grid[i].temperature < 1213)
+			{
+				// orange
+				ppColor = Color(1.0f, 0.75f, 0.0f, 0.75f);
+			}
+			else if (grid[i].temperature < 1272)
+			{
+				// lemon
+				ppColor = Color(1.0f, 1.0f, 0.0f, 0.83f);
+			}
+			else if (grid[i].temperature < 1352)
+			{
+				// light yellow
+				ppColor = Color(1.0f, 1.0f, 0.5f, 0.91f);
+			}
+			else
+			{
+				// white
+				ppColor = Color(1.0f, 1.0f, 1.0f, 1.0f);
+			}
+
+
+
+
+
+
+
+
+
+
+
+
+
+			postProcessingGrid[ (i * numberOfFieldsPerVertex) + 0 ] = colorGrid[i * numberOfFieldsPerVertex + 0] + ppColor.r;
+			postProcessingGrid[ (i * numberOfFieldsPerVertex) + 1 ] = colorGrid[i * numberOfFieldsPerVertex + 0] + ppColor.g;
+			postProcessingGrid[ (i * numberOfFieldsPerVertex) + 2 ] = colorGrid[i * numberOfFieldsPerVertex + 0] + ppColor.b;
+			postProcessingGrid[ (i * numberOfFieldsPerVertex) + 3 ] = ppColor.a;
+			postProcessingGrid[ (i * numberOfFieldsPerVertex) + 4 ] = fx;
+			postProcessingGrid[ (i * numberOfFieldsPerVertex) + 5 ] = fy;
+		}
+
+		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, postProcessingGrid, GL_DYNAMIC_DRAW );
+		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
+
+		postDraw();
+
+		delete [] postProcessingGrid;
+
 
 		postDraw();
 		clearColorGridB();
@@ -3692,7 +3804,7 @@ void insertRandomSeed()
 			}
 			case 2:
 			{
-				// exampleSentence = plant_Worrage;
+				exampleSentence = plant_Worrage;
 				break;
 			}
 			case 3:
@@ -3702,12 +3814,12 @@ void insertRandomSeed()
 			}
 			case 4:
 			{
-				// exampleSentence = plant_SpleenCoral;
+				exampleSentence = plant_SpleenCoral;
 				break;
 			}
 			case 5:
 			{
-				// exampleSentence = plant_ParbasarbTree;
+				exampleSentence = plant_ParbasarbTree;
 				break;
 			}
 
