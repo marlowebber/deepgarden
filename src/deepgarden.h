@@ -22,7 +22,7 @@ using namespace glm;
 #include "deepgarden_utilities.h"
 
 
-#define sizeX 2048
+#define sizeX 4096
 #define sizeY 256
 #define maxGenomeSize 64
 #define N_NEIGHBOURS 8                 // this is always 8 on a 2D square grid. 
@@ -116,7 +116,7 @@ void toggleErodingRain () ;
 void setPointSize (unsigned int pointSize) ;
 
 void thread_graphics () ;
-void thread_physics ();
+// void thread_physics ();
 void thread_chemistry ();
 void thread_optics ();
 void thread_particledrawing ();
