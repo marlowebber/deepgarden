@@ -1115,28 +1115,84 @@ void initialize ()
 
 
 
-	materials.push_back(Material());
+
+
+
+	for (int k = 0; k < 5; ++k)
+	{
+
+
+		Material newMaterial = Material();
+		newMaterial.boiling = RNG() * 1000;
+		newMaterial.melting = RNG() * newMaterial.boiling;
+
+		newMaterial.crystal_n = extremelyFastNumberFromZeroTo(4);
+
+		unsigned int randomCondition = extremelyFastNumberFromZeroTo(2);
+		if (randomCondition == 0) {newMaterial.crystal_condition = CONDITION_GREATERTHAN; }
+		else if (randomCondition == 1) {newMaterial.crystal_condition = CONDITION_EQUAL; }
+		else if (randomCondition == 2) {newMaterial.crystal_condition = CONDITION_LESSTHAN; }
+
+		newMaterial . color = color_grey;
+		newMaterial.color.r = RNG();
+		newMaterial.color.g = RNG();
+		newMaterial.color.b = RNG();
+
+
+
+		materials.push_back(newMaterial);
+
+
+		float availability = RNG();
+
+
+		// // setup the x and y positions in the color grid. these never change so you can just calculate them once.
+		unsigned int x = 0;
+		unsigned int y = 0;
+		for (unsigned int i = 0; i < totalSize; ++i)
+		{
+			x = i % sizeX;
+			y = i / sizeX;
+			// float fx = x;
+			// float fy = y;
+
+
+			if (i > sizeX && i < 50 * sizeX)
+
+			{
+
+				if (RNG() < availability)
+				{
+
+					setParticle( k, i);
+				}
+			}
+		}
+
+
+	}
 
 
 
 
-	// // setup the x and y positions in the color grid. these never change so you can just calculate them once.
-	unsigned int x = 0;
-	unsigned int y = 0;
+
+
+setAnimal(  totalSize* 0.8 );
+
+
+
+
+	// set everything to a random temperature
+	float frandomtemp = RNG() * 1000;
+	unsigned int randomTemp = frandomtemp;
 	for (unsigned int i = 0; i < totalSize; ++i)
 	{
-		x = i % sizeX;
-		y = i / sizeX;
-		float fx = x;
-		float fy = y;
-
-
-		if (i > sizeX && i < 50 * sizeX)
-
-		{
-			setParticle( 0x00, i);
-		}
+		grid[i].temperature = randomTemp;
 	}
+
+
+
+
 }
 
 void setEverythingHot()
@@ -1437,11 +1493,29 @@ void thread_temperature2 ()
 					else
 					{
 						unsigned int nSolidNeighbours = 0;
+
+						// go around the neighbours in order, check if they are solid. check how many in a row are solid, and whether it started from an odd or even number, indicating if it is a corner or an edge.
+						unsigned int currentSolidStreak = 0;
+						unsigned int longestSolidStreak = 0;
+						unsigned int longestSolidStreakOffset = 0;
+						unsigned int currentStreakOffset = 0;
+
 						for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
 						{
 							if (grid[neighbourOffsets[j] + currentPosition].phase == PHASE_SOLID )
 							{
 								nSolidNeighbours++;
+								currentSolidStreak++;
+
+								if (currentSolidStreak > longestSolidStreak)
+								{
+									longestSolidStreak = currentSolidStreak;
+									longestSolidStreakOffset = currentStreakOffset;
+								}
+							}
+							else
+							{
+								currentStreakOffset = j;
 							}
 						}
 
@@ -1453,10 +1527,51 @@ void thread_temperature2 ()
 						{
 							if (nSolidNeighbours == materials[grid[currentPosition].material].crystal_n) { grid[currentPosition].phase = PHASE_SOLID; }
 						}
-						else  // (materials[grid[currentPosition].material].crystal_condition == CONDITION_LESSTHAN)
+						else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_LESSTHAN)
 						{
 							if (nSolidNeighbours < materials[grid[currentPosition].material].crystal_n) { grid[currentPosition].phase = PHASE_SOLID; }
 						}
+
+						else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_EVENNUMBER)
+						{
+							if (nSolidNeighbours % 2 == 0)
+							{
+								grid[currentPosition].phase = PHASE_SOLID;
+							}
+						}
+						else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_ODDNUMBER)
+						{
+							if (nSolidNeighbours % 2 == 1)
+							{
+								grid[currentPosition].phase = PHASE_SOLID;
+							}
+						}
+
+						else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_CORNER)
+						{
+							if (longestSolidStreak == 3 && (longestSolidStreakOffset % 2) == 0 )
+							{
+								grid[currentPosition].phase = PHASE_SOLID;
+							}
+						}
+
+						else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_EDGE)
+						{
+							if (longestSolidStreak == 3 && (longestSolidStreakOffset % 2) == 1 )
+							{
+								grid[currentPosition].phase = PHASE_SOLID;
+							}
+						}
+
+						else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_ROW)
+						{
+							if (longestSolidStreak == materials[grid[currentPosition].material].crystal_n )
+							{
+								grid[currentPosition].phase = PHASE_SOLID;
+							}
+						}
+
+
 
 						// small chance to solidify at random and form the nucleus of a new crystal.
 						if (extremelyFastNumberFromZeroTo(10000) == 0)
@@ -1502,7 +1617,7 @@ void thread_temperature2 ()
 				unsigned int offset = extremelyFastNumberFromZeroTo(4);
 				for (unsigned int k = 0; k < 5; ++k)
 				{
-					unsigned int neighbour =neighbourOffsets[ ((k + offset) % 5) ] + currentPosition; 
+					unsigned int neighbour = neighbourOffsets[ ((k + offset) % 5) ] + currentPosition;
 
 					if ((    grid[neighbour].phase == PHASE_VACUUM) ||
 					        (grid[neighbour].phase == PHASE_GAS) ||
@@ -1520,7 +1635,7 @@ void thread_temperature2 ()
 			{
 				for (unsigned int j = 0; j < 3; ++j)
 				{
-		
+
 					unsigned int index = extremelyFastNumberFromZeroTo(7);
 					unsigned int neighbour = neighbourOffsets[index] + currentPosition;
 					// alternate between wind movement and random scatter movement, to look more natural.

@@ -102,9 +102,14 @@ struct Color
 
 
 // logical conditions used for crystallisation.
-#define CONDITION_GREATERTHAN 0
-#define CONDITION_EQUAL 1
-#define CONDITION_LESSTHAN 2
+#define CONDITION_GREATERTHAN 1
+#define CONDITION_EQUAL       2
+#define CONDITION_LESSTHAN    4
+#define CONDITION_EVENNUMBER  8
+#define CONDITION_ODDNUMBER   16
+#define CONDITION_CORNER      32
+#define CONDITION_EDGE        64
+#define CONDITION_ROW         128
 
 
 
