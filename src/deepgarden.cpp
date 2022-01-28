@@ -11,7 +11,7 @@
 #define THREAD_TIMING_READOUT 1
 // #define PLANT_DRAWING_READOUT 1
 // #define ANIMAL_DRAWING_READOUT 1
-// #define DRAW_ANIMALS 1
+#define DRAW_ANIMALS 1
 
 #define RENDERING_THREADS 4
 
@@ -34,9 +34,9 @@ const Color color_shadow 	    	= Color( 0.0f, 0.0f, 0.0f, 0.5f);
 const Color color_defaultSeedColor  = Color( 0.75f, 0.35f, 0.1f, 1.0f );
 const Color color_defaultColor     	= Color( 0.35f, 0.35f, 0.35f, 1.0f );
 
-const Color phaseTingleSolid =  Color( -1.0f, -1.0f, -1.0f, 0.1f );
-const Color phaseTingleLiquid = Color( 1.0f, 1.0f, 1.0f, 0.1f );
-const Color phaseTingleGas =    Color( 1.0f, 1.0f, 1.0f, 0.2f );
+const Color phaseTingeSolid =  Color( -1.0f, -1.0f, -1.0f, 0.1f );
+const Color phaseTingeLiquid = Color( 1.0f, 1.0f, 1.0f, 0.1f );
+const Color phaseTingeGas =    Color( 1.0f, 1.0f, 1.0f, 0.2f );
 
 int crystal_n_olivine = 1;
 int crystal_n_quartz = 2;
@@ -105,13 +105,17 @@ float animalCursorLimbLowerAngle = 0.0f;
 float animalCursorLimbUpperAngle = 0.5 * 3.1415f;
 unsigned int animalRecursionLevel = 0;
 
-
-
 float * colorGrid = new float[totalSize * numberOfFieldsPerVertex ];
 float * lifeColorGrid  	= new float[totalSize * numberOfFieldsPerVertex ];
 float * lifeColorGridB 	= new float[totalSize * numberOfFieldsPerVertex ];
 float * seedColorGrid  	= new float[totalSize * numberOfFieldsPerVertex];
 
+
+
+
+		// perform a variety of post processing artistic styles.
+		// things like 'glowing because of temperature' need to be calculated all the time, because things are constantly changing temperature.
+		float * postProcessingGrid = new float[totalSize * numberOfFieldsPerVertex];
 
 vec_i2 wind = vec_i2(0, 0);
 
@@ -155,19 +159,9 @@ std::list<unsigned int> identities;
 
 std::list<vec_u2> v_seeds;
 
-
-
-// bool showEnergyGrid = false;
-// bool showTemperatureGrid = false;
-
-
 unsigned int visualizer = VISUALIZE_MATERIAL;
 
-
-
-
 bool sprinkleErodingRain = false;
-
 
 unsigned int animationChangeCount = 0;
 unsigned int animationGlobalFrame = FRAME_A;
@@ -310,8 +304,6 @@ LifeParticle * lifeGrid = new LifeParticle[totalSize];
 SeedParticle * seedGrid = new SeedParticle[totalSize];
 std::list<ProposedLifeParticle> v;
 std::list<ProposedLifeParticle> v_extrudedParticles;
-
-
 
 
 struct AnimalParticle
@@ -753,13 +745,6 @@ void setAnimalSpritePixel ( Animal * a, AnimalSegment * s, AnimalParticle p, uns
 	unsigned int j__color_offset = (j_offset * numberOfFieldsPerVertex) ;
 	if (j_offset < totalSize)
 	{
-		// don't feed the animal here. the animal system should work even when sprites are not being drawn.
-		// if (seedGrid[j_offset].stage == STAGE_BUD || seedGrid[j_offset].stage == STAGE_FRUIT ||  seedGrid[j_offset].stage == STAGE_SEED )
-		// {
-		// 	a->energy += 10.0f ;
-		// 	printf("fed animal. Energy %f, reproduces at %f\n", a->energy, a->reproductionCost);
-		// 	clearSeedParticle(j_offset);
-		// }
 		memcpy( &lifeColorGridB[ j__color_offset], 	&(p.color) , 	sizeof(Color) );
 	}
 }
@@ -1233,10 +1218,7 @@ void initialize ()
 					{
 						if (  RNG() < mineral_occurrence_quartz)
 						{
-
 							setParticle( MATERIAL_QUARTZ, i);
-							// grid[i].temperature = 2000;
-							// grid[i].temperature = 6090.0f;
 							grid[i].phase = PHASE_POWDER;
 							grid[i].temperature = 5000;
 
@@ -1244,97 +1226,18 @@ void initialize ()
 					}
 					else
 					{
-	if (  RNG() < mineral_occurrence_water)
+						if (  RNG() < mineral_occurrence_water)
 						{
-
 							setParticle( MATERIAL_WATER, i);
-							// grid[i].temperature = 2000;
-							// grid[i].temperature = 6090.0f;
 							grid[i].phase = PHASE_POWDER;
 							grid[i].temperature = 5000;
 
 						}
 					}
-
 				}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-				// else if (  RNG() < mineral_occurrence_water)
-				// {
-
-				// 	// setParticle( MATERIAL_WATER, i);
-				// 	// grid[i].temperature = 10000;
-				// 	// // grid[i].temperature = 6090.0f;
-
 			}
-
-
 		}
-
-
-
-
-
-
-
-		// if (  RNG() < mineral_occurrence_gold)
-		// {
-
-		// 	setParticle( MATERIAL_GOLD, i);
-		// 	grid[i].temperature = 10000;
-		// 	// grid[i].temperature = 6090.0f;
-
-		// }
-
-
 	}
-
-
-
-
-
-	// if (x >  200 && x < 300  && y < 100)
-	// {
-	// 	setParticle( MATERIAL_OLIVINE, i);
-	// 	grid[i].phase = PHASE_SOLID;
-	// }
-
-	// if (x >  900 && x < 1000  && y < 100)
-	// {
-	// 	setParticle( MATERIAL_OLIVINE, i);
-	// 	grid[i].phase = PHASE_SOLID;
-	// }
-
-
-
-
-
-	// if (x ==  500 && y == 100)
-	// {
-	// 	setAnimal( i);
-	// }
-
-	// if (x ==  600 && y == 100)
-	// {
-	// 	setAnimal( i);
-	// 	animals[1].movementFlags = MOVEMENT_INPLANTS;
-	// }
-
-	// }
 }
 
 void setEverythingHot()
@@ -1343,19 +1246,11 @@ void setEverythingHot()
 	{
 		if (grid[i].phase != PHASE_VACUUM)
 		{
-			// 	if (grid[i].temperature < (0xFFFFFFFF - 25) )
-			// 	{
 			grid[i].temperature = 5000;
-			// 	}
-			// 	else {
-			// 		grid[i].temperature = (0xFFFFFFFF);
-			// 	}
 		}
 		else {
 			grid[i].temperature = 0;
 		}
-
-
 	}
 }
 
@@ -1373,8 +1268,6 @@ void heatEverything ()
 				grid[i].temperature = (0xFFFFFFFF);
 			}
 		}
-
-
 	}
 }
 
@@ -1417,6 +1310,132 @@ void setExtremeTempPoint (unsigned int x , unsigned  int y)
 
 }
 
+// updates a location on the color grid with a material's new color information, based on phase and temperature.
+void materialPostProcess(unsigned int i)
+{
+
+		unsigned int x = i % sizeX;
+		unsigned int y =i / sizeX;
+		
+			float fx = x;
+			float fy = y;
+
+			// figure out the blackbody temperature.
+			// https://www.iforgeiron.com/uploads/monthly_2015_08/ForgingTemperatureColors.jpg.2948a8585818155020d14fe17038cf33.jpg
+			// it is drawn directly over the top of the
+			Color ppColor = materialColor(grid[i].material);  //
+
+
+			if (grid[i].phase == PHASE_GAS)
+			{
+				ppColor = addColor(ppColor, phaseTingeGas);
+			}
+			else if (grid[i].phase == PHASE_LIQUID)
+			{
+				ppColor = addColor(ppColor, phaseTingeLiquid);
+			}
+			if (grid[i].phase == PHASE_SOLID)
+			{
+				ppColor = addColor(ppColor, phaseTingeSolid);
+			}
+
+
+			if (grid[i].temperature > 0 && grid[i].temperature < 600 )
+			{
+				;
+			}
+			else if (grid[i].temperature < 772)
+			{
+				// faint red
+				ppColor = addColor( ppColor, Color(0.16f, 0.0f, 0.0f, 0.03f));
+			}
+			else if (grid[i].temperature < 852)
+			{
+				// blood red
+				ppColor = addColor( ppColor,  Color(0.33f, 0.0f, 0.0f, 0.11f));
+			}
+			else if (grid[i].temperature < 908)
+			{
+				// dark cherry
+				ppColor = addColor( ppColor, Color(0.5f, 0.0f, 0.0f, 0.20f));
+			}
+			else if (grid[i].temperature < 963)
+			{
+				// medium cherry
+				ppColor = addColor( ppColor, Color(0.66f, 0.0f, 0.0f, 0.27f));
+			}
+			else if (grid[i].temperature < 1019)
+			{
+				// cherry
+				ppColor = addColor( ppColor, Color(0.833f, 0.0f, 0.0f, 0.36f));
+			}
+			else if (grid[i].temperature < 1060)
+			{
+				// bright cherry
+				ppColor = addColor( ppColor,  Color(1.0f, 0.0f, 0.0f, 0.45f));
+			}
+			else if (grid[i].temperature < 1116)
+			{
+				// salmon (??)
+				ppColor = addColor( ppColor,  Color(1.0f, 0.25f, 0.0f, 0.53f));
+			}
+			else if (grid[i].temperature < 1188)
+			{
+				// dark orange
+				ppColor = addColor( ppColor, Color(1.0f, 0.5f, 0.0f, 0.61f));
+			}
+			else if (grid[i].temperature < 1213)
+			{
+				// orange
+				ppColor = addColor( ppColor, Color(1.0f, 0.75f, 0.0f, 0.70f));
+			}
+			else if (grid[i].temperature < 1272)
+			{
+				// lemon
+				ppColor = addColor( ppColor, Color(1.0f, 1.0f, 0.0f, 0.78f));
+			}
+			else if (grid[i].temperature < 1352)
+			{
+				// light yellow
+				ppColor = addColor( ppColor,  Color(1.0f, 1.0f, 0.5f, 0.86f));
+			}
+
+			else if (grid[i].temperature < 5000)
+			{
+				// white
+				ppColor = addColor( ppColor,  Color(1.0f, 1.0f, 1.0f, 0.91f));
+			}
+
+			else if (grid[i].temperature < 10000)
+			{
+				// cool white
+				ppColor = addColor( ppColor,  Color(0.95f, 0.95f, 1.0f, 1.0f));
+			}
+
+			else
+			{
+				// blue
+				ppColor = addColor( ppColor, Color(0.9f, 0.9f, 1.0f, 1.0f));
+			}
+
+
+			// postProcessingGrid[ (i * numberOfFieldsPerVertex) + 0 ] = ppColor.r;
+			// postProcessingGrid[ (i * numberOfFieldsPerVertex) + 1 ] = ppColor.g;
+			// postProcessingGrid[ (i * numberOfFieldsPerVertex) + 2 ] = ppColor.b;
+			// postProcessingGrid[ (i * numberOfFieldsPerVertex) + 3 ] = ppColor.a;
+			// postProcessingGrid[ (i * numberOfFieldsPerVertex) + 4 ] = fx;
+			// postProcessingGrid[ (i * numberOfFieldsPerVertex) + 5 ] = fy;
+
+
+			colorGrid[ (i * numberOfFieldsPerVertex) + 0 ] = ppColor.r;
+			colorGrid[ (i * numberOfFieldsPerVertex) + 1 ] = ppColor.g;
+			colorGrid[ (i * numberOfFieldsPerVertex) + 2 ] = ppColor.b;
+			colorGrid[ (i * numberOfFieldsPerVertex) + 3 ] = ppColor.a;
+			colorGrid[ (i * numberOfFieldsPerVertex) + 4 ] = fx;
+			colorGrid[ (i * numberOfFieldsPerVertex) + 5 ] = fy;
+}
+
+
 
 void thread_temperature2 ()
 {
@@ -1426,507 +1445,367 @@ void thread_temperature2 ()
 
 	for (unsigned int i = (sizeX + 1); i < (totalSize - (sizeX + 1)); ++i)
 	{
-
-
 		if (grid[i].phase != PHASE_VACUUM)
 		{
-
-
-
-
-			// // further up the screen is naturally colder
-			// if (true)
-			// {
-
-
-			// 	float y = i / sizeX;
-			// 	float naturalY = (1 - (y / sizeY));
-			// 	naturalY = naturalY * defaultTemperature * 2;
-			// 	unsigned int AltitudeNaturalTemp = naturalY;
-			// 	// printf("AltitudeNaturalTemp %u\n", AltitudeNaturalTemp);
-
-			// 	// unsigned int avgTemp = ((grid[i].temperature+ AltitudeNaturalTemp) / 2) ;
-			// 	// // grid[neighbours[j]].temperature = avgTemp;
-			// 	// grid[i].temperature = avgTemp;
-
-
-			// 	if (grid[i].temperature > AltitudeNaturalTemp)
-			// 	{
-			// 		grid[i].temperature -= 1;
-			// 	}
-			// 	else
-			// 	{
-			// 		grid[i].temperature += 1;
-			// 	}
-
-			// }
-
 
 			// equalize temp with neighbours
 			if (true)
 			{
 
+				unsigned int j = extremelyFastNumberFromZeroTo(7);
+				// for (unsigned int k = 0; k < 8; ++k)
+				// {
 
-				unsigned int squareAbove = i + sizeX;
-				unsigned int squareBelow = i - sizeX;
-				unsigned int neighbours[] =
-				{
-					squareBelow - 1,
-					squareBelow,
-					squareBelow + 1,
-					i + 1,
-					squareAbove + 1,
-					squareAbove,
-					squareAbove - 1,
-					i - 1,
-				};
-				for (unsigned int j = 0; j < 8; ++j)
+				// unsigned int j = (k + offset) % 8;
+
+				if (grid[neighbourOffsets[j] + i].phase != PHASE_VACUUM)
 				{
 
+					int avgTemp = (((grid[i].temperature ) - (grid[neighbourOffsets[j] + i].temperature)) ) ;
 
-					if (grid[neighbours[j]].phase != PHASE_VACUUM)
+
+					if (grid[i].material == MATERIAL_QUARTZ)
 					{
-
-
-
-						int avgTemp = (((grid[i].temperature ) - (grid[neighbours[j]].temperature)) ) ;
-
-
-						if (grid[i].material == MATERIAL_QUARTZ)
-						{
-							avgTemp = avgTemp / insulativity_quartz;
-						}
-						else if (grid[i].material == MATERIAL_AMPHIBOLE)
-						{
-							avgTemp = avgTemp / insulativity_amphibole;
-						}
-						else if (grid[i].material == MATERIAL_OLIVINE)
-						{
-							avgTemp = avgTemp / insulativity_olivine;
-						}
-
-
-						grid[neighbours[j]].temperature += avgTemp;
-						grid[i].temperature -= avgTemp;
+						avgTemp = avgTemp / insulativity_quartz;
 					}
-					else
+					else if (grid[i].material == MATERIAL_AMPHIBOLE)
 					{
-						// if neighbour is a vacuum, radiate heat away into space. more so if it is hotter.
-
-						int radiantHeat = grid[i].temperature / 100;
-						grid[i].temperature -= radiantHeat;
-
-
-
-
+						avgTemp = avgTemp / insulativity_amphibole;
+					}
+					else if (grid[i].material == MATERIAL_OLIVINE)
+					{
+						avgTemp = avgTemp / insulativity_olivine;
 					}
 
-
+					grid[neighbourOffsets[j] + i].temperature += avgTemp;
+					grid[i].temperature -= avgTemp;
 				}
+				else
+				{
+					// if neighbour is a vacuum, radiate heat away into space. more so if it is hotter.
+					int radiantHeat = grid[i].temperature / 100;
+					grid[i].temperature -= radiantHeat;
+				}
+				// }
 			}
 
 
-
-			// Phase change logic, which also includes crystallization.
-
-
-			// MATERIAL_FIRE
-			if (grid[i].material == MATERIAL_FIRE)
+			if (extremelyFastNumberFromZeroTo(4) == 0) // only check phase sometimes bcoz its lots of work.
 			{
 
-				if (seedGrid[i].parentIdentity > 0x00)
+				materialPostProcess(i);
+				// Phase change logic, which also includes crystallization.
+
+				// MATERIAL_FIRE
+				if (grid[i].material == MATERIAL_FIRE)
 				{
-					clearSeedParticle(i);
+					if (seedGrid[i].parentIdentity > 0x00)
+					{
+						clearSeedParticle(i);
+					}
+
+					if (grid[i].temperature < 600)
+					{
+						clearParticle(i);
+					}
 				}
 
-				if (grid[i].temperature < 600)
+				// MATERIAL_WATER
+				else if (grid[i].material == MATERIAL_WATER)
 				{
-					clearParticle(i);
-				}
-			}
-
-
-
-			// MATERIAL_WATER
-			else if (grid[i].material == MATERIAL_WATER)
-			{
-				if (grid[i].phase == PHASE_POWDER)
-				{
-					if (grid[i].temperature > 273)
+					if (grid[i].phase == PHASE_POWDER)
 					{
-						grid[i].phase = PHASE_LIQUID;
-					}
-				}
-				else if (grid[i].phase == PHASE_LIQUID)
-				{
-					if (grid[i].temperature < 273)
-					{
-						grid[i].phase = PHASE_POWDER;
-					}
-					else if (grid[i].temperature > 373)
-					{
-						grid[i].phase = PHASE_GAS;
-					}
-				}
-				else if (grid[i].phase == PHASE_GAS)
-				{
-					if (grid[i].temperature < 373)
-					{
-						grid[i].phase = PHASE_LIQUID;
-					}
-				}
-			}
-
-			// MATERIAL_QUARTZ
-			else if (grid[i].material == MATERIAL_QUARTZ)
-			{
-				if (grid[i].phase == PHASE_POWDER)
-				{
-					if (grid[i].temperature > crystal_melting_quartz)
-					{
-						grid[i].phase = PHASE_LIQUID;
-					}
-				}
-				else if (grid[i].phase == PHASE_LIQUID)
-				{
-					if (grid[i].temperature < crystal_melting_quartz)
-					{
-						grid[i].phase = PHASE_POWDER;
-					}
-					else if (grid[i].temperature > crystal_melting_quartz && grid[i].temperature < (crystal_melting_quartz + 100))
-					{
-						unsigned int nSolidNeighbours = 0;
-						for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
+						if (grid[i].temperature > 273)
 						{
+							grid[i].phase = PHASE_LIQUID;
+						}
+					}
+					else if (grid[i].phase == PHASE_LIQUID)
+					{
+						if (grid[i].temperature < 273)
+						{
+							grid[i].phase = PHASE_POWDER;
+						}
+						else if (grid[i].temperature > 373)
+						{
+							grid[i].phase = PHASE_GAS;
+						}
+					}
+					else if (grid[i].phase == PHASE_GAS)
+					{
+						if (grid[i].temperature < 373)
+						{
+							grid[i].phase = PHASE_LIQUID;
+						}
+					}
+				}
 
-							unsigned int neighbour = neighbourOffsets[j] + i;
-							if ( grid[neighbour].material == MATERIAL_QUARTZ )
+				// MATERIAL_QUARTZ
+				else if (grid[i].material == MATERIAL_QUARTZ)
+				{
+					if (grid[i].phase == PHASE_POWDER)
+					{
+						if (grid[i].temperature > crystal_melting_quartz)
+						{
+							grid[i].phase = PHASE_LIQUID;
+						}
+					}
+					else if (grid[i].phase == PHASE_LIQUID)
+					{
+						if (grid[i].temperature < crystal_melting_quartz)
+						{
+							grid[i].phase = PHASE_POWDER;
+						}
+						else if (grid[i].temperature > crystal_melting_quartz && grid[i].temperature < (crystal_melting_quartz + 100))
+						{
+							unsigned int nSolidNeighbours = 0;
+							for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
 							{
-								if (grid[neighbour].phase == PHASE_SOLID )
+								if ( grid[neighbourOffsets[j] + i].material == MATERIAL_QUARTZ )
 								{
-									nSolidNeighbours++;
-								}
-							}
-						}
-
-
-
-						if ( crystal_condition_quartz == CONDITION_GREATERTHAN )
-						{
-							if (nSolidNeighbours > crystal_n_quartz)
-							{
-								// check neighbours, if there is at least 1 solid neighbour, become solid.
-								// otherwise powder.
-
-
-								if (nSolidNeighbours > 0) {grid[i].phase = PHASE_SOLID;}
-								else {grid[i].phase = PHASE_POWDER;}
-
-
-							}
-						}
-						else if ( crystal_condition_quartz == CONDITION_EQUAL )
-						{
-							if (nSolidNeighbours == crystal_n_quartz)
-							{
-
-								if (nSolidNeighbours > 0) {grid[i].phase = PHASE_SOLID;}
-								else {grid[i].phase = PHASE_POWDER;}
-							}
-						}
-
-						else // ( crystal_condition_quartz == CONDITION_GREATERTHAN )
-						{
-							if (nSolidNeighbours < crystal_n_quartz)
-							{
-
-								if (nSolidNeighbours > 0) {grid[i].phase = PHASE_SOLID;}
-								else {grid[i].phase = PHASE_POWDER;}
-							}
-						}
-
-
-
-						if (extremelyFastNumberFromZeroTo(1000) == 0)
-						{
-
-							// if (nSolidNeighbours > 0) {
-							grid[i].phase = PHASE_SOLID;
-							// }
-							// else {grid[i].phase = PHASE_POWDER;}
-						}
-					}
-					else if (grid[i].temperature > 2330)
-					{
-						grid[i].phase = PHASE_GAS;
-					}
-				}
-				else if (grid[i].phase == PHASE_GAS)
-				{
-					if (grid[i].temperature < 2330)
-					{
-						grid[i].phase = PHASE_LIQUID;
-					}
-				}
-				else if (grid[i].phase == PHASE_SOLID )
-				{
-					if (grid[i].temperature > 2330)
-					{
-						grid[i].phase = PHASE_LIQUID;
-					}
-				}
-			}
-
-			else if (grid[i].material == MATERIAL_AMPHIBOLE)
-			{
-				if (grid[i].phase == PHASE_POWDER)
-				{
-					if (grid[i].temperature > crystal_melting_amphibole)
-					{
-						grid[i].phase = PHASE_LIQUID;
-					}
-				}
-				else if (grid[i].phase == PHASE_LIQUID)
-				{
-					if (grid[i].temperature < crystal_melting_amphibole)
-					{
-						grid[i].phase = PHASE_POWDER;
-					}
-					else if (grid[i].temperature > crystal_melting_amphibole && grid[i].temperature < (crystal_melting_amphibole + 100))
-					{
-						unsigned int nSolidNeighbours = 0;
-						for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
-						{
-
-							unsigned int neighbour = neighbourOffsets[j] + i;
-							if ( grid[neighbour].material == MATERIAL_AMPHIBOLE )
-							{
-								if (grid[neighbourOffsets[j] + i].phase == PHASE_SOLID )
-								{
-									nSolidNeighbours++;
-								}
-							}
-						}
-						// if (nSolidNeighbours > crystal_n_amphibole)
-						// {
-						// 	grid[i].phase = PHASE_SOLID;
-						// }
-
-						bool condition  = false;
-
-						if ( crystal_condition_amphibole == CONDITION_GREATERTHAN )
-						{
-							if (nSolidNeighbours > crystal_n_amphibole)
-							{
-
-								if (nSolidNeighbours > 0) {grid[i].phase = PHASE_SOLID;}
-								else {grid[i].phase = PHASE_POWDER;}
-							}
-						}
-						else if ( crystal_condition_amphibole == CONDITION_EQUAL )
-						{
-							if (nSolidNeighbours == crystal_n_amphibole)
-							{
-
-								if (nSolidNeighbours > 0) {grid[i].phase = PHASE_SOLID;}
-								else {grid[i].phase = PHASE_POWDER;}
-							}
-						}
-
-						else // ( crystal_condition_quartz == CONDITION_GREATERTHAN )
-						{
-							if (nSolidNeighbours < crystal_n_amphibole)
-							{
-
-								if (nSolidNeighbours > 0) {grid[i].phase = PHASE_SOLID;}
-								else {grid[i].phase = PHASE_POWDER;}
-							}
-						}
-
-
-
-						if (extremelyFastNumberFromZeroTo(10000) == 0)
-						{
-							grid[i].phase = PHASE_SOLID;
-						}
-
-					}
-					else if (grid[i].temperature > 2330)
-					{
-						grid[i].phase = PHASE_GAS;
-					}
-				}
-
-				else if (grid[i].phase == PHASE_GAS)
-				{
-					if (grid[i].temperature < 2330)
-					{
-						grid[i].phase = PHASE_LIQUID;
-					}
-				}
-
-				else if (grid[i].phase == PHASE_SOLID )
-				{
-					if (grid[i].temperature > 2330)
-					{
-						grid[i].phase = PHASE_LIQUID;
-					}
-
-				}
-			}
-
-
-			else if (grid[i].material == MATERIAL_OLIVINE)
-			{
-				if (grid[i].phase == PHASE_POWDER)
-				{
-					if (grid[i].temperature > crystal_melting_olivine)
-					{
-						grid[i].phase = PHASE_LIQUID;
-					}
-				}
-				else if (grid[i].phase == PHASE_LIQUID)
-				{
-					if (grid[i].temperature < crystal_melting_olivine)
-					{
-						grid[i].phase = PHASE_POWDER;
-					}
-					else if (grid[i].temperature > crystal_melting_olivine && grid[i].temperature < (crystal_melting_olivine + 100))
-					{
-
-						unsigned int nSolidNeighbours = 0;
-						unsigned int dissimilarNeighbours = 0;
-						for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
-						{
-							unsigned int neighbour = neighbourOffsets[j] + i;
-							if ( grid[neighbour].material == MATERIAL_OLIVINE )
-							{
-								if (grid[neighbour].phase == PHASE_SOLID )
-								{
-									nSolidNeighbours++;
-								}
-							}
-							else {
-								dissimilarNeighbours++;
-							}
-						}
-						// if (nSolidNeighbours == crystal_n_olivine || (nSolidNeighbours == 3 && extremelyFastNumberFromZeroTo(100)) )
-						// {
-						// 	grid[i].phase = PHASE_SOLID;
-						// }
-						// else
-
-						bool condition  = false;
-
-						if ( crystal_condition_olivine == CONDITION_GREATERTHAN )
-						{
-							if (nSolidNeighbours > crystal_n_olivine)
-							{
-
-								if (nSolidNeighbours > 0) {grid[i].phase = PHASE_SOLID;}
-								else {grid[i].phase = PHASE_POWDER;}
-							}
-						}
-						else if ( crystal_condition_olivine == CONDITION_EQUAL )
-						{
-							if (nSolidNeighbours == crystal_n_olivine)
-							{
-
-								if (nSolidNeighbours > 0) {grid[i].phase = PHASE_SOLID;}
-								else {grid[i].phase = PHASE_POWDER;}
-							}
-						}
-
-						else // ( crystal_condition_quartz == CONDITION_GREATERTHAN )
-						{
-							if (nSolidNeighbours < crystal_n_olivine)
-							{
-
-								if (nSolidNeighbours > 0) {grid[i].phase = PHASE_SOLID;}
-								else {grid[i].phase = PHASE_POWDER;}
-							}
-						}
-
-
-
-
-						if (extremelyFastNumberFromZeroTo(1000) == 0)
-						{
-							if (extremelyFastNumberFromZeroTo(100) == 0) // this function only works up to 34464, so run it twice to multiply probabilities.
-							{
-								for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
-								{
-									unsigned int neighbour = neighbourOffsets[j] + i;
-									if (grid[neighbour].material == MATERIAL_OLIVINE )
+									if (grid[neighbourOffsets[j] + i].phase == PHASE_SOLID )
 									{
-										grid[neighbour].phase = PHASE_SOLID;
+										nSolidNeighbours++;
 									}
 								}
 							}
+
+							if ( crystal_condition_quartz == CONDITION_GREATERTHAN )
+							{
+								if (nSolidNeighbours > crystal_n_quartz)
+								{
+									// check neighbours, if there is at least 1 solid neighbour, become solid.
+									// otherwise powder.
+									if (nSolidNeighbours > 0) {grid[i].phase = PHASE_SOLID;}
+									else {grid[i].phase = PHASE_POWDER;}
+								}
+							}
+							else if ( crystal_condition_quartz == CONDITION_EQUAL )
+							{
+								if (nSolidNeighbours == crystal_n_quartz)
+								{
+									if (nSolidNeighbours > 0) {grid[i].phase = PHASE_SOLID;}
+									else {grid[i].phase = PHASE_POWDER;}
+								}
+							}
+
+							else // ( crystal_condition_quartz == CONDITION_GREATERTHAN )
+							{
+								if (nSolidNeighbours < crystal_n_quartz)
+								{
+									if (nSolidNeighbours > 0) {grid[i].phase = PHASE_SOLID;}
+									else {grid[i].phase = PHASE_POWDER;}
+								}
+							}
+
+							if (extremelyFastNumberFromZeroTo(1000) == 0)
+							{
+								grid[i].phase = PHASE_SOLID;
+							}
 						}
-
+						else if (grid[i].temperature > 2330)
+						{
+							grid[i].phase = PHASE_GAS;
+						}
 					}
-					else if (grid[i].temperature > 2330)
+					else if (grid[i].phase == PHASE_GAS)
 					{
-						grid[i].phase = PHASE_GAS;
+						if (grid[i].temperature < 2330)
+						{
+							grid[i].phase = PHASE_LIQUID;
+						}
+					}
+					else if (grid[i].phase == PHASE_SOLID )
+					{
+						if (grid[i].temperature > 2330)
+						{
+							grid[i].phase = PHASE_LIQUID;
+						}
 					}
 				}
-				else if (grid[i].phase == PHASE_GAS)
+
+				else if (grid[i].material == MATERIAL_AMPHIBOLE)
 				{
-					if (grid[i].temperature < 2330)
+					if (grid[i].phase == PHASE_POWDER)
 					{
-						grid[i].phase = PHASE_LIQUID;
+						if (grid[i].temperature > crystal_melting_amphibole)
+						{
+							grid[i].phase = PHASE_LIQUID;
+						}
+					}
+					else if (grid[i].phase == PHASE_LIQUID)
+					{
+						if (grid[i].temperature < crystal_melting_amphibole)
+						{
+							grid[i].phase = PHASE_POWDER;
+						}
+						else if (grid[i].temperature > crystal_melting_amphibole && grid[i].temperature < (crystal_melting_amphibole + 100))
+						{
+							unsigned int nSolidNeighbours = 0;
+							for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
+							{
+								if ( grid[neighbourOffsets[j] + i].material == MATERIAL_AMPHIBOLE )
+								{
+									if (grid[neighbourOffsets[j] + i].phase == PHASE_SOLID )
+									{
+										nSolidNeighbours++;
+									}
+								}
+							}
+
+							bool condition  = false;
+
+							if ( crystal_condition_amphibole == CONDITION_GREATERTHAN )
+							{
+								if (nSolidNeighbours > crystal_n_amphibole)
+								{
+									if (nSolidNeighbours > 0) {grid[i].phase = PHASE_SOLID;}
+									else {grid[i].phase = PHASE_POWDER;}
+								}
+							}
+							else if ( crystal_condition_amphibole == CONDITION_EQUAL )
+							{
+								if (nSolidNeighbours == crystal_n_amphibole)
+								{
+									if (nSolidNeighbours > 0) {grid[i].phase = PHASE_SOLID;}
+									else {grid[i].phase = PHASE_POWDER;}
+								}
+							}
+
+							else // ( crystal_condition_quartz == CONDITION_GREATERTHAN )
+							{
+								if (nSolidNeighbours < crystal_n_amphibole)
+								{
+									if (nSolidNeighbours > 0) {grid[i].phase = PHASE_SOLID;}
+									else {grid[i].phase = PHASE_POWDER;}
+								}
+							}
+
+							if (extremelyFastNumberFromZeroTo(10000) == 0)
+							{
+								grid[i].phase = PHASE_SOLID;
+							}
+						}
+						else if (grid[i].temperature > 2330)
+						{
+							grid[i].phase = PHASE_GAS;
+						}
+					}
+
+					else if (grid[i].phase == PHASE_GAS)
+					{
+						if (grid[i].temperature < 2330)
+						{
+							grid[i].phase = PHASE_LIQUID;
+						}
+					}
+
+					else if (grid[i].phase == PHASE_SOLID )
+					{
+						if (grid[i].temperature > 2330)
+						{
+							grid[i].phase = PHASE_LIQUID;
+						}
 					}
 				}
-				else if (grid[i].phase == PHASE_SOLID )
+
+				else if (grid[i].material == MATERIAL_OLIVINE)
 				{
-					if (grid[i].temperature > 2330)
+					if (grid[i].phase == PHASE_POWDER)
 					{
-						grid[i].phase = PHASE_LIQUID;
+						if (grid[i].temperature > crystal_melting_olivine)
+						{
+							grid[i].phase = PHASE_LIQUID;
+						}
 					}
+					else if (grid[i].phase == PHASE_LIQUID)
+					{
+						if (grid[i].temperature < crystal_melting_olivine)
+						{
+							grid[i].phase = PHASE_POWDER;
+						}
+						else if (grid[i].temperature > crystal_melting_olivine && grid[i].temperature < (crystal_melting_olivine + 100))
+						{
+							unsigned int nSolidNeighbours = 0;
+							unsigned int dissimilarNeighbours = 0;
+							for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
+							{
+								unsigned int neighbour = neighbourOffsets[j] + i;
+								if ( grid[neighbour].material == MATERIAL_OLIVINE )
+								{
+									if (grid[neighbour].phase == PHASE_SOLID )
+									{
+										nSolidNeighbours++;
+									}
+								}
+								else {
+									dissimilarNeighbours++;
+								}
+							}
 
+							bool condition  = false;
 
-					// This section is a 'clumping together' rule for crystallization.
-					// else if (grid[i].temperature > 1000 && grid[i].temperature < 1100)
-					// {
-					// 	if (extremelyFastNumberFromZeroTo(100) == 0)
-					// 	{
+							if ( crystal_condition_olivine == CONDITION_GREATERTHAN )
+							{
+								if (nSolidNeighbours > crystal_n_olivine)
+								{
+									if (nSolidNeighbours > 0) {grid[i].phase = PHASE_SOLID;}
+									else {grid[i].phase = PHASE_POWDER;}
+								}
+							}
+							else if ( crystal_condition_olivine == CONDITION_EQUAL )
+							{
+								if (nSolidNeighbours == crystal_n_olivine)
+								{
+									if (nSolidNeighbours > 0) {grid[i].phase = PHASE_SOLID;}
+									else {grid[i].phase = PHASE_POWDER;}
+								}
+							}
 
+							else // ( crystal_condition_quartz == CONDITION_GREATERTHAN )
+							{
+								if (nSolidNeighbours < crystal_n_olivine)
+								{
+									if (nSolidNeighbours > 0) {grid[i].phase = PHASE_SOLID;}
+									else {grid[i].phase = PHASE_POWDER;}
+								}
+							}
 
-					// 		unsigned int nMaterialNeighbours = 0;
-					// 		for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
-					// 		{
-					// 			unsigned int neighbour = neighbourOffsets[j] + i;
-					// 			if ( grid[neighbour].material == MATERIAL_OLIVINE )
-					// 			{
-					// 				nMaterialNeighbours++;
-					// 			}
-					// 		}
-					// 		for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
-					// 		{
-					// 			unsigned int neighbour = (neighbourOffsets[j] + i) % totalSize;
-					// 			if ( grid[neighbour].material != MATERIAL_OLIVINE )
-					// 			{
-					// 				unsigned int nMaterialNeighbourNeighbours = 0;
-					// 				for (unsigned int k = 0; k < N_NEIGHBOURS; ++k)
-					// 				{
-					// 					unsigned int neighboursNeighbour = (neighbour + neighbourOffsets[k]) % totalSize;
-					// 					if ( grid[neighboursNeighbour].material == MATERIAL_OLIVINE )
-					// 					{
-					// 						nMaterialNeighbourNeighbours ++;
-					// 					}
+							if (extremelyFastNumberFromZeroTo(1000) == 0)
+							{
+								if (extremelyFastNumberFromZeroTo(100) == 0) // this function only works up to 34464, so run it twice to multiply probabilities.
+								{
+									for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
+									{
+										unsigned int neighbour = neighbourOffsets[j] + i;
+										if (grid[neighbour].material == MATERIAL_OLIVINE )
+										{
+											grid[neighbour].phase = PHASE_SOLID;
+										}
+									}
+								}
+							}
 
-
-					// 				}
-					// 				if (nMaterialNeighbourNeighbours > nMaterialNeighbours)
-					// 				{
-					// 					swapParticle(i, neighbour);
-					// 					break;
-					// 				}
-					// 			}
-					// 		}
-					// 	}
-					// }
+						}
+						else if (grid[i].temperature > 2330)
+						{
+							grid[i].phase = PHASE_GAS;
+						}
+					}
+					else if (grid[i].phase == PHASE_GAS)
+					{
+						if (grid[i].temperature < 2330)
+						{
+							grid[i].phase = PHASE_LIQUID;
+						}
+					}
+					else if (grid[i].phase == PHASE_SOLID )
+					{
+						if (grid[i].temperature > 2330)
+						{
+							grid[i].phase = PHASE_LIQUID;
+						}
+					}
 				}
 			}
 		}
@@ -1958,21 +1837,14 @@ void physics_sector (unsigned int from, unsigned int to)
 
 		if (grid[currentPosition].phase  == PHASE_POWDER)
 		{
-			unsigned int neighbours[] =
-			{
-				squareBelow - 1,
-				squareBelow,
-				squareBelow + 1
-			};
-
 			for (unsigned int k = 0; k < 1; ++k) // instead of checking all of them every turn, you can check half or less and it doesn't make a difference for gameplay.
 			{
 				unsigned int index = extremelyFastNumberFromZeroTo(2);
 				// chemistry(currentPosition, neighbours[index]);
-				if ((grid[neighbours[index]].phase == PHASE_VACUUM) ||  (grid[neighbours[index]].phase == PHASE_GAS) ||  (grid[neighbours[index]].phase == PHASE_LIQUID)  )
+				if ((grid[neighbourOffsets[index] + i].phase == PHASE_VACUUM) ||  (grid[neighbourOffsets[index] + i].phase == PHASE_GAS) ||  (grid[neighbourOffsets[index] + i].phase == PHASE_LIQUID)  )
 				{
-					swapParticle(currentPosition, neighbours[index]);
-					currentPosition = neighbours[index];
+					swapParticle(currentPosition, neighbourOffsets[index] + i);
+					currentPosition = neighbourOffsets[index] + i;
 					break;
 				}
 			}
@@ -1981,163 +1853,22 @@ void physics_sector (unsigned int from, unsigned int to)
 		// movement instructions for LIQUIDS
 		else if (grid[currentPosition].phase == PHASE_LIQUID)
 		{
-
-			// unsigned int nextPosition = currentPosition;
-			// for (unsigned int j = 0; j < 1; ++j)
-			// {
-			// bool movedThisTurn = false;
-			unsigned int neighbours[] =
-			{
-				currentPosition - sizeX - 1,
-				currentPosition - sizeX,
-				currentPosition - sizeX + 1,
-				currentPosition - 1,
-				currentPosition + 1
-			};
-
 			unsigned int offset = extremelyFastNumberFromZeroTo(4);
 			for (unsigned int k = 0; k < 5; ++k)
 			{
 				unsigned int index = (k + offset) % 5;
-				if ((grid[neighbours[index]].phase == PHASE_VACUUM) || (grid[neighbours[index]].phase == PHASE_GAS) ||  (grid[neighbours[index]].phase == PHASE_LIQUID)     )
+				if ((grid[neighbourOffsets[index] + i].phase == PHASE_VACUUM) || (grid[neighbourOffsets[index] + i].phase == PHASE_GAS) ||  (grid[neighbourOffsets[index] + i].phase == PHASE_LIQUID)     )
 				{
-					// movedThisTurn = true;
-					swapParticle(currentPosition, neighbours[index]);
-
-					currentPosition = neighbours[index];
-					// currentPosition = nextPosition;
+					swapParticle(currentPosition, neighbourOffsets[index] + i);
+					currentPosition = neighbourOffsets[index] + i;
 					break;
 				}
 			}
-
-			// if (!movedThisTurn) {break;}
-
-
-
 		}
 
 		// movement instructions for GASES
 		else if (grid[currentPosition].phase == PHASE_GAS)
 		{
-
-
-
-			// if (true)
-			// {
-
-
-			// 	bool movedByTheWind = false;
-			// 	if (extremelyFastNumberFromZeroTo(1) == 0) 		// get blown by the wind only some of the time
-			// 	{
-			// 		while (true) 								// this while loop is just here so you can 'break' out of it to end this sequence quickly.
-			// 		{
-			// 			unsigned int neighbour;
-			// 			if (wind.x > 0)
-			// 			{
-			// 				neighbour = neighbours[3]; //currentPosition + 1;
-			// 				if ((grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS  ) && seedGrid[neighbour].stage == 0x00  )
-			// 				{
-			// 					swapSeedParticle( currentPosition, neighbour );
-			// 					currentPosition = neighbour;
-			// 					movedByTheWind = true;
-			// 					break;
-			// 				}
-			// 			}
-			// 			else if (wind.x < 0)
-			// 			{
-			// 				neighbour = neighbours[7]; //currentPosition - 1;
-			// 				if ((grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS  ) && seedGrid[neighbour].stage == 0x00  )
-			// 				{
-			// 					swapSeedParticle( currentPosition, neighbour );
-			// 					currentPosition = neighbour;
-
-			// 					movedByTheWind = true;
-			// 					break;
-			// 				}
-			// 			}
-			// 			break;
-			// 		}
-
-			// 		while (true) 								// this while loop is just here so you can 'break' out of it to end this sequence quickly.
-			// 		{
-			// 			unsigned int neighbour;
-			// 			if (wind.y > 0)
-			// 			{
-			// 				neighbour = squareAbove;
-			// 				if ((grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS  ) && seedGrid[neighbour].stage == 0x00  )
-			// 				{
-			// 					swapSeedParticle( currentPosition, neighbour );
-			// 					currentPosition = neighbour;
-
-			// 					movedByTheWind = true;
-			// 					break;
-			// 				}
-			// 			}
-			// 			else if (wind.y < 0)
-			// 			{
-			// 				neighbour = squareBelow;
-			// 				if ((grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS  ) && seedGrid[neighbour].stage == 0x00  )
-			// 				{
-			// 					swapSeedParticle( currentPosition, neighbour );
-			// 					currentPosition = neighbour;
-
-			// 					movedByTheWind = true;
-			// 					break;
-			// 				}
-			// 			}
-			// 			break;
-			// 		}
-			// 	}
-
-
-			// 	// if you were moved, there is still a chance to undergo a subsequent move, so you must update your position and neighbours.
-			// 	if (movedByTheWind)
-			// 	{
-			// 		squareAbove = currentPosition + sizeX;
-			// 		squareBelow = currentPosition - sizeX;
-			// 		unsigned int neighbours2[] =
-			// 		{
-			// 			squareBelow - 1,
-			// 			squareBelow,
-			// 			squareBelow + 1,
-			// 			currentPosition + 1,
-			// 			squareAbove + 1,
-			// 			squareAbove,
-			// 			squareAbove - 1,
-			// 			currentPosition - 1,
-			// 		};
-			// 		memcpy(neighbours, neighbours2, sizeof(unsigned int) * 8);
-			// 	}
-
-			// }
-
-
-			unsigned int squareAbove = currentPosition + sizeX;
-			unsigned int neighbours[] =
-			    // {
-			    // 	squareBelow - 1,
-			    // 	squareBelow,
-			    // 	squareBelow + 1,
-			    // 	currentPosition + 1,
-			    // 	squareAbove + 1,
-			    // 	squareAbove,
-			    // 	squareAbove - 1,
-			    // 	currentPosition - 1,
-			    // };
-			{
-
-				currentPosition - 1,
-				currentPosition - sizeX - 1,
-				currentPosition - sizeX ,
-				currentPosition - sizeX  + 1,
-				currentPosition + 1,
-				currentPosition + sizeX + 1,
-				currentPosition + sizeX,
-				currentPosition + sizeX - 1,
-			};
-
-
-
 			for (unsigned int j = 0; j < 3; ++j)
 			{
 				unsigned int index = extremelyFastNumberFromZeroTo(7);
@@ -2148,11 +1879,9 @@ void physics_sector (unsigned int from, unsigned int to)
 					// the wind pushes in a certain direction.
 					// however wind is expressed as a vec_i2, and we need it as a single number.
 					// this is basically a very fast lookup table to tell you the answer.
-
 					if (wind.y > 0)
 					{
 						index = 5; // directly up
-
 						if (wind.x > 0)
 						{
 							index = 4; // up and to the right
@@ -2161,7 +1890,6 @@ void physics_sector (unsigned int from, unsigned int to)
 						{
 							index = 7; // and so on, allowing the index to remain at its original random value if the wind in that axis was 0.
 						}
-
 					}
 					else if (wind.y < 0)
 					{
@@ -2188,9 +1916,9 @@ void physics_sector (unsigned int from, unsigned int to)
 					}
 				}
 
-				if (grid[neighbours[index]].phase  == PHASE_VACUUM || (grid[neighbours[index]].phase == PHASE_GAS) )
+				if (grid[neighbourOffsets[index] + i].phase  == PHASE_VACUUM || (grid[neighbourOffsets[index] + i].phase == PHASE_GAS) )
 				{
-					swapParticle(currentPosition, neighbours[index]);
+					swapParticle(currentPosition, neighbourOffsets[index] + i);
 					break;
 				}
 			}
@@ -2232,7 +1960,6 @@ void thread_physics ()
 		}
 	}
 
-
 	// sprinkle eroding rain
 	if (sprinkleErodingRain)
 	{
@@ -2246,8 +1973,6 @@ void thread_physics ()
 	}
 
 	else
-		// sprinkle photons
-		// if (true)
 	{
 		for (int i = (sizeY - 2) * sizeX; i < (sizeY - 1)*sizeX; ++i)
 		{
@@ -2280,6 +2005,8 @@ void toggleEnergyGridDisplay ()
 {
 	visualizer = (visualizer + 1 ) % (NUMBER_OF_VISUALIZERS + 1);
 }
+
+
 
 void thread_graphics()
 {
@@ -2421,188 +2148,34 @@ void thread_graphics()
 		unsigned int nVertsToRenderThisTurn = 1 * totalSize;
 		long unsigned int totalNumberOfFields = nVertsToRenderThisTurn * numberOfFieldsPerVertex;
 
-		// glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, colorGrid, GL_DYNAMIC_DRAW );
-		// glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
-
 		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, lifeColorGrid, GL_DYNAMIC_DRAW );
 		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
 
 		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, seedColorGrid, GL_DYNAMIC_DRAW );
 		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
 
-		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, lifeColorGridB, GL_DYNAMIC_DRAW );
+
+		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, colorGrid, GL_DYNAMIC_DRAW );
 		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
 
+;
 
-		// perform a variety of post processing artistic styles.
-		// things like 'glowing because of temperature' need to be calculated all the time, because things are constantly changing temperature.
-		float * postProcessingGrid = new float[totalNumberOfFields];
+		// unsigned int x = 0;
+		// unsigned int y = 0;
+		// for (unsigned int i = 0; i < totalSize; ++i)
+		// {
+			
+		// }
 
-		unsigned int x = 0;
-		unsigned int y = 0;
-		for (unsigned int i = 0; i < totalSize; ++i)
-		{
-			x = i % sizeX;
-			if (!x) { y = i / sizeX; }
-			float fx = x;
-			float fy = y;
-
-
-
-			// figure out the blackbody temperature.
-			// https://www.iforgeiron.com/uploads/monthly_2015_08/ForgingTemperatureColors.jpg.2948a8585818155020d14fe17038cf33.jpg
-			// it is drawn directly over the top of the
-			Color ppColor = materialColor(grid[i].material);  //Color(0.0f, 0.0f, 0.0f, 0.0f);
-
-
-
-
-	if (grid[i].phase == PHASE_GAS)
-			{
-
-
-				ppColor = addColor(ppColor, phaseTingleGas);
-				// ppColor.r += 0.2f;
-				// ppColor.g += 0.2f;
-				// ppColor.b += 0.2f;
-
-
-			}
-			else if (grid[i].phase == PHASE_LIQUID)
-			{
-
-
-				ppColor = addColor(ppColor, phaseTingleLiquid);
-				// ppColor.r += 0.1f;
-				// ppColor.g += 0.1f;
-				// ppColor.b += 0.1f;
-
-			}
-			if (grid[i].phase == PHASE_SOLID)
-			{
-
-
-				ppColor = addColor(ppColor, phaseTingleSolid);
-				// ppColor.r -= 0.1f;
-				// ppColor.g -= 0.1f;
-				// ppColor.b -= 0.1f;
-			}
-
-
-
-			if (grid[i].temperature > 0 && grid[i].temperature < 600 )
-			{
-				;
-
-
-
-
-
-
-
-
-			}
-			else if (grid[i].temperature < 772)
-			{
-				// faint red
-				ppColor = addColor( ppColor, Color(0.16f, 0.0f, 0.0f, 0.03f));
-			}
-			else if (grid[i].temperature < 852)
-			{
-				// blood red
-			ppColor = addColor( ppColor,  Color(0.33f, 0.0f, 0.0f, 0.11f));
-			}
-			else if (grid[i].temperature < 908)
-			{
-				// dark cherry
-				ppColor = addColor( ppColor, Color(0.5f, 0.0f, 0.0f, 0.20f));
-			}
-			else if (grid[i].temperature < 963)
-			{
-				// medium cherry
-				ppColor = addColor( ppColor, Color(0.66f, 0.0f, 0.0f, 0.27f));
-			}
-			else if (grid[i].temperature < 1019)
-			{
-				// cherry
-				ppColor = addColor( ppColor, Color(0.833f, 0.0f, 0.0f, 0.36f));
-			}
-			else if (grid[i].temperature < 1060)
-			{
-				// bright cherry
-				ppColor = addColor( ppColor,  Color(1.0f, 0.0f, 0.0f, 0.45f));
-			}
-			else if (grid[i].temperature < 1116)
-			{
-				// salmon (??)
-				ppColor = addColor( ppColor,  Color(1.0f, 0.25f, 0.0f, 0.53f));
-			}
-			else if (grid[i].temperature < 1188)
-			{
-				// dark orange
-				ppColor = addColor( ppColor, Color(1.0f, 0.5f, 0.0f, 0.61f));
-			}
-			else if (grid[i].temperature < 1213)
-			{
-				// orange
-				ppColor = addColor( ppColor, Color(1.0f, 0.75f, 0.0f, 0.70f));
-			}
-			else if (grid[i].temperature < 1272)
-			{
-				// lemon
-				ppColor = addColor( ppColor, Color(1.0f, 1.0f, 0.0f, 0.78f));
-			}
-			else if (grid[i].temperature < 1352)
-			{
-				// light yellow
-				ppColor = addColor( ppColor,  Color(1.0f, 1.0f, 0.5f, 0.86f));
-			}
-
-			else if (grid[i].temperature < 5000)
-			{
-				// white
-				ppColor = addColor( ppColor,  Color(1.0f, 1.0f, 1.0f, 0.91f));
-			}
-
-			else if (grid[i].temperature < 10000)
-			{
-				// cool white
-			ppColor = addColor( ppColor,  Color(0.95f, 0.95f, 1.0f, 1.0f));
-			}
-
-			else
-			{
-				// blue
-				ppColor = addColor( ppColor, Color(0.9f, 0.9f, 1.0f, 1.0f));
-			}
-
-
-
-
-
-		
-
-
-			// because this is emitted light, ADD to the original color (it should never make it darker)
-
-			postProcessingGrid[ (i * numberOfFieldsPerVertex) + 0 ] = ppColor.r;
-			postProcessingGrid[ (i * numberOfFieldsPerVertex) + 1 ] = ppColor.g;
-			postProcessingGrid[ (i * numberOfFieldsPerVertex) + 2 ] = ppColor.b;
-			postProcessingGrid[ (i * numberOfFieldsPerVertex) + 3 ] = ppColor.a;
-			postProcessingGrid[ (i * numberOfFieldsPerVertex) + 4 ] = fx;
-			postProcessingGrid[ (i * numberOfFieldsPerVertex) + 5 ] = fy;
-		}
-
-		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, postProcessingGrid, GL_DYNAMIC_DRAW );
-		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
+		// glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, postProcessingGrid, GL_DYNAMIC_DRAW );
+		// glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
 
 		postDraw();
 
-		delete [] postProcessingGrid;
+		// delete [] postProcessingGrid;
 
-
-		postDraw();
-		clearColorGridB();
+		// postDraw();
+		// clearColorGridB();
 	}
 
 #ifdef THREAD_TIMING_READOUT
