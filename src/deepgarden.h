@@ -102,16 +102,18 @@ struct Color
 
 
 // logical conditions used for crystallisation.
-#define CONDITION_GREATERTHAN 1
-#define CONDITION_EQUAL       2
-#define CONDITION_LESSTHAN    4
-#define CONDITION_EVENNUMBER  8
-#define CONDITION_ODDNUMBER   16
-#define CONDITION_CORNER      32
-#define CONDITION_EDGE        64
-#define CONDITION_ROW         128
-#define CONDITION_LEFTN       256
-#define CONDITION_NOTLEFTN    512
+#define CONDITION_GREATERTHAN      1
+#define CONDITION_EQUAL            2
+#define CONDITION_LESSTHAN         4
+#define CONDITION_EVENNUMBER       8
+#define CONDITION_ODDNUMBER        16
+#define CONDITION_CORNER           32
+#define CONDITION_EDGE             64
+#define CONDITION_ROW              128
+#define CONDITION_LEFTN            256
+#define CONDITION_NOTLEFTRIGHTN    512
+
+#define CONDITION_NOTLRNEIGHBOURS    1024
 
 
 
@@ -161,6 +163,8 @@ void load();
 
 
 void setEverythingHot();
+
+void manualErode();
 
 void drawAHill();
 void drawRandomLandscape();

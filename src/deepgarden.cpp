@@ -36,8 +36,8 @@ const Color color_defaultColor     	= Color( 0.35f, 0.35f, 0.35f, 1.0f );
 
 const Color tingeShadow = Color( -1.0f, -1.0f, -1.0f, 0.1f );
 
-const Color phaseTingeSolid =  Color( -1.0f, -1.0f, -1.0f, 0.1f );
-const Color phaseTingeLiquid = Color( 1.0f, 1.0f, 1.0f, 0.1f );
+const Color phaseTingeSolid =  Color( 1.0f, 1.0f, 1.0f, 0.1f );
+const Color phaseTingeLiquid = Color( -1.0f, -1.0f, -1.0f, 0.1f );
 const Color phaseTingeGas =    Color( 1.0f, 1.0f, 1.0f, 0.2f );
 
 int neighbourOffsets[] =
@@ -382,11 +382,11 @@ Animal::Animal()
 }
 
 
-struct World
-{
-	unsigned int backgroundTemperature;
+// struct World
+// {
+// 	unsigned int backgroundTemperature;
 
-};
+// };
 
 
 
@@ -1203,9 +1203,42 @@ void clearGrids()
 		seedGrid[i] = SeedParticle();
 		lifeGrid[i] = LifeParticle();
 
+		clearParticle(i);
+		clearSeedParticle(i);
+		clearLifeParticle(i);
+
 		// RGBA color occupies the first 4 places.
 		// also, initialize the color alpha to 1.
 		clearColorGrids(i);
+	}
+}
+
+
+
+void paintMaterialCircle(unsigned int k, unsigned int radius, unsigned int material, unsigned int temperature)
+{
+	unsigned int x = k % sizeX;
+	unsigned int y = k / sizeX;
+
+
+	unsigned int lower = k - (radius * sizeX);
+
+	unsigned int upper = k + (radius * sizeX);
+
+
+	for (unsigned int i = lower; i < upper; ++i)
+	{
+
+		unsigned int circleCursorX = i % sizeX;
+		unsigned int circleCursorY = i / sizeX;
+
+		if (  magnitude_int (  circleCursorX - x , circleCursorY - y )  < radius )
+		{
+
+			unsigned int l = i % totalSize;
+			setParticle(material, l );
+			grid[l].temperature = temperature;
+		}
 	}
 }
 
@@ -1214,29 +1247,30 @@ void createRandomWorld()
 {
 
 
-
+defaultTemperature = RNG() * 1500;
 
 	for (int k = 0; k < 5; ++k)
 	{
 
 
 		Material newMaterial = Material();
-		newMaterial.boiling = RNG() * 1000;
+		newMaterial.boiling = RNG() * 3000;
 		newMaterial.melting = RNG() * newMaterial.boiling;
 
 		newMaterial.crystal_n = extremelyFastNumberFromZeroTo(4);
 
-		unsigned int randomCondition = 9;// + extremelyFastNumberFromZeroTo(9);
+		unsigned int randomCondition =  extremelyFastNumberFromZeroTo(4);
 		if (randomCondition == 0) {newMaterial.crystal_condition = CONDITION_GREATERTHAN; }
 		else if (randomCondition == 1) {newMaterial.crystal_condition = CONDITION_EQUAL; }
-		else if (randomCondition == 2) {newMaterial.crystal_condition = CONDITION_LESSTHAN; }
-		else if (randomCondition == 3) {newMaterial.crystal_condition = CONDITION_EVENNUMBER; }
-		else if (randomCondition == 4) {newMaterial.crystal_condition = CONDITION_ODDNUMBER; }
-		else if (randomCondition == 5) {newMaterial.crystal_condition = CONDITION_EDGE; }
-		else if (randomCondition == 6) {newMaterial.crystal_condition = CONDITION_CORNER; }
-		else if (randomCondition == 7) {newMaterial.crystal_condition = CONDITION_ROW; }
-		else if (randomCondition == 8) {newMaterial.crystal_condition = CONDITION_LEFTN; }
-		else if (randomCondition == 9) {newMaterial.crystal_condition = CONDITION_NOTLEFTN; }
+		// else if (randomCondition == 2) {newMaterial.crystal_condition = CONDITION_LESSTHAN; }
+		// else if (randomCondition == 3) {newMaterial.crystal_condition = CONDITION_EVENNUMBER; }
+		// else if (randomCondition == 4) {newMaterial.crystal_condition = CONDITION_ODDNUMBER; }
+		else if (randomCondition == 2) {newMaterial.crystal_condition = CONDITION_EDGE; }
+		else if (randomCondition == 3) {newMaterial.crystal_condition = CONDITION_CORNER; }
+		// else if (randomCondition == 7) {newMaterial.crystal_condition = CONDITION_ROW; }
+		// else if (randomCondition == 8) {newMaterial.crystal_condition = CONDITION_LEFTN; }
+		else if (randomCondition == 4) {newMaterial.crystal_condition = CONDITION_NOTLEFTRIGHTN; }
+		// else if (randomCondition == 10) {newMaterial.crystal_condition = CONDITION_NOTLRNEIGHBOURS; }
 
 		newMaterial . color = color_grey;
 		newMaterial.color.r = RNG();
@@ -1248,31 +1282,58 @@ void createRandomWorld()
 		materials.push_back(newMaterial);
 
 
-		float availability = RNG();
+		unsigned int availability = extremelyFastNumberFromZeroTo(100);
+
+
+		for (unsigned int i = 0; i < sizeX; ++i)
+		{
+
+			if (extremelyFastNumberFromZeroTo(100) == 0)
+			{
+				unsigned int radius = extremelyFastNumberFromZeroTo(availability );
+
+				// float frandomX = RNG() * sizeX;
+				// float frandomY = RNG() * sizeY;
+
+				// unsigned int randomX = frandomX; //extremelyFastNumberFromZeroTo(sizeX );
+				// unsigned int randomY = frandomY; //extremelyFastNumberFromZeroTo(sizeY );
+
+				// printf("ranom x %u, random y %u\n", randomX,  randomY);
+
+				// unsigned int randomi = (randomY * sizeX) + randomX;
+
+
+
+
+
+				paintMaterialCircle(i + (50 * sizeX * k), radius , k , 10000000 );
+			}
+
+		}
 
 
 		// // setup the x and y positions in the color grid. these never change so you can just calculate them once.
-		unsigned int x = 0;
-		unsigned int y = 0;
-		for (unsigned int i = 0; i < totalSize; ++i)
-		{
-			x = i % sizeX;
-			y = i / sizeX;
-			// float fx = x;
-			// float fy = y;
+		// unsigned int x = 0;
+		// unsigned int y = 0;
+		// for (unsigned int i = 0; i < totalSize; ++i)
+		// {
+		// 	x = i % sizeX;
+		// 	y = i / sizeX;
+		// 	// float fx = x;
+		// 	// float fy = y;
 
 
-			if (i > sizeX && i < 50 * sizeX)
+		// 	if (i > sizeX && i < 50 * sizeX)
 
-			{
+		// 	{
 
-				if (RNG() < availability)
-				{
+		// 		if (RNG() < availability)
+		// 		{
 
-					setParticle( k, i);
-				}
-			}
-		}
+		// 			setParticle( k, i);
+		// 		}
+		// 	}
+		// }
 
 
 	}
@@ -1287,13 +1348,13 @@ void createRandomWorld()
 
 
 
-	// set everything to a random temperature
-	float frandomtemp = RNG() * 1000;
-	unsigned int randomTemp = frandomtemp;
-	for (unsigned int i = 0; i < totalSize; ++i)
-	{
-		grid[i].temperature = randomTemp;
-	}
+	// // set everything to a random temperature
+	// float frandomtemp = RNG() * 1000;
+	// unsigned int randomTemp = frandomtemp;
+	// for (unsigned int i = 0; i < totalSize; ++i)
+	// {
+	// 	grid[i].temperature = randomTemp;
+	// }
 
 
 
@@ -1470,6 +1531,7 @@ Color blackbodyLookup( unsigned int temperature )
 
 
 }
+
 
 
 void initialize ()
@@ -1684,7 +1746,11 @@ void thread_temperature2 ()
 			else
 			{
 				// if neighbour is a vacuum, radiate heat away into space. more so if it is hotter.
-				int radiantHeat = grid[currentPosition].temperature / 50;
+
+				int crntmp = grid[currentPosition].temperature;
+				int dftmp = defaultTemperature;
+
+				int radiantHeat = (crntmp- dftmp) / 50;
 				grid[currentPosition].temperature -= radiantHeat;
 			}
 
@@ -1837,7 +1903,7 @@ void thread_temperature2 ()
 
 						}
 
-							else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_NOTLEFTN)
+						else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_NOTLEFTRIGHTN)
 						{
 							// if (longestSolidStreak == materials[grid[currentPosition].material].crystal_n )
 							// {
@@ -1845,7 +1911,10 @@ void thread_temperature2 ()
 							// }
 
 
-							if (	grid[currentPosition + (materials[grid[currentPosition].material].crystal_n) ].phase != PHASE_SOLID)
+							if (
+							    grid[currentPosition + (materials[grid[currentPosition].material].crystal_n) ].phase != PHASE_SOLID &&
+							    grid[currentPosition - (materials[grid[currentPosition].material].crystal_n) ].phase != PHASE_SOLID
+							)
 							{
 
 								if (nAttachableNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
@@ -1853,12 +1922,40 @@ void thread_temperature2 ()
 							else {
 
 								// if (nAttachableNeighbours > 0) {
-									grid[currentPosition].phase = PHASE_LIQUID; 
+								grid[currentPosition].phase = PHASE_LIQUID;
 								// }
 							}
 
 						}
 
+						else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_NOTLRNEIGHBOURS)
+						{
+
+							if (currentPosition > sizeX + 40 && currentPosition < (totalSize - sizeX - 40)) {
+
+
+
+								if (
+								    grid[currentPosition           + (materials[ grid[currentPosition].material].crystal_n * 2 )].phase != PHASE_SOLID &&
+								    grid[currentPosition           - (materials[ grid[currentPosition].material].crystal_n * 2 )].phase != PHASE_SOLID &&
+								    grid[currentPosition + (sizeX) + (materials[ grid[currentPosition].material].crystal_n * 2 )].phase != PHASE_SOLID &&
+								    grid[currentPosition + (sizeX) - (materials[ grid[currentPosition].material].crystal_n * 2 )].phase != PHASE_SOLID &&
+								    grid[currentPosition - (sizeX) + (materials[ grid[currentPosition].material].crystal_n * 2 )].phase != PHASE_SOLID &&
+								    grid[currentPosition - (sizeX) - (materials[ grid[currentPosition].material].crystal_n * 2 )].phase != PHASE_SOLID
+								)
+								{
+
+									if (nAttachableNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
+								}
+								else {
+
+									// if (nAttachableNeighbours > 0) {
+									grid[currentPosition].phase = PHASE_LIQUID;
+									// }
+								}
+
+							}
+						}
 
 
 
@@ -4189,6 +4286,40 @@ void load ()
 		printf("- loaded seed genomes\n");
 	}
 }
+
+
+
+
+
+void manualErode ()
+{
+
+
+	// remove every cell with a vacuum neighbour.
+	for (int i = 0; i < totalSize; ++i)
+	{
+		for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
+		{
+			unsigned int neighbour = neighbourOffsets[j] + i;
+
+			neighbour = neighbour % totalSize;
+
+			if (grid[neighbour].phase == PHASE_VACUUM )
+			{
+				if (grid[i].phase == PHASE_SOLID) 
+				{
+					grid[i].phase = PHASE_POWDER;
+					continue;
+
+				}
+			}
+		}
+	}
+
+
+}
+
+
 
 
 void drawAHill(unsigned int hillXIndex, unsigned int hillWidth)

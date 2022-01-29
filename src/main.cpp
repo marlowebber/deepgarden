@@ -137,6 +137,10 @@ void thread_interface()
 				toggleErodingRain();
 				break;
 
+			case SDLK_x:
+				manualErode();
+				break;
+
 
 
 
