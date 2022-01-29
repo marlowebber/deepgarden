@@ -94,7 +94,7 @@ float * lifeColorGrid  	= new float[totalSize * numberOfFieldsPerVertex ];  // t
 float * lifeColorGridB 	= new float[totalSize * numberOfFieldsPerVertex ];	// the same, but for the sprites of animals. This is updated every turn, and animals carry their own copy of their sprites, so this does not need to be preserved.
 float * seedColorGrid  	= new float[totalSize * numberOfFieldsPerVertex];   // the same, but for the colors of seeds and falling photons.
 
-float * ppGrid  	= new float[totalSize * numberOfFieldsPerVertex];  
+float * ppGrid  	= new float[totalSize * numberOfFieldsPerVertex];
 
 // perform a variety of post processing artistic styles.
 // things like 'glowing because of temperature' need to be calculated all the time, because things are constantly changing temperature.
@@ -791,10 +791,10 @@ void photate( unsigned int i )
 
 	unsigned int currentPosition = i;
 
-	
+
 	unsigned int blocked = 0;
 
-		// printf("nuguet %u \n", currentPosition);
+	// printf("nuguet %u \n", currentPosition);
 	while (true)
 	{
 
@@ -834,7 +834,7 @@ void photate( unsigned int i )
 			seedGrid[currentPosition].energy = 0x00;
 			memcpy( &seedColorGrid[ b_offset], 	&color_shadow , 	sizeof(Color) );
 
-	unsigned int a_offset = (b_offset) + 3;
+			unsigned int a_offset = (b_offset) + 3;
 			seedColorGrid[a_offset] = blocked * 0.05f;
 			if (seedColorGrid[a_offset] > 0.5f) {seedColorGrid[a_offset] = 0.5f;}
 
@@ -1226,7 +1226,7 @@ void createRandomWorld()
 
 		newMaterial.crystal_n = extremelyFastNumberFromZeroTo(4);
 
-		unsigned int randomCondition = extremelyFastNumberFromZeroTo(7);
+		unsigned int randomCondition = 9;// + extremelyFastNumberFromZeroTo(9);
 		if (randomCondition == 0) {newMaterial.crystal_condition = CONDITION_GREATERTHAN; }
 		else if (randomCondition == 1) {newMaterial.crystal_condition = CONDITION_EQUAL; }
 		else if (randomCondition == 2) {newMaterial.crystal_condition = CONDITION_LESSTHAN; }
@@ -1235,6 +1235,8 @@ void createRandomWorld()
 		else if (randomCondition == 5) {newMaterial.crystal_condition = CONDITION_EDGE; }
 		else if (randomCondition == 6) {newMaterial.crystal_condition = CONDITION_CORNER; }
 		else if (randomCondition == 7) {newMaterial.crystal_condition = CONDITION_ROW; }
+		else if (randomCondition == 8) {newMaterial.crystal_condition = CONDITION_LEFTN; }
+		else if (randomCondition == 9) {newMaterial.crystal_condition = CONDITION_NOTLEFTN; }
 
 		newMaterial . color = color_grey;
 		newMaterial.color.r = RNG();
@@ -1578,7 +1580,7 @@ void materialPostProcess(unsigned int i)
 	// Color ppColor =  materials[ grid[i].material ].color  ;//materialColor(grid[i].material);  //
 
 
-	// if (seedGrid[i].stage == STAGE_NULL && seedGrid[i].energy == 0x00) 
+	// if (seedGrid[i].stage == STAGE_NULL && seedGrid[i].energy == 0x00)
 	// {
 	// 	ppColor = addColor(ppColor, tingeShadow);
 	// }
@@ -1719,6 +1721,7 @@ void thread_temperature2 ()
 					else
 					{
 						unsigned int nSolidNeighbours = 0;
+						unsigned int nAttachableNeighbours = 0;
 
 						// go around the neighbours in order, check if they are solid. check how many in a row are solid, and whether it started from an odd or even number, indicating if it is a corner or an edge.
 						unsigned int currentSolidStreak = 0;
@@ -1738,9 +1741,20 @@ void thread_temperature2 ()
 									longestSolidStreak = currentSolidStreak;
 									longestSolidStreakOffset = currentStreakOffset;
 								}
+
+								nAttachableNeighbours++;
 							}
 							else
 							{
+
+								if (grid[neighbourOffsets[j] + currentPosition].phase == PHASE_LIQUID ||
+								        grid[neighbourOffsets[j] + currentPosition].phase == PHASE_POWDER )
+								{
+
+									nAttachableNeighbours++;
+								}
+
+
 								currentStreakOffset = j;
 							}
 						}
@@ -1749,44 +1763,44 @@ void thread_temperature2 ()
 						{
 							if (nSolidNeighbours > materials[grid[currentPosition].material].crystal_n)
 							{
-								if (nSolidNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
+								if (nAttachableNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
 							}
 						}
 						else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_EQUAL)
 						{
 							if (nSolidNeighbours == materials[grid[currentPosition].material].crystal_n)
 							{
-								if (nSolidNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
+								if (nAttachableNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
 							}
 						}
-						else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_LESSTHAN)
-						{
-							if (nSolidNeighbours < materials[grid[currentPosition].material].crystal_n)
-							{
-								if (nSolidNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
-							}
-						}
+						// else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_LESSTHAN)
+						// {
+						// 	if (nSolidNeighbours < materials[grid[currentPosition].material].crystal_n)
+						// 	{
+						// 		if (nAttachableNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
+						// 	}
+						// }
 
-						else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_EVENNUMBER)
-						{
-							if (nSolidNeighbours % 2 == 0)
-							{
-								if (nSolidNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
-							}
-						}
-						else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_ODDNUMBER)
-						{
-							if (nSolidNeighbours % 2 == 1)
-							{
-								if (nSolidNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
-							}
-						}
+						// else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_EVENNUMBER)
+						// {
+						// 	if (nSolidNeighbours % 2 == 0)
+						// 	{
+						// 		if (nAttachableNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
+						// 	}
+						// }
+						// else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_ODDNUMBER)
+						// {
+						// 	if (nSolidNeighbours % 2 == 1)
+						// 	{
+						// 		if (nAttachableNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
+						// 	}
+						// }
 
 						else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_CORNER)
 						{
 							if (longestSolidStreak == 3 && (longestSolidStreakOffset % 2) == 0 )
 							{
-								if (nSolidNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
+								if (nAttachableNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
 							}
 						}
 
@@ -1794,7 +1808,7 @@ void thread_temperature2 ()
 						{
 							if (longestSolidStreak == 3 && (longestSolidStreakOffset % 2) == 1 )
 							{
-								if (nSolidNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
+								if (nAttachableNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
 							}
 						}
 
@@ -1802,9 +1816,49 @@ void thread_temperature2 ()
 						{
 							if (longestSolidStreak == materials[grid[currentPosition].material].crystal_n )
 							{
-								if (nSolidNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
+								if (nAttachableNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
 							}
 						}
+
+						else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_LEFTN)
+						{
+							// if (longestSolidStreak == materials[grid[currentPosition].material].crystal_n )
+							// {
+							// 	if (nSolidNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
+							// }
+
+
+							if (	grid[currentPosition + (materials[grid[currentPosition].material].crystal_n) ].phase == PHASE_SOLID)
+
+							{
+
+								if (nAttachableNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
+							}
+
+						}
+
+							else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_NOTLEFTN)
+						{
+							// if (longestSolidStreak == materials[grid[currentPosition].material].crystal_n )
+							// {
+							// 	if (nSolidNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
+							// }
+
+
+							if (	grid[currentPosition + (materials[grid[currentPosition].material].crystal_n) ].phase != PHASE_SOLID)
+							{
+
+								if (nAttachableNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
+							}
+							else {
+
+								// if (nAttachableNeighbours > 0) {
+									grid[currentPosition].phase = PHASE_LIQUID; 
+								// }
+							}
+
+						}
+
 
 
 
@@ -2099,8 +2153,8 @@ void thread_physics ()
 
 			// if (extremelyFastNumberFromZeroTo(lampBrightness) == 0)
 			// {
-				// setPhoton(   i);
-				photate(i);
+			// setPhoton(   i);
+			photate(i);
 
 			// }
 		}
@@ -2288,16 +2342,16 @@ void thread_graphics()
 		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, lifeColorGrid, GL_DYNAMIC_DRAW );
 		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
 
-	
+
 		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, colorGrid, GL_DYNAMIC_DRAW );
 		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
 
-			glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, seedColorGrid, GL_DYNAMIC_DRAW );
+		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, seedColorGrid, GL_DYNAMIC_DRAW );
 		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
 
 
 
-			glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, ppGrid, GL_DYNAMIC_DRAW );
+		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, ppGrid, GL_DYNAMIC_DRAW );
 		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
 
 

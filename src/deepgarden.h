@@ -110,6 +110,8 @@ struct Color
 #define CONDITION_CORNER      32
 #define CONDITION_EDGE        64
 #define CONDITION_ROW         128
+#define CONDITION_LEFTN       256
+#define CONDITION_NOTLEFTN    512
 
 
 
