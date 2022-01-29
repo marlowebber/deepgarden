@@ -121,7 +121,7 @@ void toggleErodingRain () ;
 void setPointSize (unsigned int pointSize) ;
 
 void thread_graphics () ;
-// void thread_physics ();
+void thread_physics ();
 void thread_chemistry ();
 void thread_optics ();
 void thread_particledrawing ();

@@ -34,6 +34,8 @@ const Color color_shadow 	    	= Color( 0.0f, 0.0f, 0.0f, 0.5f);
 const Color color_defaultSeedColor  = Color( 0.75f, 0.35f, 0.1f, 1.0f );
 const Color color_defaultColor     	= Color( 0.35f, 0.35f, 0.35f, 1.0f );
 
+const Color tingeShadow = Color( -1.0f, -1.0f, -1.0f, 0.1f );
+
 const Color phaseTingeSolid =  Color( -1.0f, -1.0f, -1.0f, 0.1f );
 const Color phaseTingeLiquid = Color( 1.0f, 1.0f, 1.0f, 0.1f );
 const Color phaseTingeGas =    Color( 1.0f, 1.0f, 1.0f, 0.2f );
@@ -87,16 +89,27 @@ float animalCursorLimbLowerAngle = 0.0f;
 float animalCursorLimbUpperAngle = 0.5 * 3.1415f;
 unsigned int animalRecursionLevel = 0;
 
-float * colorGrid = new float[totalSize * numberOfFieldsPerVertex ];
-float * lifeColorGrid  	= new float[totalSize * numberOfFieldsPerVertex ];
-float * lifeColorGridB 	= new float[totalSize * numberOfFieldsPerVertex ];
-float * seedColorGrid  	= new float[totalSize * numberOfFieldsPerVertex];
+float * colorGrid = new float[totalSize * numberOfFieldsPerVertex ];		// the colorgrid is like a painting of the game world which can be drawn to the screen easily, and updated as the game is played. it concerns the physical material.
+float * lifeColorGrid  	= new float[totalSize * numberOfFieldsPerVertex ];  // the same but concerning growing plants. Because plant color information is not easily stored anywhere else, this grid must be preserved in save and load operations.
+float * lifeColorGridB 	= new float[totalSize * numberOfFieldsPerVertex ];	// the same, but for the sprites of animals. This is updated every turn, and animals carry their own copy of their sprites, so this does not need to be preserved.
+float * seedColorGrid  	= new float[totalSize * numberOfFieldsPerVertex];   // the same, but for the colors of seeds and falling photons.
+
+float * ppGrid  	= new float[totalSize * numberOfFieldsPerVertex];  
 
 // perform a variety of post processing artistic styles.
 // things like 'glowing because of temperature' need to be calculated all the time, because things are constantly changing temperature.
 float * postProcessingGrid = new float[totalSize * numberOfFieldsPerVertex];
 
-vec_i2 wind = vec_i2(0, 0);
+// vec_i2 wind = vec_i2(0, 0);
+unsigned int wind;
+
+
+unsigned int sunlightDirection = 2;
+unsigned int sunlightEnergy = 10;
+unsigned int sunlightHeatCoeff = 1;
+unsigned int sunlightTemp = 1000;
+// unsigned int sunlightColor = blackbodyLookup(sunlightTemp)
+Color sunlightColor = color_white_clear;
 
 vec_u2 playerCursor = vec_u2(0, 0);
 
@@ -367,6 +380,15 @@ Animal::Animal()
 	this->segments.push_back(AnimalSegment());
 	this->movementFlags = MOVEMENT_ONPOWDER;
 }
+
+
+struct World
+{
+	unsigned int backgroundTemperature;
+
+};
+
+
 
 // THE EXTREMELY FAST LINE ALGORITHM Variation E (Addition Fixed Point PreCalc Small Display)
 // Small Display (256x256) resolution.
@@ -696,6 +718,7 @@ void setSeedParticle( std::string genes, unsigned int parentIdentity, float ener
 void setPhoton(  unsigned int i)
 {
 	seedGrid[i].stage = STAGE_PHOTON;
+	seedGrid[i].energy = sunlightEnergy;
 	memcpy( (&seedColorGrid[i * numberOfFieldsPerVertex]) ,  &(color_white_clear),  sizeof(Color) );
 }
 
@@ -745,6 +768,88 @@ void swapSeedParticle(unsigned int a, unsigned int b)
 	memcpy( &seedColorGrid[ b_offset], 	&seedColorGrid[ a_offset] , 	sizeof(Color) );
 	memcpy( &seedColorGrid[ a_offset ], temp_color, 					sizeof(Color) );
 }
+
+
+// // swap the particle but duplicate the color
+// void swapPhoton(unsigned int a, unsigned int b)
+// {
+// 	SeedParticle tempSeed = seedGrid[b];
+// 	seedGrid[b] = seedGrid[a];
+// 	seedGrid[a] = tempSeed;
+// 	// float temp_color[4];
+// 	unsigned int a_offset = (a * numberOfFieldsPerVertex) ;
+// 	unsigned int b_offset = (b * numberOfFieldsPerVertex) ;
+// 	// memcpy( temp_color, 				&seedColorGrid[ b_offset ] , 	sizeof(Color) ); // 4x floats of 4 bytes each
+// 	memcpy( &seedColorGrid[ b_offset], 	&seedColorGrid[ a_offset] , 	sizeof(Color) );
+// 	// memcpy( &seedColorGrid[ a_offset ], temp_color, 					sizeof(Color) );
+// }
+
+
+// travel from the indicated square in the light direction, marking cells as illuminated or dark along your way.
+void photate( unsigned int i )
+{
+
+	unsigned int currentPosition = i;
+
+	
+	unsigned int blocked = 0;
+
+		// printf("nuguet %u \n", currentPosition);
+	while (true)
+	{
+
+		unsigned int x = currentPosition % sizeX;
+		unsigned int y = currentPosition / sizeX;
+
+
+		currentPosition = neighbourOffsets[sunlightDirection] + currentPosition;
+
+		if (currentPosition > totalSize) {break;}
+
+		unsigned int b_offset = (currentPosition * numberOfFieldsPerVertex) ;
+
+		if (
+		    grid[currentPosition].phase == PHASE_SOLID ||
+		    grid[currentPosition].phase == PHASE_POWDER ||
+
+		    // grid[currentPosition].phase == PHASE_LIQUID ||
+
+		    // grid[currentPosition].phase == PHASE_GAS ||
+		    lifeGrid[currentPosition].identity > 0x00 ||
+		    seedGrid[currentPosition].stage != STAGE_NULL
+		)
+		{
+			blocked ++;
+		}
+
+		if (!blocked)
+		{
+
+			seedGrid[currentPosition].energy = sunlightEnergy;
+			memcpy( &seedColorGrid[ b_offset], 	&color_clear , 	sizeof(Color) );
+		}
+		else
+		{
+
+			seedGrid[currentPosition].energy = 0x00;
+			memcpy( &seedColorGrid[ b_offset], 	&color_shadow , 	sizeof(Color) );
+
+	unsigned int a_offset = (b_offset) + 3;
+			seedColorGrid[a_offset] = blocked * 0.05f;
+			if (seedColorGrid[a_offset] > 0.5f) {seedColorGrid[a_offset] = 0.5f;}
+
+		}
+
+		// printf("pototatata %u \n", currentPosition);
+
+		if (x == 0 || y == 0 || x >= sizeX || y >= sizeY) {break;}
+
+	}
+
+
+
+}
+
 
 void setAnimalSpritePixel ( Animal * a, AnimalSegment * s, AnimalParticle p, unsigned int i )
 {
@@ -1060,7 +1165,7 @@ void clearColorGrids(unsigned int i)
 	seedColorGrid[ 	a_offset + 0] = 0.0f;
 	seedColorGrid[ 	a_offset + 1] = 0.0f;
 	seedColorGrid[ 	a_offset + 2] = 0.0f;
-	seedColorGrid[ 	a_offset + 3] = 0.0f;
+	seedColorGrid[ 	a_offset + 3] = 0.5f;
 	seedColorGrid[ 	a_offset + 4] = fx;
 	seedColorGrid[ 	a_offset + 5] = fy;
 
@@ -1104,16 +1209,9 @@ void clearGrids()
 	}
 }
 
-void initialize ()
+
+void createRandomWorld()
 {
-	// https://stackoverflow.com/questions/9459035/why-does-rand-yield-the-same-sequence-of-numbers-on-every-run
-	srand((unsigned int)time(NULL));
-	setupExtremelyFastNumberGenerators();
-
-	cursor_seedColor = color_yellow;
-	clearGrids();
-
-
 
 
 
@@ -1128,10 +1226,15 @@ void initialize ()
 
 		newMaterial.crystal_n = extremelyFastNumberFromZeroTo(4);
 
-		unsigned int randomCondition = extremelyFastNumberFromZeroTo(2);
+		unsigned int randomCondition = extremelyFastNumberFromZeroTo(7);
 		if (randomCondition == 0) {newMaterial.crystal_condition = CONDITION_GREATERTHAN; }
 		else if (randomCondition == 1) {newMaterial.crystal_condition = CONDITION_EQUAL; }
 		else if (randomCondition == 2) {newMaterial.crystal_condition = CONDITION_LESSTHAN; }
+		else if (randomCondition == 3) {newMaterial.crystal_condition = CONDITION_EVENNUMBER; }
+		else if (randomCondition == 4) {newMaterial.crystal_condition = CONDITION_ODDNUMBER; }
+		else if (randomCondition == 5) {newMaterial.crystal_condition = CONDITION_EDGE; }
+		else if (randomCondition == 6) {newMaterial.crystal_condition = CONDITION_CORNER; }
+		else if (randomCondition == 7) {newMaterial.crystal_condition = CONDITION_ROW; }
 
 		newMaterial . color = color_grey;
 		newMaterial.color.r = RNG();
@@ -1177,7 +1280,7 @@ void initialize ()
 
 
 
-setAnimal(  totalSize* 0.8 );
+	setAnimal( ( 60 * sizeX ) + 50);
 
 
 
@@ -1189,6 +1292,198 @@ setAnimal(  totalSize* 0.8 );
 	{
 		grid[i].temperature = randomTemp;
 	}
+
+
+
+}
+
+
+
+
+Color blackbodyLookup( unsigned int temperature )
+{
+
+
+
+// if (grid[i].temperature > 0 && grid[i].temperature < 600 )
+// 		{
+// 			;
+// 		}
+// 		else if (grid[i].temperature < 772)
+// 		{
+// 			// faint red
+// 			ppColor = addColor( ppColor, Color(0.16f, 0.0f, 0.0f, 0.03f));
+// 		}
+// 		else if (grid[i].temperature < 852)
+// 		{
+// 			// blood red
+// 			ppColor = addColor( ppColor,  Color(0.33f, 0.0f, 0.0f, 0.11f));
+// 		}
+// 		else if (grid[i].temperature < 908)
+// 		{
+// 			// dark cherry
+// 			ppColor = addColor( ppColor, Color(0.5f, 0.0f, 0.0f, 0.20f));
+// 		}
+// 		else if (grid[i].temperature < 963)
+// 		{
+// 			// medium cherry
+// 			ppColor = addColor( ppColor, Color(0.66f, 0.0f, 0.0f, 0.27f));
+// 		}
+// 		else if (grid[i].temperature < 1019)
+// 		{
+// 			// cherry
+// 			ppColor = addColor( ppColor, Color(0.833f, 0.0f, 0.0f, 0.36f));
+// 		}
+// 		else if (grid[i].temperature < 1060)
+// 		{
+// 			// bright cherry
+// 			ppColor = addColor( ppColor,  Color(1.0f, 0.0f, 0.0f, 0.45f));
+// 		}
+// 		else if (grid[i].temperature < 1116)
+// 		{
+// 			// salmon (??)
+// 			ppColor = addColor( ppColor,  Color(1.0f, 0.25f, 0.0f, 0.53f));
+// 		}
+// 		else if (grid[i].temperature < 1188)
+// 		{
+// 			// dark orange
+// 			ppColor = addColor( ppColor, Color(1.0f, 0.5f, 0.0f, 0.61f));
+// 		}
+// 		else if (grid[i].temperature < 1213)
+// 		{
+// 			// orange
+// 			ppColor = addColor( ppColor, Color(1.0f, 0.75f, 0.0f, 0.70f));
+// 		}
+// 		else if (grid[i].temperature < 1272)
+// 		{
+// 			// lemon
+// 			ppColor = addColor( ppColor, Color(1.0f, 1.0f, 0.0f, 0.78f));
+// 		}
+// 		else if (grid[i].temperature < 1352)
+// 		{
+// 			// light yellow
+// 			ppColor = addColor( ppColor,  Color(1.0f, 1.0f, 0.5f, 0.86f));
+// 		}
+
+// 		else if (grid[i].temperature < 5000)
+// 		{
+// 			// white
+// 			ppColor = addColor( ppColor,  Color(1.0f, 1.0f, 1.0f, 0.91f));
+// 		}
+
+// 		else if (grid[i].temperature < 10000)
+// 		{
+// 			// cool white
+// 			ppColor = addColor( ppColor,  Color(0.95f, 0.95f, 1.0f, 1.0f));
+// 		}
+
+// 		else
+// 		{
+// 			// blue
+// 			ppColor = addColor( ppColor, Color(0.9f, 0.9f, 1.0f, 1.0f));
+// 		}
+
+
+
+
+
+	if (temperature > 0 && temperature < 600 )
+	{
+		return color_clear;;
+	}
+	else if (temperature < 772)
+	{
+		// faint red
+		return Color(0.16f, 0.0f, 0.0f, 0.03f);
+	}
+	else if (temperature < 852)
+	{
+		// blood red
+		return  Color(0.33f, 0.0f, 0.0f, 0.11f);
+	}
+	else if (temperature < 908)
+	{
+		// dark cherry
+		return Color(0.5f, 0.0f, 0.0f, 0.20f);
+	}
+	else if (temperature < 963)
+	{
+		// medium cherry
+		return Color(0.66f, 0.0f, 0.0f, 0.27f);
+	}
+	else if (temperature < 1019)
+	{
+		// cherry
+		return Color(0.833f, 0.0f, 0.0f, 0.36f);
+	}
+	else if (temperature < 1060)
+	{
+		// bright cherry
+		return  Color(1.0f, 0.0f, 0.0f, 0.45f);
+	}
+	else if (temperature < 1116)
+	{
+		// salmon (??)
+		return  Color(1.0f, 0.25f, 0.0f, 0.53f);
+	}
+	else if (temperature < 1188)
+	{
+		// dark orange
+		return Color(1.0f, 0.5f, 0.0f, 0.61f);
+	}
+	else if (temperature < 1213)
+	{
+		// orange
+		return Color(1.0f, 0.75f, 0.0f, 0.70f);
+	}
+	else if (temperature < 1272)
+	{
+		// lemon
+		return Color(1.0f, 1.0f, 0.0f, 0.78f);
+	}
+	else if (temperature < 1352)
+	{
+		// light yellow
+		return  Color(1.0f, 1.0f, 0.5f, 0.86f);
+	}
+
+	else if (temperature < 5000)
+	{
+		// white
+		return  Color(1.0f, 1.0f, 1.0f, 0.91f);
+	}
+
+	else if (temperature < 10000)
+	{
+		// cool white
+		return  Color(0.95f, 0.95f, 1.0f, 1.0f);
+	}
+
+	else
+	{
+		// blue
+		return Color(0.9f, 0.9f, 1.0f, 1.0f);
+	}
+
+
+
+}
+
+
+void initialize ()
+{
+	// https://stackoverflow.com/questions/9459035/why-does-rand-yield-the-same-sequence-of-numbers-on-every-run
+	srand((unsigned int)time(NULL));
+	setupExtremelyFastNumberGenerators();
+
+	cursor_seedColor = color_yellow;
+	clearGrids();
+
+	sunlightColor = blackbodyLookup(sunlightTemp);
+
+
+	createRandomWorld();
+
 
 
 
@@ -1260,6 +1555,10 @@ void setExtremeTempPoint (unsigned int x , unsigned  int y)
 	grid[i].temperature = 10000000;
 }
 
+
+
+
+
 // updates a location on the color grid with a material's new color information, based on phase and temperature.
 void materialPostProcess(unsigned int i)
 {
@@ -1276,9 +1575,14 @@ void materialPostProcess(unsigned int i)
 
 
 
-	Color ppColor =  materials[ grid[i].material ].color  ;//materialColor(grid[i].material);  //
+	// Color ppColor =  materials[ grid[i].material ].color  ;//materialColor(grid[i].material);  //
 
 
+	// if (seedGrid[i].stage == STAGE_NULL && seedGrid[i].energy == 0x00) 
+	// {
+	// 	ppColor = addColor(ppColor, tingeShadow);
+	// }
+	Color ppColor = color_clear;
 
 
 	if (grid[i].phase != PHASE_VACUUM)
@@ -1298,84 +1602,9 @@ void materialPostProcess(unsigned int i)
 		}
 
 
-		if (grid[i].temperature > 0 && grid[i].temperature < 600 )
-		{
-			;
-		}
-		else if (grid[i].temperature < 772)
-		{
-			// faint red
-			ppColor = addColor( ppColor, Color(0.16f, 0.0f, 0.0f, 0.03f));
-		}
-		else if (grid[i].temperature < 852)
-		{
-			// blood red
-			ppColor = addColor( ppColor,  Color(0.33f, 0.0f, 0.0f, 0.11f));
-		}
-		else if (grid[i].temperature < 908)
-		{
-			// dark cherry
-			ppColor = addColor( ppColor, Color(0.5f, 0.0f, 0.0f, 0.20f));
-		}
-		else if (grid[i].temperature < 963)
-		{
-			// medium cherry
-			ppColor = addColor( ppColor, Color(0.66f, 0.0f, 0.0f, 0.27f));
-		}
-		else if (grid[i].temperature < 1019)
-		{
-			// cherry
-			ppColor = addColor( ppColor, Color(0.833f, 0.0f, 0.0f, 0.36f));
-		}
-		else if (grid[i].temperature < 1060)
-		{
-			// bright cherry
-			ppColor = addColor( ppColor,  Color(1.0f, 0.0f, 0.0f, 0.45f));
-		}
-		else if (grid[i].temperature < 1116)
-		{
-			// salmon (??)
-			ppColor = addColor( ppColor,  Color(1.0f, 0.25f, 0.0f, 0.53f));
-		}
-		else if (grid[i].temperature < 1188)
-		{
-			// dark orange
-			ppColor = addColor( ppColor, Color(1.0f, 0.5f, 0.0f, 0.61f));
-		}
-		else if (grid[i].temperature < 1213)
-		{
-			// orange
-			ppColor = addColor( ppColor, Color(1.0f, 0.75f, 0.0f, 0.70f));
-		}
-		else if (grid[i].temperature < 1272)
-		{
-			// lemon
-			ppColor = addColor( ppColor, Color(1.0f, 1.0f, 0.0f, 0.78f));
-		}
-		else if (grid[i].temperature < 1352)
-		{
-			// light yellow
-			ppColor = addColor( ppColor,  Color(1.0f, 1.0f, 0.5f, 0.86f));
-		}
 
-		else if (grid[i].temperature < 5000)
-		{
-			// white
-			ppColor = addColor( ppColor,  Color(1.0f, 1.0f, 1.0f, 0.91f));
-		}
 
-		else if (grid[i].temperature < 10000)
-		{
-			// cool white
-			ppColor = addColor( ppColor,  Color(0.95f, 0.95f, 1.0f, 1.0f));
-		}
-
-		else
-		{
-			// blue
-			ppColor = addColor( ppColor, Color(0.9f, 0.9f, 1.0f, 1.0f));
-		}
-
+		ppColor = addColor(ppColor, blackbodyLookup( grid[i].temperature ) );
 
 	}
 
@@ -1384,12 +1613,12 @@ void materialPostProcess(unsigned int i)
 		ppColor = color_clear;
 	}
 
-	colorGrid[ (i * numberOfFieldsPerVertex) + 0 ] = ppColor.r;
-	colorGrid[ (i * numberOfFieldsPerVertex) + 1 ] = ppColor.g;
-	colorGrid[ (i * numberOfFieldsPerVertex) + 2 ] = ppColor.b;
-	colorGrid[ (i * numberOfFieldsPerVertex) + 3 ] = ppColor.a;
-	colorGrid[ (i * numberOfFieldsPerVertex) + 4 ] = fx;
-	colorGrid[ (i * numberOfFieldsPerVertex) + 5 ] = fy;
+	ppGrid[ (i * numberOfFieldsPerVertex) + 0 ] = ppColor.r;
+	ppGrid[ (i * numberOfFieldsPerVertex) + 1 ] = ppColor.g;
+	ppGrid[ (i * numberOfFieldsPerVertex) + 2 ] = ppColor.b;
+	ppGrid[ (i * numberOfFieldsPerVertex) + 3 ] = ppColor.a;
+	ppGrid[ (i * numberOfFieldsPerVertex) + 4 ] = fx;
+	ppGrid[ (i * numberOfFieldsPerVertex) + 5 ] = fy;
 }
 
 
@@ -1431,10 +1660,7 @@ void thread_temperature2 ()
 		unsigned int currentPosition = i;
 
 
-		if (extremelyFastNumberFromZeroTo(10) == 0)
-		{
-			materialPostProcess(currentPosition);
-		}
+
 
 		if (grid[currentPosition].phase != PHASE_VACUUM)
 		{
@@ -1521,29 +1747,38 @@ void thread_temperature2 ()
 
 						if (materials[grid[currentPosition].material].crystal_condition == CONDITION_GREATERTHAN)
 						{
-							if (nSolidNeighbours > materials[grid[currentPosition].material].crystal_n) { grid[currentPosition].phase = PHASE_SOLID; }
+							if (nSolidNeighbours > materials[grid[currentPosition].material].crystal_n)
+							{
+								if (nSolidNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
+							}
 						}
 						else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_EQUAL)
 						{
-							if (nSolidNeighbours == materials[grid[currentPosition].material].crystal_n) { grid[currentPosition].phase = PHASE_SOLID; }
+							if (nSolidNeighbours == materials[grid[currentPosition].material].crystal_n)
+							{
+								if (nSolidNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
+							}
 						}
 						else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_LESSTHAN)
 						{
-							if (nSolidNeighbours < materials[grid[currentPosition].material].crystal_n) { grid[currentPosition].phase = PHASE_SOLID; }
+							if (nSolidNeighbours < materials[grid[currentPosition].material].crystal_n)
+							{
+								if (nSolidNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
+							}
 						}
 
 						else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_EVENNUMBER)
 						{
 							if (nSolidNeighbours % 2 == 0)
 							{
-								grid[currentPosition].phase = PHASE_SOLID;
+								if (nSolidNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
 							}
 						}
 						else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_ODDNUMBER)
 						{
 							if (nSolidNeighbours % 2 == 1)
 							{
-								grid[currentPosition].phase = PHASE_SOLID;
+								if (nSolidNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
 							}
 						}
 
@@ -1551,7 +1786,7 @@ void thread_temperature2 ()
 						{
 							if (longestSolidStreak == 3 && (longestSolidStreakOffset % 2) == 0 )
 							{
-								grid[currentPosition].phase = PHASE_SOLID;
+								if (nSolidNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
 							}
 						}
 
@@ -1559,7 +1794,7 @@ void thread_temperature2 ()
 						{
 							if (longestSolidStreak == 3 && (longestSolidStreakOffset % 2) == 1 )
 							{
-								grid[currentPosition].phase = PHASE_SOLID;
+								if (nSolidNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
 							}
 						}
 
@@ -1567,7 +1802,7 @@ void thread_temperature2 ()
 						{
 							if (longestSolidStreak == materials[grid[currentPosition].material].crystal_n )
 							{
-								grid[currentPosition].phase = PHASE_SOLID;
+								if (nSolidNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
 							}
 						}
 
@@ -1578,6 +1813,9 @@ void thread_temperature2 ()
 						{
 							grid[currentPosition].phase = PHASE_SOLID;
 						}
+
+						// prevent crystallization if you are floating around in the air
+						// if (grid[currentPosition].phase == PHASE_SOLID && nSolidNeighbours == 0) {grid[currentPosition].phase == PHASE_POWDER;}
 					}
 				}
 				else if (grid[currentPosition].phase == PHASE_GAS)
@@ -1637,49 +1875,54 @@ void thread_temperature2 ()
 				{
 
 					unsigned int index = extremelyFastNumberFromZeroTo(7);
-					unsigned int neighbour = neighbourOffsets[index] + currentPosition;
+					unsigned int neighbour ;
 					// alternate between wind movement and random scatter movement, to look more natural.
 					if (extremelyFastNumberFromZeroTo(1) == 0)
 					{
+						neighbour = neighbourOffsets[wind] + currentPosition;
 						// the wind pushes in a certain direction.
 						// however wind is expressed as a vec_i2, and we need it as a single number.
 						// this is basically a very fast lookup table to tell you the answer.
-						if (wind.y > 0)
-						{
-							index = 5; // directly up
+						// 	if (wind.y > 0)
+						// 	{
+						// 		index = 5; // directly up
 
-							if (wind.x > 0)
-							{
-								index = 4; // up and to the right
-							}
-							else if (wind.x < 0)
-							{
-								index = 7; // and so on, allowing the index to remain at its original random value if the wind in that axis was 0.
-							}
-						}
-						else if (wind.y < 0)
-						{
-							index = 1; // directly down
-							if (wind.x > 0)
-							{
-								index = 3;
-							}
-							else if (wind.x < 0)
-							{
-								index = 1;
-							}
-						}
-						else
-						{
-							if (wind.x > 0)
-							{
-								index = 4;
-							}
-							else if (wind.x < 0)
-							{
-								index = 0;
-							}
-						}
+						// 		if (wind.x > 0)
+						// 		{
+						// 			index = 4; // up and to the right
+						// 		}
+						// 		else if (wind.x < 0)
+						// 		{
+						// 			index = 7; // and so on, allowing the index to remain at its original random value if the wind in that axis was 0.
+						// 		}
+						// 	}
+						// 	else if (wind.y < 0)
+						// 	{
+						// 		index = 1; // directly down
+						// 		if (wind.x > 0)
+						// 		{
+						// 			index = 3;
+						// 		}
+						// 		else if (wind.x < 0)
+						// 		{
+						// 			index = 1;
+						// 		}
+						// 	}
+						// 	else
+						// 	{
+						// 		if (wind.x > 0)
+						// 		{
+						// 			index = 4;
+						// 		}
+						// 		else if (wind.x < 0)
+						// 		{
+						// 			index = 0;
+						// 		}
+						// 	}
+					}
+					else {
+						neighbour = neighbourOffsets[ index] + currentPosition;
+
 					}
 
 					if (grid[neighbour].phase  == PHASE_VACUUM || (grid[neighbour].phase == PHASE_GAS) )
@@ -1813,41 +2056,64 @@ unsigned int randomIntegerInRange (unsigned int from, unsigned int to)
 // #endif
 // }
 
-// void thread_physics ()
-// {
-// 	// blow the wind
-// 	unsigned int windChange = extremelyFastNumberFromZeroTo(100);
+void thread_physics ()
+{
 
-// 	if (!windChange)
-// 	{
-// 		int16_t windRand =  extremelyFastNumberFromZeroTo( 2);
-// 		wind.x = windRand - 1;
-// 		windRand =  extremelyFastNumberFromZeroTo( 2);
-// 		wind.y = windRand - 1;
-// 	}
+#ifdef THREAD_TIMING_READOUT
+	auto start = std::chrono::steady_clock::now();
+#endif
 
-// 	// sprinkle eroding rain
-// 	if (sprinkleErodingRain)
-// 	{
-// 		for (int i = (sizeY - 2) * sizeX; i < (sizeY - 1)*sizeX; ++i)
-// 		{
-// 			if (extremelyFastNumberFromZeroTo(lampBrightness) == 0)
-// 			{
-// 				setErodingRain(   i);
-// 			}
-// 		}
-// 	}
+	// blow the wind
+	unsigned int windChange = extremelyFastNumberFromZeroTo(100);
 
-// 	else
-// 	{
-// 		for (int i = (sizeY - 2) * sizeX; i < (sizeY - 1)*sizeX; ++i)
-// 		{
-// 			if (extremelyFastNumberFromZeroTo(lampBrightness) == 0)
-// 			{
-// 				setPhoton(   i);
-// 			}
-// 		}
-// 	}
+	if (!windChange)
+	{
+		// int16_t windRand =  extremelyFastNumberFromZeroTo( 2);
+		// wind.x = windRand - 1;
+		// windRand =  extremelyFastNumberFromZeroTo( 2);
+		// wind.y = windRand - 1;
+
+
+		wind = extremelyFastNumberFromZeroTo(7);
+	}
+
+	// sprinkle eroding rain
+	if (sprinkleErodingRain)
+	{
+		for (int i = (sizeY - 2) * sizeX; i < (sizeY - 1)*sizeX; ++i)
+		{
+			if (extremelyFastNumberFromZeroTo(lampBrightness) == 0)
+			{
+				setErodingRain(   i);
+			}
+		}
+	}
+
+	else
+	{
+		for (int i = (sizeY - 2) * sizeX; i < (sizeY - 1)*sizeX; ++i)
+		{
+
+
+
+
+			// if (extremelyFastNumberFromZeroTo(lampBrightness) == 0)
+			// {
+				// setPhoton(   i);
+				photate(i);
+
+			// }
+		}
+	}
+
+
+	for (int i = 0; i < totalSize; ++i)
+	{
+		if (extremelyFastNumberFromZeroTo(10) == 0)
+		{
+			materialPostProcess(i);
+		}
+	}
 
 // 	unsigned int quad1 = totalSize / 4;
 // 	unsigned int quad2 = totalSize / 2;
@@ -1860,7 +2126,13 @@ unsigned int randomIntegerInRange (unsigned int from, unsigned int to)
 // 	t12.join();
 // 	t13.join();
 // 	t14.join();
-// }
+
+#ifdef THREAD_TIMING_READOUT
+	auto end = std::chrono::steady_clock::now();
+	auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+	std::cout << "thread_physics " << elapsed.count() << " microseconds." << std::endl;
+#endif
+}
 
 void setPointSize (unsigned int pointSize)
 {
@@ -2016,11 +2288,16 @@ void thread_graphics()
 		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, lifeColorGrid, GL_DYNAMIC_DRAW );
 		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
 
-		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, seedColorGrid, GL_DYNAMIC_DRAW );
+	
+		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, colorGrid, GL_DYNAMIC_DRAW );
+		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
+
+			glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, seedColorGrid, GL_DYNAMIC_DRAW );
 		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
 
 
-		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, colorGrid, GL_DYNAMIC_DRAW );
+
+			glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, ppGrid, GL_DYNAMIC_DRAW );
 		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
 
 
@@ -2742,6 +3019,27 @@ void thread_life()
 			// 	squareAbove - 1,
 			// 	i - 1,
 			// };
+
+
+
+
+
+			// if the plant is illuminated, it receives energy.
+			if ( lifeGrid[i].energySource == ENERGYSOURCE_LIGHT )
+			{
+
+				if (seedGrid[i].stage == STAGE_NULL && seedGrid[i].energy > 0)
+				{
+					lifeGrid[i].energy += seedGrid[i].energy;
+				}
+
+			}
+
+
+
+
+
+
 			unsigned int neighbourMaterialA = MATERIAL_VACUUM;
 
 			for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
@@ -2766,6 +3064,8 @@ void thread_life()
 				// 		}
 				// 	}
 				// }
+
+
 
 
 
@@ -3143,6 +3443,33 @@ unsigned int walkAnAnimal(unsigned int i)
 	return result;
 }
 
+
+// fade the color in random seedgrid squares if the particle there is not a seed. this makes photon trails fade over time.
+void updateSeedgridColor (unsigned int i)
+{
+
+
+	if (seedGrid[i].stage == STAGE_NULL)
+	{
+
+
+
+// SeedParticle tempSeed = seedGrid[b];
+		// seedGrid[b] = seedGrid[a];
+		// seedGrid[a] = tempSeed;
+		// float temp_color[4];
+		unsigned int a_offset = (i * numberOfFieldsPerVertex) ;
+		// unsigned int b_offset = (b * numberOfFieldsPerVertex) ;
+		// memcpy( temp_color, 				&seedColorGrid[ b_offset ] , 	sizeof(Color) ); // 4x floats of 4 bytes each
+		// memcpy( &seedColorGrid[ b_offset], 	&seedColorGrid[ a_offset] , 	sizeof(Color) );
+		// memcpy( &seedColorGrid[ a_offset ], temp_color, 					sizeof(Color) );
+		// seedGrid[i].e
+
+		seedColorGrid[ a_offset  + 3] *= 0.5;
+	}
+}
+
+
 void thread_seeds()
 {
 #ifdef THREAD_TIMING_READOUT
@@ -3152,7 +3479,193 @@ void thread_seeds()
 	{
 
 
-		if (seedGrid[i].stage == STAGE_ERODINGRAIN)
+
+
+
+		// // PHOTONS. Some of the particles on the seed grid are particles of light that fall downwards.
+		// if (seedGrid[i].stage == STAGE_PHOTON)
+		// {
+		// 	// unsigned int squareBelow = i - sizeX;
+
+		// 	unsigned int neighbour = neighbourOffsets[sunlightDirection] + i;
+
+		// 	// if they touch a plant...
+		// 	if (lifeGrid[neighbour].identity > 0)
+		// 	{
+		// 		// which has a photosynthetic leaf...
+		// 		if (lifeGrid[neighbour].energySource == ENERGYSOURCE_LIGHT)
+		// 		{
+		// 			if (extremelyFastNumberFromZeroTo(8) == 0)
+		// 			{
+		// 				// it consumes the photon as energy
+		// 				lifeGrid[neighbour].energy += sunlightEnergy;
+		// 				clearSeedParticle(i);
+		// 				continue;
+		// 			}
+		// 			else
+		// 			{
+		// 				// if the photon falls on a seed, it cannot occupy the same place, so the photon is destroyed.
+		// 				if (seedGrid[neighbour].stage != 0x00)
+		// 				{
+		// 					clearSeedParticle(i);
+		// 					continue;
+		// 				}
+		// 				else
+		// 				{
+
+
+
+		// 					swapPhoton( i, neighbour);
+		// 					continue;
+		// 				}
+		// 			}
+		// 		}
+		// 	}
+
+		// 	// the photon falls downward if nothing is below it. They can travel into water.
+		// 	if (grid[neighbour].phase != PHASE_VACUUM && grid[neighbour].phase != PHASE_GAS && grid[neighbour].phase != PHASE_LIQUID
+		// 	   )
+		// 	{
+		// 		grid[neighbour].temperature += (sunlightEnergy * sunlightHeatCoeff);
+		// 		clearSeedParticle(i);
+		// 		continue;
+		// 	}
+		// 	else
+		// 	{
+		// 		// if it falls on material, it is destroyed.
+		// 		if (seedGrid[neighbour].stage != 0x00)
+		// 		{
+		// 			clearSeedParticle(i);
+		// 			continue;
+		// 		}
+		// 		swapPhoton( i, neighbour);
+		// 		continue;
+		// 	}
+		// 	continue;
+		// }
+
+
+
+		// SEEDS. Some of the particles on the seed grid are seeds that fall downwards.
+		if (seedGrid[i].parentIdentity > 0 )
+		{
+			if (seedGrid[i].stage == STAGE_FRUIT)
+			{
+				if (extremelyFastNumberFromZeroTo(1) == 0) 		// get blown by the wind only some of the time
+				{
+					// while (true) 								// this while loop is just here so you can 'break' out of it to end this sequence quickly.
+					// {
+					unsigned int neighbour = neighbourOffsets[wind] + i;
+					// if (wind.x > 0)
+					// {
+					// 	neighbour = i + 1;
+					// 	if ((grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS  ) && seedGrid[neighbour].stage == 0x00  )
+					// 	{
+					// 		swapSeedParticle( i, neighbour );
+					// 		continue;
+					// 	}
+					// }
+					// else if (wind.x < 0)
+					// {
+					// 	neighbour = i - 1;
+					if ((grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS  ) && seedGrid[neighbour].stage == 0x00  )
+					{
+						swapSeedParticle( i, neighbour );
+						continue;
+					}
+					// }
+					// continue;
+					// }
+
+					// while (true) 								// this while loop is just here so you can 'break' out of it to end this sequence quickly.
+					// {
+					// 	unsigned int neighbour;
+					// 	if (wind.y > 0)
+					// 	{
+					// 		neighbour = i + sizeX;
+					// 		if ((grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS  ) && seedGrid[neighbour].stage == 0x00  )
+					// 		{
+					// 			swapSeedParticle( i, neighbour );
+					// 			continue;
+					// 		}
+					// 	}
+					// 	else if (wind.y < 0)
+					// 	{
+					// 		neighbour = i - sizeX;
+					// 		if ((grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS  ) && seedGrid[neighbour].stage == 0x00  )
+					// 		{
+					// 			swapSeedParticle( i, neighbour );
+					// 			continue;
+					// 		}					//
+					// 	}
+					// 	continue;
+					// }
+				}
+
+				unsigned int j = extremelyFastNumberFromZeroTo(4);
+				unsigned int neighbour;
+
+				if (		j == 0)		{ neighbour = i - sizeX - 1 ;	}
+				else if (	j == 1)		{ neighbour = i - sizeX	 	;	}
+				else if (	j == 2)		{ neighbour = i - sizeX + 1 ;	}
+				else if (	j == 3)		{ neighbour = i + 1 		;	}
+				else if (	j == 4)		{ neighbour = i - 1  		;	}
+
+				if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS  )
+				{
+					swapSeedParticle( i, neighbour );
+					continue;
+				}
+				else if (grid[neighbour].material == seedGrid[i].germinationMaterial)
+				{
+
+#ifdef PLANT_DRAWING_READOUT
+					printf("germinated\n");
+#endif
+					seedGrid[i].stage = STAGE_SEED;
+				}
+				continue;
+			}
+
+			if (seedGrid[i].stage == STAGE_BUD)
+			{
+				unsigned int j = extremelyFastNumberFromZeroTo(7);
+				unsigned int neighbour;
+
+				if (		j == 0)		{ neighbour = i - sizeX - 1 ;	}
+				else if (	j == 1)		{ neighbour = i - sizeX	 	;	}
+				else if (	j == 2)		{ neighbour = i - sizeX + 1 ;	}
+				else if (	j == 3)		{ neighbour = i + 1	    	;	}
+				else if (	j == 4)		{ neighbour = i - 1 		;	}
+				else if (	j == 5)		{ neighbour = i + sizeX - 1 ;	}
+				else if (	j == 6)		{ neighbour = i + sizeX		;	}
+				else if (	j == 7)		{ neighbour = i + sizeX + 1 ;	}
+
+				if (lifeGrid[neighbour].identity == seedGrid[i].parentIdentity)
+				{
+					if (lifeGrid[neighbour].energy > 0)
+					{
+						seedGrid[i].energy += (lifeGrid[neighbour].energy );
+						lifeGrid[neighbour].energy = (lifeGrid[neighbour].energy );
+					}
+				}
+
+				if (seedGrid[i].energy >= 0)
+				{
+					seedGrid[i].stage = STAGE_FRUIT;
+
+#ifdef PLANT_DRAWING_READOUT
+					printf("fruited\n");
+#endif
+				}
+				continue;
+			}
+			continue;
+		}
+
+
+
+		else if (seedGrid[i].stage == STAGE_ERODINGRAIN)
 		{
 			unsigned int currentPosition = i;
 			bool movedThisTurn = false;
@@ -3239,63 +3752,8 @@ void thread_seeds()
 			continue;
 		}
 
-		// PHOTONS. Some of the particles on the seed grid are particles of light that fall downwards.
-		if (seedGrid[i].stage == STAGE_PHOTON)
-		{
-			unsigned int squareBelow = i - sizeX;
 
-			// if they touch a plant...
-			if (lifeGrid[squareBelow].identity > 0)
-			{
-				// which has a photosynthetic leaf...
-				if (lifeGrid[squareBelow].energySource == ENERGYSOURCE_LIGHT)
-				{
-					if (extremelyFastNumberFromZeroTo(8) == 0)
-					{
-						// it consumes the photon as energy
-						lifeGrid[squareBelow].energy += 1.0f;
-						clearSeedParticle(i);
-						continue;
-					}
-					else
-					{
-						// if the photon falls on a seed, it cannot occupy the same place, so the photon is destroyed.
-						if (seedGrid[squareBelow].stage != 0x00)
-						{
-							clearSeedParticle(i);
-							continue;
-						}
-						else
-						{
-							swapSeedParticle( i, squareBelow);
-							continue;
-						}
-					}
-				}
-			}
-
-			// the photon falls downward if nothing is below it. They can travel into water.
-			if (grid[squareBelow].phase != PHASE_VACUUM && grid[squareBelow].phase != PHASE_GAS
-			        // && grid[squareBelow].material != MATERIAL_WATER
-			   )
-			{
-				clearSeedParticle(i);
-				continue;
-			}
-			else
-			{
-				// if it falls on material, it is destroyed.
-				if (seedGrid[squareBelow].stage != 0x00)
-				{
-					clearSeedParticle(i);
-					continue;
-				}
-				swapSeedParticle( i, squareBelow);
-				continue;
-			}
-		}
-
-		if (seedGrid[i].stage == STAGE_ANIMAL)
+		else if (seedGrid[i].stage == STAGE_ANIMAL)
 		{
 
 
@@ -3317,123 +3775,20 @@ void thread_seeds()
 #endif
 
 			}
+			continue;
 		}
 
-		// SEEDS. Some of the particles on the seed grid are seeds that fall downwards.
-		if (seedGrid[i].parentIdentity > 0 )
+		else
 		{
-			if (seedGrid[i].stage == STAGE_FRUIT)
-			{
-				if (extremelyFastNumberFromZeroTo(1) == 0) 		// get blown by the wind only some of the time
-				{
-					while (true) 								// this while loop is just here so you can 'break' out of it to end this sequence quickly.
-					{
-						unsigned int neighbour;
-						if (wind.x > 0)
-						{
-							neighbour = i + 1;
-							if ((grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS  ) && seedGrid[neighbour].stage == 0x00  )
-							{
-								swapSeedParticle( i, neighbour );
-								break;
-							}
-						}
-						else if (wind.x < 0)
-						{
-							neighbour = i - 1;
-							if ((grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS  ) && seedGrid[neighbour].stage == 0x00  )
-							{
-								swapSeedParticle( i, neighbour );
-								break;
-							}
-						}
-						break;
-					}
 
-					while (true) 								// this while loop is just here so you can 'break' out of it to end this sequence quickly.
-					{
-						unsigned int neighbour;
-						if (wind.y > 0)
-						{
-							neighbour = i + sizeX;
-							if ((grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS  ) && seedGrid[neighbour].stage == 0x00  )
-							{
-								swapSeedParticle( i, neighbour );
-								break;
-							}
-						}
-						else if (wind.y < 0)
-						{
-							neighbour = i - sizeX;
-							if ((grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS  ) && seedGrid[neighbour].stage == 0x00  )
-							{
-								swapSeedParticle( i, neighbour );
-								break;
-							}
-						}
-						break;
-					}
-				}
+			// if (extremelyFastNumberFromZeroTo(100) == 0)
+			// {
+			// 	updateSeedgridColor(i);
+			// }
+			continue;
 
-				unsigned int j = extremelyFastNumberFromZeroTo(4);
-				unsigned int neighbour;
-
-				if (		j == 0)		{ neighbour = i - sizeX - 1 ;	}
-				else if (	j == 1)		{ neighbour = i - sizeX	 	;	}
-				else if (	j == 2)		{ neighbour = i - sizeX + 1 ;	}
-				else if (	j == 3)		{ neighbour = i + 1 		;	}
-				else if (	j == 4)		{ neighbour = i - 1  		;	}
-
-				if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS  )
-				{
-					swapSeedParticle( i, neighbour );
-					continue;
-				}
-				else if (grid[neighbour].material == seedGrid[i].germinationMaterial)
-				{
-
-#ifdef PLANT_DRAWING_READOUT
-					printf("germinated\n");
-#endif
-					seedGrid[i].stage = STAGE_SEED;
-				}
-				continue;
-			}
-
-			if (seedGrid[i].stage == STAGE_BUD)
-			{
-				unsigned int j = extremelyFastNumberFromZeroTo(7);
-				unsigned int neighbour;
-
-				if (		j == 0)		{ neighbour = i - sizeX - 1 ;	}
-				else if (	j == 1)		{ neighbour = i - sizeX	 	;	}
-				else if (	j == 2)		{ neighbour = i - sizeX + 1 ;	}
-				else if (	j == 3)		{ neighbour = i + 1	    	;	}
-				else if (	j == 4)		{ neighbour = i - 1 		;	}
-				else if (	j == 5)		{ neighbour = i + sizeX - 1 ;	}
-				else if (	j == 6)		{ neighbour = i + sizeX		;	}
-				else if (	j == 7)		{ neighbour = i + sizeX + 1 ;	}
-
-				if (lifeGrid[neighbour].identity == seedGrid[i].parentIdentity)
-				{
-					if (lifeGrid[neighbour].energy > 0)
-					{
-						seedGrid[i].energy += (lifeGrid[neighbour].energy );
-						lifeGrid[neighbour].energy = (lifeGrid[neighbour].energy );
-					}
-				}
-
-				if (seedGrid[i].energy >= 0)
-				{
-					seedGrid[i].stage = STAGE_FRUIT;
-
-#ifdef PLANT_DRAWING_READOUT
-					printf("fruited\n");
-#endif
-				}
-				continue;
-			}
 		}
+
 	}
 
 #ifdef THREAD_TIMING_READOUT
