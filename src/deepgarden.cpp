@@ -42,14 +42,15 @@ const Color phaseTingeGas =    Color( 1.0f, 1.0f, 1.0f, 0.2f );
 
 int neighbourOffsets[] =
 {
+
+	- 1,
 	- sizeX - 1,
 	- sizeX ,
 	- sizeX  + 1,
 	+ 1,
 	+sizeX + 1,
 	+sizeX,
-	+sizeX - 1,
-	- 1,
+	+sizeX - 1
 };
 
 // a tree with a long stem and a fan of branches.
@@ -1247,7 +1248,7 @@ void createRandomWorld()
 {
 
 
-defaultTemperature = RNG() * 1500;
+	defaultTemperature = RNG() * 1500;
 
 	for (int k = 0; k < 5; ++k)
 	{
@@ -1750,7 +1751,7 @@ void thread_temperature2 ()
 				int crntmp = grid[currentPosition].temperature;
 				int dftmp = defaultTemperature;
 
-				int radiantHeat = (crntmp- dftmp) / 50;
+				int radiantHeat = (crntmp - dftmp) / 50;
 				grid[currentPosition].temperature -= radiantHeat;
 			}
 
@@ -1987,7 +1988,23 @@ void thread_temperature2 ()
 			if (grid[currentPosition].phase  == PHASE_POWDER)
 			{
 
-				unsigned int neighbour = neighbourOffsets[extremelyFastNumberFromZeroTo(2)] + currentPosition;
+
+				/*	int neighbourOffsets[] =
+					{
+
+						- 1,
+						- sizeX - 1,
+						- sizeX ,
+						- sizeX  + 1,
+						+ 1,
+						+sizeX + 1,
+						+sizeX,
+						+sizeX - 1
+					};*/
+
+
+
+				unsigned int neighbour = neighbourOffsets[ (  1 +  extremelyFastNumberFromZeroTo(2) )  ] + currentPosition;
 
 				if ((    grid[neighbour].phase == PHASE_VACUUM) ||
 				        (grid[neighbour].phase == PHASE_GAS) ||
@@ -2003,84 +2020,45 @@ void thread_temperature2 ()
 			// movement instructions for LIQUIDS
 			else if (grid[currentPosition].phase == PHASE_LIQUID)
 			{
-				unsigned int offset = extremelyFastNumberFromZeroTo(4);
-				for (unsigned int k = 0; k < 5; ++k)
-				{
-					unsigned int neighbour = neighbourOffsets[ ((k + offset) % 5) ] + currentPosition;
+				// unsigned int offset = extremelyFastNumberFromZeroTo(4);
+				// for (unsigned int k = 0; k < 5; ++k)
+				// {
+				// unsigned int neighbour = neighbourOffsets[ ((k + offset) % 5) ] + currentPosition;
 
-					if ((    grid[neighbour].phase == PHASE_VACUUM) ||
-					        (grid[neighbour].phase == PHASE_GAS) ||
-					        (grid[neighbour].phase == PHASE_LIQUID)     )
-					{
-						swapParticle(currentPosition, neighbour);
-						currentPosition = neighbour;
-						break;
-					}
+
+				unsigned int neighbour = neighbourOffsets[ (  0 +  extremelyFastNumberFromZeroTo(4) )  ] + currentPosition;
+
+
+				if ((    grid[neighbour].phase == PHASE_VACUUM) ||
+				        (grid[neighbour].phase == PHASE_GAS) ||
+				        (grid[neighbour].phase == PHASE_LIQUID)     )
+				{
+					swapParticle(currentPosition, neighbour);
+					currentPosition = neighbour;
+					// break;
 				}
+
+
+
+				// }
 			}
 
 			// movement instructions for GASES
 			else if (grid[currentPosition].phase == PHASE_GAS)
 			{
-				for (unsigned int j = 0; j < 3; ++j)
+
+				unsigned int neighbour = neighbourOffsets[ extremelyFastNumberFromZeroTo(7) ] + currentPosition;
+
+				// alternate between wind movement and random scatter movement, to look more natural.
+				if (extremelyFastNumberFromZeroTo(1) == 0)
 				{
+					neighbour = neighbourOffsets[wind] + currentPosition;
+				}
 
-					unsigned int index = extremelyFastNumberFromZeroTo(7);
-					unsigned int neighbour ;
-					// alternate between wind movement and random scatter movement, to look more natural.
-					if (extremelyFastNumberFromZeroTo(1) == 0)
-					{
-						neighbour = neighbourOffsets[wind] + currentPosition;
-						// the wind pushes in a certain direction.
-						// however wind is expressed as a vec_i2, and we need it as a single number.
-						// this is basically a very fast lookup table to tell you the answer.
-						// 	if (wind.y > 0)
-						// 	{
-						// 		index = 5; // directly up
-
-						// 		if (wind.x > 0)
-						// 		{
-						// 			index = 4; // up and to the right
-						// 		}
-						// 		else if (wind.x < 0)
-						// 		{
-						// 			index = 7; // and so on, allowing the index to remain at its original random value if the wind in that axis was 0.
-						// 		}
-						// 	}
-						// 	else if (wind.y < 0)
-						// 	{
-						// 		index = 1; // directly down
-						// 		if (wind.x > 0)
-						// 		{
-						// 			index = 3;
-						// 		}
-						// 		else if (wind.x < 0)
-						// 		{
-						// 			index = 1;
-						// 		}
-						// 	}
-						// 	else
-						// 	{
-						// 		if (wind.x > 0)
-						// 		{
-						// 			index = 4;
-						// 		}
-						// 		else if (wind.x < 0)
-						// 		{
-						// 			index = 0;
-						// 		}
-						// 	}
-					}
-					else {
-						neighbour = neighbourOffsets[ index] + currentPosition;
-
-					}
-
-					if (grid[neighbour].phase  == PHASE_VACUUM || (grid[neighbour].phase == PHASE_GAS) )
-					{
-						swapParticle(currentPosition, neighbour);
-						break;
-					}
+				if (grid[neighbour].phase  == PHASE_VACUUM || (grid[neighbour].phase == PHASE_GAS) )
+				{
+					swapParticle(currentPosition, neighbour);
+					// break;
 				}
 			}
 		}
@@ -4306,7 +4284,7 @@ void manualErode ()
 
 			if (grid[neighbour].phase == PHASE_VACUUM )
 			{
-				if (grid[i].phase == PHASE_SOLID) 
+				if (grid[i].phase == PHASE_SOLID)
 				{
 					grid[i].phase = PHASE_POWDER;
 					continue;
