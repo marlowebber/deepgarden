@@ -1712,51 +1712,36 @@ void materialPostProcess(unsigned int i)
 
 
 
-void thread_temperature2 ()
+void thread_temperature2_sector ( unsigned int from, unsigned int to )
 {
-#ifdef THREAD_TIMING_READOUT
-	auto start = std::chrono::steady_clock::now();
-#endif
 
-	for (unsigned int i = (sizeX + 1); i < (totalSize - (sizeX + 1)); ++i)
+
+
+	// printf("from %u to %u \n", from, to);
+
+	for (unsigned int i = from; i < to; ++i)
 	{
-
-
 		unsigned int currentPosition = i;
-
-
-
 
 		if (grid[currentPosition].phase != PHASE_VACUUM)
 		{
-
-
-
-
 			// exchange heat with a neighbour.
 			unsigned int thermoNeighbour = neighbourOffsets[extremelyFastNumberFromZeroTo(7)] + currentPosition ;
 			if (grid[thermoNeighbour].phase != PHASE_VACUUM)
 			{
-
 				int avgTemp = (((grid[currentPosition].temperature ) - (grid[thermoNeighbour].temperature)) ) ;
 				avgTemp = avgTemp / materials[ grid[currentPosition].material ].insulativity;
-
 				grid[thermoNeighbour].temperature += avgTemp;
 				grid[currentPosition].temperature -= avgTemp;
 			}
 			else
 			{
 				// if neighbour is a vacuum, radiate heat away into space. more so if it is hotter.
-
 				int crntmp = grid[currentPosition].temperature;
 				int dftmp = defaultTemperature;
-
 				int radiantHeat = (crntmp - dftmp) / 50;
 				grid[currentPosition].temperature -= radiantHeat;
 			}
-
-
-
 
 			if (extremelyFastNumberFromZeroTo(4) == 0) // only check phase sometimes bcoz its lots of work.
 			{
@@ -1802,26 +1787,20 @@ void thread_temperature2 ()
 							{
 								nSolidNeighbours++;
 								currentSolidStreak++;
-
 								if (currentSolidStreak > longestSolidStreak)
 								{
 									longestSolidStreak = currentSolidStreak;
 									longestSolidStreakOffset = currentStreakOffset;
 								}
-
 								nAttachableNeighbours++;
 							}
 							else
 							{
-
 								if (grid[neighbourOffsets[j] + currentPosition].phase == PHASE_LIQUID ||
 								        grid[neighbourOffsets[j] + currentPosition].phase == PHASE_POWDER )
 								{
-
 									nAttachableNeighbours++;
 								}
-
-
 								currentStreakOffset = j;
 							}
 						}
@@ -1840,6 +1819,9 @@ void thread_temperature2 ()
 								if (nAttachableNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
 							}
 						}
+
+						// These conditions produce boring results, so i do not care to include them, as even checking for them slows down the program.
+						// But their information should be known in this code.
 						// else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_LESSTHAN)
 						// {
 						// 	if (nSolidNeighbours < materials[grid[currentPosition].material].crystal_n)
@@ -1847,7 +1829,6 @@ void thread_temperature2 ()
 						// 		if (nAttachableNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
 						// 	}
 						// }
-
 						// else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_EVENNUMBER)
 						// {
 						// 	if (nSolidNeighbours % 2 == 0)
@@ -1889,53 +1870,31 @@ void thread_temperature2 ()
 
 						else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_LEFTN)
 						{
-							// if (longestSolidStreak == materials[grid[currentPosition].material].crystal_n )
-							// {
-							// 	if (nSolidNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
-							// }
-
-
 							if (	grid[currentPosition + (materials[grid[currentPosition].material].crystal_n) ].phase == PHASE_SOLID)
-
 							{
-
 								if (nAttachableNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
 							}
-
 						}
 
 						else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_NOTLEFTRIGHTN)
 						{
-							// if (longestSolidStreak == materials[grid[currentPosition].material].crystal_n )
-							// {
-							// 	if (nSolidNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
-							// }
-
-
 							if (
 							    grid[currentPosition + (materials[grid[currentPosition].material].crystal_n) ].phase != PHASE_SOLID &&
 							    grid[currentPosition - (materials[grid[currentPosition].material].crystal_n) ].phase != PHASE_SOLID
 							)
 							{
-
 								if (nAttachableNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
 							}
-							else {
-
-								// if (nAttachableNeighbours > 0) {
+							else
+							{
 								grid[currentPosition].phase = PHASE_LIQUID;
-								// }
 							}
-
 						}
 
 						else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_NOTLRNEIGHBOURS)
 						{
-
-							if (currentPosition > sizeX + 40 && currentPosition < (totalSize - sizeX - 40)) {
-
-
-
+							if (currentPosition > sizeX + 40 && currentPosition < (totalSize - sizeX - 40))
+							{
 								if (
 								    grid[currentPosition           + (materials[ grid[currentPosition].material].crystal_n * 2 )].phase != PHASE_SOLID &&
 								    grid[currentPosition           - (materials[ grid[currentPosition].material].crystal_n * 2 )].phase != PHASE_SOLID &&
@@ -1945,29 +1904,20 @@ void thread_temperature2 ()
 								    grid[currentPosition - (sizeX) - (materials[ grid[currentPosition].material].crystal_n * 2 )].phase != PHASE_SOLID
 								)
 								{
-
 									if (nAttachableNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
 								}
-								else {
-
-									// if (nAttachableNeighbours > 0) {
+								else
+								{
 									grid[currentPosition].phase = PHASE_LIQUID;
-									// }
 								}
-
 							}
 						}
-
-
 
 						// small chance to solidify at random and form the nucleus of a new crystal.
 						if (extremelyFastNumberFromZeroTo(10000) == 0)
 						{
 							grid[currentPosition].phase = PHASE_SOLID;
 						}
-
-						// prevent crystallization if you are floating around in the air
-						// if (grid[currentPosition].phase == PHASE_SOLID && nSolidNeighbours == 0) {grid[currentPosition].phase == PHASE_POWDER;}
 					}
 				}
 				else if (grid[currentPosition].phase == PHASE_GAS)
@@ -1979,31 +1929,9 @@ void thread_temperature2 ()
 				}
 			}
 
-
-
-
-
-
 			// movement instructions for POWDERS
 			if (grid[currentPosition].phase  == PHASE_POWDER)
 			{
-
-
-				/*	int neighbourOffsets[] =
-					{
-
-						- 1,
-						- sizeX - 1,
-						- sizeX ,
-						- sizeX  + 1,
-						+ 1,
-						+sizeX + 1,
-						+sizeX,
-						+sizeX - 1
-					};*/
-
-
-
 				unsigned int neighbour = neighbourOffsets[ (  1 +  extremelyFastNumberFromZeroTo(2) )  ] + currentPosition;
 
 				if ((    grid[neighbour].phase == PHASE_VACUUM) ||
@@ -2012,7 +1940,6 @@ void thread_temperature2 ()
 				{
 					swapParticle(currentPosition, neighbour);
 					currentPosition = neighbour;
-					// continue;
 				}
 
 			}
@@ -2020,14 +1947,7 @@ void thread_temperature2 ()
 			// movement instructions for LIQUIDS
 			else if (grid[currentPosition].phase == PHASE_LIQUID)
 			{
-				// unsigned int offset = extremelyFastNumberFromZeroTo(4);
-				// for (unsigned int k = 0; k < 5; ++k)
-				// {
-				// unsigned int neighbour = neighbourOffsets[ ((k + offset) % 5) ] + currentPosition;
-
-
 				unsigned int neighbour = neighbourOffsets[ (  0 +  extremelyFastNumberFromZeroTo(4) )  ] + currentPosition;
-
 
 				if ((    grid[neighbour].phase == PHASE_VACUUM) ||
 				        (grid[neighbour].phase == PHASE_GAS) ||
@@ -2035,18 +1955,12 @@ void thread_temperature2 ()
 				{
 					swapParticle(currentPosition, neighbour);
 					currentPosition = neighbour;
-					// break;
 				}
-
-
-
-				// }
 			}
 
 			// movement instructions for GASES
 			else if (grid[currentPosition].phase == PHASE_GAS)
 			{
-
 				unsigned int neighbour = neighbourOffsets[ extremelyFastNumberFromZeroTo(7) ] + currentPosition;
 
 				// alternate between wind movement and random scatter movement, to look more natural.
@@ -2058,18 +1972,87 @@ void thread_temperature2 ()
 				if (grid[neighbour].phase  == PHASE_VACUUM || (grid[neighbour].phase == PHASE_GAS) )
 				{
 					swapParticle(currentPosition, neighbour);
-					// break;
 				}
 			}
 		}
 	}
+
+
+}
+
+
+
+
+
+void thread_temperature2 ()
+{
+#ifdef THREAD_TIMING_READOUT
+	auto start = std::chrono::steady_clock::now();
+#endif
+	unsigned int n_threads = 1;
+
+
+	std::list<boost::thread> threads;
+
+	for (unsigned int i = 0; i <= n_threads; ++i)
+	{
+
+
+
+
+
+
+
+		float ffrom = (i  -0.5  ) ;///(n_threads+1) )    * totalSize );
+		float fto   = (i + 0.5) ;///(n_threads+1) )    * totalSize );
+
+		ffrom = ffrom / (n_threads );
+		fto = fto / (n_threads );
+
+		// printf("natural from %f to %f \n", ffrom, fto);
+
+
+		if (ffrom < 0) {ffrom = 0;}
+		if (fto < 0) {fto = 0;}
+
+
+		ffrom *= totalSize;
+		fto *= totalSize;
+
+		unsigned int from = ffrom;
+		unsigned int to = fto;
+
+
+
+
+		if (from < (sizeX + 1)) {from = (sizeX + 1);}
+
+		if (to > totalSize - (sizeX + 1)) {to = totalSize - (sizeX + 1);}
+
+		boost::thread t99{  thread_temperature2_sector, from  , to  } ;
+
+		threads.push_back( std::move(t99) );
+
+
+
+	}
+
+	for (auto& t : threads) 
+{
+  t.join();
+}
 
 #ifdef THREAD_TIMING_READOUT
 	auto end = std::chrono::steady_clock::now();
 	auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 	std::cout << "thread_temperature " << elapsed.count() << " microseconds." << std::endl;
 #endif
+
 }
+
+
+
+
 
 // return a random integer in the range. It is inclusive of both end values.
 unsigned int randomIntegerInRange (unsigned int from, unsigned int to)
@@ -2226,22 +2209,28 @@ void thread_physics ()
 
 
 
-			// if (extremelyFastNumberFromZeroTo(lampBrightness) == 0)
-			// {
+			if (extremelyFastNumberFromZeroTo(4) == 0)
+			{
 			// setPhoton(   i);
 			photate(i);
 
-			// }
+			}
 		}
 	}
 
 
-	for (int i = 0; i < totalSize; ++i)
+	unsigned int processChunkSize = (totalSize/10);
+	for (unsigned int i = 0; i < processChunkSize; ++i)
 	{
-		if (extremelyFastNumberFromZeroTo(10) == 0)
-		{
-			materialPostProcess(i);
-		}
+		// if (extremelyFastNumberFromZeroTo(10) == 0)
+		// {
+
+			unsigned int x = extremelyFastNumberFromZeroTo(sizeX);
+			unsigned int y = extremelyFastNumberFromZeroTo(sizeY);
+
+
+			materialPostProcess(  (y*sizeX) + x  );
+		// }
 	}
 
 // 	unsigned int quad1 = totalSize / 4;
