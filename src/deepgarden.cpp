@@ -11,7 +11,7 @@
 // #define THREAD_TIMING_READOUT 1
 // #define PLANT_DRAWING_READOUT 1
 // #define ANIMAL_DRAWING_READOUT 1
-// #define DRAW_ANIMALS 1
+#define DRAW_ANIMALS 1
 
 #define RENDERING_THREADS 4
 
@@ -190,9 +190,12 @@ Material::Material()
 	this->insulativity = 2;
 }
 
-Material bumdirt = Material();
 
 std::vector<Material> materials;
+
+const unsigned int MATERIAL_VACUUM = 0;
+
+
 
 
 struct Particle
@@ -331,7 +334,6 @@ SeedParticle * seedGrid = new SeedParticle[totalSize];
 std::list<ProposedLifeParticle> v;
 std::list<ProposedLifeParticle> v_extrudedParticles;
 
-
 struct AnimalSpritePixel
 {
 	int localPosition = 0;
@@ -382,7 +384,7 @@ Animal::Animal()
 	this->direction = 4;
 	this->energy = 0.0f;
 	this->reach = 5;
-	this->movementChance = 16;
+	this->movementChance = 4;
 	this->segments.push_back(AnimalSegment());
 	this->movementFlags = MOVEMENT_ONPOWDER;
 }
@@ -862,7 +864,7 @@ void photate( unsigned int i )
 
 				unsigned int a_offset = (b_offset) + 3;
 
-				seedColorGrid[a_offset] = 1/(seedGrid[currentPosition].energy ) ; 
+				seedColorGrid[a_offset] = 1 / (seedGrid[currentPosition].energy ) ;
 
 				if (seedColorGrid[a_offset] > 0.5f) {seedColorGrid[a_offset] = 0.5f;}
 
@@ -1119,6 +1121,32 @@ void copyParticle(unsigned int from, unsigned int to)
 	memcpy( &colorGrid[ to_offset ],  &colorGrid[ from_offset ], 16 );
 }
 
+
+
+
+void resetMaterials()
+{
+	materials.clear();
+	Material vacuum = Material();
+	vacuum.color = color_clear;
+	vacuum.melting = 0;
+	vacuum.boiling = 0;
+	vacuum.insulativity = 1000;
+	materials.push_back(vacuum);
+
+	Material bumdirt = Material();
+
+	// a change to the materials list is dramatic. The material of a grid square is used as an array index to look up a material which may not exist.
+	// this function fills the entire grid with vacuum. it is better than segfault.
+	for (int i = 0; i < totalSize; ++i)
+	{
+		setParticle(MATERIAL_VACUUM,  i);
+		grid[i].phase = PHASE_VACUUM;
+	}
+}
+
+
+
 void setLifeParticle( std::string genes, unsigned int identity, unsigned int i, Color color, unsigned int energySource)
 {
 	lifeGrid[i].identity = identity;
@@ -1358,9 +1386,10 @@ void createRandomWorld()
 
 	clearGrids();
 
-	materials.clear();
-	materials.push_back(bumdirt);
+	// materials.clear();
+	// materials.push_back(bumdirt);
 
+	resetMaterials();
 
 	sunlightColor = blackbodyLookup(sunlightTemp);
 
@@ -1503,6 +1532,9 @@ void initialize ()
 	clearGrids();
 
 
+
+	resetMaterials();
+
 	// createRandomWorld();
 
 
@@ -1612,27 +1644,33 @@ void materialPostProcess(unsigned int i)
 	unsigned int x = i % sizeX;
 	unsigned int y = i / sizeX;
 
-	float fx = x;
-	float fy = y;
+	// float fx = x;
+	// float fy = y;
 
 	// figure out the blackbody temperature.
 	// https://www.iforgeiron.com/uploads/monthly_2015_08/ForgingTemperatureColors.jpg.2948a8585818155020d14fe17038cf33.jpg
 	// it is drawn directly over the top of the
 
+	Color ppColor =  color_clear;
 
 
-	// Color ppColor =  materials[ grid[i].material ].color  ;//materialColor(grid[i].material);  //
 
 
 	// if (seedGrid[i].stage == STAGE_NULL && seedGrid[i].energy == 0x00)
 	// {
 	// 	ppColor = addColor(ppColor, tingeShadow);
 	// }
-	Color ppColor = color_clear;
+	// Color ppColor = color_clear;
 
 
 	if (grid[i].phase != PHASE_VACUUM)
 	{
+
+		if (grid[i].material  < materials.size())
+		{
+			ppColor =  materials[ grid[i].material ].color  ;//materialColor(grid[i].material);  //
+
+		}
 
 		if (grid[i].phase == PHASE_GAS)
 		{
@@ -1654,17 +1692,17 @@ void materialPostProcess(unsigned int i)
 
 	}
 
-	else
-	{
-		ppColor = color_clear;
-	}
+	// else
+	// {
+	// 	ppColor = color_clear;
+	// }
 
-	ppGrid[ (i * numberOfFieldsPerVertex) + 0 ] = ppColor.r;
-	ppGrid[ (i * numberOfFieldsPerVertex) + 1 ] = ppColor.g;
-	ppGrid[ (i * numberOfFieldsPerVertex) + 2 ] = ppColor.b;
-	ppGrid[ (i * numberOfFieldsPerVertex) + 3 ] = ppColor.a;
-	ppGrid[ (i * numberOfFieldsPerVertex) + 4 ] = fx;
-	ppGrid[ (i * numberOfFieldsPerVertex) + 5 ] = fy;
+	colorGrid[ (i * numberOfFieldsPerVertex) + 0 ] = ppColor.r;
+	colorGrid[ (i * numberOfFieldsPerVertex) + 1 ] = ppColor.g;
+	colorGrid[ (i * numberOfFieldsPerVertex) + 2 ] = ppColor.b;
+	colorGrid[ (i * numberOfFieldsPerVertex) + 3 ] = ppColor.a;
+	// colorGrid[ (i * numberOfFieldsPerVertex) + 4 ] = fx;
+	// colorGrid[ (i * numberOfFieldsPerVertex) + 5 ] = fy;
 }
 
 
@@ -2206,8 +2244,8 @@ void thread_physics ()
 		// if (extremelyFastNumberFromZeroTo(10) == 0)
 		// {
 
-		unsigned int x = extremelyFastNumberFromZeroTo(sizeX);
-		unsigned int y = extremelyFastNumberFromZeroTo(sizeY);
+		unsigned int x = extremelyFastNumberFromZeroTo(sizeX - 1);
+		unsigned int y = extremelyFastNumberFromZeroTo(sizeY - 1);
 
 
 		materialPostProcess(  (y * sizeX) + x  );
@@ -2384,11 +2422,18 @@ void thread_graphics()
 		unsigned int nVertsToRenderThisTurn = 1 * totalSize;
 		long unsigned int totalNumberOfFields = nVertsToRenderThisTurn * numberOfFieldsPerVertex;
 
+
+
+
+		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, colorGrid, GL_DYNAMIC_DRAW );
+		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
+
 		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, lifeColorGrid, GL_DYNAMIC_DRAW );
 		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
 
 
-		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, colorGrid, GL_DYNAMIC_DRAW );
+
+		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, lifeColorGridB, GL_DYNAMIC_DRAW );
 		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
 
 		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, seedColorGrid, GL_DYNAMIC_DRAW );
@@ -2396,11 +2441,17 @@ void thread_graphics()
 
 
 
-		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, ppGrid, GL_DYNAMIC_DRAW );
-		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
+		// glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, ppGrid, GL_DYNAMIC_DRAW );
+		// glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
 
 
 		postDraw();
+
+
+		for (unsigned int i = 0; i < totalSize; ++i)
+		{
+			lifeColorGridB[ (i * numberOfFieldsPerVertex ) + 3] = 0.0f;
+		}
 
 	}
 
@@ -3168,88 +3219,88 @@ void thread_life()
 			// {
 
 
-				unsigned int neighbour = neighbourOffsets[ extremelyFastNumberFromZeroTo(N_NEIGHBOURS) ] + i;
+			unsigned int neighbour = neighbourOffsets[ extremelyFastNumberFromZeroTo(N_NEIGHBOURS) ] + i;
 
-				// hot plants light on fire
-				// if (true)
-				// {
-				// 	if (grid[neighbour].material != PHASE_VACUUM)
-				// 	{
-				// 		if (grid[neighbour].temperature > 600 )
-				// 		{
-				// 			// printf("a plant lit on fire\n");
-				// 			clearLifeParticle(i);
-				// 			setParticle(MATERIAL_FIRE, i);
-				// 			grid[i].phase = PHASE_GAS;
-				// 			grid[i].temperature = 1000;
-				// 			break;
-				// 		}
-				// 	}
-				// }
-
-
+			// hot plants light on fire
+			// if (true)
+			// {
+			// 	if (grid[neighbour].material != PHASE_VACUUM)
+			// 	{
+			// 		if (grid[neighbour].temperature > 600 )
+			// 		{
+			// 			// printf("a plant lit on fire\n");
+			// 			clearLifeParticle(i);
+			// 			setParticle(MATERIAL_FIRE, i);
+			// 			grid[i].phase = PHASE_GAS;
+			// 			grid[i].temperature = 1000;
+			// 			break;
+			// 		}
+			// 	}
+			// }
 
 
 
-				// if there is a neighbouring cell from the same plant, equalize energy with it.
-				if (lifeGrid[neighbour].identity == lifeGrid[i].identity)
+
+
+			// if there is a neighbouring cell from the same plant, equalize energy with it.
+			if (lifeGrid[neighbour].identity == lifeGrid[i].identity)
+			{
+				float equalizedEnergy = ( lifeGrid[neighbour].energy + lifeGrid[i].energy ) / 2;
+				lifeGrid[neighbour].energy = equalizedEnergy;
+				lifeGrid[i].energy = equalizedEnergy;
+			}
+
+			// some cells can extract energy if they are between dissimilar materials.
+			if ( lifeGrid[i].energySource == ENERGYSOURCE_MINERAL )
+			{
+				if (neighbourMaterialA != MATERIAL_VACUUM)
 				{
-					float equalizedEnergy = ( lifeGrid[neighbour].energy + lifeGrid[i].energy ) / 2;
-					lifeGrid[neighbour].energy = equalizedEnergy;
-					lifeGrid[i].energy = equalizedEnergy;
-				}
-
-				// some cells can extract energy if they are between dissimilar materials.
-				if ( lifeGrid[i].energySource == ENERGYSOURCE_MINERAL )
-				{
-					if (neighbourMaterialA != MATERIAL_VACUUM)
+					if (grid[i].material != neighbourMaterialA)
 					{
-						if (grid[i].material != neighbourMaterialA)
+						// you have found a pair of dissimilar neighbours
+						if (extremelyFastNumberFromZeroTo(64) == 0x00)
 						{
-							// you have found a pair of dissimilar neighbours
-							if (extremelyFastNumberFromZeroTo(64) == 0x00)
-							{
-								lifeGrid[i].energy += 1.0f;
-							}
-							neighbourMaterialA = MATERIAL_VACUUM; // reset for another go around.
+							lifeGrid[i].energy += 1.0f;
 						}
-					}
-					else if (grid[i].material != MATERIAL_VACUUM)
-					{
-						neighbourMaterialA = grid[i].material;
+						neighbourMaterialA = MATERIAL_VACUUM; // reset for another go around.
 					}
 				}
-
-				// some cells can steal energy from neighbouring plants.
-				else if (lifeGrid[i].energySource == ENERGYSOURCE_PLANT )
+				else if (grid[i].material != MATERIAL_VACUUM)
 				{
-					if (lifeGrid[neighbour].identity != lifeGrid[i].identity )
-					{
-						if (lifeGrid[neighbour].energy > 0.0f)
-						{
-							if (extremelyFastNumberFromZeroTo(64) == 0x00)
-							{
-								lifeGrid[i].energy = lifeGrid[neighbour].energy;
-								lifeGrid[neighbour].energy = 0.0f;
-							}
-						}
-					}
+					neighbourMaterialA = grid[i].material;
 				}
+			}
 
-				// some cells can consume piles of old seeds on the ground..
-				else if (lifeGrid[i].energySource == ENERGYSOURCE_SEED )
+			// some cells can steal energy from neighbouring plants.
+			else if (lifeGrid[i].energySource == ENERGYSOURCE_PLANT )
+			{
+				if (lifeGrid[neighbour].identity != lifeGrid[i].identity )
 				{
-					if (seedGrid[neighbour].stage < 0x00)
+					if (lifeGrid[neighbour].energy > 0.0f)
 					{
-						if (seedGrid[neighbour].parentIdentity != lifeGrid[i].identity )
+						if (extremelyFastNumberFromZeroTo(64) == 0x00)
 						{
-							if (extremelyFastNumberFromZeroTo(64) == 0x00)
-							{
-								lifeGrid[i].energy += 1.0f;
-							}
+							lifeGrid[i].energy = lifeGrid[neighbour].energy;
+							lifeGrid[neighbour].energy = 0.0f;
 						}
 					}
 				}
+			}
+
+			// some cells can consume piles of old seeds on the ground..
+			else if (lifeGrid[i].energySource == ENERGYSOURCE_SEED )
+			{
+				if (seedGrid[neighbour].stage < 0x00)
+				{
+					if (seedGrid[neighbour].parentIdentity != lifeGrid[i].identity )
+					{
+						if (extremelyFastNumberFromZeroTo(64) == 0x00)
+						{
+							lifeGrid[i].energy += 1.0f;
+						}
+					}
+				}
+			}
 			// }
 		}
 	}
@@ -3338,7 +3389,7 @@ unsigned int walkAnAnimal(unsigned int i)
 					// switch (a->energySource)
 					// {
 
-					if (  (a->energyFlags & ENERGYSOURCE_LIGHT ) == a->movementFlags   )
+					if (  (a->energyFlags & ENERGYSOURCE_LIGHT ) == a->energyFlags   )
 					{
 						if (seedGrid[neighbour].stage == STAGE_PHOTON )
 						{
@@ -3351,7 +3402,7 @@ unsigned int walkAnAnimal(unsigned int i)
 						break;
 					}
 
-					if (  (a->energyFlags & ENERGYSOURCE_SEED ) == a->movementFlags   )
+					if (  (a->energyFlags & ENERGYSOURCE_SEED ) == a->energyFlags   )
 					{
 						if (seedGrid[neighbour].stage == STAGE_BUD || seedGrid[neighbour].stage == STAGE_FRUIT ||  seedGrid[neighbour].stage == STAGE_SEED )
 						{
@@ -3365,7 +3416,7 @@ unsigned int walkAnAnimal(unsigned int i)
 						break;
 					}
 
-					if (  (a->energyFlags & ENERGYSOURCE_SEED ) == a->movementFlags   )
+					if (  (a->energyFlags & ENERGYSOURCE_SEED ) == a->energyFlags   )
 					{
 
 						if (lifeGrid[neighbour].identity > 0x00)
@@ -3385,7 +3436,7 @@ unsigned int walkAnAnimal(unsigned int i)
 						break;
 					}
 
-					if (  (a->energyFlags & ENERGYSOURCE_MINERAL ) == a->movementFlags   )
+					if (  (a->energyFlags & ENERGYSOURCE_MINERAL ) == a->energyFlags   )
 					{
 						if (grid[neighbour].phase != PHASE_VACUUM)
 						{
@@ -3399,7 +3450,7 @@ unsigned int walkAnAnimal(unsigned int i)
 						break;
 					}
 
-					if (  (a->energyFlags & ENERGYSOURCE_ANIMAL ) == a->movementFlags   )
+					if (  (a->energyFlags & ENERGYSOURCE_ANIMAL ) == a->energyFlags   )
 					{
 
 						if (seedGrid[neighbour].stage == STAGE_ANIMAL )
@@ -3675,121 +3726,121 @@ void thread_seeds()
 
 
 		// SEEDS. Some of the particles on the seed grid are seeds that fall downwards.
-		if (seedGrid[i].parentIdentity > 0 )
+		// if (seedGrid[i].parentIdentity > 0 )
+		// {
+		if (seedGrid[i].stage == STAGE_FRUIT)
 		{
-			if (seedGrid[i].stage == STAGE_FRUIT)
+			if (extremelyFastNumberFromZeroTo(1) == 0) 		// get blown by the wind only some of the time
 			{
-				if (extremelyFastNumberFromZeroTo(1) == 0) 		// get blown by the wind only some of the time
-				{
-					// while (true) 								// this while loop is just here so you can 'break' out of it to end this sequence quickly.
-					// {
-					unsigned int neighbour = neighbourOffsets[wind] + i;
-					// if (wind.x > 0)
-					// {
-					// 	neighbour = i + 1;
-					// 	if ((grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS  ) && seedGrid[neighbour].stage == 0x00  )
-					// 	{
-					// 		swapSeedParticle( i, neighbour );
-					// 		continue;
-					// 	}
-					// }
-					// else if (wind.x < 0)
-					// {
-					// 	neighbour = i - 1;
-					if ((grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS  ) && seedGrid[neighbour].stage == 0x00  )
-					{
-						swapSeedParticle( i, neighbour );
-						continue;
-					}
-					// }
-					// continue;
-					// }
-
-					// while (true) 								// this while loop is just here so you can 'break' out of it to end this sequence quickly.
-					// {
-					// 	unsigned int neighbour;
-					// 	if (wind.y > 0)
-					// 	{
-					// 		neighbour = i + sizeX;
-					// 		if ((grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS  ) && seedGrid[neighbour].stage == 0x00  )
-					// 		{
-					// 			swapSeedParticle( i, neighbour );
-					// 			continue;
-					// 		}
-					// 	}
-					// 	else if (wind.y < 0)
-					// 	{
-					// 		neighbour = i - sizeX;
-					// 		if ((grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS  ) && seedGrid[neighbour].stage == 0x00  )
-					// 		{
-					// 			swapSeedParticle( i, neighbour );
-					// 			continue;
-					// 		}					//
-					// 	}
-					// 	continue;
-					// }
-				}
-
-				unsigned int j = extremelyFastNumberFromZeroTo(4);
-				unsigned int neighbour;
-
-				if (		j == 0)		{ neighbour = i - sizeX - 1 ;	}
-				else if (	j == 1)		{ neighbour = i - sizeX	 	;	}
-				else if (	j == 2)		{ neighbour = i - sizeX + 1 ;	}
-				else if (	j == 3)		{ neighbour = i + 1 		;	}
-				else if (	j == 4)		{ neighbour = i - 1  		;	}
-
-				if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS  )
+				// while (true) 								// this while loop is just here so you can 'break' out of it to end this sequence quickly.
+				// {
+				unsigned int neighbour = neighbourOffsets[wind] + i;
+				// if (wind.x > 0)
+				// {
+				// 	neighbour = i + 1;
+				// 	if ((grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS  ) && seedGrid[neighbour].stage == 0x00  )
+				// 	{
+				// 		swapSeedParticle( i, neighbour );
+				// 		continue;
+				// 	}
+				// }
+				// else if (wind.x < 0)
+				// {
+				// 	neighbour = i - 1;
+				if ((grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS  ) && seedGrid[neighbour].stage == 0x00  )
 				{
 					swapSeedParticle( i, neighbour );
 					continue;
 				}
-				else if (grid[neighbour].material == seedGrid[i].germinationMaterial)
-				{
+				// }
+				// continue;
+				// }
 
-#ifdef PLANT_DRAWING_READOUT
-					printf("germinated\n");
-#endif
-					seedGrid[i].stage = STAGE_SEED;
-				}
-				continue;
+				// while (true) 								// this while loop is just here so you can 'break' out of it to end this sequence quickly.
+				// {
+				// 	unsigned int neighbour;
+				// 	if (wind.y > 0)
+				// 	{
+				// 		neighbour = i + sizeX;
+				// 		if ((grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS  ) && seedGrid[neighbour].stage == 0x00  )
+				// 		{
+				// 			swapSeedParticle( i, neighbour );
+				// 			continue;
+				// 		}
+				// 	}
+				// 	else if (wind.y < 0)
+				// 	{
+				// 		neighbour = i - sizeX;
+				// 		if ((grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS  ) && seedGrid[neighbour].stage == 0x00  )
+				// 		{
+				// 			swapSeedParticle( i, neighbour );
+				// 			continue;
+				// 		}					//
+				// 	}
+				// 	continue;
+				// }
 			}
 
-			if (seedGrid[i].stage == STAGE_BUD)
+			unsigned int j = extremelyFastNumberFromZeroTo(4);
+			unsigned int neighbour;
+
+			if (		j == 0)		{ neighbour = i - sizeX - 1 ;	}
+			else if (	j == 1)		{ neighbour = i - sizeX	 	;	}
+			else if (	j == 2)		{ neighbour = i - sizeX + 1 ;	}
+			else if (	j == 3)		{ neighbour = i + 1 		;	}
+			else if (	j == 4)		{ neighbour = i - 1  		;	}
+
+			if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS  )
 			{
-				unsigned int j = extremelyFastNumberFromZeroTo(7);
-				unsigned int neighbour;
-
-				if (		j == 0)		{ neighbour = i - sizeX - 1 ;	}
-				else if (	j == 1)		{ neighbour = i - sizeX	 	;	}
-				else if (	j == 2)		{ neighbour = i - sizeX + 1 ;	}
-				else if (	j == 3)		{ neighbour = i + 1	    	;	}
-				else if (	j == 4)		{ neighbour = i - 1 		;	}
-				else if (	j == 5)		{ neighbour = i + sizeX - 1 ;	}
-				else if (	j == 6)		{ neighbour = i + sizeX		;	}
-				else if (	j == 7)		{ neighbour = i + sizeX + 1 ;	}
-
-				if (lifeGrid[neighbour].identity == seedGrid[i].parentIdentity)
-				{
-					if (lifeGrid[neighbour].energy > 0)
-					{
-						seedGrid[i].energy += (lifeGrid[neighbour].energy );
-						lifeGrid[neighbour].energy = (lifeGrid[neighbour].energy );
-					}
-				}
-
-				if (seedGrid[i].energy >= 0)
-				{
-					seedGrid[i].stage = STAGE_FRUIT;
+				swapSeedParticle( i, neighbour );
+				continue;
+			}
+			else if (grid[neighbour].material == seedGrid[i].germinationMaterial)
+			{
 
 #ifdef PLANT_DRAWING_READOUT
-					printf("fruited\n");
+				printf("germinated\n");
 #endif
-				}
-				continue;
+				seedGrid[i].stage = STAGE_SEED;
 			}
 			continue;
 		}
+
+		else if (seedGrid[i].stage == STAGE_BUD)
+		{
+			unsigned int j = extremelyFastNumberFromZeroTo(7);
+			unsigned int neighbour;
+
+			if (		j == 0)		{ neighbour = i - sizeX - 1 ;	}
+			else if (	j == 1)		{ neighbour = i - sizeX	 	;	}
+			else if (	j == 2)		{ neighbour = i - sizeX + 1 ;	}
+			else if (	j == 3)		{ neighbour = i + 1	    	;	}
+			else if (	j == 4)		{ neighbour = i - 1 		;	}
+			else if (	j == 5)		{ neighbour = i + sizeX - 1 ;	}
+			else if (	j == 6)		{ neighbour = i + sizeX		;	}
+			else if (	j == 7)		{ neighbour = i + sizeX + 1 ;	}
+
+			if (lifeGrid[neighbour].identity == seedGrid[i].parentIdentity)
+			{
+				if (lifeGrid[neighbour].energy > 0)
+				{
+					seedGrid[i].energy += (lifeGrid[neighbour].energy );
+					lifeGrid[neighbour].energy = (lifeGrid[neighbour].energy );
+				}
+			}
+
+			if (seedGrid[i].energy >= 0)
+			{
+				seedGrid[i].stage = STAGE_FRUIT;
+
+#ifdef PLANT_DRAWING_READOUT
+				printf("fruited\n");
+#endif
+			}
+			continue;
+		}
+		// continue;
+		// }
 
 
 
@@ -4036,6 +4087,37 @@ void insertRandomSeed()
 	}
 }
 
+
+
+void insertRandomAnimal ()
+{
+
+
+	unsigned int x = 0;
+	unsigned int y = 0;
+
+	unsigned int targetX = extremelyFastNumberFromZeroTo(sizeX);
+	unsigned int targetY = extremelyFastNumberFromZeroTo(sizeY / 2) + (sizeY / 2);
+
+	for (unsigned int i = (sizeX + 1); i < (totalSize - (sizeX + 1)); ++i)
+	{
+		x = i % sizeX;
+		if (!x) { y = i / sizeX; }
+
+		if (x == targetX && y == targetY)
+		{
+
+			setAnimal( i );
+
+
+		}
+
+	}
+
+
+}
+
+
 void increaseLampBrightness ()
 {
 	// printf("increaseLampBrightness\n");
@@ -4199,30 +4281,12 @@ void load_materials(unsigned int m)
 	// load the materials
 	if (true)
 	{
-		// std::ifstream in500(std::string("save/materials").c_str());
-		// std::string line = std::string("");
-		// unsigned int i = 0;
-		// for (std::string line; std::getline(in500, line, '\n'); )
-		// {
-		// 	// if (i < totalSize)
-		// 	// {
-		// 	// 	seedGrid[i].genes.assign(line);
-		// 	// }
 
-		// 	char * pchointer = (char *)line.c_str();
-		// 	Material * chubuna = (Material *)pchointer;
-		// 	Material newMaterial = *chubuna;
+		// materials.clear();
 
-		// 	materials.push_back(  newMaterial  );
-		// 	in500.clear();
-		// 	i++;
-		// }
-		// printf("- loaded materials\n");
+		// materials.push_back(bumdirt);
 
-
-		materials.clear();
-
-		materials.push_back(bumdirt);
+		resetMaterials();
 
 		for (int i = 0; i < m; ++i)
 		{
@@ -4243,14 +4307,46 @@ void load_materials(unsigned int m)
 	in6.read( (char *)(&(grid[0])), sizeof(Particle) *  totalSize);
 	in6.close();
 
-	// for (int i = 0; i < totalSize; ++i)
-	// {
-	// 	Color temp_color =  materials[ grid[i].material ].color ;// materialColor(grid[i].material);
-	// 	unsigned int a_offset = (i * numberOfFieldsPerVertex);
-	// 	memcpy( &colorGrid[ a_offset ], &temp_color, 16 );
-	// }
 
 	printf("loaded material grid and material colors\n");
+
+}
+
+
+
+void load_animals(unsigned int m)
+{
+
+
+
+	if (true)
+	{
+
+		animals.clear();
+
+		// animals.push_back(bumdirt);
+
+		for (int i = 0; i < m; ++i)
+		{
+
+			// printf("- animal \n" );
+
+			animals.push_back(Animal());
+		}
+
+
+		std::ifstream in556(std::string("save/animals").c_str());
+		in556.read( (char *)(&(animals[0])), sizeof(Animal) *  m);
+		in556.close();
+	}
+
+
+	// std::ifstream in6(std::string("save/grid").c_str());
+	// in6.read( (char *)(&(grid[0])), sizeof(Particle) *  totalSize);
+	// in6.close();
+
+
+	printf("loaded animals\n");
 
 }
 
@@ -4434,6 +4530,7 @@ void load ()
 
 	load_seeds();
 
+	load_animals(newWorldInfo.nAnimals);
 
 	// // read lengths of both files
 	// if (true)

@@ -39,19 +39,20 @@ struct Color
 }__attribute__((packed));
 
 
-// Material is what flavor a square can be. It controls color, melting temperature, and phase change rules.
-#define MATERIAL_VACUUM		 1
-#define MATERIAL_PHOTON  	 2       
-#define MATERIAL_SEED 		 3
-#define MATERIAL_IRON 		 4
-#define MATERIAL_STONE 		 5
-#define MATERIAL_OXYGEN 	 6
-#define MATERIAL_GOLD 		 7
-#define MATERIAL_WATER 		 8
-#define MATERIAL_QUARTZ 	 9
-#define MATERIAL_AMPHIBOLE 	 10
-#define MATERIAL_OLIVINE 	 11
-#define MATERIAL_FIRE        12
+// Material is what flavor a square can be. It controls color, melting temperature, and phase change rules
+extern const unsigned int MATERIAL_VACUUM ;
+// #define MATERIAL_VACUUM		 1
+// #define MATERIAL_PHOTON  	 2       
+// #define MATERIAL_SEED 		 3
+// #define MATERIAL_IRON 		 4
+// #define MATERIAL_STONE 		 5
+// #define MATERIAL_OXYGEN 	 6
+// #define MATERIAL_GOLD 		 7
+// #define MATERIAL_WATER 		 8
+// #define MATERIAL_QUARTZ 	 9
+// #define MATERIAL_AMPHIBOLE 	 10
+// #define MATERIAL_OLIVINE 	 11
+// #define MATERIAL_FIRE        12
 
 // Phase is what set of physical rules are applied to each square each turn, and is used by the program to determine how to treat the square in many other situations.
 #define PHASE_NULL			 0
@@ -147,6 +148,8 @@ void setExtremeTempPoint (unsigned int x ,unsigned  int y);
 void sendLifeToBackground ();
 
 void insertRandomSeed();
+
+void insertRandomAnimal ();
 
 void toggleEnergyGridDisplay ();
 

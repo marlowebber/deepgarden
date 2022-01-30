@@ -162,6 +162,10 @@ void thread_interface()
 				clearGases();
 				break;
 
+			case SDLK_g:
+				insertRandomAnimal();
+				break;
+
 			case SDLK_ESCAPE:
 				quit();
 			}
