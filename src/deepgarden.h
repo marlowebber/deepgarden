@@ -26,6 +26,7 @@ using namespace glm;
 #define sizeY 256
 #define maxGenomeSize 64
 #define N_NEIGHBOURS 8                 // this is always 8 on a 2D square grid. 
+#define maxLampBrightness 100;
 
 struct Color
 {

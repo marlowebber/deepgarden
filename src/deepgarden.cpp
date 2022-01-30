@@ -109,8 +109,11 @@ unsigned int sunlightDirection = 2;
 unsigned int sunlightEnergy = 10;
 unsigned int sunlightHeatCoeff = 1;
 unsigned int sunlightTemp = 1000;
+unsigned int sunlightPenetrationDepth = 10; // light is slightly reduced traveling through solid things. this affects plants in game as well as being an artistic effect. This number is how far the light goes into solid things.
 // unsigned int sunlightColor = blackbodyLookup(sunlightTemp)
 Color sunlightColor = color_white_clear;
+
+unsigned int photosynthesisEfficiency = 10000;
 
 vec_u2 playerCursor = vec_u2(0, 0);
 
@@ -161,7 +164,7 @@ unsigned int animationGlobalFrame = FRAME_A;
 
 unsigned int nGerminatedSeeds = 0;
 // unsigned int germinatedSeedsLimit = 1000;
-unsigned int lampBrightness = 250;
+unsigned int lampBrightness = 10;
 
 struct Material
 {
@@ -807,7 +810,10 @@ void photate( unsigned int i )
 
 	unsigned int blocked = 0;
 
-	// printf("nuguet %u \n", currentPosition);
+	// unsigned int applicableBrightness = lampBrightness;
+
+
+	// printf("nuguet %u \n", applicableBrightness);
 	while (true)
 	{
 
@@ -838,7 +844,7 @@ void photate( unsigned int i )
 		if (!blocked)
 		{
 
-			seedGrid[currentPosition].energy = sunlightEnergy;
+			seedGrid[currentPosition].energy = lampBrightness;
 			memcpy( &seedColorGrid[ b_offset], 	&color_clear , 	sizeof(Color) );
 		}
 		else
@@ -846,19 +852,27 @@ void photate( unsigned int i )
 
 			if (seedGrid[currentPosition].stage == STAGE_NULL)
 			{
-				seedGrid[currentPosition].energy = 0x00;
+
+
+				seedGrid[currentPosition].energy = lampBrightness  / blocked;
+
 				memcpy( &seedColorGrid[ b_offset], 	&color_shadow , 	sizeof(Color) );
 
+
+
 				unsigned int a_offset = (b_offset) + 3;
-				seedColorGrid[a_offset] = blocked * 0.05f;
+
+				seedColorGrid[a_offset] = 1/(seedGrid[currentPosition].energy ) ; 
+
 				if (seedColorGrid[a_offset] > 0.5f) {seedColorGrid[a_offset] = 0.5f;}
+
+
 			}
 
 
 
 		}
 
-		// printf("pototatata %u \n", currentPosition);
 
 		if (x == 0 || y == 0 || x >= sizeX || y >= sizeY) {break;}
 
@@ -1419,7 +1433,7 @@ void createRandomWorld()
 
 
 
-				paintMaterialCircle(i + (50 * sizeX * (k+1)  ), radius , k , 10000000 );
+				paintMaterialCircle(i + (50 * sizeX * (k + 1)  ), radius , k , 10000000 );
 			}
 
 		}
@@ -2161,10 +2175,10 @@ void thread_physics ()
 	{
 		for (int i = (sizeY - 2) * sizeX; i < (sizeY - 1)*sizeX; ++i)
 		{
-			if (extremelyFastNumberFromZeroTo(lampBrightness) == 0)
-			{
-				setErodingRain(   i);
-			}
+			// if (extremelyFastNumberFromZeroTo(lampBrightness) == 0)
+			// {
+			setErodingRain(   i);
+			// }
 		}
 	}
 
@@ -2788,13 +2802,19 @@ int drawCharacter ( std::string genes , unsigned int identity)
 			unsigned int i = (it->position.y * sizeX) + it->position.x;
 			if ( i < totalSize)
 			{
-				setLifeParticle(  genes, identity, i, it->color, it->energySource);
-
-				if (seedGrid[i].stage != STAGE_ANIMAL)
+				if (grid[i].phase == PHASE_VACUUM || grid[i].phase == PHASE_GAS || grid[i].phase == PHASE_LIQUID)
 				{
-					clearSeedParticle(i);
+
+
+
+					setLifeParticle(  genes, identity, i, it->color, it->energySource);
+
+					if (seedGrid[i].stage != STAGE_ANIMAL)
+					{
+						clearSeedParticle(i);
+					}
+					energyDebtSoFar -= 1.0f;
 				}
-				energyDebtSoFar -= 1.0f;
 			}
 		}
 		extrusion_level++;
@@ -2839,12 +2859,15 @@ int drawCharacter ( std::string genes , unsigned int identity)
 			unsigned int i = (it->position.y * sizeX) + it->position.x;
 			if ( i < totalSize)
 			{
-				setLifeParticle(  genes, identity, i, it->color, it->energySource);
-				energyDebtSoFar -= 1.0f;
-
-				if (seedGrid[i].stage != STAGE_FRUIT && seedGrid[i].stage != STAGE_ANIMAL)
+				if (grid[i].phase == PHASE_VACUUM || grid[i].phase == PHASE_GAS || grid[i].phase == PHASE_LIQUID)
 				{
-					clearSeedParticle(i);
+					setLifeParticle(  genes, identity, i, it->color, it->energySource);
+					energyDebtSoFar -= 1.0f;
+
+					if (seedGrid[i].stage != STAGE_FRUIT && seedGrid[i].stage != STAGE_ANIMAL)
+					{
+						clearSeedParticle(i);
+					}
 				}
 			}
 		}
@@ -2891,12 +2914,15 @@ int drawCharacter ( std::string genes , unsigned int identity)
 			unsigned int i = (it->position.y * sizeX) + it->position.x;
 			if ( i < totalSize)
 			{
-				setLifeParticle(  genes, identity, i, it->color, it->energySource);
-				energyDebtSoFar -= 1.0f;
-
-				if (seedGrid[i].stage != STAGE_FRUIT && seedGrid[i].stage != STAGE_ANIMAL)
+				if (grid[i].phase == PHASE_VACUUM || grid[i].phase == PHASE_GAS || grid[i].phase == PHASE_LIQUID)
 				{
-					clearSeedParticle(i);
+					setLifeParticle(  genes, identity, i, it->color, it->energySource);
+					energyDebtSoFar -= 1.0f;
+
+					if (seedGrid[i].stage != STAGE_FRUIT && seedGrid[i].stage != STAGE_ANIMAL)
+					{
+						clearSeedParticle(i);
+					}
 				}
 			}
 		}
@@ -3073,9 +3099,17 @@ void drawPlantFromSeed( std::string genes, unsigned int i )
 		unsigned int i = (it->y * sizeX) + it->x;
 		if ( i < totalSize)
 		{
-			setSeedParticle(  genes, identity, energyDebtSoFar, i);
-			seedGrid[i].germinationMaterial = cursor_germinationMaterial;
-			mutateSentence(&(seedGrid[i].genes));
+
+
+			if (grid[i].phase == PHASE_VACUUM || grid[i].phase == PHASE_GAS || grid[i].phase == PHASE_LIQUID)
+			{
+
+
+
+				setSeedParticle(  genes, identity, energyDebtSoFar, i);
+				seedGrid[i].germinationMaterial = cursor_germinationMaterial;
+				mutateSentence(&(seedGrid[i].genes));
+			}
 		}
 	}
 }
@@ -3116,9 +3150,9 @@ void thread_life()
 			if ( lifeGrid[i].energySource == ENERGYSOURCE_LIGHT )
 			{
 
-				if (seedGrid[i].stage == STAGE_NULL && seedGrid[i].energy > 0)
+				if (seedGrid[i].stage == STAGE_NULL)
 				{
-					lifeGrid[i].energy += seedGrid[i].energy;
+					lifeGrid[i].energy += seedGrid[i].energy / photosynthesisEfficiency;
 				}
 
 			}
@@ -3130,11 +3164,11 @@ void thread_life()
 
 			unsigned int neighbourMaterialA = MATERIAL_VACUUM;
 
-			for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
-			{
+			// for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
+			// {
 
 
-				unsigned int neighbour = neighbourOffsets[j] + i;
+				unsigned int neighbour = neighbourOffsets[ extremelyFastNumberFromZeroTo(N_NEIGHBOURS) ] + i;
 
 				// hot plants light on fire
 				// if (true)
@@ -3216,7 +3250,7 @@ void thread_life()
 						}
 					}
 				}
-			}
+			// }
 		}
 	}
 
@@ -3981,7 +4015,7 @@ void insertRandomSeed()
 			}
 			case 4:
 			{
-				exampleSentence = plant_SpleenCoral;
+				// exampleSentence = plant_SpleenCoral;
 				break;
 			}
 			case 5:
@@ -4004,12 +4038,15 @@ void insertRandomSeed()
 
 void increaseLampBrightness ()
 {
+	// printf("increaseLampBrightness\n");
 	lampBrightness ++;
+	lampBrightness = lampBrightness % maxLampBrightness;
 }
 
 void decreaseLampBrightness ()
 {
 	lampBrightness--;
+	lampBrightness = lampBrightness % maxLampBrightness;
 }
 
 void save ()
