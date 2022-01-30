@@ -8,10 +8,10 @@
 
 #include "main.h"
 
-#define THREAD_TIMING_READOUT 1
+// #define THREAD_TIMING_READOUT 1
 // #define PLANT_DRAWING_READOUT 1
 // #define ANIMAL_DRAWING_READOUT 1
-#define DRAW_ANIMALS 1
+// #define DRAW_ANIMALS 1
 
 #define RENDERING_THREADS 4
 
@@ -36,9 +36,9 @@ const Color color_defaultColor     	= Color( 0.35f, 0.35f, 0.35f, 1.0f );
 
 const Color tingeShadow = Color( -1.0f, -1.0f, -1.0f, 0.1f );
 
-const Color phaseTingeSolid =  Color( 1.0f, 1.0f, 1.0f, 0.1f );
-const Color phaseTingeLiquid = Color( -1.0f, -1.0f, -1.0f, 0.1f );
-const Color phaseTingeGas =    Color( 1.0f, 1.0f, 1.0f, 0.2f );
+const Color phaseTingeSolid =  Color( 1.0f, 1.0f, 1.0f, 0.2f );
+const Color phaseTingeLiquid = Color( -1.0f, -1.0f, -1.0f, 0.2f );
+const Color phaseTingeGas =    Color( -1.0f, -1.0f, -1.0f, 0.4f );
 
 int neighbourOffsets[] =
 {
@@ -134,7 +134,7 @@ float scalingFactor = 1.0f;
 vec_u2 cursor_grid = vec_u2(0, 0);
 vec_u2 prevCursor_grid = vec_u2(0, 0);
 vec_u2 origin = vec_u2(0, 0);
-// unsigned int cursor_germinationMaterial = MATERIAL_QUARTZ;
+unsigned int cursor_germinationMaterial = 0;
 unsigned int cursor_energySource = ENERGYSOURCE_LIGHT;
 
 unsigned int cursor_string = 0;
@@ -186,6 +186,8 @@ Material::Material()
 	this->boiling = 1000;
 	this->insulativity = 2;
 }
+
+Material bumdirt = Material();
 
 std::vector<Material> materials;
 
@@ -268,7 +270,7 @@ SeedParticle::SeedParticle()
 	this->parentIdentity = 0x00;
 	this->energy = 0.0f;
 	this->stage = STAGE_NULL;
-	// this->germinationMaterial = MATERIAL_QUARTZ;
+	this->germinationMaterial = 0;
 }
 
 struct transportableSeed
@@ -327,14 +329,14 @@ std::list<ProposedLifeParticle> v;
 std::list<ProposedLifeParticle> v_extrudedParticles;
 
 
-struct AnimalParticle
+struct AnimalSpritePixel
 {
 	int localPosition = 0;
 	Color color = Color(1.0f, 1.0f, 1.0f, 1.0f);
-	AnimalParticle( int localPosition, Color color);
+	AnimalSpritePixel( int localPosition, Color color);
 };
 
-AnimalParticle::AnimalParticle(  int localPosition, Color color)
+AnimalSpritePixel::AnimalSpritePixel(  int localPosition, Color color)
 {
 	this->localPosition = localPosition;
 	this->color = color ;
@@ -344,9 +346,9 @@ struct AnimalSegment
 {
 	unsigned int position;
 	unsigned int animationFrame;
-	std::vector<AnimalParticle> frameA;
-	std::vector<AnimalParticle> frameB;
-	std::vector<AnimalParticle> frameC;
+	std::vector<AnimalSpritePixel> frameA;
+	std::vector<AnimalSpritePixel> frameB;
+	std::vector<AnimalSpritePixel> frameC;
 	AnimalSegment();
 };
 
@@ -388,6 +390,16 @@ Animal::Animal()
 // 	unsigned int backgroundTemperature;
 
 // };
+
+
+struct WorldInformation
+{
+
+	unsigned int nMaterials;
+	unsigned int nAnimals;
+
+
+};
 
 
 
@@ -518,9 +530,9 @@ int drawAnimalFromChar (unsigned int i)
 					if (  magnitude_int (  k , j )  < animalCursorSegmentRadius )
 					{
 						unsigned int pixel =  ((j * sizeX) + k);
-						a->segments[animalCursorSegmentNumber].frameA.push_back( AnimalParticle(pixel  , animalCursorColor ));
-						a->segments[animalCursorSegmentNumber].frameB.push_back( AnimalParticle(pixel  , animalCursorColor ));
-						a->segments[animalCursorSegmentNumber].frameC.push_back( AnimalParticle(pixel  , animalCursorColor ));
+						a->segments[animalCursorSegmentNumber].frameA.push_back( AnimalSpritePixel(pixel  , animalCursorColor ));
+						a->segments[animalCursorSegmentNumber].frameB.push_back( AnimalSpritePixel(pixel  , animalCursorColor ));
+						a->segments[animalCursorSegmentNumber].frameC.push_back( AnimalSpritePixel(pixel  , animalCursorColor ));
 						animalCursorEnergyDebt += 1.0f;
 					}
 				}
@@ -598,18 +610,18 @@ int drawAnimalFromChar (unsigned int i)
 					{
 						if (animalCursorFrame == FRAME_A)
 						{
-							a->segments[animalCursorSegmentNumber].frameA.push_back( AnimalParticle(i  ,		   animalCursorColor ));
-							a->segments[animalCursorSegmentNumber].frameA.push_back( AnimalParticle(shadowIndex  , color_shadow ));
+							a->segments[animalCursorSegmentNumber].frameA.push_back( AnimalSpritePixel(i  ,		   animalCursorColor ));
+							a->segments[animalCursorSegmentNumber].frameA.push_back( AnimalSpritePixel(shadowIndex  , color_shadow ));
 						}
 						if (animalCursorFrame == FRAME_B)
 						{
-							a->segments[animalCursorSegmentNumber].frameB.push_back( AnimalParticle(i  , animalCursorColor ));
-							a->segments[animalCursorSegmentNumber].frameB.push_back( AnimalParticle(shadowIndex  , color_shadow ));
+							a->segments[animalCursorSegmentNumber].frameB.push_back( AnimalSpritePixel(i  , animalCursorColor ));
+							a->segments[animalCursorSegmentNumber].frameB.push_back( AnimalSpritePixel(shadowIndex  , color_shadow ));
 						}
 						if (animalCursorFrame == FRAME_C)
 						{
-							a->segments[animalCursorSegmentNumber].frameC.push_back( AnimalParticle(i  , animalCursorColor ));
-							a->segments[animalCursorSegmentNumber].frameC.push_back( AnimalParticle(shadowIndex  , color_shadow ));
+							a->segments[animalCursorSegmentNumber].frameC.push_back( AnimalSpritePixel(i  , animalCursorColor ));
+							a->segments[animalCursorSegmentNumber].frameC.push_back( AnimalSpritePixel(shadowIndex  , color_shadow ));
 						}
 					}
 				}
@@ -737,7 +749,7 @@ void clearSeedParticle( unsigned int i)
 	seedGrid[i].parentIdentity = 0x00;
 	seedGrid[i].energy = 0.0f;
 	seedGrid[i].genes = std::string("");
-	memset( &(seedColorGrid[ i * numberOfFieldsPerVertex ]) , 0x00, 16 );
+	memcpy( &(seedColorGrid[ i * numberOfFieldsPerVertex ]) , &(color_clear), sizeof(Color) );
 }
 
 void toggleErodingRain ()
@@ -832,12 +844,17 @@ void photate( unsigned int i )
 		else
 		{
 
-			seedGrid[currentPosition].energy = 0x00;
-			memcpy( &seedColorGrid[ b_offset], 	&color_shadow , 	sizeof(Color) );
+			if (seedGrid[currentPosition].stage == STAGE_NULL)
+			{
+				seedGrid[currentPosition].energy = 0x00;
+				memcpy( &seedColorGrid[ b_offset], 	&color_shadow , 	sizeof(Color) );
 
-			unsigned int a_offset = (b_offset) + 3;
-			seedColorGrid[a_offset] = blocked * 0.05f;
-			if (seedColorGrid[a_offset] > 0.5f) {seedColorGrid[a_offset] = 0.5f;}
+				unsigned int a_offset = (b_offset) + 3;
+				seedColorGrid[a_offset] = blocked * 0.05f;
+				if (seedColorGrid[a_offset] > 0.5f) {seedColorGrid[a_offset] = 0.5f;}
+			}
+
+
 
 		}
 
@@ -852,7 +869,7 @@ void photate( unsigned int i )
 }
 
 
-void setAnimalSpritePixel ( Animal * a, AnimalSegment * s, AnimalParticle p, unsigned int i )
+void setAnimalSpritePixel ( Animal * a, AnimalSegment * s, AnimalSpritePixel p, unsigned int i )
 {
 	unsigned int j_offset = (s->position + p.localPosition) ;
 	unsigned int j__color_offset = (j_offset * numberOfFieldsPerVertex) ;
@@ -968,7 +985,7 @@ void updateAnimalDrawing(unsigned int i)
 		unsigned int count = 0;
 		for (s = a->segments.begin(); s !=  a->segments.end(); ++s)
 		{
-			std::vector<AnimalParticle>::iterator p;
+			std::vector<AnimalSpritePixel>::iterator p;
 
 			if (s->animationFrame == FRAME_A)
 			{
@@ -1244,213 +1261,8 @@ void paintMaterialCircle(unsigned int k, unsigned int radius, unsigned int mater
 }
 
 
-void createRandomWorld()
-{
-
-
-	defaultTemperature = RNG() * 1500;
-
-	for (int k = 0; k < 5; ++k)
-	{
-
-
-		Material newMaterial = Material();
-		newMaterial.boiling = RNG() * 3000;
-		newMaterial.melting = RNG() * newMaterial.boiling;
-
-		newMaterial.crystal_n = extremelyFastNumberFromZeroTo(4);
-
-		unsigned int randomCondition =  extremelyFastNumberFromZeroTo(4);
-		if (randomCondition == 0) {newMaterial.crystal_condition = CONDITION_GREATERTHAN; }
-		else if (randomCondition == 1) {newMaterial.crystal_condition = CONDITION_EQUAL; }
-		// else if (randomCondition == 2) {newMaterial.crystal_condition = CONDITION_LESSTHAN; }
-		// else if (randomCondition == 3) {newMaterial.crystal_condition = CONDITION_EVENNUMBER; }
-		// else if (randomCondition == 4) {newMaterial.crystal_condition = CONDITION_ODDNUMBER; }
-		else if (randomCondition == 2) {newMaterial.crystal_condition = CONDITION_EDGE; }
-		else if (randomCondition == 3) {newMaterial.crystal_condition = CONDITION_CORNER; }
-		// else if (randomCondition == 7) {newMaterial.crystal_condition = CONDITION_ROW; }
-		// else if (randomCondition == 8) {newMaterial.crystal_condition = CONDITION_LEFTN; }
-		else if (randomCondition == 4) {newMaterial.crystal_condition = CONDITION_NOTLEFTRIGHTN; }
-		// else if (randomCondition == 10) {newMaterial.crystal_condition = CONDITION_NOTLRNEIGHBOURS; }
-
-		newMaterial . color = color_grey;
-		newMaterial.color.r = RNG();
-		newMaterial.color.g = RNG();
-		newMaterial.color.b = RNG();
-
-
-
-		materials.push_back(newMaterial);
-
-
-		unsigned int availability = extremelyFastNumberFromZeroTo(100);
-
-
-		for (unsigned int i = 0; i < sizeX; ++i)
-		{
-
-			if (extremelyFastNumberFromZeroTo(100) == 0)
-			{
-				unsigned int radius = extremelyFastNumberFromZeroTo(availability );
-
-				// float frandomX = RNG() * sizeX;
-				// float frandomY = RNG() * sizeY;
-
-				// unsigned int randomX = frandomX; //extremelyFastNumberFromZeroTo(sizeX );
-				// unsigned int randomY = frandomY; //extremelyFastNumberFromZeroTo(sizeY );
-
-				// printf("ranom x %u, random y %u\n", randomX,  randomY);
-
-				// unsigned int randomi = (randomY * sizeX) + randomX;
-
-
-
-
-
-				paintMaterialCircle(i + (50 * sizeX * k), radius , k , 10000000 );
-			}
-
-		}
-
-
-		// // setup the x and y positions in the color grid. these never change so you can just calculate them once.
-		// unsigned int x = 0;
-		// unsigned int y = 0;
-		// for (unsigned int i = 0; i < totalSize; ++i)
-		// {
-		// 	x = i % sizeX;
-		// 	y = i / sizeX;
-		// 	// float fx = x;
-		// 	// float fy = y;
-
-
-		// 	if (i > sizeX && i < 50 * sizeX)
-
-		// 	{
-
-		// 		if (RNG() < availability)
-		// 		{
-
-		// 			setParticle( k, i);
-		// 		}
-		// 	}
-		// }
-
-
-	}
-
-
-
-
-
-
-	setAnimal( ( 60 * sizeX ) + 50);
-
-
-
-
-	// // set everything to a random temperature
-	// float frandomtemp = RNG() * 1000;
-	// unsigned int randomTemp = frandomtemp;
-	// for (unsigned int i = 0; i < totalSize; ++i)
-	// {
-	// 	grid[i].temperature = randomTemp;
-	// }
-
-
-
-}
-
-
-
-
 Color blackbodyLookup( unsigned int temperature )
 {
-
-
-
-// if (grid[i].temperature > 0 && grid[i].temperature < 600 )
-// 		{
-// 			;
-// 		}
-// 		else if (grid[i].temperature < 772)
-// 		{
-// 			// faint red
-// 			ppColor = addColor( ppColor, Color(0.16f, 0.0f, 0.0f, 0.03f));
-// 		}
-// 		else if (grid[i].temperature < 852)
-// 		{
-// 			// blood red
-// 			ppColor = addColor( ppColor,  Color(0.33f, 0.0f, 0.0f, 0.11f));
-// 		}
-// 		else if (grid[i].temperature < 908)
-// 		{
-// 			// dark cherry
-// 			ppColor = addColor( ppColor, Color(0.5f, 0.0f, 0.0f, 0.20f));
-// 		}
-// 		else if (grid[i].temperature < 963)
-// 		{
-// 			// medium cherry
-// 			ppColor = addColor( ppColor, Color(0.66f, 0.0f, 0.0f, 0.27f));
-// 		}
-// 		else if (grid[i].temperature < 1019)
-// 		{
-// 			// cherry
-// 			ppColor = addColor( ppColor, Color(0.833f, 0.0f, 0.0f, 0.36f));
-// 		}
-// 		else if (grid[i].temperature < 1060)
-// 		{
-// 			// bright cherry
-// 			ppColor = addColor( ppColor,  Color(1.0f, 0.0f, 0.0f, 0.45f));
-// 		}
-// 		else if (grid[i].temperature < 1116)
-// 		{
-// 			// salmon (??)
-// 			ppColor = addColor( ppColor,  Color(1.0f, 0.25f, 0.0f, 0.53f));
-// 		}
-// 		else if (grid[i].temperature < 1188)
-// 		{
-// 			// dark orange
-// 			ppColor = addColor( ppColor, Color(1.0f, 0.5f, 0.0f, 0.61f));
-// 		}
-// 		else if (grid[i].temperature < 1213)
-// 		{
-// 			// orange
-// 			ppColor = addColor( ppColor, Color(1.0f, 0.75f, 0.0f, 0.70f));
-// 		}
-// 		else if (grid[i].temperature < 1272)
-// 		{
-// 			// lemon
-// 			ppColor = addColor( ppColor, Color(1.0f, 1.0f, 0.0f, 0.78f));
-// 		}
-// 		else if (grid[i].temperature < 1352)
-// 		{
-// 			// light yellow
-// 			ppColor = addColor( ppColor,  Color(1.0f, 1.0f, 0.5f, 0.86f));
-// 		}
-
-// 		else if (grid[i].temperature < 5000)
-// 		{
-// 			// white
-// 			ppColor = addColor( ppColor,  Color(1.0f, 1.0f, 1.0f, 0.91f));
-// 		}
-
-// 		else if (grid[i].temperature < 10000)
-// 		{
-// 			// cool white
-// 			ppColor = addColor( ppColor,  Color(0.95f, 0.95f, 1.0f, 1.0f));
-// 		}
-
-// 		else
-// 		{
-// 			// blue
-// 			ppColor = addColor( ppColor, Color(0.9f, 0.9f, 1.0f, 1.0f));
-// 		}
-
-
-
-
-
 	if (temperature > 0 && temperature < 600 )
 	{
 		return color_clear;;
@@ -1510,28 +1322,160 @@ Color blackbodyLookup( unsigned int temperature )
 		// light yellow
 		return  Color(1.0f, 1.0f, 0.5f, 0.86f);
 	}
-
 	else if (temperature < 5000)
 	{
 		// white
 		return  Color(1.0f, 1.0f, 1.0f, 0.91f);
 	}
-
 	else if (temperature < 10000)
 	{
 		// cool white
 		return  Color(0.95f, 0.95f, 1.0f, 1.0f);
 	}
-
 	else
 	{
 		// blue
 		return Color(0.9f, 0.9f, 1.0f, 1.0f);
 	}
+}
+
+void createRandomWorld()
+{
+
+	clearGrids();
+
+	materials.clear();
+	materials.push_back(bumdirt);
+
+
+	sunlightColor = blackbodyLookup(sunlightTemp);
+
+	defaultTemperature = RNG() * 1500;
+
+
+	unsigned int nNewMaterials = 0;
+	for (unsigned int k = 0; k < nNewMaterials; ++k)
+	{
+
+
+		Material newMaterial = Material();
+		newMaterial.boiling = RNG() * 3000;
+		newMaterial.melting = RNG() * newMaterial.boiling;
+
+		newMaterial.crystal_n = extremelyFastNumberFromZeroTo(4);
+
+		unsigned int randomCondition =  extremelyFastNumberFromZeroTo(4);
+		if (randomCondition == 0) {newMaterial.crystal_condition = CONDITION_GREATERTHAN; }
+		else if (randomCondition == 1) {newMaterial.crystal_condition = CONDITION_EQUAL; }
+		// else if (randomCondition == 2) {newMaterial.crystal_condition = CONDITION_LESSTHAN; }
+		// else if (randomCondition == 3) {newMaterial.crystal_condition = CONDITION_EVENNUMBER; }
+		// else if (randomCondition == 4) {newMaterial.crystal_condition = CONDITION_ODDNUMBER; }
+		else if (randomCondition == 2) {newMaterial.crystal_condition = CONDITION_EDGE; }
+		else if (randomCondition == 3) {newMaterial.crystal_condition = CONDITION_CORNER; }
+		// else if (randomCondition == 7) {newMaterial.crystal_condition = CONDITION_ROW; }
+		// else if (randomCondition == 8) {newMaterial.crystal_condition = CONDITION_LEFTN; }
+		else if (randomCondition == 4) {newMaterial.crystal_condition = CONDITION_NOTLEFTRIGHTN; }
+		// else if (randomCondition == 10) {newMaterial.crystal_condition = CONDITION_NOTLRNEIGHBOURS; }
+
+		newMaterial . color = color_grey;
+		newMaterial.color.r = RNG();
+		newMaterial.color.g = RNG();
+		newMaterial.color.b = RNG();
+
+
+
+		materials.push_back(newMaterial);
+
+
+	}
+
+
+
+	for (unsigned int k = 0; k < materials.size(); ++k)
+	{
+		/* code */
+
+		unsigned int availability = extremelyFastNumberFromZeroTo(100);
+
+
+		for (unsigned int i = 0; i < sizeX; ++i)
+		{
+
+			if (extremelyFastNumberFromZeroTo(100) == 0)
+			{
+				unsigned int radius = extremelyFastNumberFromZeroTo(availability );
+
+				// float frandomX = RNG() * sizeX;
+				// float frandomY = RNG() * sizeY;
+
+				// unsigned int randomX = frandomX; //extremelyFastNumberFromZeroTo(sizeX );
+				// unsigned int randomY = frandomY; //extremelyFastNumberFromZeroTo(sizeY );
+
+				// printf("ranom x %u, random y %u\n", randomX,  randomY);
+
+				// unsigned int randomi = (randomY * sizeX) + randomX;
+
+
+
+
+
+				paintMaterialCircle(i + (50 * sizeX * (k+1)  ), radius , k , 10000000 );
+			}
+
+		}
+	}
+
+	// // setup the x and y positions in the color grid. these never change so you can just calculate them once.
+	// unsigned int x = 0;
+	// unsigned int y = 0;
+	// for (unsigned int i = 0; i < totalSize; ++i)
+	// {
+	// 	x = i % sizeX;
+	// 	y = i / sizeX;
+	// 	// float fx = x;
+	// 	// float fy = y;
+
+
+	// 	if (i > sizeX && i < 50 * sizeX)
+
+	// 	{
+
+	// 		if (RNG() < availability)
+	// 		{
+
+	// 			setParticle( k, i);
+	// 		}
+	// 	}
+	// }
+
+
+
+
+
+
+
+
+
+	// setAnimal( ( 60 * sizeX ) + 50);
+
+
+
+
+	// // set everything to a random temperature
+	// float frandomtemp = RNG() * 1000;
+	// unsigned int randomTemp = frandomtemp;
+	// for (unsigned int i = 0; i < totalSize; ++i)
+	// {
+	// 	grid[i].temperature = randomTemp;
+	// }
 
 
 
 }
+
+
+
+
 
 
 
@@ -1544,12 +1488,11 @@ void initialize ()
 	cursor_seedColor = color_yellow;
 	clearGrids();
 
-	sunlightColor = blackbodyLookup(sunlightTemp);
+
+	// createRandomWorld();
 
 
-	createRandomWorld();
-
-
+	// load();
 
 
 
@@ -1603,6 +1546,29 @@ void coolEverything ()
 	}
 }
 
+void clearGases()
+{
+	for (unsigned int i = 0; i < totalSize; ++i)
+	{
+		if ( grid[i].phase == PHASE_GAS)
+		{
+			clearParticle(i);
+		}
+	}
+}
+
+void clearLiquids()
+{
+	for (unsigned int i = 0; i < totalSize; ++i)
+	{
+		if ( grid[i].phase == PHASE_LIQUID)
+		{
+			clearParticle(i);
+		}
+	}
+}
+
+
 void setNeutralTemp ()
 {
 	for (unsigned int i = 0; i < totalSize; ++i)
@@ -1628,6 +1594,7 @@ void setExtremeTempPoint (unsigned int x , unsigned  int y)
 void materialPostProcess(unsigned int i)
 {
 
+	// return;
 	unsigned int x = i % sizeX;
 	unsigned int y = i / sizeX;
 
@@ -2003,7 +1970,7 @@ void thread_temperature2 ()
 
 
 
-		float ffrom = (i  -0.5  ) ;///(n_threads+1) )    * totalSize );
+		float ffrom = (i  - 0.5  ) ; ///(n_threads+1) )    * totalSize );
 		float fto   = (i + 0.5) ;///(n_threads+1) )    * totalSize );
 
 		ffrom = ffrom / (n_threads );
@@ -2037,10 +2004,10 @@ void thread_temperature2 ()
 
 	}
 
-	for (auto& t : threads) 
-{
-  t.join();
-}
+	for (auto& t : threads)
+	{
+		t.join();
+	}
 
 #ifdef THREAD_TIMING_READOUT
 	auto end = std::chrono::steady_clock::now();
@@ -2211,25 +2178,25 @@ void thread_physics ()
 
 			if (extremelyFastNumberFromZeroTo(4) == 0)
 			{
-			// setPhoton(   i);
-			photate(i);
+				// setPhoton(   i);
+				photate(i);
 
 			}
 		}
 	}
 
 
-	unsigned int processChunkSize = (totalSize/10);
+	unsigned int processChunkSize = (totalSize / 10);
 	for (unsigned int i = 0; i < processChunkSize; ++i)
 	{
 		// if (extremelyFastNumberFromZeroTo(10) == 0)
 		// {
 
-			unsigned int x = extremelyFastNumberFromZeroTo(sizeX);
-			unsigned int y = extremelyFastNumberFromZeroTo(sizeY);
+		unsigned int x = extremelyFastNumberFromZeroTo(sizeX);
+		unsigned int y = extremelyFastNumberFromZeroTo(sizeY);
 
 
-			materialPostProcess(  (y*sizeX) + x  );
+		materialPostProcess(  (y * sizeX) + x  );
 		// }
 	}
 
@@ -2482,15 +2449,18 @@ int drawCharacter ( std::string genes , unsigned int identity)
 		#define MATERIAL_OLIVINE 	 11
 		*/
 
-		// numberModifier = numberModifier % 4;
+		//
+		numberModifier = numberModifier % materials.size();
 
 		// if 		(numberModifier == 0) 	{cursor_germinationMaterial = MATERIAL_WATER;}
 		// else if (numberModifier == 1)   {cursor_germinationMaterial = MATERIAL_QUARTZ;}
 		// else if (numberModifier == 2)   {cursor_germinationMaterial = MATERIAL_AMPHIBOLE;}
-		// else if (numberModifier == 3)   {cursor_germinationMaterial = MATERIAL_OLIVINE;}
+		// else if (numberModifier == 3)   {
+		cursor_germinationMaterial = numberModifier;
+		// }
 
 
-		// printf("set germination material to %u\n", cursor_germinationMaterial);
+		printf("set germination material to %u\n", cursor_germinationMaterial);
 
 
 		// set germination material
@@ -3051,7 +3021,7 @@ void drawPlantFromSeed( std::string genes, unsigned int i )
 	origin = cursor_grid;
 	prevCursor_grid = cursor_grid;
 	accumulatedRotation = (0.5 * 3.1415);
-	// cursor_germinationMaterial =  0x00;  //MATERIAL_VACUUM;//MATERIAL_QUARTZ;
+	cursor_germinationMaterial =  0;  //MATERIAL_VACUUM;//MATERIAL_QUARTZ;
 
 	cursor_energySource = ENERGYSOURCE_LIGHT;
 
@@ -3104,7 +3074,7 @@ void drawPlantFromSeed( std::string genes, unsigned int i )
 		if ( i < totalSize)
 		{
 			setSeedParticle(  genes, identity, energyDebtSoFar, i);
-			// seedGrid[i].germinationMaterial = cursor_germinationMaterial;
+			seedGrid[i].germinationMaterial = cursor_germinationMaterial;
 			mutateSentence(&(seedGrid[i].genes));
 		}
 	}
@@ -3264,12 +3234,18 @@ void thread_plantDrawing()
 #endif
 	for (unsigned int i =  0; i < totalSize; ++i)
 	{
+
+		if (crudOps) {return;}
+
 		if (seedGrid[i].parentIdentity > 0)
 		{
 			if (seedGrid[i].stage == STAGE_SEED)
 			{
 				// if (grid[i].material == seedGrid[i].germinationMaterial)
 				// {
+
+
+
 				drawPlantFromSeed(seedGrid[i].genes, i);
 				clearSeedParticle(i);
 				nGerminatedSeeds ++;
@@ -4040,6 +4016,20 @@ void save ()
 {
 	printf("SAVING GAME\n");
 
+
+	WorldInformation newWorldInfo;
+	newWorldInfo.nAnimals = animals.size();
+	newWorldInfo.nMaterials = materials.size();
+
+	std::ofstream out884(std::string("save/WorldInformation").c_str());
+	out884.write( (char*)(&newWorldInfo), sizeof(WorldInformation));
+	out884.close();
+
+
+
+	printf("- saved world information\n");
+
+
 	// transcribe the entire world state to file.
 	std::ofstream out6(std::string("save/grid").c_str());
 	out6.write( (char*)(grid), sizeof(Particle) *  totalSize);
@@ -4122,55 +4112,167 @@ void save ()
 	out41.close();
 
 	printf("- saved color grids\n");
+
+
+	// you need to save the materials and animals vectors as well somehow, even though their size is unknown.
+
+	std::ofstream out879("save/materials");
+	// for (unsigned int i = 0; i < materials.size(); ++i)
+	// {
+	// 	out879 << materials[i]  << '\n';
+	// }
+
+	// for (const auto &p : materials)
+	// {
+	// 	out879 << p << '\n';
+	// }
+
+	const char* pointer = reinterpret_cast<const char*>(&materials[0]);
+	size_t bytes = materials.size() * sizeof(Material);
+	out879.write(pointer, bytes);
+
+	out879.close();
+
+	std::ofstream out8579("save/animals");
+	// // for (unsigned int i = 0; i < animals.size(); ++i)
+	// // {
+	// // 	out8579 << animals[i]  << '\n';
+	// // }
+
+	// for (const auto &p : animals)
+	// {
+	// 	out8579 << p << '\n';
+	// }
+
+
+	pointer = reinterpret_cast<const char*>(&animals[0]);
+	bytes = animals.size() * sizeof(Animal);
+	out8579.write(pointer, bytes);
+
+	out8579.close();
+
 }
 
-void load ()
+
+void load_materials(unsigned int m)
 {
-	printf("LOAD GAME\n");
 
-	clearGrids() ;
 
-	printf("- cleared grids\n");
+
+	// load the materials
+	if (true)
+	{
+		// std::ifstream in500(std::string("save/materials").c_str());
+		// std::string line = std::string("");
+		// unsigned int i = 0;
+		// for (std::string line; std::getline(in500, line, '\n'); )
+		// {
+		// 	// if (i < totalSize)
+		// 	// {
+		// 	// 	seedGrid[i].genes.assign(line);
+		// 	// }
+
+		// 	char * pchointer = (char *)line.c_str();
+		// 	Material * chubuna = (Material *)pchointer;
+		// 	Material newMaterial = *chubuna;
+
+		// 	materials.push_back(  newMaterial  );
+		// 	in500.clear();
+		// 	i++;
+		// }
+		// printf("- loaded materials\n");
+
+
+		materials.clear();
+
+		materials.push_back(bumdirt);
+
+		for (int i = 0; i < m; ++i)
+		{
+
+			printf("- material \n" );
+
+			materials.push_back(Material());
+		}
+
+
+		std::ifstream in56(std::string("save/materials").c_str());
+		in56.read( (char *)(&(materials[0])), sizeof(Material) *  m);
+		in56.close();
+	}
+
 
 	std::ifstream in6(std::string("save/grid").c_str());
-	in6.read( (char *)(grid), sizeof(Particle) *  totalSize);
+	in6.read( (char *)(&(grid[0])), sizeof(Particle) *  totalSize);
 	in6.close();
 
-	for (int i = 0; i < totalSize; ++i)
-	{
-		Color temp_color =  materials[ grid[i].material ].color ;// materialColor(grid[i].material);
-		unsigned int a_offset = (i * numberOfFieldsPerVertex);
-		memcpy( &colorGrid[ a_offset ], &temp_color, 16 );
-	}
+	// for (int i = 0; i < totalSize; ++i)
+	// {
+	// 	Color temp_color =  materials[ grid[i].material ].color ;// materialColor(grid[i].material);
+	// 	unsigned int a_offset = (i * numberOfFieldsPerVertex);
+	// 	memcpy( &colorGrid[ a_offset ], &temp_color, 16 );
+	// }
 
 	printf("loaded material grid and material colors\n");
 
-	std::ifstream in1(std::string("save/lifeGrid").c_str());
-	in1.read(  (char *)(lifeGrid) , sizeof(LifeParticle) * totalSize);
-	in1.close();
+}
 
-	std::ifstream in3(std::string("save/lifeColorGrid").c_str());
-	in3.read( (char *)(lifeColorGrid), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
+
+
+void load_colorgrids()
+{
+// std::ifstream in1(std::string("save/lifeGrid").c_str());
+	// in1.read(  (char *)(lifeGrid) , sizeof(LifeParticle) * totalSize);
+	// in1.close();
+
+
+	std::ifstream in3(std::string("save/colorGrid").c_str());
+	in3.read( (char *)( &(colorGrid[0])  ), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
 	in3.close();
 
+	std::ifstream in33(std::string("save/lifeColorGrid").c_str());
+	in33.read( (char *)( &(lifeColorGrid[0])  ), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
+	in33.close();
+
 	std::ifstream in4(std::string("save/lifeColorGridB").c_str());
-	in4.read( (char *)(lifeColorGridB), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
+	in4.read( (char *)( &(lifeColorGridB[0])), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
 	in4.close();
 
 	std::ifstream in41(std::string("save/seedColorGrid").c_str());
-	in41.read( (char *)(seedColorGrid), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
+	in41.read( (char *)( &(seedColorGrid[0])), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
 	in41.close();
 
 	printf("- loaded color grids\n");
+}
+
+
+
+void load_life()
+{
+
+
 
 	transportableLifeParticle* transportableLifeGrid = new transportableLifeParticle[totalSize];
-	std::memset(transportableLifeGrid, 0x00, sizeof(transportableLifeParticle) * totalSize);
+	// std::memset(transportableLifeGrid, 0x00, sizeof(transportableLifeParticle) * totalSize);
+
+
 
 	std::ifstream in22(std::string("save/transportableLifeGrid").c_str());
-	in22.read( (char*)(transportableLifeGrid), sizeof(transportableLifeParticle) * totalSize);
+	in22.read( (char*)( &(transportableLifeGrid[0])), sizeof(transportableLifeParticle) * totalSize);
 	in22.close();
+
+
+
 	for (unsigned int i = 0; i < totalSize; ++i)
 	{
+
+		lifeGrid[i] = LifeParticle();
+
+		// 	printf("veguntus %u\n", i);
+		// printf("- ennelmennel %u, %u\n", lifeGrid[i].energySource, i);
+		// printf("- bee %u\n", transportableLifeGrid[i].energySource);
+
+
 		lifeGrid[i].energySource = transportableLifeGrid[i].energySource;
 		lifeGrid[i].energy = transportableLifeGrid[i].energy;
 		lifeGrid[i].identity = transportableLifeGrid[i].identity;
@@ -4178,46 +4280,36 @@ void load ()
 
 	delete [] transportableLifeGrid;
 
-	printf("- loaded transportable life\n");
+	printf("- loaded transportable life grid\n");
 
-	transportableSeed* transportableSeedGrid = new transportableSeed[totalSize];
-	std::memset(transportableSeedGrid, 0x00, sizeof(transportableSeed) * totalSize);
 
-	std::ifstream in2(std::string("save/transportableSeedGrid").c_str());
-	in2.read( (char*)(transportableSeedGrid), sizeof(transportableSeed) * totalSize);
-	in2.close();
-	for (unsigned int i = 0; i < totalSize; ++i)
-	{
-		seedGrid[i].stage = transportableSeedGrid[i].stage;
-		seedGrid[i].energy = transportableSeedGrid[i].energy;
-		seedGrid[i].parentIdentity = transportableSeedGrid[i].parentIdentity;
-	}
 
-	delete [] transportableSeedGrid;
 
-	printf("- loaded transportable seeds\n");
 
-	if (true)
-	{
-		std::ifstream in5(std::string("save/lifeGeneGrid").c_str());
-		std::string line = std::string("");
-		unsigned int i = 0;
-		for (std::string line; std::getline(in5, line, '\n'); )
-		{
-			i++;
-		}
 
-		printf("lifeGeneGrid lines: %u\n", i);
+	// 	// read lengths of both files
+	// if (true)
+	// {
+	// 	std::ifstream in5(std::string("save/lifeGeneGrid").c_str());
+	// 	std::string line = std::string("");
+	// 	unsigned int i = 0;
+	// 	for (std::string line; std::getline(in5, line, '\n'); )
+	// 	{
+	// 		i++;
+	// 	}
 
-		std::ifstream in500(std::string("save/seedGeneGrid").c_str());
-		i = 0;
-		for (std::string line; std::getline(in500, line, '\n'); )
-		{
-			i++;
-		}
-		printf("seedGeneGrid lines: %u\n", i);
-	}
+	// 	printf("lifeGeneGrid lines: %u\n", i);
 
+	// 	std::ifstream in500(std::string("save/seedGeneGrid").c_str());
+	// 	i = 0;
+	// 	for (std::string line; std::getline(in500, line, '\n'); )
+	// 	{
+	// 		i++;
+	// 	}
+	// 	printf("seedGeneGrid lines: %u\n", i);
+	// }
+
+	// load life genes
 	if (true)
 	{
 		std::ifstream in5(std::string("save/lifeGeneGrid").c_str());
@@ -4235,7 +4327,31 @@ void load ()
 		}
 		printf("- loaded life genomes\n");
 	}
+}
 
+
+
+void load_seeds()
+{
+
+	transportableSeed* transportableSeedGrid = new transportableSeed[totalSize];
+	// std::memset(transportableSeedGrid, 0x00, sizeof(transportableSeed) * totalSize);
+
+	std::ifstream in2(std::string("save/transportableSeedGrid").c_str());
+	in2.read( (char*)(  &(transportableSeedGrid[0])), sizeof(transportableSeed) * totalSize);
+	in2.close();
+	for (unsigned int i = 0; i < totalSize; ++i)
+	{
+		seedGrid[i].stage = transportableSeedGrid[i].stage;
+		seedGrid[i].energy = transportableSeedGrid[i].energy;
+		seedGrid[i].parentIdentity = transportableSeedGrid[i].parentIdentity;
+	}
+
+	delete [] transportableSeedGrid;
+
+	printf("- loaded transportable seeds\n");
+
+	// load seed genes
 	if (true)
 	{
 		std::ifstream in500(std::string("save/seedGeneGrid").c_str());
@@ -4252,6 +4368,98 @@ void load ()
 		}
 		printf("- loaded seed genomes\n");
 	}
+
+}
+
+void load ()
+{
+	printf("LOAD GAME\n");
+
+	clearGrids() ;
+
+	printf("- cleared grids\n");
+
+
+	WorldInformation newWorldInfo;
+
+	std::ifstream in336(std::string("save/WorldInformation").c_str());
+	in336.read( (char *)(&newWorldInfo), sizeof(WorldInformation) );
+	in336.close();
+
+
+	printf("- loaded world information\n");
+
+	load_colorgrids();
+
+	load_materials(newWorldInfo.nMaterials);
+
+	load_life();
+
+	load_seeds();
+
+
+	// // read lengths of both files
+	// if (true)
+	// {
+	// 	std::ifstream in5(std::string("save/lifeGeneGrid").c_str());
+	// 	std::string line = std::string("");
+	// 	unsigned int i = 0;
+	// 	for (std::string line; std::getline(in5, line, '\n'); )
+	// 	{
+	// 		i++;
+	// 	}
+
+	// 	printf("lifeGeneGrid lines: %u\n", i);
+
+	// 	std::ifstream in500(std::string("save/seedGeneGrid").c_str());
+	// 	i = 0;
+	// 	for (std::string line; std::getline(in500, line, '\n'); )
+	// 	{
+	// 		i++;
+	// 	}
+	// 	printf("seedGeneGrid lines: %u\n", i);
+	// }
+
+	// // load life genes
+	// if (true)
+	// {
+	// 	std::ifstream in5(std::string("save/lifeGeneGrid").c_str());
+	// 	std::string line = std::string("");
+	// 	unsigned int i = 0;
+	// 	for (std::string line; std::getline(in5, line, '\n'); )
+	// 	{
+	// 		lifeGrid[i].genes.clear();
+	// 		if (i < totalSize)
+	// 		{
+	// 			lifeGrid[i].genes.assign(line);
+	// 		}
+	// 		in5.clear();
+	// 		i++;
+	// 	}
+	// 	printf("- loaded life genomes\n");
+	// }
+
+	// // load seed genes
+	// if (true)
+	// {
+	// 	std::ifstream in500(std::string("save/seedGeneGrid").c_str());
+	// 	std::string line = std::string("");
+	// 	unsigned int i = 0;
+	// 	for (std::string line; std::getline(in500, line, '\n'); )
+	// 	{
+	// 		if (i < totalSize)
+	// 		{
+	// 			seedGrid[i].genes.assign(line);
+	// 		}
+	// 		in500.clear();
+	// 		i++;
+	// 	}
+	// 	printf("- loaded seed genomes\n");
+	// }
+
+
+
+
 }
 
 

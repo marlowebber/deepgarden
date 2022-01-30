@@ -27,9 +27,9 @@ unsigned int loadCooldown = 0;
 
 void quit ()
 {
-	shutdownGraphics();
-	SDL_Quit();
+
 	flagQuit = true;
+	// flagSave = true;
 }
 
 void togglePause ()
@@ -85,6 +85,9 @@ void thread_interface()
 				setEverythingHot();
 				break;
 
+			case SDLK_u:
+				clearGrids() ;
+				break;
 
 
 			case SDLK_b:
@@ -142,12 +145,23 @@ void thread_interface()
 				break;
 
 
-
+			case SDLK_k:
+				createRandomWorld();
+				break;
 
 
 			case SDLK_p:
 				togglePause();
 				break;
+
+			case SDLK_o:
+				clearLiquids();
+				break;
+
+			case SDLK_i:
+				clearGases();
+				break;
+
 			case SDLK_ESCAPE:
 				quit();
 			}
@@ -269,10 +283,14 @@ int main( int argc, char * argv[] )
 
 		if (loadCooldown > 0) {loadCooldown--;}
 
-		if (flagQuit)
+		if (flagQuit && !flagSave)
 		{
 			crudOps = true;
 			flagQuit = false;
+
+			shutdownGraphics();
+			SDL_Quit();
+
 			return 0;
 		}
 	}

@@ -160,7 +160,7 @@ void thread_plantDrawing();
 void save();
 
 void load();
-
+void clearGrids() ;
 
 void setEverythingHot();
 
@@ -168,4 +168,9 @@ void manualErode();
 
 void drawAHill();
 void drawRandomLandscape();
+
+void createRandomWorld();
+
+void clearGases();
+void clearLiquids();
 #endif
