@@ -334,26 +334,34 @@ SeedParticle * seedGrid = new SeedParticle[totalSize];
 std::list<ProposedLifeParticle> v;
 std::list<ProposedLifeParticle> v_extrudedParticles;
 
-struct AnimalSpritePixel
-{
-	int localPosition = 0;
-	Color color = Color(1.0f, 1.0f, 1.0f, 1.0f);
-	AnimalSpritePixel( int localPosition, Color color);
-};
+// struct AnimalSpritePixel
+// {
+// 	int localPosition ;//= 0;
+// 	Color color = Color(1.0f, 1.0f, 1.0f, 1.0f);
+// 	AnimalSpritePixel( );
+// };
 
-AnimalSpritePixel::AnimalSpritePixel(  int localPosition, Color color)
-{
-	this->localPosition = localPosition;
-	this->color = color ;
-}
+// AnimalSpritePixel::AnimalSpritePixel(
+//     // int localPosition, Color color
+// )
+// {
+// 	this->localPosition = 0;
+// 	this->color = color_clear ;
+// }
 
 struct AnimalSegment
 {
+
 	unsigned int position;
 	unsigned int animationFrame;
-	std::vector<AnimalSpritePixel> frameA;
-	std::vector<AnimalSpritePixel> frameB;
-	std::vector<AnimalSpritePixel> frameC;
+	// std::vector<AnimalSpritePixel> frameA;
+	// std::vector<AnimalSpritePixel> frameB;
+	// std::vector<AnimalSpritePixel> frameC;
+
+	Color frameA[sizeAnimalSprite * sizeAnimalSprite];
+	Color frameB[sizeAnimalSprite * sizeAnimalSprite];
+	Color frameC[sizeAnimalSprite * sizeAnimalSprite];
+
 	AnimalSegment();
 };
 
@@ -361,6 +369,14 @@ AnimalSegment::AnimalSegment()
 {
 	this->animationFrame = FRAME_A;
 	this->position = 0;
+
+	for (int i = 0; i < (sizeAnimalSprite * sizeAnimalSprite); ++i)
+	{
+		// this->frameA[i] = AnimalSpritePixel();
+		this->frameA[i] = color_clear;
+		// this->frameA[i].localPosition = 0;
+	}
+
 }
 
 struct Animal
@@ -369,7 +385,12 @@ struct Animal
 	float reproductionCost;
 	unsigned int reach;
 	unsigned int movementChance;
-	std::vector<AnimalSegment> segments;
+	// std::vector<AnimalSegment> segments;
+
+	AnimalSegment segments[maxAnimalSegments];
+
+	unsigned int segmentsUsed;
+
 	unsigned int movementFlags;
 	unsigned int direction;
 	unsigned int energyFlags;
@@ -385,7 +406,13 @@ Animal::Animal()
 	this->energy = 0.0f;
 	this->reach = 5;
 	this->movementChance = 4;
-	this->segments.push_back(AnimalSegment());
+	// this->segments.push_back(AnimalSegment());
+
+	for (int i = 0; i < maxAnimalSegments; ++i)
+	{
+		this->segments[i] = AnimalSegment();
+	}
+
 	this->movementFlags = MOVEMENT_ONPOWDER;
 }
 
@@ -474,7 +501,7 @@ int drawAnimalFromChar (unsigned int i)
 	{
 		Animal * a = &(animals[seedGrid[i].parentIdentity]);
 		if (animalCursorString >= seedGrid[i].genes.length()) {return -1;}
-		if (animalCursorSegmentNumber >= a->segments.size()) {return -1;}
+		if (animalCursorSegmentNumber >= maxAnimalSegments) {return -1;}
 		animalCursorString++;
 		char c = seedGrid[i].genes[animalCursorString];
 		switch (c)
@@ -513,7 +540,7 @@ int drawAnimalFromChar (unsigned int i)
 #ifdef ANIMAL_DRAWING_READOUT
 			printf("go to new segment\n");
 #endif
-			a->segments.push_back(AnimalSegment());
+			// a->segments.push_back(AnimalSegment());
 			animalCursorSegmentNumber++;
 			break;
 		}
@@ -524,20 +551,35 @@ int drawAnimalFromChar (unsigned int i)
 			printf("draw a circle\n");
 #endif
 			// raster a circle
-			int drawingAreaLowerX = -animalCursorSegmentRadius;
-			int drawingAreaLowerY = -animalCursorSegmentRadius;
-			int drawingAreaUpperX = +animalCursorSegmentRadius;
-			int drawingAreaUpperY = +animalCursorSegmentRadius;
+			int drawingAreaLowerX = -  (sizeAnimalSprite / 2) ; //animalCursorSegmentRadius;
+			int drawingAreaLowerY = -  (sizeAnimalSprite / 2) ; //animalCursorSegmentRadius;
+			int drawingAreaUpperX = +  (sizeAnimalSprite / 2) ; //animalCursorSegmentRadius;
+			int drawingAreaUpperY = +  (sizeAnimalSprite / 2) ; //animalCursorSegmentRadius;
 			for ( int k = drawingAreaLowerX; k < drawingAreaUpperX; ++k)
 			{
 				for ( int j = drawingAreaLowerY; j < drawingAreaUpperY; ++j)
 				{
 					if (  magnitude_int (  k , j )  < animalCursorSegmentRadius )
 					{
-						unsigned int pixel =  ((j * sizeX) + k);
-						a->segments[animalCursorSegmentNumber].frameA.push_back( AnimalSpritePixel(pixel  , animalCursorColor ));
-						a->segments[animalCursorSegmentNumber].frameB.push_back( AnimalSpritePixel(pixel  , animalCursorColor ));
-						a->segments[animalCursorSegmentNumber].frameC.push_back( AnimalSpritePixel(pixel  , animalCursorColor ));
+						 int pixel =  ((j * sizeX) + k);
+						 int spritePixel = (j * sizeAnimalSprite) + k ;
+
+						// a->segments[animalCursorSegmentNumber].frameA[ (j * sizeAnimalSprite) + k ] = AnimalSpritePixel(pixel  , animalCursorColor );
+						// a->segments[animalCursorSegmentNumber].frameB[ (j * sizeAnimalSprite) + k ] = AnimalSpritePixel(pixel  , animalCursorColor );
+						// a->segments[animalCursorSegmentNumber].frameC[ (j * sizeAnimalSprite) + k ] = AnimalSpritePixel(pixel  , animalCursorColor );
+
+						printf("smiuuuuueghgh nyueueueughueue %i\n", spritePixel);
+						a->segments[animalCursorSegmentNumber].frameA[ spritePixel ] = animalCursorColor;
+						a->segments[animalCursorSegmentNumber].frameB[ spritePixel ] = animalCursorColor;
+						a->segments[animalCursorSegmentNumber].frameC[ spritePixel ] = animalCursorColor;
+						// a->segments[animalCursorSegmentNumber].frameA[ spritePixel ].localPosition = pixel;
+						// a->segments[animalCursorSegmentNumber].frameB[ spritePixel ].localPosition = pixel;
+						// a->segments[animalCursorSegmentNumber].frameC[ spritePixel ].localPosition = pixel;
+
+
+
+
+
 						animalCursorEnergyDebt += 1.0f;
 					}
 				}
@@ -615,18 +657,31 @@ int drawAnimalFromChar (unsigned int i)
 					{
 						if (animalCursorFrame == FRAME_A)
 						{
-							a->segments[animalCursorSegmentNumber].frameA.push_back( AnimalSpritePixel(i  ,		   animalCursorColor ));
-							a->segments[animalCursorSegmentNumber].frameA.push_back( AnimalSpritePixel(shadowIndex  , color_shadow ));
+							// a->segments[animalCursorSegmentNumber].frameA.push_back( AnimalSpritePixel(i  ,		   animalCursorColor ));
+							// a->segments[animalCursorSegmentNumber].frameA.push_back( AnimalSpritePixel(shadowIndex  , color_shadow ));
+							a->segments[animalCursorSegmentNumber].frameA[i] = animalCursorColor;
+							// a->segments[animalCursorSegmentNumber].frameA[i].localPosition = i;
+							a->segments[animalCursorSegmentNumber].frameA[shadowIndex] = addColor( color_shadow , a->segments[animalCursorSegmentNumber].frameA[shadowIndex] );
+							// a->segments[animalCursorSegmentNumber].frameA[shadowIndex].localPosition = shadowIndex;
+
 						}
 						if (animalCursorFrame == FRAME_B)
 						{
-							a->segments[animalCursorSegmentNumber].frameB.push_back( AnimalSpritePixel(i  , animalCursorColor ));
-							a->segments[animalCursorSegmentNumber].frameB.push_back( AnimalSpritePixel(shadowIndex  , color_shadow ));
+							// a->segments[animalCursorSegmentNumber].frameB.push_back( AnimalSpritePixel(i  , animalCursorColor ));
+							// a->segments[animalCursorSegmentNumber].frameB.push_back( AnimalSpritePixel(shadowIndex  , color_shadow ));
+							a->segments[animalCursorSegmentNumber].frameB[i] = animalCursorColor;
+							// a->segments[animalCursorSegmentNumber].frameB[i].localPosition = i;
+							a->segments[animalCursorSegmentNumber].frameB[shadowIndex] = addColor( color_shadow , a->segments[animalCursorSegmentNumber].frameB[shadowIndex] );
+							// a->segments[animalCursorSegmentNumber].frameB[shadowIndex].localPosition = shadowIndex;
 						}
 						if (animalCursorFrame == FRAME_C)
 						{
-							a->segments[animalCursorSegmentNumber].frameC.push_back( AnimalSpritePixel(i  , animalCursorColor ));
-							a->segments[animalCursorSegmentNumber].frameC.push_back( AnimalSpritePixel(shadowIndex  , color_shadow ));
+							// a->segments[animalCursorSegmentNumber].frameC.push_back( AnimalSpritePixel(i  , animalCursorColor ));
+							// a->segments[animalCursorSegmentNumber].frameC.push_back( AnimalSpritePixel(shadowIndex  , color_shadow ));
+							a->segments[animalCursorSegmentNumber].frameC[i] = animalCursorColor;
+							// a->segments[animalCursorSegmentNumber].frameC[i].localPosition = i;
+							a->segments[animalCursorSegmentNumber].frameB[shadowIndex] = addColor( color_shadow , a->segments[animalCursorSegmentNumber].frameC[shadowIndex] );
+							// a->segments[animalCursorSegmentNumber].frameC[shadowIndex].localPosition = shadowIndex;
 						}
 					}
 				}
@@ -885,14 +940,63 @@ void photate( unsigned int i )
 }
 
 
-void setAnimalSpritePixel ( Animal * a, AnimalSegment * s, AnimalSpritePixel p, unsigned int i )
+void setAnimalSpritePixel ( Animal * a, AnimalSegment * s, unsigned int pixelIndex )
 {
-	unsigned int j_offset = (s->position + p.localPosition) ;
-	unsigned int j__color_offset = (j_offset * numberOfFieldsPerVertex) ;
-	if (j_offset < totalSize)
+	// unsigned int j_offset = (s->position + p.localPosition) ;
+	// unsigned int j__color_offset = (j_offset * numberOfFieldsPerVertex) ;
+
+
+	// get the segment position.
+	// s->position
+
+
+	// find the x, y offset of the pixel from the origin in sprite coordinates.
+	int pixelX = (pixelIndex % sizeAnimalSprite) - (sizeAnimalSprite / 2);
+	int pixelY = (pixelIndex / sizeAnimalSprite) - (sizeAnimalSprite / 2);
+
+	int segmentX = s->position % sizeX;
+	int segmentY = s->position / sizeX;
+
+	int worldX = segmentX + pixelX;
+	int worldY = segmentY + pixelY;
+
+	int worldI = (worldY * sizeX) + worldX;
+
+
+	if ( worldI > totalSize) {return;}
+
+	int j__color_offset = (worldI * numberOfFieldsPerVertex) ;
+
+
+
+
+	if (s->animationFrame == FRAME_A)
 	{
-		memcpy( &lifeColorGridB[ j__color_offset], 	&(p.color) , 	sizeof(Color) );
+
+
+		
+			memcpy( &lifeColorGridB[ j__color_offset], 	&( s->frameA[pixelIndex]  ) , 	sizeof(Color) );
+		
+
 	}
+	else if (s->animationFrame == FRAME_B)
+	{
+
+		
+			memcpy( &lifeColorGridB[ j__color_offset], 	&( s->frameB[pixelIndex]  ) , 	sizeof(Color) );
+		
+	}
+	else if (s->animationFrame == FRAME_C)
+	{
+		
+			memcpy( &lifeColorGridB[ j__color_offset], 	&( s->frameC[pixelIndex]  ) , 	sizeof(Color) );
+		
+
+	}
+
+
+
+
 }
 
 void swapAnimalSpritePixel (unsigned int a, unsigned int b)
@@ -950,44 +1054,47 @@ void incrementAnimalSegmentPositions (Animal * a, unsigned int i, bool falling)
 	bool segmentPhase = 0;
 
 	// Update animal segment positions. Only do this if the animal has actually moved (otherwise it will pile into one square).
-	if (!(a->segments.empty()) )
+	// if (
+	// 	// !(a->segments.empty())
+
+	// 	)
+	// {
+	// 	// printf("KUUUUNNNN %lu\n", a->segments.size());
+	if (a->segments[0].position != i)
 	{
-		// printf("KUUUUNNNN %lu\n", a->segments.size());
-		if (a->segments[0].position != i)
+		// set the position of the 0th segment to the new index, and everyone elses position is shifted forward by 1.
+		bool segmentPhase = false;
+
+		if (a->segments[0].animationFrame == FRAME_A) {segmentPhase = true;}
+
+		for (unsigned int j = 0; j < a->segmentsUsed; ++j)
 		{
-			// set the position of the 0th segment to the new index, and everyone elses position is shifted forward by 1.
-			bool segmentPhase = false;
-
-			if (a->segments[0].animationFrame == FRAME_A) {segmentPhase = true;}
-
-			for (unsigned int j = 0; j < a->segments.size(); ++j)
+			if (falling)
 			{
-				if (falling)
+				a->segments[j].animationFrame = FRAME_C;
+			}
+			else
+			{
+				if (segmentPhase)
 				{
-					a->segments[j].animationFrame = FRAME_C;
+					a->segments[j].animationFrame = FRAME_B;
 				}
 				else
 				{
-					if (segmentPhase)
-					{
-						a->segments[j].animationFrame = FRAME_B;
-					}
-					else
-					{
-						a->segments[j].animationFrame = FRAME_A;
-					}
-					segmentPhase = !segmentPhase;
+					a->segments[j].animationFrame = FRAME_A;
 				}
+				segmentPhase = !segmentPhase;
 			}
-
-			for ( int j = (a->segments.size() - 1); j > 0; --j)
-			{
-				a->segments[j].position = a->segments[j - 1].position;
-			}
-
-			a->segments[0].position = i;
 		}
+
+		for ( int j = (a->segmentsUsed - 1); j > 0; --j)
+		{
+			a->segments[j].position = a->segments[j - 1].position;
+		}
+
+		a->segments[0].position = i;
 	}
+	// }
 }
 
 void updateAnimalDrawing(unsigned int i)
@@ -999,31 +1106,18 @@ void updateAnimalDrawing(unsigned int i)
 		std::vector<AnimalSegment>::iterator s;
 
 		unsigned int count = 0;
-		for (s = a->segments.begin(); s !=  a->segments.end(); ++s)
+		// for (s = a->segments.begin(); s !=  a->segments.end(); ++s)
+		for (	int j = 0; j < a->segmentsUsed; j++ )
 		{
-			std::vector<AnimalSpritePixel>::iterator p;
+			AnimalSegment * s = &(a->segments[j]);
+			// std::vector<AnimalSpritePixel>::iterator p;
 
-			if (s->animationFrame == FRAME_A)
+			
+			for (unsigned int k = 0; k < (sizeAnimalSprite * sizeAnimalSprite); ++k)
 			{
-				for (p = s->frameA.begin(); p !=  s->frameA.end(); ++p)
-				{
-					setAnimalSpritePixel( a, &(*s), *p, i);
-				}
+				setAnimalSpritePixel( a, s, k);
 			}
-			if (s->animationFrame == FRAME_B)
-			{
-				for (p = s->frameB.begin(); p !=  s->frameB.end(); ++p)
-				{
-					setAnimalSpritePixel( a, &(*s), *p, i);
-				}
-			}
-			if (s->animationFrame == FRAME_C)
-			{
-				for (p = s->frameC.begin(); p !=  s->frameC.end(); ++p)
-				{
-					setAnimalSpritePixel( a, &(*s), *p, i);
-				}
-			}
+
 			count++;
 
 		}
@@ -1396,7 +1490,7 @@ void createRandomWorld()
 	defaultTemperature = RNG() * 1500;
 
 
-	unsigned int nNewMaterials = 0;
+	unsigned int nNewMaterials = 5;
 	for (unsigned int k = 0; k < nNewMaterials; ++k)
 	{
 
