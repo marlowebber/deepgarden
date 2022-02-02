@@ -37,6 +37,32 @@ vec_f2 rotatePointPrecomputed( vec_f2 center, float s, float c, vec_f2 point)
 	return vec_f2(point.x, point.y);
 };
 
+
+
+float magnitude_int( int x,  int y)
+{
+	float mag = sqrt(x * x + y * y);
+	return mag;
+}
+
+
+
+int distanceBetweenPoints( vec_i2 a, vec_i2 b )
+{
+
+	int diffX = abs(a.x - b.x);
+	int diffY = abs(a.y - b.y);
+
+
+
+	return magnitude_int( diffX,  diffY);
+
+}
+
+
+
+
+
 // lookup table for character alphanumeric values
 int alphanumeric (char c)
 {
@@ -147,6 +173,48 @@ int alphanumeric (char c)
 }
 
 
+
+// produce a letter that would correspond to a particular value.
+char numeralphabetic (int i)
+{
+
+	if ( i >= 26) {return 'z';}
+	switch (i)
+	{
+
+	case 1: {  return 'a'; break;  }
+	case 2: {  return 'b'; break;  }
+	case 3: {  return 'c'; break;  }
+	case 4: {  return 'd'; break;  }
+	case 5: {  return 'e'; break;  }
+	case 6: {  return 'f'; break;  }
+	case 7: {  return 'g'; break;  }
+	case 8: {  return 'h'; break;  }
+	case 9: {  return 'i'; break;  }
+	case 10: {  return 'j'; break;  }
+	case 11: {  return 'k'; break;  }
+	case 12: {  return 'l'; break;  }
+	case 13: {  return 'm'; break;  }
+	case 14: {  return 'n'; break;  }
+	case 15: {  return 'o'; break;  }
+	case 16: {  return 'p'; break;  }
+	case 17: {  return 'q'; break;  }
+	case 18: {  return 'r'; break;  }
+	case 19: {  return 's'; break;  }
+	case 20: {  return 't'; break;  }
+	case 21: {  return 'u'; break;  }
+	case 22: {  return 'v'; break;  }
+	case 23: {  return 'w'; break;  }
+	case 24: {  return 'x'; break;  }
+	case 25: {  return 'y'; break;  }
+
+	}
+
+	return 'a';
+
+}
+
+
 float RNG()
 {
 	static std::default_random_engine e;
@@ -155,11 +223,6 @@ float RNG()
 	return dis(e);
 }
 
-float magnitude_int( int x,  int y)
-{
-	float mag = sqrt(x * x + y * y);
-	return mag;
-}
 
 
 
@@ -180,7 +243,7 @@ float magnitude_int( int x,  int y)
 // };
 
 
- inline uint16_t extremelyFastRandomByte()
+inline uint16_t extremelyFastRandomByte()
 {
 	// it used to be an actual byte, but that makes it eventually run out of randomness and always choose the same number!!
 	// mask off the top 8 if you really need a byte.
@@ -193,14 +256,14 @@ float magnitude_int( int x,  int y)
 	return a;
 }
 
- uint16_t extremelyFastNumberInRange(uint16_t from, uint16_t to)
+uint16_t extremelyFastNumberInRange(uint16_t from, uint16_t to)
 {
 	return from + ( extremelyFastRandomByte() % ( to - from + 1 ) );
 }
 
- uint16_t extremelyFastNumberFromZeroTo( uint16_t to)
+uint16_t extremelyFastNumberFromZeroTo( uint16_t to)
 {
-	return( extremelyFastRandomByte() % ( to + 1 ) );
+	return ( extremelyFastRandomByte() % ( to + 1 ) );
 }
 
 

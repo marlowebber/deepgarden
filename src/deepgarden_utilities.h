@@ -29,10 +29,14 @@ vec_f2(float  a, float  b);
 
 vec_f2 rotatePointPrecomputed( vec_f2 center, float s, float c, vec_f2 point);
 int alphanumeric (char c);
+// produce a letter that would correspond to a particular value.
+char numeralphabetic (int i);
 
 float RNG();
 
 float magnitude_int( int x,  int y);
+
+ int distanceBetweenPoints( vec_i2 a, vec_i2 b );
 
 
 // inline uint8_t extremelyFastRandomByte();

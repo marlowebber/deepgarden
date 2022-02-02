@@ -86,6 +86,7 @@ int animalCursorLegLength = 5;
 Color animalCursorColor = Color(0.5f, 0.5f, 0.5f, 1.0f);
 unsigned int animalCursorSegmentNumber = 0;
 float animalCursorEnergyDebt = 0.0f;
+unsigned int animaCursorEnergySource = ENERGYSOURCE_PLANT;
 float animalCursorLimbLowerAngle = 0.0f;
 float animalCursorLimbUpperAngle = 0.5 * 3.1415f;
 unsigned int animalRecursionLevel = 0;
@@ -406,6 +407,7 @@ Animal::Animal()
 	this->energy = 0.0f;
 	this->reach = 5;
 	this->movementChance = 4;
+	this->segmentsUsed = 1;
 	// this->segments.push_back(AnimalSegment());
 
 	for (int i = 0; i < maxAnimalSegments; ++i)
@@ -497,6 +499,12 @@ std::list<ProposedLifeParticle> EFLA_E(vec_i2 start, vec_i2 end)
 // return 0 to continue drawing sequence, return 1 to break sequence by one level.
 int drawAnimalFromChar (unsigned int i)
 {
+
+	std::list<vec_i2> working_vertices;
+	std::list<ProposedLifeParticle> segment_particles;
+
+
+
 	if (seedGrid[i].parentIdentity < animals.size() )
 	{
 		Animal * a = &(animals[seedGrid[i].parentIdentity]);
@@ -506,18 +514,18 @@ int drawAnimalFromChar (unsigned int i)
 		char c = seedGrid[i].genes[animalCursorString];
 		switch (c)
 		{
-		case 'j': // movement modification.
-		{
-			animalCursorString++;
+		// case 'j': // movement modification.
+		// {
+		// 	animalCursorString++;
 
-			// walks on powder
-			if (seedGrid[i].genes[animalCursorString] == 'p')
-			{
-				a->movementFlags = a->movementFlags |	MOVEMENT_ONPOWDER;
-			}
+		// 	// walks on powder
+		// 	if (seedGrid[i].genes[animalCursorString] == 'p')
+		// 	{
+		// 		a->movementFlags = a->movementFlags |	MOVEMENT_ONPOWDER;
+		// 	}
 
-			animalCursorString++;
-		}
+		// 	animalCursorString++;
+		// }
 
 		case 's':
 		{
@@ -540,154 +548,282 @@ int drawAnimalFromChar (unsigned int i)
 #ifdef ANIMAL_DRAWING_READOUT
 			printf("go to new segment\n");
 #endif
+
+			// commit the segment drawing to the sprite
+			for (std::list<ProposedLifeParticle>::iterator it = segment_particles.begin(); it != segment_particles.end(); ++it)
+			{
+				unsigned int i = (it->position.y * sizeAnimalSprite) + it->position.x;
+				if ( i < (sizeAnimalSprite * sizeAnimalSprite))
+				{
+					a->segments[animalCursorSegmentNumber].frameA[i] = it->color;
+					a->segments[animalCursorSegmentNumber].frameB[i] = it->color;
+					a->segments[animalCursorSegmentNumber].frameC[i] = it->color;
+				}
+			}
+
+			segment_particles.clear();
+
 			// a->segments.push_back(AnimalSegment());
 			animalCursorSegmentNumber++;
 			break;
 		}
 
-		case 'c':
+
+		case 'c':  // commit the working polygon and start a new one.
 		{
-#ifdef ANIMAL_DRAWING_READOUT
-			printf("draw a circle\n");
-#endif
-			// raster a circle
-			int drawingAreaLowerX = -  (sizeAnimalSprite / 2) ; //animalCursorSegmentRadius;
-			int drawingAreaLowerY = -  (sizeAnimalSprite / 2) ; //animalCursorSegmentRadius;
-			int drawingAreaUpperX = +  (sizeAnimalSprite / 2) ; //animalCursorSegmentRadius;
-			int drawingAreaUpperY = +  (sizeAnimalSprite / 2) ; //animalCursorSegmentRadius;
-			for ( int k = drawingAreaLowerX; k < drawingAreaUpperX; ++k)
+
+			// commit the last polygon to the sprite.
+			std::list<vec_i2>::iterator it;
+
+			// draw lines connecting the vertices.
+			for (it = working_vertices.begin(); it != working_vertices.end(); ++it)
 			{
-				for ( int j = drawingAreaLowerY; j < drawingAreaUpperY; ++j)
+				vec_i2 lineEnd = *(it);
+				++it;
+
+				if (it == working_vertices.end())
 				{
-					if (  magnitude_int (  k , j )  < animalCursorSegmentRadius )
-					{
-						 int pixel =  ((j * sizeX) + k);
-						 int spritePixel = (j * sizeAnimalSprite) + k ;
-
-						// a->segments[animalCursorSegmentNumber].frameA[ (j * sizeAnimalSprite) + k ] = AnimalSpritePixel(pixel  , animalCursorColor );
-						// a->segments[animalCursorSegmentNumber].frameB[ (j * sizeAnimalSprite) + k ] = AnimalSpritePixel(pixel  , animalCursorColor );
-						// a->segments[animalCursorSegmentNumber].frameC[ (j * sizeAnimalSprite) + k ] = AnimalSpritePixel(pixel  , animalCursorColor );
-
-						printf("smiuuuuueghgh nyueueueughueue %i\n", spritePixel);
-						a->segments[animalCursorSegmentNumber].frameA[ spritePixel ] = animalCursorColor;
-						a->segments[animalCursorSegmentNumber].frameB[ spritePixel ] = animalCursorColor;
-						a->segments[animalCursorSegmentNumber].frameC[ spritePixel ] = animalCursorColor;
-						// a->segments[animalCursorSegmentNumber].frameA[ spritePixel ].localPosition = pixel;
-						// a->segments[animalCursorSegmentNumber].frameB[ spritePixel ].localPosition = pixel;
-						// a->segments[animalCursorSegmentNumber].frameC[ spritePixel ].localPosition = pixel;
-
-
-
-
-
-						animalCursorEnergyDebt += 1.0f;
-					}
+					it = working_vertices.begin();
+					segment_particles.splice(segment_particles.end(), EFLA_E(   lineEnd,  *(it)) );
+					break;
+				}
+				else
+				{
+					segment_particles.splice(segment_particles.end(), EFLA_E(   lineEnd,  *(it)) );
 				}
 			}
-			break;
-		}
-		case 'l':
-		{
-#ifdef ANIMAL_DRAWING_READOUT
-			printf("draw a limb\n");
-#endif
-			// limb
-			for (unsigned int frame = 0; frame < 3; ++frame)
+
+			working_vertices.clear();
+
+			// draw a n sided polygon in the vertices buffer.
+			animalCursorString++; if (animalCursorString > seedGrid[i].genes.length()) { return -1; }
+			unsigned int numberModifier = alphanumeric( seedGrid[i].genes[animalCursorString] );
+			unsigned int nPolyVertices = numberModifier ;
+
+			for (int i = 0; i < nPolyVertices; ++i)
 			{
-				if (frame == 0 ) {animalCursorFrame = FRAME_A;}
-				if (frame == 1 ) {animalCursorFrame = FRAME_B;}
-				if (frame == 2 ) {animalCursorFrame = FRAME_C;}
-
-				// draw a line at an angle from the center of the segment
-				float upperLimbAngle = 0.0f;
-				float lowerLimbAngle = 0.0f;
-				// float limbAccumulatedAngle = 0.0f;
-				float limbAngleOffset = (0.5 * 3.1415); // rotate the global zero to one that makes sense for our maths.
-
-				float limbAngleDelta = 0.0f;
-				// the ANGLE OF THE UPPER LIMB is determined from the vertical
-				if (  animalCursorFrame == FRAME_A)
-				{
-					limbAngleDelta = (0.35f * animalCursorLimbUpperAngle) + animalCursorLimbLowerAngle;
-
-				}
-				else if (  animalCursorFrame == FRAME_B)
-				{
-					limbAngleDelta = (0.65f * animalCursorLimbUpperAngle) + animalCursorLimbLowerAngle;
-					// upperLimbAngle =  limbAngleDelta + limbAngleOffset ;
-				}
-
-				else if (  animalCursorFrame == FRAME_C)
-				{
-					limbAngleDelta = (0.0f * animalCursorLimbUpperAngle) + animalCursorLimbLowerAngle;
-					// upperLimbAngle =  limbAngleDelta + limbAngleOffset ;
-				}
-				upperLimbAngle =  limbAngleDelta + limbAngleOffset ;
-				lowerLimbAngle = upperLimbAngle - (2 * limbAngleDelta) - 3.1415;
-
-
-				// the ANGLE OF THE LOWER LIMB simply reflects that angle
-
-				// float lowerLimbAngle = limbAngleOffset -
-
-				unsigned int x = a->segments[animalCursorSegmentNumber].position % sizeX;
-				unsigned int y = a->segments[animalCursorSegmentNumber].position / sizeX;
-				unsigned int animalCursorX = animalCursor % sizeX;
-				unsigned int animalCursorY = animalCursor / sizeX;
-
-				// limbAccumulatedAngle = limbAngle;
-				vec_i2 elbow = vec_i2(
-				                   x + animalCursorX + (animalCursorLegLength * cos(upperLimbAngle)),
-				                   y + animalCursorY + (animalCursorLegLength * sin(upperLimbAngle) )
-				               );
-				// limbAccumulatedAngle += limbAngle;
-				vec_i2 wrist = vec_i2( elbow.x +   ( animalCursorLegLength * cos(lowerLimbAngle) ) ,
-				                       elbow.y +   ( animalCursorLegLength * sin(lowerLimbAngle)  )
-				                     );
-
-				std::list<ProposedLifeParticle> v;
-				v.splice(v.end(), EFLA_E( vec_i2(x, y),  elbow) );
-				v.splice(v.end(), EFLA_E( elbow,		 wrist) );
-
-				for (std::list<ProposedLifeParticle>::iterator it = v.begin(); it != v.end(); ++it)
-				{
-					unsigned int i 			 = (it->position.y * sizeX) + it->position.x;
-					unsigned int shadowIndex = ( (it->position.y - 1) * sizeX) + (it->position.x);
-					if ( i < totalSize)
-					{
-						if (animalCursorFrame == FRAME_A)
-						{
-							// a->segments[animalCursorSegmentNumber].frameA.push_back( AnimalSpritePixel(i  ,		   animalCursorColor ));
-							// a->segments[animalCursorSegmentNumber].frameA.push_back( AnimalSpritePixel(shadowIndex  , color_shadow ));
-							a->segments[animalCursorSegmentNumber].frameA[i] = animalCursorColor;
-							// a->segments[animalCursorSegmentNumber].frameA[i].localPosition = i;
-							a->segments[animalCursorSegmentNumber].frameA[shadowIndex] = addColor( color_shadow , a->segments[animalCursorSegmentNumber].frameA[shadowIndex] );
-							// a->segments[animalCursorSegmentNumber].frameA[shadowIndex].localPosition = shadowIndex;
-
-						}
-						if (animalCursorFrame == FRAME_B)
-						{
-							// a->segments[animalCursorSegmentNumber].frameB.push_back( AnimalSpritePixel(i  , animalCursorColor ));
-							// a->segments[animalCursorSegmentNumber].frameB.push_back( AnimalSpritePixel(shadowIndex  , color_shadow ));
-							a->segments[animalCursorSegmentNumber].frameB[i] = animalCursorColor;
-							// a->segments[animalCursorSegmentNumber].frameB[i].localPosition = i;
-							a->segments[animalCursorSegmentNumber].frameB[shadowIndex] = addColor( color_shadow , a->segments[animalCursorSegmentNumber].frameB[shadowIndex] );
-							// a->segments[animalCursorSegmentNumber].frameB[shadowIndex].localPosition = shadowIndex;
-						}
-						if (animalCursorFrame == FRAME_C)
-						{
-							// a->segments[animalCursorSegmentNumber].frameC.push_back( AnimalSpritePixel(i  , animalCursorColor ));
-							// a->segments[animalCursorSegmentNumber].frameC.push_back( AnimalSpritePixel(shadowIndex  , color_shadow ));
-							a->segments[animalCursorSegmentNumber].frameC[i] = animalCursorColor;
-							// a->segments[animalCursorSegmentNumber].frameC[i].localPosition = i;
-							a->segments[animalCursorSegmentNumber].frameB[shadowIndex] = addColor( color_shadow , a->segments[animalCursorSegmentNumber].frameC[shadowIndex] );
-							// a->segments[animalCursorSegmentNumber].frameC[shadowIndex].localPosition = shadowIndex;
-						}
-					}
-				}
+				float angle = (i * ((1 * 3.1415) / nPolyVertices)  ) + (0.5 * 3.1415);  // only 1 pi so it draws a semi circle.
+				working_vertices.push_back ( vec_i2( animalCursorSegmentRadius * cos(angle), animalCursorSegmentRadius * sin(angle)) );
 			}
-			break;
+
+
+
+
 		}
+
+		case 'm':
+		{
+			// move a vertex, distorting the polygon
+			// the first char is which vertex to choose
+
+			animalCursorString++; if (animalCursorString > seedGrid[i].genes.length()) { return -1; }
+			unsigned int numberModifier = alphanumeric( seedGrid[i].genes[animalCursorString] );
+			unsigned int moveVertex = numberModifier;
+			moveVertex = moveVertex % working_vertices.size();
+
+			// the second char is x movement
+			animalCursorString++; if (animalCursorString > seedGrid[i].genes.length()) { return -1; }
+			 numberModifier = alphanumeric( seedGrid[i].genes[animalCursorString] );
+			 int moveX = numberModifier - 13;
+
+			// the second char is y movement
+			animalCursorString++; if (animalCursorString > seedGrid[i].genes.length()) { return -1; }
+			 numberModifier = alphanumeric( seedGrid[i].genes[animalCursorString] );
+			 int moveY = numberModifier - 13;
+
+			 // working_vertices[moveVertex].x += moveX;
+			 // working_vertices[moveVertex].y += moveY;
+
+			 std::list<vec_i2>::iterator it;
+			 unsigned int count = 0;
+			 for (it = working_vertices.begin(); it != working_vertices.end(); ++it)
+			 {
+			 	if (count == moveVertex)
+			 	{
+			 		it->x += moveX;
+			 		it->y += moveY;
+			 	}
+
+			 	count++;
+			 }
+
+
+		}
+
+
+
+// 		case 'c':
+// 		{
+// #ifdef ANIMAL_DRAWING_READOUT
+// 			printf("draw a circle\n");
+// #endif
+// 			// raster a circle
+// 			// int drawingAreaLowerX = -  (sizeAnimalSprite / 2) ; //animalCursorSegmentRadius;
+// 			// int drawingAreaLowerY = -  (sizeAnimalSprite / 2) ; //animalCursorSegmentRadius;
+// 			// int drawingAreaUpperX = +  (sizeAnimalSprite / 2) ; //animalCursorSegmentRadius;
+// 			// int drawingAreaUpperY = +  (sizeAnimalSprite / 2) ; //animalCursorSegmentRadius;
+// 			for ( int k = 0; k < sizeAnimalSprite; ++k)
+// 			{
+// 				for ( int j = 0; j < sizeAnimalSprite; ++j)
+// 				{
+
+// 					int animalCursorSegmentRadiusInt = animalCursorSegmentRadius;
+
+// 					int distance  = distanceBetweenPoints( vec_i2(k, j), vec_i2( sizeAnimalSprite / 2, sizeAnimalSprite / 2 ) ) ;
+
+// 					printf("distance %i\n", distance);
+// 					if ( distance < animalCursorSegmentRadiusInt )
+// 					{
+// 						// int pixel =  ((j * sizeX) + k);
+// 						int spritePixel = (j * sizeAnimalSprite) + k ;
+
+// 						// a->segments[animalCursorSegmentNumber].frameA[ (j * sizeAnimalSprite) + k ] = AnimalSpritePixel(pixel  , animalCursorColor );
+// 						// a->segments[animalCursorSegmentNumber].frameB[ (j * sizeAnimalSprite) + k ] = AnimalSpritePixel(pixel  , animalCursorColor );
+// 						// a->segments[animalCursorSegmentNumber].frameC[ (j * sizeAnimalSprite) + k ] = AnimalSpritePixel(pixel  , animalCursorColor );
+
+// 						// printf("smiuuuuueghgh nyueueueughueue %i\n", spritePixel);
+// 						a->segments[animalCursorSegmentNumber].frameA[ spritePixel ] = animalCursorColor;
+// 						a->segments[animalCursorSegmentNumber].frameB[ spritePixel ] = animalCursorColor;
+// 						a->segments[animalCursorSegmentNumber].frameC[ spritePixel ] = animalCursorColor;
+// 						// a->segments[animalCursorSegmentNumber].frameA[ spritePixel ].localPosition = pixel;
+// 						// a->segments[animalCursorSegmentNumber].frameB[ spritePixel ].localPosition = pixel;
+// 						// a->segments[animalCursorSegmentNumber].frameC[ spritePixel ].localPosition = pixel;
+
+
+// 						printf("X");
+
+
+
+// 						animalCursorEnergyDebt += animalCursorColor.a;
+// 					}
+// 					else
+// 					{
+// 						printf("O");
+// 					}
+// 				}
+// 				printf("\n");
+// 			}
+// 			break;
+// 		}
+// 		case 'l':
+// 		{
+// #ifdef ANIMAL_DRAWING_READOUT
+// 			printf("draw a limb\n");
+// #endif
+// 			// limb
+// 			for (unsigned int frame = 0; frame < 3; ++frame)
+// 			{
+// 				if (frame == 0 ) {animalCursorFrame = FRAME_A;}
+// 				if (frame == 1 ) {animalCursorFrame = FRAME_B;}
+// 				if (frame == 2 ) {animalCursorFrame = FRAME_C;}
+
+// 				// draw a line at an angle from the center of the segment
+// 				float upperLimbAngle = 0.0f;
+// 				float lowerLimbAngle = 0.0f;
+// 				// float limbAccumulatedAngle = 0.0f;
+// 				float limbAngleOffset = (0.5 * 3.1415); // rotate the global zero to one that makes sense for our maths.
+
+// 				float limbAngleDelta = 0.0f;
+// 				// the ANGLE OF THE UPPER LIMB is determined from the vertical
+// 				if (  animalCursorFrame == FRAME_A)
+// 				{
+// 					limbAngleDelta = (0.35f * animalCursorLimbUpperAngle) + animalCursorLimbLowerAngle;
+
+// 				}
+// 				else if (  animalCursorFrame == FRAME_B)
+// 				{
+// 					limbAngleDelta = (0.65f * animalCursorLimbUpperAngle) + animalCursorLimbLowerAngle;
+// 					// upperLimbAngle =  limbAngleDelta + limbAngleOffset ;
+// 				}
+
+// 				else if (  animalCursorFrame == FRAME_C)
+// 				{
+// 					limbAngleDelta = (0.0f * animalCursorLimbUpperAngle) + animalCursorLimbLowerAngle;
+// 					// upperLimbAngle =  limbAngleDelta + limbAngleOffset ;
+// 				}
+// 				upperLimbAngle =  limbAngleDelta + limbAngleOffset ;
+// 				lowerLimbAngle = upperLimbAngle - (2 * limbAngleDelta) - 3.1415;
+
+
+// 				// the ANGLE OF THE LOWER LIMB simply reflects that angle
+
+// 				// float lowerLimbAngle = limbAngleOffset -
+
+// 				unsigned int x = a->segments[animalCursorSegmentNumber].position % sizeAnimalSprite;
+// 				unsigned int y = a->segments[animalCursorSegmentNumber].position / sizeAnimalSprite;
+// 				unsigned int animalCursorX = animalCursor % sizeAnimalSprite;
+// 				unsigned int animalCursorY = animalCursor / sizeAnimalSprite;
+
+// 				// limbAccumulatedAngle = limbAngle;
+// 				vec_i2 elbow = vec_i2(
+// 				                   x + animalCursorX + (animalCursorLegLength * cos(upperLimbAngle)),
+// 				                   y + animalCursorY + (animalCursorLegLength * sin(upperLimbAngle) )
+// 				               );
+// 				// limbAccumulatedAngle += limbAngle;
+// 				vec_i2 wrist = vec_i2( elbow.x +   ( animalCursorLegLength * cos(lowerLimbAngle) ) ,
+// 				                       elbow.y +   ( animalCursorLegLength * sin(lowerLimbAngle)  )
+// 				                     );
+
+// 				std::list<ProposedLifeParticle> v;
+// 				v.splice(v.end(), EFLA_E( vec_i2(x, y),  elbow) );
+// 				v.splice(v.end(), EFLA_E( elbow,		 wrist) );
+
+// 				for (std::list<ProposedLifeParticle>::iterator it = v.begin(); it != v.end(); ++it)
+// 				{
+// 					unsigned int i 			 = (it->position.y * sizeAnimalSprite) + it->position.x;
+// 					unsigned int shadowIndex = ( (it->position.y - 1) * sizeAnimalSprite) + (it->position.x);
+// 					// if ( i < (sizeAnimalSprite*sizeAnimalSprite))
+// 					// {
+
+// 					if (i > totalSize) {continue;}
+
+// 					// printf("MINDO KARDEX %u\n" , i);
+
+// 					if (animalCursorFrame == FRAME_A)
+// 					{
+// 						// a->segments[animalCursorSegmentNumber].frameA.push_back( AnimalSpritePixel(i  ,		   animalCursorColor ));
+// 						// a->segments[animalCursorSegmentNumber].frameA.push_back( AnimalSpritePixel(shadowIndex  , color_shadow ));
+// 						a->segments[animalCursorSegmentNumber].frameA[i] = animalCursorColor;
+// 						// a->segments[animalCursorSegmentNumber].frameA[i].localPosition = i;
+
+// 						if ( shadowIndex < (sizeAnimalSprite * sizeAnimalSprite))
+// 						{
+// 							a->segments[animalCursorSegmentNumber].frameA[shadowIndex] = addColor( color_shadow , a->segments[animalCursorSegmentNumber].frameA[shadowIndex] );
+// 						}
+// 						// a->segments[animalCursorSegmentNumber].frameA[shadowIndex].localPosition = shadowIndex;
+
+// 					}
+// 					if (animalCursorFrame == FRAME_B)
+// 					{
+// 						// a->segments[animalCursorSegmentNumber].frameB.push_back( AnimalSpritePixel(i  , animalCursorColor ));
+// 						// a->segments[animalCursorSegmentNumber].frameB.push_back( AnimalSpritePixel(shadowIndex  , color_shadow ));
+// 						a->segments[animalCursorSegmentNumber].frameB[i] = animalCursorColor;
+// 						// a->segments[animalCursorSegmentNumber].frameB[i].localPosition = i;
+
+// 						if ( shadowIndex < (sizeAnimalSprite * sizeAnimalSprite))
+// 						{
+// 							a->segments[animalCursorSegmentNumber].frameB[shadowIndex] = addColor( color_shadow , a->segments[animalCursorSegmentNumber].frameB[shadowIndex] );
+// 						}
+// 						// a->segments[animalCursorSegmentNumber].frameB[shadowIndex].localPosition = shadowIndex;
+// 					}
+// 					if (animalCursorFrame == FRAME_C)
+// 					{
+// 						// a->segments[animalCursorSegmentNumber].frameC.push_back( AnimalSpritePixel(i  , animalCursorColor ));
+// 						// a->segments[animalCursorSegmentNumber].frameC.push_back( AnimalSpritePixel(shadowIndex  , color_shadow ));
+// 						a->segments[animalCursorSegmentNumber].frameC[i] = animalCursorColor;
+// 						// a->segments[animalCursorSegmentNumber].frameC[i].localPosition = i;
+
+// 						if ( shadowIndex < (sizeAnimalSprite * sizeAnimalSprite))
+// 						{
+// 							a->segments[animalCursorSegmentNumber].frameB[shadowIndex] = addColor( color_shadow , a->segments[animalCursorSegmentNumber].frameC[shadowIndex] );
+// 						}
+// 						// a->segments[animalCursorSegmentNumber].frameC[shadowIndex].localPosition = shadowIndex;
+// 					}
+// 					// }
+// 				}
+// 			}
+// 			break;
+// 		}
 
 
 		case 'r':
@@ -774,12 +910,13 @@ void drawAnimalFromSeed(unsigned int i)
 	}
 }
 
-void setSeedParticle( std::string genes, unsigned int parentIdentity, float energyDebt, unsigned int i)
+void setSeedParticle( std::string genes, unsigned int parentIdentity, float energyDebt, unsigned int i, unsigned int germinationMaterial)
 {
 	seedGrid[i].genes = genes;
 	seedGrid[i].parentIdentity = parentIdentity;
 	seedGrid[i].stage = STAGE_BUD;
 	seedGrid[i].energy = energyDebt;
+	seedGrid[i].germinationMaterial = germinationMaterial;
 
 #ifdef PLANT_DRAWING_READOUT
 	printf("seed with energy debt %f \n", energyDebt);
@@ -940,7 +1077,7 @@ void photate( unsigned int i )
 }
 
 
-void setAnimalSpritePixel ( Animal * a, AnimalSegment * s, unsigned int pixelIndex )
+void setAnimalSpritePixel ( AnimalSegment  s, unsigned int pixelIndex )
 {
 	// unsigned int j_offset = (s->position + p.localPosition) ;
 	// unsigned int j__color_offset = (j_offset * numberOfFieldsPerVertex) ;
@@ -954,8 +1091,8 @@ void setAnimalSpritePixel ( Animal * a, AnimalSegment * s, unsigned int pixelInd
 	int pixelX = (pixelIndex % sizeAnimalSprite) - (sizeAnimalSprite / 2);
 	int pixelY = (pixelIndex / sizeAnimalSprite) - (sizeAnimalSprite / 2);
 
-	int segmentX = s->position % sizeX;
-	int segmentY = s->position / sizeX;
+	int segmentX = s.position % sizeX;
+	int segmentY = s.position / sizeX;
 
 	int worldX = segmentX + pixelX;
 	int worldY = segmentY + pixelY;
@@ -970,27 +1107,27 @@ void setAnimalSpritePixel ( Animal * a, AnimalSegment * s, unsigned int pixelInd
 
 
 
-	if (s->animationFrame == FRAME_A)
+	if (s.animationFrame == FRAME_A)
 	{
 
 
-		
-			memcpy( &lifeColorGridB[ j__color_offset], 	&( s->frameA[pixelIndex]  ) , 	sizeof(Color) );
-		
+
+		memcpy( &lifeColorGridB[ j__color_offset], 	&( s.frameA[pixelIndex]  ) , 	sizeof(Color) );
+
 
 	}
-	else if (s->animationFrame == FRAME_B)
+	else if (s.animationFrame == FRAME_B)
 	{
 
-		
-			memcpy( &lifeColorGridB[ j__color_offset], 	&( s->frameB[pixelIndex]  ) , 	sizeof(Color) );
-		
+
+		memcpy( &lifeColorGridB[ j__color_offset], 	&( s.frameB[pixelIndex]  ) , 	sizeof(Color) );
+
 	}
-	else if (s->animationFrame == FRAME_C)
+	else if (s.animationFrame == FRAME_C)
 	{
-		
-			memcpy( &lifeColorGridB[ j__color_offset], 	&( s->frameC[pixelIndex]  ) , 	sizeof(Color) );
-		
+
+		memcpy( &lifeColorGridB[ j__color_offset], 	&( s.frameC[pixelIndex]  ) , 	sizeof(Color) );
+
 
 	}
 
@@ -1067,8 +1204,16 @@ void incrementAnimalSegmentPositions (Animal * a, unsigned int i, bool falling)
 
 		if (a->segments[0].animationFrame == FRAME_A) {segmentPhase = true;}
 
-		for (unsigned int j = 0; j < a->segmentsUsed; ++j)
+		for (unsigned int j = 0; j < maxAnimalSegments; ++j)
 		{
+
+			if ( j >= a->segmentsUsed)
+
+			{
+				continue;
+			}
+
+
 			if (falling)
 			{
 				a->segments[j].animationFrame = FRAME_C;
@@ -1103,19 +1248,19 @@ void updateAnimalDrawing(unsigned int i)
 	{
 		Animal * a = &(animals[seedGrid[i].parentIdentity]);
 
-		std::vector<AnimalSegment>::iterator s;
+		// std::vector<AnimalSegment>::iterator s;
 
 		unsigned int count = 0;
 		// for (s = a->segments.begin(); s !=  a->segments.end(); ++s)
 		for (	int j = 0; j < a->segmentsUsed; j++ )
 		{
-			AnimalSegment * s = &(a->segments[j]);
+			// AnimalSegment * s = &(a->segments[j]);
 			// std::vector<AnimalSpritePixel>::iterator p;
 
-			
+
 			for (unsigned int k = 0; k < (sizeAnimalSprite * sizeAnimalSprite); ++k)
 			{
-				setAnimalSpritePixel( a, s, k);
+				setAnimalSpritePixel( a->segments[j], k);
 			}
 
 			count++;
@@ -1532,7 +1677,7 @@ void createRandomWorld()
 	{
 		/* code */
 
-		unsigned int availability = extremelyFastNumberFromZeroTo(100);
+		unsigned int availability = extremelyFastNumberFromZeroTo(50);
 
 
 		for (unsigned int i = 0; i < sizeX; ++i)
@@ -2619,7 +2764,7 @@ int drawCharacter ( std::string genes , unsigned int identity)
 		// }
 
 
-		printf("set germination material to %u\n", cursor_germinationMaterial);
+		// printf("set germination material to %u\n", cursor_germinationMaterial);
 
 
 		// set germination material
@@ -3251,8 +3396,8 @@ void drawPlantFromSeed( std::string genes, unsigned int i )
 
 
 
-				setSeedParticle(  genes, identity, energyDebtSoFar, i);
-				seedGrid[i].germinationMaterial = cursor_germinationMaterial;
+				setSeedParticle(  genes, identity, energyDebtSoFar, i, cursor_germinationMaterial);
+				// seedGrid[i].germinationMaterial = cursor_germinationMaterial;
 				mutateSentence(&(seedGrid[i].genes));
 			}
 		}
@@ -3408,9 +3553,9 @@ void thread_life()
 
 void thread_plantDrawing()
 {
-#ifdef THREAD_TIMING_READOUT
+// #ifdef THREAD_TIMING_READOUT
 	auto start = std::chrono::steady_clock::now();
-#endif
+// #endif
 	for (unsigned int i =  0; i < totalSize; ++i)
 	{
 
@@ -3433,11 +3578,11 @@ void thread_plantDrawing()
 			}
 		}
 	}
-#ifdef THREAD_TIMING_READOUT
+// #ifdef THREAD_TIMING_READOUT
 	auto end = std::chrono::steady_clock::now();
 	auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 	std::cout << "thread_plantDrawing " << elapsed.count() << " microseconds." << std::endl;
-#endif
+// #endif
 }
 
 unsigned int walkAnAnimal(unsigned int i)
@@ -4119,6 +4264,7 @@ void sendLifeToBackground ()
 
 void insertRandomSeed()
 {
+
 	unsigned int x = 0;
 	unsigned int y = 0;
 
@@ -4150,7 +4296,7 @@ void insertRandomSeed()
 			}
 			case 2:
 			{
-				exampleSentence = plant_Worrage;
+				// exampleSentence = plant_Worrage;
 				break;
 			}
 			case 3:
@@ -4165,7 +4311,7 @@ void insertRandomSeed()
 			}
 			case 5:
 			{
-				exampleSentence = plant_ParbasarbTree;
+				// exampleSentence = plant_ParbasarbTree;
 				break;
 			}
 
@@ -4175,8 +4321,28 @@ void insertRandomSeed()
 				break;
 			}
 			}
-			setSeedParticle(exampleSentence, newIdentity() , 0, i);
+
+
+
+			// cursor_germinationMaterial = randomGerminationMaterial;
+			setSeedParticle(exampleSentence, newIdentity() , 0, i, 0);
 			seedGrid[i].stage = STAGE_FRUIT;
+
+
+			unsigned int randomGerminationMaterial = 0;
+			if (materials.size() > 0)
+			{
+				randomGerminationMaterial = extremelyFastNumberFromZeroTo(materials.size() - 1);
+
+				std::string materialGene = std::string(" m");
+				materialGene.push_back( numeralphabetic(randomGerminationMaterial) );
+
+				seedGrid[i].genes.insert(0, materialGene);
+			}
+
+
+
+			// seedGrid[i].germinationMaterial = randomGerminationMaterial;
 		}
 	}
 }

@@ -235,7 +235,7 @@ int main( int argc, char * argv[] )
 		// start threads in order of chunkiest to least chunky.
 
 
-		if (!crudOps)
+		if (!crudOps && !paused)
 		{
 
 
@@ -264,6 +264,17 @@ int main( int argc, char * argv[] )
 			t99.join();
 
 		}
+		else
+		{
+
+			boost::thread t6{ thread_interface };
+
+			thread_graphics();
+
+			t6.join();
+
+		}
+
 
 		// t100.join();
 
