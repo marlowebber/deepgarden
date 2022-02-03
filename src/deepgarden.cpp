@@ -1165,113 +1165,8 @@ void setAnimal(unsigned int i)
 	printf("seed with energy debt %f \n", energyDebt);
 #endif
 
-	memcpy( (&seedColorGrid[i * numberOfFieldsPerVertex]) ,  &(color_brightred),  sizeof(Color) );
+	memcpy( (&seedColorGrid[i * numberOfFieldsPerVertex]) ,  &(animalCursorColor),  sizeof(Color) );
 	drawAnimalFromSeed(i);
-}
-
-void incrementAnimalSegmentPositions (unsigned int animalIndex, unsigned int i, bool falling)
-{
-
-	if (animalIndex < animals.size())
-	{
-		Animal * a = &(animals[animalIndex]);
-
-		if (a->energy > a->reproductionCost)
-		{
-			unsigned int nSolidNeighbours = 0;
-			for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
-			{
-				unsigned int neighbour = neighbourOffsets[j] + i;
-				if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS )
-				{
-					printf("animal reproduced\n");
-					setAnimal( neighbour );
-					a->energy = 0.0f;
-					return;
-					break;
-				}
-			}
-		}
-
-		bool segmentPhase = 0;
-
-		// Update animal segment positions. Only do this if the animal has actually moved (otherwise it will pile into one square).
-		// if (
-		// 	// !(a->segments.empty())
-
-		// 	)
-		// {
-		// 	// printf("KUUUUNNNN %lu\n", a->segments.size());
-		if (a->segments[0].position != i)
-		{
-			// set the position of the 0th segment to the new index, and everyone elses position is shifted forward by 1.
-			bool segmentPhase = false;
-
-			if (a->segments[0].animationFrame == FRAME_A) {segmentPhase = true;}
-
-			for (unsigned int j = 0; j < maxAnimalSegments; ++j)
-			{
-
-				if ( j >= a->segmentsUsed)
-
-				{
-					continue;
-				}
-
-
-				if (falling)
-				{
-					a->segments[j].animationFrame = FRAME_C;
-				}
-				else
-				{
-					if (segmentPhase)
-					{
-						a->segments[j].animationFrame = FRAME_B;
-					}
-					else
-					{
-						a->segments[j].animationFrame = FRAME_A;
-					}
-					segmentPhase = !segmentPhase;
-				}
-			}
-
-			for ( int j = (a->segmentsUsed - 1); j > 0; --j)
-			{
-				a->segments[j].position = a->segments[j - 1].position;
-			}
-
-			a->segments[0].position = i;
-		}
-	}
-}
-
-void updateAnimalDrawing(unsigned int i)
-{
-	if (seedGrid[i].parentIdentity < animals.size())
-	{
-		Animal * a = &(animals[seedGrid[i].parentIdentity]);
-
-		// std::vector<AnimalSegment>::iterator s;
-
-		unsigned int count = 0;
-		// for (s = a->segments.begin(); s !=  a->segments.end(); ++s)
-		for (	int j = 0; j < a->segmentsUsed; j++ )
-		{
-			// AnimalSegment * s = &(a->segments[j]);
-			// std::vector<AnimalSpritePixel>::iterator p;
-
-
-			for (unsigned int k = 0; k < (sizeAnimalSprite * sizeAnimalSprite); ++k)
-			{
-				setAnimalSpritePixel( a->segments[j], k);
-			}
-
-			count++;
-
-		}
-	}
 }
 
 void mutateSentence ( std::string * genes )
@@ -1323,6 +1218,114 @@ void mutateSentence ( std::string * genes )
 		// 	}
 	}
 }
+
+void incrementAnimalSegmentPositions (unsigned int animalIndex, unsigned int i, bool falling)
+{
+
+	if (animalIndex < animals.size())
+	{
+		Animal  a = animals[animalIndex];
+
+		if (a.energy > a.reproductionCost)
+		{
+			unsigned int nSolidNeighbours = 0;
+			for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
+			{
+				unsigned int neighbour = neighbourOffsets[j] + i;
+				if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS )
+				{
+					printf("animal reproduced\n");
+					setAnimal( neighbour );
+					mutateSentence(  &(seedGrid[neighbour].genes) );
+					a.energy = 0.0f;
+					return;
+					break;
+				}
+			}
+		}
+
+		bool segmentPhase = 0;
+
+		// Update animal segment positions. Only do this if the animal has actually moved (otherwise it will pile into one square).
+		// if (
+		// 	// !(a.segments.empty())
+
+		// 	)
+		// {
+		// 	// printf("KUUUUNNNN %lu\n", a.segments.size());
+		if (a.segments[0].position != i)
+		{
+			// set the position of the 0th segment to the new index, and everyone elses position is shifted forward by 1.
+			bool segmentPhase = false;
+
+			if (a.segments[0].animationFrame == FRAME_A) {segmentPhase = true;}
+
+			for (unsigned int j = 0; j < maxAnimalSegments; ++j)
+			{
+
+				if ( j >= a.segmentsUsed)
+
+				{
+					continue;
+				}
+
+
+				if (falling)
+				{
+					a.segments[j].animationFrame = FRAME_C;
+				}
+				else
+				{
+					if (segmentPhase)
+					{
+						a.segments[j].animationFrame = FRAME_B;
+					}
+					else
+					{
+						a.segments[j].animationFrame = FRAME_A;
+					}
+					segmentPhase = !segmentPhase;
+				}
+			}
+
+			for ( int j = (a.segmentsUsed - 1); j > 0; --j)
+			{
+				a.segments[j].position = a.segments[j - 1].position;
+			}
+
+			a.segments[0].position = i;
+		}
+	}
+}
+
+void updateAnimalDrawing(unsigned int i)
+{
+	if (seedGrid[i].parentIdentity < animals.size())
+	{
+		Animal * a = &(animals[seedGrid[i].parentIdentity]);
+
+		// std::vector<AnimalSegment>::iterator s;
+
+		unsigned int count = 0;
+		// for (s = a->segments.begin(); s !=  a->segments.end(); ++s)
+		for (	int j = 0; j < a->segmentsUsed; j++ )
+		{
+			// AnimalSegment * s = &(a->segments[j]);
+			// std::vector<AnimalSpritePixel>::iterator p;
+
+
+			for (unsigned int k = 0; k < (sizeAnimalSprite * sizeAnimalSprite); ++k)
+			{
+				setAnimalSpritePixel( a->segments[j], k);
+			}
+
+			count++;
+
+		}
+	}
+}
+
+
 
 void setParticle(unsigned int material, unsigned int i)
 {
