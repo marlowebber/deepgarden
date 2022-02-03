@@ -1087,16 +1087,16 @@ void photate( unsigned int i )
 
 					seedColorGrid[a_offset] = seedColorGrid[a_offset] / 2;
 
-				
 
-						if (grid[currentPosition].temperature > 1000)
-						{
 
-							seedColorGrid[a_offset] = 0;
+					if (grid[currentPosition].temperature > 1000)
+					{
 
-						}
+						seedColorGrid[a_offset] = 0;
 
-					
+					}
+
+
 				}
 
 
@@ -3529,7 +3529,7 @@ void thread_life()
 			// {
 
 
-			unsigned int neighbour = neighbourOffsets[ extremelyFastNumberFromZeroTo(N_NEIGHBOURS) ] + i;
+			unsigned int neighbour = (neighbourOffsets[ extremelyFastNumberFromZeroTo(N_NEIGHBOURS) ] + i) % totalSize;
 
 			// hot plants light on fire
 			// if (true)
@@ -3625,9 +3625,9 @@ void thread_life()
 
 void thread_plantDrawing()
 {
-// #ifdef THREAD_TIMING_READOUT
+#ifdef THREAD_TIMING_READOUT
 	auto start = std::chrono::steady_clock::now();
-// #endif
+#endif
 	for (unsigned int i =  0; i < totalSize; ++i)
 	{
 
@@ -3653,11 +3653,11 @@ void thread_plantDrawing()
 			// }
 		}
 	}
-// #ifdef THREAD_TIMING_READOUT
+#ifdef THREAD_TIMING_READOUT
 	auto end = std::chrono::steady_clock::now();
 	auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 	std::cout << "thread_plantDrawing " << elapsed.count() << " microseconds." << std::endl;
-// #endif
+#endif
 }
 
 unsigned int walkAnAnimal(unsigned int i)
@@ -4364,25 +4364,25 @@ void insertRandomSeed()
 			}
 			}
 
-
-
-			// cursor_germinationMaterial = randomGerminationMaterial;
-			setSeedParticle(exampleSentence, newIdentity() , 0, i, 0);
-			seedGrid[i].stage = STAGE_FRUIT;
-
-
 			unsigned int randomGerminationMaterial = 0;
 			if (materials.size() > 0)
 			{
 				randomGerminationMaterial = extremelyFastNumberFromZeroTo(materials.size() - 1);
 
-				std::string materialGene = std::string("m");
-				materialGene.push_back( numeralphabetic(randomGerminationMaterial) );
+				// cursor_germinationMaterial = randomGerminationMaterial;
+				setSeedParticle(exampleSentence, newIdentity() , 0, i, randomGerminationMaterial);
+				seedGrid[i].stage = STAGE_FRUIT;
 
-				seedGrid[i].genes.insert(0, materialGene);
+
+
+
+				// std::string materialGene = std::string("89898989m");
+				// materialGene.push_back( numeralphabetic(randomGerminationMaterial) );
+
+				// seedGrid[i].genes.insert(0, materialGene);
 				// seedGrid[i].genes += materialGene;
 
-				printf("%s\n", seedGrid[i].genes.c_str());
+				// printf("%s\n", seedGrid[i].genes.c_str());
 			}
 
 
