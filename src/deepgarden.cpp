@@ -15,9 +15,6 @@
 
 #define RENDERING_THREADS 4
 
-const unsigned int totalSize = sizeX * sizeY;
-const unsigned int numberOfFieldsPerVertex = 6; /*  R, G, B, A, X, Y  */
-
 const Color color_lightblue 		= Color( 0.1f, 0.3f, 0.65f, 1.0f );
 const Color color_yellow    		= Color( 1.0f, 1.0f, 0.0f, 1.0f );
 const Color color_lightgrey 		= Color( 0.75f, 0.75f, 0.75f, 1.0f );
@@ -30,15 +27,13 @@ const Color color_brightred			= Color( 1.0f, 0.1f, 0.0f, 1.0f);
 const Color color_orange			= Color( 1.0f, 0.8f, 0.0f, 1.0f);
 const Color color_clear     		= Color( 0.0f, 0.0f, 0.0f, 0.0f );
 const Color color_shadow 	    	= Color( 0.0f, 0.0f, 0.0f, 0.5f);
-
 const Color color_defaultSeedColor  = Color( 0.75f, 0.35f, 0.1f, 1.0f );
 const Color color_defaultColor     	= Color( 0.35f, 0.35f, 0.35f, 1.0f );
-
 const Color tingeShadow = Color( -1.0f, -1.0f, -1.0f, 0.1f );
-
 const Color phaseTingeSolid =  Color( 1.0f, 1.0f, 1.0f, 0.2f );
 const Color phaseTingeLiquid = Color( -1.0f, -1.0f, -1.0f, 0.2f );
 const Color phaseTingeGas =    Color( -1.0f, -1.0f, -1.0f, 0.4f );
+
 
 int neighbourOffsets[] =
 {
@@ -52,6 +47,44 @@ int neighbourOffsets[] =
 	+sizeX,
 	+sizeX - 1
 };
+
+
+const unsigned int totalSize = sizeX * sizeY;
+const unsigned int numberOfFieldsPerVertex = 6; /*  R, G, B, A, X, Y  */
+
+float * colorGrid = new float[totalSize * numberOfFieldsPerVertex ];		// the colorgrid is like a painting of the game world which can be drawn to the screen easily, and updated as the game is played. it concerns the physical material.
+float * lifeColorGrid  	= new float[totalSize * numberOfFieldsPerVertex ];  // the same but concerning growing plants. Because plant color information is not easily stored anywhere else, this grid must be preserved in save and load operations.
+float * animationGrid 	= new float[totalSize * numberOfFieldsPerVertex ];	// the same, but for the sprites of animals. This is updated every turn, and animals carry their own copy of their sprites, so this does not need to be preserved.
+float * seedColorGrid  	= new float[totalSize * numberOfFieldsPerVertex];   // the same, but for the colors of seeds and falling photons.
+float * ppGrid  	= new float[totalSize * numberOfFieldsPerVertex];
+
+// perform a variety of post processing artistic styles.
+// things like 'glowing because of temperature' need to be calculated all the time, because things are constantly changing temperature.
+float * postProcessingGrid = new float[totalSize * numberOfFieldsPerVertex];
+
+
+
+
+// PLANT DRAWING
+unsigned int recursion_level = 0;
+const unsigned int recursion_limit = 4;
+unsigned int extrusion_level = 0;
+const unsigned int extrusion_limit = 13;
+unsigned int drawActions = 0;
+const unsigned int drawActionlimit = 200;
+float accumulatedRotation = (0.5 * 3.1415);
+float scalingFactor = 1.0f;
+vec_u2 cursor_grid = vec_u2(0, 0);
+vec_u2 prevCursor_grid = vec_u2(0, 0);
+vec_u2 origin = vec_u2(0, 0);
+unsigned int cursor_germinationMaterial = 0;
+unsigned int cursor_energySource = ENERGYSOURCE_LIGHT;
+unsigned int cursor_string = 0;
+Color cursor_color = Color(0.1f, 0.1f, 0.1f, 1.0f);
+Color cursor_seedColor = Color(0.1f, 0.1f, 0.1f, 1.0f);
+float lengthNoise = 0.0f;
+float energyDebtSoFar = 0.0f;
+
 
 // a tree with a long stem and a fan of branches.
 std::string plant_Pycad = std::string( "rqgqbqxuydzb. lz addlzf." );
@@ -69,13 +102,18 @@ std::string plant_MilkWombler = std::string( "rmggbmxuyuzu. cz. lz sgagofldf " )
 std::string plant_SpleenCoral = std::string( "rgggbuxuyuzu. cz. rmgmbw. azzlmcdf  " );
 
 // a thick obelisk.
-std::string plant_ParbasarbTree = std::string( "rgggbuxuyuzu. lzeeeflaf  " );
+std::string plant_ParbasarbTree = std::string( "rgggbuxuyuzu. lzeeeflaf " );
 
 // a short, dense grass.
 std::string plant_LardGrass = std::string( "rgggbuxuyuzu. oiilfflbflbf  " );
 
+// a blob of jelly.
+std::string plant_Primordial = std::string( "still need to figure this one out." );
 
-std::string exampleAnimal = std::string(" rzgzcl.c.c.cl.c.c.cl.");
+
+
+
+// ANIMAL DRAWING
 unsigned int animalCursorFrame = FRAME_A;
 unsigned int animalCursorString = 0;
 int animalCursorSegmentRadius = 5;
@@ -91,81 +129,62 @@ float animalCursorLimbLowerAngle = 0.0f;
 float animalCursorLimbUpperAngle = 0.5 * 3.1415f;
 unsigned int animalRecursionLevel = 0;
 
-float * colorGrid = new float[totalSize * numberOfFieldsPerVertex ];		// the colorgrid is like a painting of the game world which can be drawn to the screen easily, and updated as the game is played. it concerns the physical material.
-float * lifeColorGrid  	= new float[totalSize * numberOfFieldsPerVertex ];  // the same but concerning growing plants. Because plant color information is not easily stored anywhere else, this grid must be preserved in save and load operations.
-float * lifeColorGridB 	= new float[totalSize * numberOfFieldsPerVertex ];	// the same, but for the sprites of animals. This is updated every turn, and animals carry their own copy of their sprites, so this does not need to be preserved.
-float * seedColorGrid  	= new float[totalSize * numberOfFieldsPerVertex];   // the same, but for the colors of seeds and falling photons.
 
-float * ppGrid  	= new float[totalSize * numberOfFieldsPerVertex];
+std::string exampleAnimal = std::string(" rzgzcl.c.c.cl.c.c.cl.");
 
-// perform a variety of post processing artistic styles.
-// things like 'glowing because of temperature' need to be calculated all the time, because things are constantly changing temperature.
-float * postProcessingGrid = new float[totalSize * numberOfFieldsPerVertex];
+
+
+
 
 // vec_i2 wind = vec_i2(0, 0);
 unsigned int wind;
+int defaultTemperature = 300;
+
 
 
 unsigned int sunlightDirection = 2;
 unsigned int sunlightEnergy = 10;
 unsigned int sunlightHeatCoeff = 1;
 unsigned int sunlightTemp = 1000;
-unsigned int sunlightPenetrationDepth = 10; // light is slightly reduced traveling through solid things. this affects plants in game as well as being an artistic effect. This number is how far the light goes into solid things.
+unsigned int sunlightPenetrationDepth = 20; // light is slightly reduced traveling through solid things. this affects plants in game as well as being an artistic effect. This number is how far the light goes into solid things.
 // unsigned int sunlightColor = blackbodyLookup(sunlightTemp)
 Color sunlightColor = color_white_clear;
 
-unsigned int photosynthesisEfficiency = 10000;
+
+unsigned int nGerminatedSeeds = 0;
+unsigned int lampBrightness = 10;
+
+
+// raw energy values are DIVIDED by these numbers to get the result. So more means less.
+unsigned int lightEfficiency   = 10000;
+unsigned int plantEfficiency   = 1000;
+
+// except for these two, where the value is what you get from eating one.
+unsigned int meatEfficiency    = 1000;
+unsigned int seedEfficiency    = 10;
+unsigned int mineralEfficiency = 10;
+
+
 
 vec_u2 playerCursor = vec_u2(0, 0);
 
+bool sprinkleErodingRain = false;
 
-int defaultTemperature = 300;
 
-unsigned int recursion_level = 0;
-const unsigned int recursion_limit = 4;
-
-unsigned int extrusion_level = 0;
-const unsigned int extrusion_limit = 13;
-
-unsigned int drawActions = 0;
-const unsigned int drawActionlimit = 200;
-
-// variables keep track of the sequence and rotation states.
-float accumulatedRotation = (0.5 * 3.1415);
-
-float scalingFactor = 1.0f;
-
-vec_u2 cursor_grid = vec_u2(0, 0);
-vec_u2 prevCursor_grid = vec_u2(0, 0);
-vec_u2 origin = vec_u2(0, 0);
-unsigned int cursor_germinationMaterial = 0;
-unsigned int cursor_energySource = ENERGYSOURCE_LIGHT;
-
-unsigned int cursor_string = 0;
-Color cursor_color = Color(0.1f, 0.1f, 0.1f, 1.0f);
-Color cursor_seedColor = Color(0.1f, 0.1f, 0.1f, 1.0f);
-
-float lengthNoise = 0.0f;
-
-float energyDebtSoFar = 0.0f;
 
 float maximumDisplayEnergy = 1.0f;
 float maximumDisplayTemperature = 1000.0f;
+
+unsigned int visualizer = VISUALIZE_MATERIAL;
 
 std::list<unsigned int> identities;
 
 std::list<vec_u2> v_seeds;
 
-unsigned int visualizer = VISUALIZE_MATERIAL;
-
-bool sprinkleErodingRain = false;
 
 unsigned int animationChangeCount = 0;
 unsigned int animationGlobalFrame = FRAME_A;
 
-unsigned int nGerminatedSeeds = 0;
-// unsigned int germinatedSeedsLimit = 1000;
-unsigned int lampBrightness = 10;
 
 struct Material
 {
@@ -1050,13 +1069,37 @@ void photate( unsigned int i )
 
 				seedGrid[currentPosition].energy = lampBrightness  / blocked;
 
-				memcpy( &seedColorGrid[ b_offset], 	&color_shadow , 	sizeof(Color) );
 
+
+				memcpy( &seedColorGrid[ b_offset], 	&color_shadow , 	sizeof(Color) );
 
 
 				unsigned int a_offset = (b_offset) + 3;
 
 				seedColorGrid[a_offset] = 1 / (seedGrid[currentPosition].energy ) ;
+
+
+				// 0 at 700, 100% at 1000
+
+				if (grid[currentPosition].temperature > 600 )
+				{
+
+
+					seedColorGrid[a_offset] = seedColorGrid[a_offset] / 2;
+
+				
+
+						if (grid[currentPosition].temperature > 1000)
+						{
+
+							seedColorGrid[a_offset] = 0;
+
+						}
+
+					
+				}
+
+
 
 				if (seedColorGrid[a_offset] > 0.5f) {seedColorGrid[a_offset] = 0.5f;}
 
@@ -1112,7 +1155,7 @@ void setAnimalSpritePixel ( AnimalSegment  s, unsigned int pixelIndex )
 
 
 
-		memcpy( &lifeColorGridB[ j__color_offset], 	&( s.frameA[pixelIndex]  ) , 	sizeof(Color) );
+		memcpy( &animationGrid[ j__color_offset], 	&( s.frameA[pixelIndex]  ) , 	sizeof(Color) );
 
 
 	}
@@ -1120,13 +1163,13 @@ void setAnimalSpritePixel ( AnimalSegment  s, unsigned int pixelIndex )
 	{
 
 
-		memcpy( &lifeColorGridB[ j__color_offset], 	&( s.frameB[pixelIndex]  ) , 	sizeof(Color) );
+		memcpy( &animationGrid[ j__color_offset], 	&( s.frameB[pixelIndex]  ) , 	sizeof(Color) );
 
 	}
 	else if (s.animationFrame == FRAME_C)
 	{
 
-		memcpy( &lifeColorGridB[ j__color_offset], 	&( s.frameC[pixelIndex]  ) , 	sizeof(Color) );
+		memcpy( &animationGrid[ j__color_offset], 	&( s.frameC[pixelIndex]  ) , 	sizeof(Color) );
 
 
 	}
@@ -1141,15 +1184,15 @@ void swapAnimalSpritePixel (unsigned int a, unsigned int b)
 	float temp_color[4];
 	unsigned int a_offset = (a * numberOfFieldsPerVertex) ;
 	unsigned int b_offset = (b * numberOfFieldsPerVertex) ;
-	memcpy( temp_color, 				&lifeColorGridB[ b_offset ] , 		sizeof(Color) ); // 4x floats of 4 bytes each
-	memcpy( &lifeColorGridB[ b_offset], 	&lifeColorGridB[ a_offset] , 	sizeof(Color) );
-	memcpy( &lifeColorGridB[ a_offset ], temp_color, 						sizeof(Color) );
+	memcpy( temp_color, 				&animationGrid[ b_offset ] , 		sizeof(Color) ); // 4x floats of 4 bytes each
+	memcpy( &animationGrid[ b_offset], 	&animationGrid[ a_offset] , 	sizeof(Color) );
+	memcpy( &animationGrid[ a_offset ], temp_color, 						sizeof(Color) );
 }
 
 void clearAnimalSpritePixel(unsigned int i)
 {
 	unsigned int a_offset = (i * numberOfFieldsPerVertex) ;
-	memcpy( &lifeColorGridB[ a_offset], 	&(color_clear) , 	sizeof(Color) );
+	memcpy( &animationGrid[ a_offset], 	&(color_clear) , 	sizeof(Color) );
 }
 
 void setAnimal(unsigned int i)
@@ -1463,12 +1506,12 @@ void clearColorGrids(unsigned int i)
 	lifeColorGrid[ 	a_offset + 3] = 0.0f;
 	lifeColorGrid[ 	a_offset + 4] = fx;
 	lifeColorGrid[ 	a_offset + 5] = fy;
-	lifeColorGridB[ a_offset + 0] = 0.0f;
-	lifeColorGridB[ a_offset + 1] = 0.0f;
-	lifeColorGridB[ a_offset + 2] = 0.0f;
-	lifeColorGridB[ a_offset + 3] = 0.0f;
-	lifeColorGridB[ a_offset + 4] = fx;
-	lifeColorGridB[ a_offset + 5] = fy;
+	animationGrid[ a_offset + 0] = 0.0f;
+	animationGrid[ a_offset + 1] = 0.0f;
+	animationGrid[ a_offset + 2] = 0.0f;
+	animationGrid[ a_offset + 3] = 0.0f;
+	animationGrid[ a_offset + 4] = fx;
+	animationGrid[ a_offset + 5] = fy;
 	seedColorGrid[ 	a_offset + 0] = 0.0f;
 	seedColorGrid[ 	a_offset + 1] = 0.0f;
 	seedColorGrid[ 	a_offset + 2] = 0.0f;
@@ -1480,7 +1523,7 @@ void clearColorGrids(unsigned int i)
 
 void clearColorGridB()
 {
-	memset( lifeColorGridB, 0.0f, sizeof(float) * numberOfFieldsPerVertex * totalSize );
+	memset( animationGrid, 0.0f, sizeof(float) * numberOfFieldsPerVertex * totalSize );
 	unsigned int x = 0;
 	unsigned int y = 0;
 	for (unsigned int i = 0; i < totalSize; ++i)
@@ -1490,8 +1533,8 @@ void clearColorGridB()
 		float fx = x;
 		float fy = y;
 		unsigned int a_offset = (i * numberOfFieldsPerVertex) ;
-		lifeColorGridB[ a_offset + 4] = fx;
-		lifeColorGridB[ a_offset + 5] = fy;
+		animationGrid[ a_offset + 4] = fx;
+		animationGrid[ a_offset + 5] = fy;
 	}
 }
 
@@ -2691,7 +2734,7 @@ void thread_graphics()
 
 
 
-		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, lifeColorGridB, GL_DYNAMIC_DRAW );
+		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, animationGrid, GL_DYNAMIC_DRAW );
 		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
 
 		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, seedColorGrid, GL_DYNAMIC_DRAW );
@@ -2708,7 +2751,7 @@ void thread_graphics()
 
 		for (unsigned int i = 0; i < totalSize; ++i)
 		{
-			lifeColorGridB[ (i * numberOfFieldsPerVertex ) + 3] = 0.0f;
+			animationGrid[ (i * numberOfFieldsPerVertex ) + 3] = 0.0f;
 		}
 
 	}
@@ -3470,7 +3513,7 @@ void thread_life()
 
 				if (seedGrid[i].stage == STAGE_NULL)
 				{
-					lifeGrid[i].energy += seedGrid[i].energy / photosynthesisEfficiency;
+					lifeGrid[i].energy += seedGrid[i].energy / lightEfficiency;
 				}
 
 			}
@@ -3525,10 +3568,10 @@ void thread_life()
 					if (grid[i].material != neighbourMaterialA)
 					{
 						// you have found a pair of dissimilar neighbours
-						if (extremelyFastNumberFromZeroTo(64) == 0x00)
-						{
-							lifeGrid[i].energy += 1.0f;
-						}
+						// if (extremelyFastNumberFromZeroTo(64) == 0x00)
+						// {
+						lifeGrid[i].energy +=  mineralEfficiency;
+						// }
 						neighbourMaterialA = MATERIAL_VACUUM; // reset for another go around.
 					}
 				}
@@ -3545,11 +3588,12 @@ void thread_life()
 				{
 					if (lifeGrid[neighbour].energy > 0.0f)
 					{
-						if (extremelyFastNumberFromZeroTo(64) == 0x00)
-						{
-							lifeGrid[i].energy = lifeGrid[neighbour].energy;
-							lifeGrid[neighbour].energy = 0.0f;
-						}
+						// if (extremelyFastNumberFromZeroTo(64) == 0x00)
+						// {
+						float takenAmount = lifeGrid[neighbour].energy / plantEfficiency;
+						lifeGrid[i].energy += takenAmount ;
+						lifeGrid[neighbour].energy -= takenAmount;
+						// }
 					}
 				}
 			}
@@ -3561,10 +3605,10 @@ void thread_life()
 				{
 					if (seedGrid[neighbour].parentIdentity != lifeGrid[i].identity )
 					{
-						if (extremelyFastNumberFromZeroTo(64) == 0x00)
-						{
-							lifeGrid[i].energy += 1.0f;
-						}
+						// if (extremelyFastNumberFromZeroTo(64) == 0x00)
+						// {
+						lifeGrid[i].energy += seedEfficiency;
+						// }
 					}
 				}
 			}
@@ -3587,7 +3631,7 @@ void thread_plantDrawing()
 	for (unsigned int i =  0; i < totalSize; ++i)
 	{
 
-		if (crudOps) {printf("stopped plantdrawing because of crud\n"); return;}
+		// if (crudOps) {printf("stopped plantdrawing because of crud\n"); return;}
 
 
 		if (seedGrid[i].stage == STAGE_SPROUT)
@@ -3598,9 +3642,9 @@ void thread_plantDrawing()
 			// {
 
 
-			printf("Drawing plant... ");
+			// printf("Drawing plant... ");
 			drawPlantFromSeed(seedGrid[i].genes, i);
-			printf("done.\n");
+			// printf("done.\n");
 
 			clearSeedParticle(i);
 			nGerminatedSeeds ++;
@@ -3738,7 +3782,7 @@ unsigned int walkAnAnimal(unsigned int i)
 
 
 
-				 if (  (a->movementFlags & MOVEMENT_INPLANTS ) == MOVEMENT_INPLANTS   )
+				if (  (a->movementFlags & MOVEMENT_INPLANTS ) == MOVEMENT_INPLANTS   )
 				{
 					// if (grid[neighbour].phase == PHASE_VACUUM) // if one of the neighbouring cells is a material type and phase that the animal can exist within
 					// {
@@ -3754,7 +3798,7 @@ unsigned int walkAnAnimal(unsigned int i)
 				}
 
 
-				 if (  (a->movementFlags & MOVEMENT_INLIQUID ) == MOVEMENT_INLIQUID   )
+				if (  (a->movementFlags & MOVEMENT_INLIQUID ) == MOVEMENT_INLIQUID   )
 				{
 					if (grid[neighbour].phase == PHASE_LIQUID) // if one of the neighbouring cells is a material type and phase that the animal can exist within
 					{
@@ -3767,7 +3811,7 @@ unsigned int walkAnAnimal(unsigned int i)
 				}
 
 
-				 if (  (a->movementFlags & MOVEMENT_INAIR ) == MOVEMENT_INAIR   )
+				if (  (a->movementFlags & MOVEMENT_INAIR ) == MOVEMENT_INAIR   )
 				{
 					if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS) // if one of the neighbouring cells is a material type and phase that the animal can exist within
 					{
@@ -3780,7 +3824,7 @@ unsigned int walkAnAnimal(unsigned int i)
 				}
 
 
-				 if (  (a->movementFlags & MOVEMENT_ONSOLID ) == MOVEMENT_ONSOLID   )
+				if (  (a->movementFlags & MOVEMENT_ONSOLID ) == MOVEMENT_ONSOLID   )
 				{
 					if (grid[neighbour].phase == PHASE_VACUUM) // if one of the neighbouring cells is a material type and phase that the animal can exist within
 					{
@@ -3825,7 +3869,7 @@ unsigned int walkAnAnimal(unsigned int i)
 			swapSeedParticle(i, currentPosition);
 			incrementAnimalSegmentPositions( seedGrid[i].parentIdentity, i, false );
 		}
-		else 
+		else
 		{
 
 
@@ -3838,9 +3882,9 @@ unsigned int walkAnAnimal(unsigned int i)
 					printf("fell down\n");
 				}
 			}
-			else 
+			else
 			{
-	printf("stuck / nothing\n");
+				printf("stuck / nothing\n");
 			}
 		}
 	}
@@ -4226,10 +4270,10 @@ void sendLifeToBackground ()
 	unsigned int seedReductionRatio = nSeeds / nSeedsDesired;
 	for (unsigned int i = 0; i < totalSize; ++i)
 	{
-		lifeColorGridB[ (i * numberOfFieldsPerVertex) + 0 ] = lifeColorGrid[(i * numberOfFieldsPerVertex) + 0];
-		lifeColorGridB[ (i * numberOfFieldsPerVertex) + 1 ] = lifeColorGrid[(i * numberOfFieldsPerVertex) + 1];
-		lifeColorGridB[ (i * numberOfFieldsPerVertex) + 2 ] = lifeColorGrid[(i * numberOfFieldsPerVertex) + 2];
-		lifeColorGridB[ (i * numberOfFieldsPerVertex) + 3 ] = lifeColorGrid[(i * numberOfFieldsPerVertex) + 3] = 0.5f;
+		animationGrid[ (i * numberOfFieldsPerVertex) + 0 ] = lifeColorGrid[(i * numberOfFieldsPerVertex) + 0];
+		animationGrid[ (i * numberOfFieldsPerVertex) + 1 ] = lifeColorGrid[(i * numberOfFieldsPerVertex) + 1];
+		animationGrid[ (i * numberOfFieldsPerVertex) + 2 ] = lifeColorGrid[(i * numberOfFieldsPerVertex) + 2];
+		animationGrid[ (i * numberOfFieldsPerVertex) + 3 ] = lifeColorGrid[(i * numberOfFieldsPerVertex) + 3] = 0.5f;
 
 		lifeColorGrid[ (i * numberOfFieldsPerVertex) + 0 ] = 0.0f;
 		lifeColorGrid[ (i * numberOfFieldsPerVertex) + 1 ] = 0.0f;
@@ -4273,44 +4317,49 @@ void insertRandomSeed()
 		{
 			std::string exampleSentence = std::string("");
 
-			unsigned int randomPlantIndex = extremelyFastNumberFromZeroTo(6);
+			unsigned int randomPlantIndex = 5;//extremelyFastNumberFromZeroTo(7);
 
 			switch (randomPlantIndex)
 			{
 			case 0:
 			{
-				// exampleSentence = plant_Pycad;
+				exampleSentence = plant_Pycad;
 				break;
 			}
 			case 1:
 			{
-				// exampleSentence = plant_Lomondra;
+				exampleSentence = plant_Lomondra;
 				break;
 			}
 			case 2:
 			{
-				// exampleSentence = plant_Worrage;
+				exampleSentence = plant_Worrage;
 				break;
 			}
 			case 3:
 			{
-				// exampleSentence = plant_MilkWombler;
+				exampleSentence = plant_MilkWombler;
 				break;
 			}
 			case 4:
 			{
-				// exampleSentence = plant_SpleenCoral;
+				exampleSentence = plant_SpleenCoral;
 				break;
 			}
 			case 5:
 			{
-				// exampleSentence = plant_ParbasarbTree;
+				exampleSentence = plant_ParbasarbTree;
 				break;
 			}
 
 			case 6:
 			{
 				exampleSentence = plant_LardGrass;
+				break;
+			}
+			case 7:
+			{
+				exampleSentence = plant_Primordial;
 				break;
 			}
 			}
@@ -4327,10 +4376,13 @@ void insertRandomSeed()
 			{
 				randomGerminationMaterial = extremelyFastNumberFromZeroTo(materials.size() - 1);
 
-				std::string materialGene = std::string(" m");
+				std::string materialGene = std::string("m");
 				materialGene.push_back( numeralphabetic(randomGerminationMaterial) );
 
 				seedGrid[i].genes.insert(0, materialGene);
+				// seedGrid[i].genes += materialGene;
+
+				printf("%s\n", seedGrid[i].genes.c_str());
 			}
 
 
@@ -4475,8 +4527,8 @@ void save ()
 	out3.write(reinterpret_cast<char*>(& (lifeColorGrid[0]) ), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
 	out3.close();
 
-	std::ofstream out4(std::string("save/lifeColorGridB").c_str());
-	out4.write(reinterpret_cast<char*>(& (lifeColorGridB[0]) ), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
+	std::ofstream out4(std::string("save/animationGrid").c_str());
+	out4.write(reinterpret_cast<char*>(& (animationGrid[0]) ), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
 	out4.close();
 
 	std::ofstream out41(std::string("save/seedColorGrid").c_str());
@@ -4620,8 +4672,8 @@ void load_colorgrids()
 	in33.read( (char *)( &(lifeColorGrid[0])  ), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
 	in33.close();
 
-	std::ifstream in4(std::string("save/lifeColorGridB").c_str());
-	in4.read( (char *)( &(lifeColorGridB[0])), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
+	std::ifstream in4(std::string("save/animationGrid").c_str());
+	in4.read( (char *)( &(animationGrid[0])), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
 	in4.close();
 
 	std::ifstream in41(std::string("save/seedColorGrid").c_str());
