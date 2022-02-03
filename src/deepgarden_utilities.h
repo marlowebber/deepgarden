@@ -41,9 +41,11 @@ float magnitude_int( int x,  int y);
 
 // inline uint8_t extremelyFastRandomByte();
 
-void setupExtremelyFastNumberGenerators();
+void seedExtremelyFastNumberGenerators();
  uint16_t extremelyFastNumberInRange(uint16_t from, uint16_t to);
 
  uint16_t extremelyFastNumberFromZeroTo( uint16_t to);
+
+
 
 #endif

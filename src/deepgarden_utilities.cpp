@@ -267,8 +267,9 @@ uint16_t extremelyFastNumberFromZeroTo( uint16_t to)
 }
 
 
-void setupExtremelyFastNumberGenerators()
+void seedExtremelyFastNumberGenerators()
 {
+
 	x = 0;
 	y = 0;
 	z = 0;
@@ -277,4 +278,8 @@ void setupExtremelyFastNumberGenerators()
 	if (RNG() < 0.5)  {x = 1;}
 	if (RNG() < 0.5)  {y = 1;}
 	if (RNG() < 0.5)  {z = 1;}
+
 }
+
+
+

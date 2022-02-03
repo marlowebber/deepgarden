@@ -85,7 +85,7 @@ void thread_interface()
 				setEverythingHot();
 				break;
 
-			case SDLK_u:
+			case SDLK_y:
 				clearGrids() ;
 				break;
 
@@ -165,6 +165,17 @@ void thread_interface()
 			case SDLK_g:
 				insertRandomAnimal();
 				break;
+
+			case SDLK_u:
+				eraseFallenSeeds();
+				break;
+
+			case SDLK_j:
+				dropAllSeeds();
+				break;
+
+
+
 
 			case SDLK_ESCAPE:
 				quit();

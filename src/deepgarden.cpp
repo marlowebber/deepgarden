@@ -415,7 +415,7 @@ Animal::Animal()
 		this->segments[i] = AnimalSegment();
 	}
 
-	this->movementFlags = MOVEMENT_ONPOWDER;
+	this->movementFlags = MOVEMENT_ONPOWDER | MOVEMENT_ONSOLID;
 }
 
 
@@ -623,29 +623,29 @@ int drawAnimalFromChar (unsigned int i)
 
 			// the second char is x movement
 			animalCursorString++; if (animalCursorString > seedGrid[i].genes.length()) { return -1; }
-			 numberModifier = alphanumeric( seedGrid[i].genes[animalCursorString] );
-			 int moveX = numberModifier - 13;
+			numberModifier = alphanumeric( seedGrid[i].genes[animalCursorString] );
+			int moveX = numberModifier - 13;
 
 			// the second char is y movement
 			animalCursorString++; if (animalCursorString > seedGrid[i].genes.length()) { return -1; }
-			 numberModifier = alphanumeric( seedGrid[i].genes[animalCursorString] );
-			 int moveY = numberModifier - 13;
+			numberModifier = alphanumeric( seedGrid[i].genes[animalCursorString] );
+			int moveY = numberModifier - 13;
 
-			 // working_vertices[moveVertex].x += moveX;
-			 // working_vertices[moveVertex].y += moveY;
+			// working_vertices[moveVertex].x += moveX;
+			// working_vertices[moveVertex].y += moveY;
 
-			 std::list<vec_i2>::iterator it;
-			 unsigned int count = 0;
-			 for (it = working_vertices.begin(); it != working_vertices.end(); ++it)
-			 {
-			 	if (count == moveVertex)
-			 	{
-			 		it->x += moveX;
-			 		it->y += moveY;
-			 	}
+			std::list<vec_i2>::iterator it;
+			unsigned int count = 0;
+			for (it = working_vertices.begin(); it != working_vertices.end(); ++it)
+			{
+				if (count == moveVertex)
+				{
+					it->x += moveX;
+					it->y += moveY;
+				}
 
-			 	count++;
-			 }
+				count++;
+			}
 
 
 		}
@@ -890,7 +890,7 @@ void drawAnimalFromSeed(unsigned int i)
 	animalCursorLegLength = 10;
 	animalCursorColor = Color(0.5f, 0.5f, 0.5f, 1.0f);
 	animalCursorSegmentNumber = 0;
-	animalCursorEnergyDebt = 0.0f;
+	animalCursorEnergyDebt = 100.0f;
 
 	if (seedGrid[i].parentIdentity < animals.size() && seedGrid[i].stage == STAGE_ANIMAL)
 	{
@@ -1169,77 +1169,82 @@ void setAnimal(unsigned int i)
 	drawAnimalFromSeed(i);
 }
 
-void incrementAnimalSegmentPositions (Animal * a, unsigned int i, bool falling)
+void incrementAnimalSegmentPositions (unsigned int animalIndex, unsigned int i, bool falling)
 {
-	if (a->energy > a->reproductionCost)
+
+	if (animalIndex < animals.size())
 	{
-		unsigned int nSolidNeighbours = 0;
-		for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
+		Animal * a = &(animals[animalIndex]);
+
+		if (a->energy > a->reproductionCost)
 		{
-			unsigned int neighbour = neighbourOffsets[j] + i;
-			if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS )
+			unsigned int nSolidNeighbours = 0;
+			for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
 			{
-				printf("animal reproduced\n");
-				setAnimal( neighbour );
-				a->energy = 0.0f;
-				return;
-				break;
+				unsigned int neighbour = neighbourOffsets[j] + i;
+				if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS )
+				{
+					printf("animal reproduced\n");
+					setAnimal( neighbour );
+					a->energy = 0.0f;
+					return;
+					break;
+				}
 			}
 		}
-	}
 
-	bool segmentPhase = 0;
+		bool segmentPhase = 0;
 
-	// Update animal segment positions. Only do this if the animal has actually moved (otherwise it will pile into one square).
-	// if (
-	// 	// !(a->segments.empty())
+		// Update animal segment positions. Only do this if the animal has actually moved (otherwise it will pile into one square).
+		// if (
+		// 	// !(a->segments.empty())
 
-	// 	)
-	// {
-	// 	// printf("KUUUUNNNN %lu\n", a->segments.size());
-	if (a->segments[0].position != i)
-	{
-		// set the position of the 0th segment to the new index, and everyone elses position is shifted forward by 1.
-		bool segmentPhase = false;
-
-		if (a->segments[0].animationFrame == FRAME_A) {segmentPhase = true;}
-
-		for (unsigned int j = 0; j < maxAnimalSegments; ++j)
+		// 	)
+		// {
+		// 	// printf("KUUUUNNNN %lu\n", a->segments.size());
+		if (a->segments[0].position != i)
 		{
+			// set the position of the 0th segment to the new index, and everyone elses position is shifted forward by 1.
+			bool segmentPhase = false;
 
-			if ( j >= a->segmentsUsed)
+			if (a->segments[0].animationFrame == FRAME_A) {segmentPhase = true;}
 
+			for (unsigned int j = 0; j < maxAnimalSegments; ++j)
 			{
-				continue;
-			}
 
+				if ( j >= a->segmentsUsed)
 
-			if (falling)
-			{
-				a->segments[j].animationFrame = FRAME_C;
-			}
-			else
-			{
-				if (segmentPhase)
 				{
-					a->segments[j].animationFrame = FRAME_B;
+					continue;
+				}
+
+
+				if (falling)
+				{
+					a->segments[j].animationFrame = FRAME_C;
 				}
 				else
 				{
-					a->segments[j].animationFrame = FRAME_A;
+					if (segmentPhase)
+					{
+						a->segments[j].animationFrame = FRAME_B;
+					}
+					else
+					{
+						a->segments[j].animationFrame = FRAME_A;
+					}
+					segmentPhase = !segmentPhase;
 				}
-				segmentPhase = !segmentPhase;
 			}
-		}
 
-		for ( int j = (a->segmentsUsed - 1); j > 0; --j)
-		{
-			a->segments[j].position = a->segments[j - 1].position;
-		}
+			for ( int j = (a->segmentsUsed - 1); j > 0; --j)
+			{
+				a->segments[j].position = a->segments[j - 1].position;
+			}
 
-		a->segments[0].position = i;
+			a->segments[0].position = i;
+		}
 	}
-	// }
 }
 
 void updateAnimalDrawing(unsigned int i)
@@ -1765,7 +1770,7 @@ void initialize ()
 {
 	// https://stackoverflow.com/questions/9459035/why-does-rand-yield-the-same-sequence-of-numbers-on-every-run
 	srand((unsigned int)time(NULL));
-	setupExtremelyFastNumberGenerators();
+	// setupExtremelyFastNumberGenerators();
 
 	cursor_seedColor = color_yellow;
 	clearGrids();
@@ -2433,15 +2438,26 @@ void thread_physics ()
 	auto start = std::chrono::steady_clock::now();
 #endif
 
-	// blow the wind
-	unsigned int windChange = extremelyFastNumberFromZeroTo(100);
 
-	if (!windChange)
+	if (extremelyFastNumberFromZeroTo(100) == 0)
+	{
+// make sure randomness is random
+		seedExtremelyFastNumberGenerators();
+
+
+
+	}
+
+
+	// blow the wind
+	if (extremelyFastNumberFromZeroTo(100) == 0)
 	{
 		// int16_t windRand =  extremelyFastNumberFromZeroTo( 2);
 		// wind.x = windRand - 1;
 		// windRand =  extremelyFastNumberFromZeroTo( 2);
 		// wind.y = windRand - 1;
+
+
 
 
 		wind = extremelyFastNumberFromZeroTo(7);
@@ -3373,6 +3389,8 @@ void drawPlantFromSeed( std::string genes, unsigned int i )
 
 	energyDebtSoFar = 0.0f;
 
+	unsigned int count = 0;
+
 	while ( true )
 	{
 		if ( drawCharacter (genes , identity) < 0) // this is where the plant drawings get made.
@@ -3382,6 +3400,13 @@ void drawPlantFromSeed( std::string genes, unsigned int i )
 				break;
 			}
 		}
+
+		if (count > maxGenomeSize)
+		{
+			break;
+		}
+
+		count++;
 	}
 
 	for (std::list<vec_u2>::iterator it = v_seeds.begin(); it != v_seeds.end(); ++it)
@@ -3559,23 +3584,26 @@ void thread_plantDrawing()
 	for (unsigned int i =  0; i < totalSize; ++i)
 	{
 
-		if (crudOps) {return;}
+		if (crudOps) {printf("stopped plantdrawing because of crud\n"); return;}
 
-		if (seedGrid[i].parentIdentity > 0)
+
+		if (seedGrid[i].stage == STAGE_SPROUT)
 		{
-			if (seedGrid[i].stage == STAGE_SEED)
-			{
-				// if (grid[i].material == seedGrid[i].germinationMaterial)
-				// {
+			// if (seedGrid[i].parentIdentity > 0)
+			// {
+			// if (grid[i].material == seedGrid[i].germinationMaterial)
+			// {
 
 
+			printf("Drawing plant... ");
+			drawPlantFromSeed(seedGrid[i].genes, i);
+			printf("done.\n");
 
-				drawPlantFromSeed(seedGrid[i].genes, i);
-				clearSeedParticle(i);
-				nGerminatedSeeds ++;
-				continue;
-				// }
-			}
+			clearSeedParticle(i);
+			nGerminatedSeeds ++;
+			continue;
+			// }
+			// }
 		}
 	}
 // #ifdef THREAD_TIMING_READOUT
@@ -3587,274 +3615,236 @@ void thread_plantDrawing()
 
 unsigned int walkAnAnimal(unsigned int i)
 {
-	int currentPosition = i;
-	int squareBelow = currentPosition - sizeX;
+	unsigned int currentPosition = i;
+	unsigned int squareBelow = currentPosition - sizeX;
 
 	if (seedGrid[i].parentIdentity < animals.size())
 	{
 		Animal * a = &(animals[seedGrid[i].parentIdentity]);
 
-		bool movedAtAll = false;
-		bool haveAWalkableNeighbour = false;
+		bool moved = false;
+		// bool haveAWalkableNeighbour = false;
 
-		// repeat <reach> times.
-		int reach_int = a->reach;
+		// int reach_int = a->reach;
 
 		if (extremelyFastNumberFromZeroTo(a->movementChance) == 0)
 		{
-			for (int move = 0; move < reach_int; ++move)
+			for (unsigned int move = 0; move < a->reach; ++move)
 			{
-				bool movedThisTurn = false;
-				bool ateANeighbour = false;
+				// bool movedThisTurn = false;
+				// bool ateANeighbour = false;
 
 				// check the neighbour cells starting in the direction of travel.
 				// then, check the cells closest to the direction of travel.
 				// then, the cells at right angles to the direction of travel. and so on. this is vital to coherent movement.
 				int sign = 1;
-				for (int j = 0; j < N_NEIGHBOURS; ++j)
+				unsigned int neighbour = (currentPosition + neighbourOffsets[a->direction]) % totalSize;
+				for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
 				{
 					// starting at a place in the neighbours array, move n steps to the right, then n+1 steps left.. access it with neighbourOffsets[k];
 					int k = ( (a->direction) + (j * sign)) % N_NEIGHBOURS;
 					k += (extremelyFastNumberFromZeroTo(2) - 1); // also, do it with some jitter or else you will get stuck constantly.
 					k = k % N_NEIGHBOURS;
 					if (k < 0) {k += N_NEIGHBOURS;}
-					if (sign == 1) { sign = -1; } else { sign = 1; }
+					sign *= -1;
 
+					neighbour = (currentPosition + neighbourOffsets[k] ) % totalSize;
 
-					int neighbour = currentPosition + neighbourOffsets[k];
-
-
-					// if the neighbour is a food the animal can eat, eat it
-					// switch (a->energySource)
-					// {
-
-					if (  (a->energyFlags & ENERGYSOURCE_LIGHT ) == a->energyFlags   )
+					// if one of the neighbouring cells is a material type and phase that the animal can exist within
+					if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS || grid[neighbour].phase == PHASE_LIQUID)
 					{
-						if (seedGrid[neighbour].stage == STAGE_PHOTON )
-						{
-							a->energy += 1.0f;
-							clearSeedParticle(neighbour);
-							if (!ateANeighbour) {a->direction = k;} // if this is the first p
-							ateANeighbour = true;
-						}
-
 						break;
 					}
+				}
 
-					if (  (a->energyFlags & ENERGYSOURCE_SEED ) == a->energyFlags   )
+				// if the neighbour is a food the animal can eat, eat it
+				if (  (a->energyFlags & ENERGYSOURCE_LIGHT ) == ENERGYSOURCE_LIGHT   )
+				{
+					if (seedGrid[neighbour].stage == STAGE_NULL )
 					{
-						if (seedGrid[neighbour].stage == STAGE_BUD || seedGrid[neighbour].stage == STAGE_FRUIT ||  seedGrid[neighbour].stage == STAGE_SEED )
-						{
-							a->energy += 10.0f ;
-							// printf("fed animal. Energy %f, reproduces at %f\n", a->energy, a->reproductionCost);
-							clearSeedParticle(neighbour);
-							if (!ateANeighbour) {a->direction = k;} // if this is the first p
-							ateANeighbour = true;
-						}
-
-						break;
+						a->energy += seedGrid[neighbour].energy;
 					}
+				}
 
-					if (  (a->energyFlags & ENERGYSOURCE_SEED ) == a->energyFlags   )
+				else if (  (a->energyFlags & ENERGYSOURCE_SEED ) == ENERGYSOURCE_SEED   )
+				{
+					if (seedGrid[neighbour].stage == STAGE_BUD || seedGrid[neighbour].stage == STAGE_FRUIT ||  seedGrid[neighbour].stage == STAGE_SPROUT )
 					{
+						a->energy += 10.0f ;
+						clearSeedParticle(neighbour);
+					}
+				}
 
-						if (lifeGrid[neighbour].identity > 0x00)
+				else if (  (a->energyFlags & ENERGYSOURCE_PLANT ) == ENERGYSOURCE_PLANT   )
+				{
+
+					if (lifeGrid[neighbour].identity > 0x00)
+					{
+						if (lifeGrid[neighbour].energy > 0.0f)
 						{
 							a->energy += lifeGrid[neighbour].energy;
-							lifeGrid[neighbour].energy = 0;
-							// a->energy += 10.0f;
-							// printf("fed animal. Energy %f, reproduces at %f\n", a->energy, a->reproductionCost);
-							// clearLifeParticle(neighbour);
-							// a->direction = k; // go get the rest of it
-
-							if (!ateANeighbour) {a->direction = k;} // if this is the first p
-							// printf("direction %u, k %u\n", a->direction, k);
-							ateANeighbour = true;
+							lifeGrid[neighbour].energy = 0.0f;
+							clearLifeParticle(neighbour);
 						}
-
-						break;
 					}
+				}
 
-					if (  (a->energyFlags & ENERGYSOURCE_MINERAL ) == a->energyFlags   )
+				else if (  (a->energyFlags & ENERGYSOURCE_MINERAL ) == ENERGYSOURCE_MINERAL   )
+				{
+					if (grid[neighbour].phase != PHASE_VACUUM)
 					{
-						if (grid[neighbour].phase != PHASE_VACUUM)
-						{
-							a->energy += 1.0f;
-
-							clearParticle( neighbour);
-							a->direction = k;
-							ateANeighbour = true;
-
-						}
-						break;
+						a->energy += 1.0f;
+						clearParticle( neighbour);
 					}
+				}
 
-					if (  (a->energyFlags & ENERGYSOURCE_ANIMAL ) == a->energyFlags   )
+				else if (  (a->energyFlags & ENERGYSOURCE_ANIMAL ) == ENERGYSOURCE_ANIMAL   )
+				{
+
+					if (seedGrid[neighbour].stage == STAGE_ANIMAL )
 					{
-
-						if (seedGrid[neighbour].stage == STAGE_ANIMAL )
-						{
-							a->energy += animals[seedGrid[neighbour].parentIdentity].energy;
-							printf("an animal ate another animal!\n");
-							clearSeedParticle(neighbour);
-							ateANeighbour = true;
-
-						}
-
-						break;
+						a->energy += animals[seedGrid[neighbour].parentIdentity].energy;
+						printf("an animal ate another animal!\n");
+						clearSeedParticle(neighbour);
 					}
+				}
 
 
-					// }
 
 
-					// // can't eat and move in the same turn. also can't eat twice in the same turn (although can eat once for each point of reach).
-					// if (ateANeighbour) {break;}
 
 
-					// animal movement, see what kind of terrain it is allowed into
-					// switch (a->movementType)
-					// {
-
-
-					if (  (a->movementFlags & MOVEMENT_ONPOWDER ) == a->movementFlags   )
+				if (  (a->movementFlags & MOVEMENT_ONPOWDER ) == MOVEMENT_ONPOWDER   )
+				{
+					for (int l = 0; l < N_NEIGHBOURS; ++l) // and it has a neighbour of a type and phase the animal can walk on
 					{
-						if (grid[neighbour].phase == PHASE_VACUUM) // if one of the neighbouring cells is a material type and phase that the animal can exist within
+						int neighboursNeighbour = (neighbour + neighbourOffsets[l]);
+						if (neighboursNeighbour != currentPosition && neighboursNeighbour != i)
 						{
-							for (int l = 0; l < N_NEIGHBOURS; ++l) // and it has a neighbour of a type and phase the animal can walk on
-							{
-								int neighboursNeighbour = (neighbour + neighbourOffsets[l]);
-								if (neighboursNeighbour == currentPosition || neighboursNeighbour == i) {continue;}
-								if (  grid[ neighboursNeighbour ] .phase == PHASE_POWDER )
-								{
-									currentPosition = neighbour; // say that this cell is the current position, and then break.
-									movedAtAll = true;
-									movedThisTurn = true;
-									haveAWalkableNeighbour = true;
-									break;
-								}
-							}
-						}
-						break;
-					}
-
-
-
-					if (  (a->movementFlags & MOVEMENT_INPLANTS ) == a->movementFlags   )
-					{
-						if (grid[neighbour].phase == PHASE_VACUUM) // if one of the neighbouring cells is a material type and phase that the animal can exist within
-						{
-							if (lifeGrid[neighbour].identity > 0x00)
+							if (  grid[ neighboursNeighbour ] .phase == PHASE_POWDER )
 							{
 								currentPosition = neighbour; // say that this cell is the current position, and then break.
-								movedAtAll = true;
-								movedThisTurn = true;
-								haveAWalkableNeighbour = true;
-								break;
+								moved = true;
+								// break;
 							}
 						}
-
-						break;
 					}
+					// }
+					// break;
+				}
 
 
-					// if (  (a->movementFlags & MOVEMENT_INWATER ) == a->movementFlags   )
+
+				 if (  (a->movementFlags & MOVEMENT_INPLANTS ) == MOVEMENT_INPLANTS   )
+				{
+					// if (grid[neighbour].phase == PHASE_VACUUM) // if one of the neighbouring cells is a material type and phase that the animal can exist within
 					// {
-					// 	if (grid[neighbour].phase == PHASE_LIQUID && grid[neighbour].material == MATERIAL_WATER) // if one of the neighbouring cells is a material type and phase that the animal can exist within
-					// 	{
-					// 		currentPosition = neighbour; // say that this cell is the current position, and then break.
-					// 		movedAtAll = true;
-					// 		movedThisTurn = true;
-					// 		haveAWalkableNeighbour = true;
-					// 		break;
-					// 	}
-
-					// 	break;
+					if (lifeGrid[neighbour].identity > 0x00)
+					{
+						currentPosition = neighbour; // say that this cell is the current position, and then break.
+						moved = true;
+						// break;
+					}
 					// }
 
+					// break;
+				}
 
-					if (  (a->movementFlags & MOVEMENT_INAIR ) == a->movementFlags   )
+
+				 if (  (a->movementFlags & MOVEMENT_INLIQUID ) == MOVEMENT_INLIQUID   )
+				{
+					if (grid[neighbour].phase == PHASE_LIQUID) // if one of the neighbouring cells is a material type and phase that the animal can exist within
 					{
-						if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS) // if one of the neighbouring cells is a material type and phase that the animal can exist within
-						{
-							currentPosition = neighbour; // say that this cell is the current position, and then break.
-							movedAtAll = true;
-							movedThisTurn = true;
-							haveAWalkableNeighbour = true;
-							break;
-						}
-
-						break;
+						currentPosition = neighbour; // say that this cell is the current position, and then break.
+						moved = true;
+						// break;
 					}
 
+					// break;
+				}
 
-					if (  (a->movementFlags & MOVEMENT_ONSOLID ) == a->movementFlags   )
+
+				 if (  (a->movementFlags & MOVEMENT_INAIR ) == MOVEMENT_INAIR   )
+				{
+					if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS) // if one of the neighbouring cells is a material type and phase that the animal can exist within
 					{
-						if (grid[neighbour].phase == PHASE_VACUUM) // if one of the neighbouring cells is a material type and phase that the animal can exist within
+						currentPosition = neighbour; // say that this cell is the current position, and then break.
+						moved = true;
+						// break;
+					}
+
+					// break;
+				}
+
+
+				 if (  (a->movementFlags & MOVEMENT_ONSOLID ) == MOVEMENT_ONSOLID   )
+				{
+					if (grid[neighbour].phase == PHASE_VACUUM) // if one of the neighbouring cells is a material type and phase that the animal can exist within
+					{
+						for (int l = 0; l < N_NEIGHBOURS; ++l) // and it has a neighbour of a type and phase the animal can walk on
 						{
-							for (int l = 0; l < N_NEIGHBOURS; ++l) // and it has a neighbour of a type and phase the animal can walk on
-							{
-								int neighboursNeighbour = (neighbour + neighbourOffsets[l]);
-								if (neighboursNeighbour == currentPosition || neighboursNeighbour == i) {continue;}
+							int neighboursNeighbour = (neighbour + neighbourOffsets[l]);
+							if (neighboursNeighbour != currentPosition && neighboursNeighbour != i) {
+
+
 								if (  grid[ neighboursNeighbour ] .phase == PHASE_SOLID )
 								{
 									currentPosition = neighbour; // say that this cell is the current position, and then break.
-									movedAtAll = true;
-									movedThisTurn = true;
-									haveAWalkableNeighbour = true;
-									break;
+									moved = true;
+									// break;
 								}
 							}
 						}
-
-						break;
 					}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-					// }
+					// break;
 				}
+				// }
 			}
 		}
-		else
-		{
-			for (int l = 0; l < N_NEIGHBOURS; ++l)
-			{
-				int neighbour = (neighbourOffsets[l] + currentPosition);
-				if (  grid[ neighbour ] .phase == PHASE_POWDER )
-				{
-					haveAWalkableNeighbour = true;
-					break;
-				}
-			}
-		}
+		// else
+		// {
+		// 	for (int l = 0; l < N_NEIGHBOURS; ++l)
+		// 	{
+		// 		int neighbour = (neighbourOffsets[l] + currentPosition);
+		// 		if (  grid[ neighbour ] .phase == PHASE_POWDER )
+		// 		{
+		// 			haveAWalkableNeighbour = true;
+		// 			break;
+		// 		}
+		// 	}
+		// }
 
 		// after having repeated <reach> moves, swap the cell and update the segment positions.
-		if (movedAtAll)
+		if (	moved )
 		{
+			printf("MOVED TO %u from %u\n", currentPosition, i);
 			swapSeedParticle(i, currentPosition);
-			incrementAnimalSegmentPositions( a, i, false );
+			incrementAnimalSegmentPositions( seedGrid[i].parentIdentity, i, false );
 		}
-
-		if (!haveAWalkableNeighbour && a->movementFlags != MOVEMENT_INAIR)
+		else 
 		{
-			if (grid[squareBelow].phase == PHASE_VACUUM)
+
+
+			if (((a->movementFlags & MOVEMENT_INAIR) !=  MOVEMENT_INAIR)    )
 			{
-				swapSeedParticle(i, squareBelow);
-				incrementAnimalSegmentPositions( a, i, true );
+				if (grid[squareBelow].phase == PHASE_VACUUM || grid[squareBelow].phase == PHASE_GAS )
+				{
+					swapSeedParticle(currentPosition, squareBelow);
+					incrementAnimalSegmentPositions( seedGrid[i].parentIdentity, currentPosition, true );
+					printf("fell down\n");
+				}
+			}
+			else 
+			{
+	printf("stuck / nothing\n");
 			}
 		}
+	}
+
+	else
+	{
+		clearSeedParticle(i);
 	}
 
 	unsigned int result = currentPosition;
@@ -4040,7 +4030,7 @@ void thread_seeds()
 #ifdef PLANT_DRAWING_READOUT
 				printf("germinated\n");
 #endif
-				seedGrid[i].stage = STAGE_SEED;
+				seedGrid[i].stage = STAGE_SPROUT;
 			}
 			continue;
 		}
@@ -4857,7 +4847,33 @@ void load ()
 }
 
 
+void eraseFallenSeeds()
+{
+	// clean up all the fallen seeds in the world. it can be annoying if they accumulate too much.
 
+	for (int i = 0; i < totalSize; ++i)
+	{
+
+		if (seedGrid[i].stage == STAGE_FRUIT || seedGrid[i].stage == STAGE_SPROUT )
+		{
+			clearSeedParticle(i);
+		}
+	}
+}
+
+
+void dropAllSeeds()
+{
+
+	for (int i = 0; i < totalSize; ++i)
+	{
+		if (seedGrid[i].stage == STAGE_BUD)
+		{
+			seedGrid[i].energy = 0.0f;
+		}
+
+	}
+}
 
 
 void manualErode ()

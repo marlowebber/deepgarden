@@ -69,7 +69,7 @@ extern const unsigned int MATERIAL_VACUUM ;
 #define STAGE_NULL   		 0
 #define STAGE_BUD    		 1
 #define STAGE_FRUIT  		 2
-#define STAGE_SEED   		 3
+#define STAGE_SPROUT   		 3
 #define STAGE_PHOTON 		 4
 #define STAGE_ANIMALSEED	 5
 #define STAGE_ANIMAL         6
@@ -90,7 +90,7 @@ extern const unsigned int MATERIAL_VACUUM ;
 
 // Movement controls where an animal is allowed to go. This is a hereditary, mutable quality.
 #define MOVEMENT_ONPOWDER  1
-#define MOVEMENT_INWATER   2
+#define MOVEMENT_INLIQUID   2
 #define MOVEMENT_INPLANTS  4
 #define MOVEMENT_INAIR     8
 #define MOVEMENT_ONSOLID   16
@@ -172,6 +172,8 @@ void setEverythingHot();
 
 void manualErode();
 
+void eraseFallenSeeds();
+
 void drawAHill();
 void drawRandomLandscape();
 
@@ -179,4 +181,6 @@ void createRandomWorld();
 
 void clearGases();
 void clearLiquids();
+
+void dropAllSeeds();
 #endif
