@@ -183,4 +183,7 @@ void clearGases();
 void clearLiquids();
 
 void dropAllSeeds();
+
+
+void eraseAllLife();
 #endif

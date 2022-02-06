@@ -174,6 +174,10 @@ void thread_interface()
 				dropAllSeeds();
 				break;
 
+			case SDLK_q:
+				eraseAllLife();
+				break;
+
 
 
 

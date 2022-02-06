@@ -10,8 +10,11 @@
 
 // #define THREAD_TIMING_READOUT 1
 // #define PLANT_DRAWING_READOUT 1
-// #define ANIMAL_DRAWING_READOUT 1
+#define ANIMAL_DRAWING_READOUT 1
 #define DRAW_ANIMALS 1
+
+bool useGerminationMaterial = false;
+bool animalReproductionEnabled = false;
 
 #define RENDERING_THREADS 4
 
@@ -58,9 +61,14 @@ float * animationGrid 	= new float[totalSize * numberOfFieldsPerVertex ];	// the
 float * seedColorGrid  	= new float[totalSize * numberOfFieldsPerVertex];   // the same, but for the colors of seeds and falling photons.
 float * ppGrid  	= new float[totalSize * numberOfFieldsPerVertex];
 
+
+float * backgroundSky  	= new float[totalSize * numberOfFieldsPerVertex];
+
+
+
 // perform a variety of post processing artistic styles.
 // things like 'glowing because of temperature' need to be calculated all the time, because things are constantly changing temperature.
-float * postProcessingGrid = new float[totalSize * numberOfFieldsPerVertex];
+// float * postProcessingGrid = new float[totalSize * numberOfFieldsPerVertex];
 
 
 
@@ -108,8 +116,24 @@ std::string plant_ParbasarbTree = std::string( "rgggbuxuyuzu. lzeeeflaf " );
 std::string plant_LardGrass = std::string( "rgggbuxuyuzu. oiilfflbflbf  " );
 
 // a blob of jelly.
-std::string plant_Primordial = std::string( "still need to figure this one out." );
+std::string plant_Primordial = std::string( "rmgmbmxmymzm. lbflafe. " );
 
+
+struct ProposedLifeParticle
+{
+	Color color = Color(0.5f, 0.5f, 0.5f, 1.0f);
+	vec_u2 position = vec_u2(0, 0);
+	unsigned int energySource = ENERGYSOURCE_LIGHT;
+
+	ProposedLifeParticle(Color color, vec_u2 position, unsigned int energySource);
+};
+
+ProposedLifeParticle::ProposedLifeParticle(Color color, vec_u2 position, unsigned int energySource)
+{
+	this->position = position;
+	this->color = color;
+	this->energySource = energySource;
+}
 
 
 
@@ -129,8 +153,11 @@ float animalCursorLimbLowerAngle = 0.0f;
 float animalCursorLimbUpperAngle = 0.5 * 3.1415f;
 unsigned int animalRecursionLevel = 0;
 
+std::list<vec_i2> working_polygon;
+std::list<ProposedLifeParticle> segment_particles;
 
-std::string exampleAnimal = std::string(" rzgzcl.c.c.cl.c.c.cl.");
+
+std::string exampleAnimal = std::string("rzgzbz gg .");
 
 
 
@@ -159,7 +186,7 @@ unsigned int lampBrightness = 10;
 unsigned int lightEfficiency   = 10000;
 unsigned int plantEfficiency   = 1000;
 
-// except for these two, where the value is what you get from eating one.
+// except for these, where the value is what you get from eating a square.
 unsigned int meatEfficiency    = 1000;
 unsigned int seedEfficiency    = 10;
 unsigned int mineralEfficiency = 10;
@@ -186,6 +213,29 @@ unsigned int animationChangeCount = 0;
 unsigned int animationGlobalFrame = FRAME_A;
 
 
+
+struct Weather
+{
+
+	// unsigned int temperature;
+	// unsigned int pressure;
+	unsigned int direction;
+	Weather();
+};
+Weather::Weather()
+{
+	// this->temperature = 0;
+	// this->pressure = 0;
+	this->direction = 0;
+}
+
+Weather weatherGrid[totalSize];
+
+void thread_weather()
+{
+
+}
+
 struct Material
 {
 	unsigned int crystal_n;
@@ -196,6 +246,9 @@ struct Material
 	unsigned int melting;
 	unsigned int boiling;
 	int insulativity;
+
+	unsigned int availability;
+
 	Material();
 };
 
@@ -265,21 +318,7 @@ transportableLifeParticle::transportableLifeParticle()
 	this->energySource = ENERGYSOURCE_LIGHT;
 }
 
-struct ProposedLifeParticle
-{
-	Color color = Color(0.5f, 0.5f, 0.5f, 1.0f);
-	vec_u2 position = vec_u2(0, 0);
-	unsigned int energySource = ENERGYSOURCE_LIGHT;
 
-	ProposedLifeParticle(Color color, vec_u2 position, unsigned int energySource);
-};
-
-ProposedLifeParticle::ProposedLifeParticle(Color color, vec_u2 position, unsigned int energySource)
-{
-	this->position = position;
-	this->color = color;
-	this->energySource = energySource;
-}
 
 struct SeedParticle
 {
@@ -519,8 +558,6 @@ std::list<ProposedLifeParticle> EFLA_E(vec_i2 start, vec_i2 end)
 int drawAnimalFromChar (unsigned int i)
 {
 
-	std::list<vec_i2> working_vertices;
-	std::list<ProposedLifeParticle> segment_particles;
 
 
 
@@ -533,35 +570,8 @@ int drawAnimalFromChar (unsigned int i)
 		char c = seedGrid[i].genes[animalCursorString];
 		switch (c)
 		{
-		// case 'j': // movement modification.
-		// {
-		// 	animalCursorString++;
 
-		// 	// walks on powder
-		// 	if (seedGrid[i].genes[animalCursorString] == 'p')
-		// 	{
-		// 		a->movementFlags = a->movementFlags |	MOVEMENT_ONPOWDER;
-		// 	}
 
-		// 	animalCursorString++;
-		// }
-
-		case 's':
-		{
-#ifdef ANIMAL_DRAWING_READOUT
-			printf("sequence\n");
-#endif
-			break;
-		}
-		case ' ':
-		{
-#ifdef ANIMAL_DRAWING_READOUT
-			printf("break\n");
-#endif
-			return -1;
-
-			break;
-		}
 		case '.':
 		{
 #ifdef ANIMAL_DRAWING_READOUT
@@ -588,21 +598,27 @@ int drawAnimalFromChar (unsigned int i)
 		}
 
 
-		case 'c':  // commit the working polygon and start a new one.
+		case ' ':  // commit the working polygon and start a new one.
 		{
 
+#ifdef ANIMAL_DRAWING_READOUT
+			printf("commit working poly and start new poly\n");
+#endif
 			// commit the last polygon to the sprite.
 			std::list<vec_i2>::iterator it;
 
 			// draw lines connecting the vertices.
-			for (it = working_vertices.begin(); it != working_vertices.end(); ++it)
+			unsigned int count = 0;
+			for (it = working_polygon.begin(); it != working_polygon.end(); ++it)
 			{
 				vec_i2 lineEnd = *(it);
 				++it;
 
-				if (it == working_vertices.end())
+				printf("umu %i, %i, ojoh %i, %i\n", it->x, it->y, lineEnd.x, lineEnd.y);
+
+				if (count == working_polygon.size() - 1)
 				{
-					it = working_vertices.begin();
+					it = working_polygon.begin();
 					segment_particles.splice(segment_particles.end(), EFLA_E(   lineEnd,  *(it)) );
 					break;
 				}
@@ -610,19 +626,28 @@ int drawAnimalFromChar (unsigned int i)
 				{
 					segment_particles.splice(segment_particles.end(), EFLA_E(   lineEnd,  *(it)) );
 				}
+				count++;
 			}
 
-			working_vertices.clear();
+			working_polygon.clear();
 
 			// draw a n sided polygon in the vertices buffer.
+			// the first char is the number of vertices
 			animalCursorString++; if (animalCursorString > seedGrid[i].genes.length()) { return -1; }
 			unsigned int numberModifier = alphanumeric( seedGrid[i].genes[animalCursorString] );
 			unsigned int nPolyVertices = numberModifier ;
 
+			// the second char is the radius
+			animalCursorString++; if (animalCursorString > seedGrid[i].genes.length()) { return -1; }
+			numberModifier = alphanumeric( seedGrid[i].genes[animalCursorString] );
+			animalCursorSegmentRadius = numberModifier ;
+
+
+
 			for (int i = 0; i < nPolyVertices; ++i)
 			{
 				float angle = (i * ((1 * 3.1415) / nPolyVertices)  ) + (0.5 * 3.1415);  // only 1 pi so it draws a semi circle.
-				working_vertices.push_back ( vec_i2( animalCursorSegmentRadius * cos(angle), animalCursorSegmentRadius * sin(angle)) );
+				working_polygon.push_back ( vec_i2( animalCursorSegmentRadius * cos(angle), animalCursorSegmentRadius * sin(angle)) );
 			}
 
 
@@ -632,13 +657,13 @@ int drawAnimalFromChar (unsigned int i)
 
 		case 'm':
 		{
-			// move a vertex, distorting the polygon
+			// move a vertex equally in all sprites, distorting the polygon
 			// the first char is which vertex to choose
 
 			animalCursorString++; if (animalCursorString > seedGrid[i].genes.length()) { return -1; }
 			unsigned int numberModifier = alphanumeric( seedGrid[i].genes[animalCursorString] );
 			unsigned int moveVertex = numberModifier;
-			moveVertex = moveVertex % working_vertices.size();
+			moveVertex = moveVertex % working_polygon.size();
 
 			// the second char is x movement
 			animalCursorString++; if (animalCursorString > seedGrid[i].genes.length()) { return -1; }
@@ -650,12 +675,9 @@ int drawAnimalFromChar (unsigned int i)
 			numberModifier = alphanumeric( seedGrid[i].genes[animalCursorString] );
 			int moveY = numberModifier - 13;
 
-			// working_vertices[moveVertex].x += moveX;
-			// working_vertices[moveVertex].y += moveY;
-
 			std::list<vec_i2>::iterator it;
 			unsigned int count = 0;
-			for (it = working_vertices.begin(); it != working_vertices.end(); ++it)
+			for (it = working_polygon.begin(); it != working_polygon.end(); ++it)
 			{
 				if (count == moveVertex)
 				{
@@ -671,180 +693,6 @@ int drawAnimalFromChar (unsigned int i)
 
 
 
-// 		case 'c':
-// 		{
-// #ifdef ANIMAL_DRAWING_READOUT
-// 			printf("draw a circle\n");
-// #endif
-// 			// raster a circle
-// 			// int drawingAreaLowerX = -  (sizeAnimalSprite / 2) ; //animalCursorSegmentRadius;
-// 			// int drawingAreaLowerY = -  (sizeAnimalSprite / 2) ; //animalCursorSegmentRadius;
-// 			// int drawingAreaUpperX = +  (sizeAnimalSprite / 2) ; //animalCursorSegmentRadius;
-// 			// int drawingAreaUpperY = +  (sizeAnimalSprite / 2) ; //animalCursorSegmentRadius;
-// 			for ( int k = 0; k < sizeAnimalSprite; ++k)
-// 			{
-// 				for ( int j = 0; j < sizeAnimalSprite; ++j)
-// 				{
-
-// 					int animalCursorSegmentRadiusInt = animalCursorSegmentRadius;
-
-// 					int distance  = distanceBetweenPoints( vec_i2(k, j), vec_i2( sizeAnimalSprite / 2, sizeAnimalSprite / 2 ) ) ;
-
-// 					printf("distance %i\n", distance);
-// 					if ( distance < animalCursorSegmentRadiusInt )
-// 					{
-// 						// int pixel =  ((j * sizeX) + k);
-// 						int spritePixel = (j * sizeAnimalSprite) + k ;
-
-// 						// a->segments[animalCursorSegmentNumber].frameA[ (j * sizeAnimalSprite) + k ] = AnimalSpritePixel(pixel  , animalCursorColor );
-// 						// a->segments[animalCursorSegmentNumber].frameB[ (j * sizeAnimalSprite) + k ] = AnimalSpritePixel(pixel  , animalCursorColor );
-// 						// a->segments[animalCursorSegmentNumber].frameC[ (j * sizeAnimalSprite) + k ] = AnimalSpritePixel(pixel  , animalCursorColor );
-
-// 						// printf("smiuuuuueghgh nyueueueughueue %i\n", spritePixel);
-// 						a->segments[animalCursorSegmentNumber].frameA[ spritePixel ] = animalCursorColor;
-// 						a->segments[animalCursorSegmentNumber].frameB[ spritePixel ] = animalCursorColor;
-// 						a->segments[animalCursorSegmentNumber].frameC[ spritePixel ] = animalCursorColor;
-// 						// a->segments[animalCursorSegmentNumber].frameA[ spritePixel ].localPosition = pixel;
-// 						// a->segments[animalCursorSegmentNumber].frameB[ spritePixel ].localPosition = pixel;
-// 						// a->segments[animalCursorSegmentNumber].frameC[ spritePixel ].localPosition = pixel;
-
-
-// 						printf("X");
-
-
-
-// 						animalCursorEnergyDebt += animalCursorColor.a;
-// 					}
-// 					else
-// 					{
-// 						printf("O");
-// 					}
-// 				}
-// 				printf("\n");
-// 			}
-// 			break;
-// 		}
-// 		case 'l':
-// 		{
-// #ifdef ANIMAL_DRAWING_READOUT
-// 			printf("draw a limb\n");
-// #endif
-// 			// limb
-// 			for (unsigned int frame = 0; frame < 3; ++frame)
-// 			{
-// 				if (frame == 0 ) {animalCursorFrame = FRAME_A;}
-// 				if (frame == 1 ) {animalCursorFrame = FRAME_B;}
-// 				if (frame == 2 ) {animalCursorFrame = FRAME_C;}
-
-// 				// draw a line at an angle from the center of the segment
-// 				float upperLimbAngle = 0.0f;
-// 				float lowerLimbAngle = 0.0f;
-// 				// float limbAccumulatedAngle = 0.0f;
-// 				float limbAngleOffset = (0.5 * 3.1415); // rotate the global zero to one that makes sense for our maths.
-
-// 				float limbAngleDelta = 0.0f;
-// 				// the ANGLE OF THE UPPER LIMB is determined from the vertical
-// 				if (  animalCursorFrame == FRAME_A)
-// 				{
-// 					limbAngleDelta = (0.35f * animalCursorLimbUpperAngle) + animalCursorLimbLowerAngle;
-
-// 				}
-// 				else if (  animalCursorFrame == FRAME_B)
-// 				{
-// 					limbAngleDelta = (0.65f * animalCursorLimbUpperAngle) + animalCursorLimbLowerAngle;
-// 					// upperLimbAngle =  limbAngleDelta + limbAngleOffset ;
-// 				}
-
-// 				else if (  animalCursorFrame == FRAME_C)
-// 				{
-// 					limbAngleDelta = (0.0f * animalCursorLimbUpperAngle) + animalCursorLimbLowerAngle;
-// 					// upperLimbAngle =  limbAngleDelta + limbAngleOffset ;
-// 				}
-// 				upperLimbAngle =  limbAngleDelta + limbAngleOffset ;
-// 				lowerLimbAngle = upperLimbAngle - (2 * limbAngleDelta) - 3.1415;
-
-
-// 				// the ANGLE OF THE LOWER LIMB simply reflects that angle
-
-// 				// float lowerLimbAngle = limbAngleOffset -
-
-// 				unsigned int x = a->segments[animalCursorSegmentNumber].position % sizeAnimalSprite;
-// 				unsigned int y = a->segments[animalCursorSegmentNumber].position / sizeAnimalSprite;
-// 				unsigned int animalCursorX = animalCursor % sizeAnimalSprite;
-// 				unsigned int animalCursorY = animalCursor / sizeAnimalSprite;
-
-// 				// limbAccumulatedAngle = limbAngle;
-// 				vec_i2 elbow = vec_i2(
-// 				                   x + animalCursorX + (animalCursorLegLength * cos(upperLimbAngle)),
-// 				                   y + animalCursorY + (animalCursorLegLength * sin(upperLimbAngle) )
-// 				               );
-// 				// limbAccumulatedAngle += limbAngle;
-// 				vec_i2 wrist = vec_i2( elbow.x +   ( animalCursorLegLength * cos(lowerLimbAngle) ) ,
-// 				                       elbow.y +   ( animalCursorLegLength * sin(lowerLimbAngle)  )
-// 				                     );
-
-// 				std::list<ProposedLifeParticle> v;
-// 				v.splice(v.end(), EFLA_E( vec_i2(x, y),  elbow) );
-// 				v.splice(v.end(), EFLA_E( elbow,		 wrist) );
-
-// 				for (std::list<ProposedLifeParticle>::iterator it = v.begin(); it != v.end(); ++it)
-// 				{
-// 					unsigned int i 			 = (it->position.y * sizeAnimalSprite) + it->position.x;
-// 					unsigned int shadowIndex = ( (it->position.y - 1) * sizeAnimalSprite) + (it->position.x);
-// 					// if ( i < (sizeAnimalSprite*sizeAnimalSprite))
-// 					// {
-
-// 					if (i > totalSize) {continue;}
-
-// 					// printf("MINDO KARDEX %u\n" , i);
-
-// 					if (animalCursorFrame == FRAME_A)
-// 					{
-// 						// a->segments[animalCursorSegmentNumber].frameA.push_back( AnimalSpritePixel(i  ,		   animalCursorColor ));
-// 						// a->segments[animalCursorSegmentNumber].frameA.push_back( AnimalSpritePixel(shadowIndex  , color_shadow ));
-// 						a->segments[animalCursorSegmentNumber].frameA[i] = animalCursorColor;
-// 						// a->segments[animalCursorSegmentNumber].frameA[i].localPosition = i;
-
-// 						if ( shadowIndex < (sizeAnimalSprite * sizeAnimalSprite))
-// 						{
-// 							a->segments[animalCursorSegmentNumber].frameA[shadowIndex] = addColor( color_shadow , a->segments[animalCursorSegmentNumber].frameA[shadowIndex] );
-// 						}
-// 						// a->segments[animalCursorSegmentNumber].frameA[shadowIndex].localPosition = shadowIndex;
-
-// 					}
-// 					if (animalCursorFrame == FRAME_B)
-// 					{
-// 						// a->segments[animalCursorSegmentNumber].frameB.push_back( AnimalSpritePixel(i  , animalCursorColor ));
-// 						// a->segments[animalCursorSegmentNumber].frameB.push_back( AnimalSpritePixel(shadowIndex  , color_shadow ));
-// 						a->segments[animalCursorSegmentNumber].frameB[i] = animalCursorColor;
-// 						// a->segments[animalCursorSegmentNumber].frameB[i].localPosition = i;
-
-// 						if ( shadowIndex < (sizeAnimalSprite * sizeAnimalSprite))
-// 						{
-// 							a->segments[animalCursorSegmentNumber].frameB[shadowIndex] = addColor( color_shadow , a->segments[animalCursorSegmentNumber].frameB[shadowIndex] );
-// 						}
-// 						// a->segments[animalCursorSegmentNumber].frameB[shadowIndex].localPosition = shadowIndex;
-// 					}
-// 					if (animalCursorFrame == FRAME_C)
-// 					{
-// 						// a->segments[animalCursorSegmentNumber].frameC.push_back( AnimalSpritePixel(i  , animalCursorColor ));
-// 						// a->segments[animalCursorSegmentNumber].frameC.push_back( AnimalSpritePixel(shadowIndex  , color_shadow ));
-// 						a->segments[animalCursorSegmentNumber].frameC[i] = animalCursorColor;
-// 						// a->segments[animalCursorSegmentNumber].frameC[i].localPosition = i;
-
-// 						if ( shadowIndex < (sizeAnimalSprite * sizeAnimalSprite))
-// 						{
-// 							a->segments[animalCursorSegmentNumber].frameB[shadowIndex] = addColor( color_shadow , a->segments[animalCursorSegmentNumber].frameC[shadowIndex] );
-// 						}
-// 						// a->segments[animalCursorSegmentNumber].frameC[shadowIndex].localPosition = shadowIndex;
-// 					}
-// 					// }
-// 				}
-// 			}
-// 			break;
-// 		}
-
-
 		case 'r':
 		{
 			animalCursorString++; if (animalCursorString > seedGrid[i].genes.length()) { return -1; }
@@ -854,7 +702,6 @@ int drawAnimalFromChar (unsigned int i)
 			printf("set color R %f, char '%c'\n", numberModifier, seedGrid[i].genes[animalCursorString] );
 #endif
 			animalCursorColor = Color(  numberModifier, animalCursorColor.g, animalCursorColor.b, 1.0f    );
-			// animalCursorString++; if (animalCursorString > seedGrid[i].genes.length()) { return -1; }
 			break;
 		}
 
@@ -867,7 +714,6 @@ int drawAnimalFromChar (unsigned int i)
 			printf("set color G %f, char '%c'\n", numberModifier, seedGrid[i].genes[animalCursorString] );
 #endif
 			animalCursorColor = Color(  animalCursorColor.r, numberModifier, animalCursorColor.b, 1.0f    );
-			// animalCursorString++; if (animalCursorString > seedGrid[i].genes.length()) { return -1; }
 			break;
 		}
 
@@ -880,7 +726,6 @@ int drawAnimalFromChar (unsigned int i)
 			printf("set color B %f, char '%c'\n", numberModifier, seedGrid[i].genes[animalCursorString] );
 #endif
 			animalCursorColor = Color(  animalCursorColor.r, animalCursorColor.g, numberModifier, 1.0f    );
-			// animalCursorString++; if (animalCursorString > seedGrid[i].genes.length()) { return -1; }
 			break;
 		}
 
@@ -911,6 +756,9 @@ void drawAnimalFromSeed(unsigned int i)
 	animalCursorSegmentNumber = 0;
 	animalCursorEnergyDebt = 100.0f;
 
+	working_polygon.clear();
+	segment_particles.clear();
+
 	if (seedGrid[i].parentIdentity < animals.size() && seedGrid[i].stage == STAGE_ANIMAL)
 	{
 		Animal * a = &(animals[seedGrid[i].parentIdentity]);
@@ -924,6 +772,61 @@ void drawAnimalFromSeed(unsigned int i)
 			}
 			if (animalCursorString >= seedGrid[i].genes.length()) {break;}
 		}
+
+
+
+
+
+		// commit the last working poly to the segment particles list
+		std::list<vec_i2>::iterator it;
+
+		// draw lines connecting the vertices.
+		unsigned int count = 0;
+		for (it = working_polygon.begin(); it != working_polygon.end(); ++it)
+		{
+			vec_i2 lineEnd = *(it);
+			++it;
+
+			if (count == working_polygon.size() - 1)
+			{
+				it = working_polygon.begin();
+				segment_particles.splice(segment_particles.end(), EFLA_E(   lineEnd,  *(it)) );
+				break;
+			}
+			else
+			{
+				segment_particles.splice(segment_particles.end(), EFLA_E(   lineEnd,  *(it)) );
+			}
+			count++;
+		}
+
+		working_polygon.clear();
+
+
+
+		// commit the segment drawing to the sprite, just to retain any uncommitted work
+		for (std::list<ProposedLifeParticle>::iterator it = segment_particles.begin(); it != segment_particles.end(); ++it)
+		{
+			unsigned int i = (it->position.y * sizeAnimalSprite) + it->position.x;
+			if ( i < (sizeAnimalSprite * sizeAnimalSprite))
+			{
+				a->segments[animalCursorSegmentNumber].frameA[i] = it->color;
+				a->segments[animalCursorSegmentNumber].frameB[i] = it->color;
+				a->segments[animalCursorSegmentNumber].frameC[i] = it->color;
+			}
+		}
+
+
+
+
+
+
+
+
+
+
+
+
 		a->reproductionCost = animalCursorEnergyDebt;
 		a->energy = 0;
 	}
@@ -1102,7 +1005,7 @@ void photate( unsigned int i )
 
 
 				if (seedColorGrid[a_offset] > 0.5f) {seedColorGrid[a_offset] = 0.5f;}
-
+				if (grid[currentPosition].phase == PHASE_VACUUM && lifeGrid[currentPosition].identity == 0x00) {seedColorGrid[a_offset] = 0.0f;}
 
 			}
 
@@ -1269,7 +1172,7 @@ void incrementAnimalSegmentPositions (unsigned int animalIndex, unsigned int i, 
 	{
 		Animal  a = animals[animalIndex];
 
-		if (a.energy > a.reproductionCost)
+		if (a.energy > a.reproductionCost && animalReproductionEnabled)
 		{
 			unsigned int nSolidNeighbours = 0;
 			for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
@@ -1494,6 +1397,12 @@ void clearColorGrids(unsigned int i)
 	float fx = x;
 	float fy = y;
 	unsigned int a_offset = (i * numberOfFieldsPerVertex) ;
+	backgroundSky[ 		a_offset + 0] = 0.0f;
+	backgroundSky[ 		a_offset + 1] = 0.0f;
+	backgroundSky[ 		a_offset + 2] = 0.0f;
+	backgroundSky[ 		a_offset + 3] = 0.0f;
+	backgroundSky[ 		a_offset + 4] = fx;
+	backgroundSky[ 		a_offset + 5] = fy;
 	colorGrid[ 		a_offset + 0] = 0.0f;
 	colorGrid[ 		a_offset + 1] = 0.0f;
 	colorGrid[ 		a_offset + 2] = 0.0f;
@@ -1726,9 +1635,9 @@ void createRandomWorld()
 
 	for (unsigned int k = 0; k < materials.size(); ++k)
 	{
-		/* code */
 
-		unsigned int availability = extremelyFastNumberFromZeroTo(50);
+
+		materials[k]. availability = extremelyFastNumberFromZeroTo(50);
 
 
 		for (unsigned int i = 0; i < sizeX; ++i)
@@ -1736,7 +1645,7 @@ void createRandomWorld()
 
 			if (extremelyFastNumberFromZeroTo(100) == 0)
 			{
-				unsigned int radius = extremelyFastNumberFromZeroTo(availability );
+				unsigned int radius = extremelyFastNumberFromZeroTo(materials[k]. availability  );
 
 				// float frandomX = RNG() * sizeX;
 				// float frandomY = RNG() * sizeY;
@@ -1757,6 +1666,55 @@ void createRandomWorld()
 
 		}
 	}
+
+
+	// compute the background sky
+	for (unsigned int i = 0; i < totalSize; ++i)
+	{
+
+
+		unsigned int a_offset  = i * numberOfFieldsPerVertex;
+
+		memcpy( &(backgroundSky[ a_offset ]), &color_black, 					sizeof(Color) );
+
+
+		if (extremelyFastNumberFromZeroTo(100) ==  0)
+		{
+
+			// create a background star with random blackbody color and alpha
+
+			float randomStarAlpha = RNG();
+			randomStarAlpha = randomStarAlpha * randomStarAlpha * randomStarAlpha * randomStarAlpha * randomStarAlpha * randomStarAlpha * randomStarAlpha; // cubing the value or more shifts the distribution lower while preserving the range.
+				
+			randomStarAlpha = randomStarAlpha/2;
+
+			unsigned int randomColorTemperature = extremelyFastNumberFromZeroTo(5000);
+			Color randomStarColor = blackbodyLookup(randomColorTemperature);
+			randomStarColor.a = randomStarAlpha;
+
+			memcpy( &(backgroundSky[ a_offset ]), &randomStarColor, 					sizeof(Color) );
+
+
+
+			if (extremelyFastNumberFromZeroTo(100) ==  0)
+			{
+
+				// make the star into a little cross by also coloring the squares above, below, and to the sides.
+
+
+
+
+			}
+
+
+
+
+		}
+
+
+	}
+
+
 
 	// // setup the x and y positions in the color grid. these never change so you can just calculate them once.
 	// unsigned int x = 0;
@@ -1809,6 +1767,18 @@ void createRandomWorld()
 
 
 
+// void prepareBackgroundSky()
+// {
+
+
+
+
+
+
+
+
+
+// }
 
 
 
@@ -2724,6 +2694,10 @@ void thread_graphics()
 		long unsigned int totalNumberOfFields = nVertsToRenderThisTurn * numberOfFieldsPerVertex;
 
 
+
+
+		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, backgroundSky, GL_DYNAMIC_DRAW );
+		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
 
 
 		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, colorGrid, GL_DYNAMIC_DRAW );
@@ -3865,7 +3839,7 @@ unsigned int walkAnAnimal(unsigned int i)
 		// after having repeated <reach> moves, swap the cell and update the segment positions.
 		if (	moved )
 		{
-			printf("MOVED TO %u from %u\n", currentPosition, i);
+			// printf("MOVED TO %u from %u\n", currentPosition, i);
 			swapSeedParticle(i, currentPosition);
 			incrementAnimalSegmentPositions( seedGrid[i].parentIdentity, i, false );
 		}
@@ -3879,12 +3853,12 @@ unsigned int walkAnAnimal(unsigned int i)
 				{
 					swapSeedParticle(currentPosition, squareBelow);
 					incrementAnimalSegmentPositions( seedGrid[i].parentIdentity, currentPosition, true );
-					printf("fell down\n");
+					// printf("fell down\n");
 				}
 			}
 			else
 			{
-				printf("stuck / nothing\n");
+				// printf("stuck / nothing\n");
 			}
 		}
 	}
@@ -4071,7 +4045,7 @@ void thread_seeds()
 				swapSeedParticle( i, neighbour );
 				continue;
 			}
-			else if (grid[neighbour].material == seedGrid[i].germinationMaterial)
+			else if (grid[neighbour].material == seedGrid[i].germinationMaterial  || (!useGerminationMaterial)  )
 			{
 
 #ifdef PLANT_DRAWING_READOUT
@@ -4317,7 +4291,7 @@ void insertRandomSeed()
 		{
 			std::string exampleSentence = std::string("");
 
-			unsigned int randomPlantIndex = 5;//extremelyFastNumberFromZeroTo(7);
+			unsigned int randomPlantIndex = 7;//extremelyFastNumberFromZeroTo(7);
 
 			switch (randomPlantIndex)
 			{
@@ -4925,6 +4899,27 @@ void dropAllSeeds()
 		if (seedGrid[i].stage == STAGE_BUD)
 		{
 			seedGrid[i].energy = 0.0f;
+		}
+
+	}
+}
+
+
+
+void eraseAllLife()
+{
+
+	for (int i = 0; i < totalSize; ++i)
+	{
+		if (seedGrid[i].stage == STAGE_BUD || seedGrid[i].stage == STAGE_FRUIT || seedGrid[i].stage == STAGE_SPROUT)
+		{
+			clearSeedParticle(i);
+		}
+
+
+		if (lifeGrid[i].identity > 0x00)
+		{
+			clearLifeParticle(i);
 		}
 
 	}
