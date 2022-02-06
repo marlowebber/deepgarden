@@ -140,11 +140,11 @@ ProposedLifeParticle::ProposedLifeParticle(Color color, vec_u2 position, unsigne
 // ANIMAL DRAWING
 unsigned int animalCursorFrame = FRAME_A;
 unsigned int animalCursorString = 0;
-int animalCursorSegmentRadius = 5;
+unsigned int animalCursorSegmentRadius = 5;
 float animalCursorSegmentAngle = 0.0f;
 unsigned int animalCursor = 0;
-int animalCursorLegThickness = 1;
-int animalCursorLegLength = 5;
+// int animalCursorLegThickness = 1;
+// int animalCursorLegLength = 5;
 Color animalCursorColor = Color(0.5f, 0.5f, 0.5f, 1.0f);
 unsigned int animalCursorSegmentNumber = 0;
 float animalCursorEnergyDebt = 0.0f;
@@ -157,7 +157,7 @@ std::list<vec_i2> working_polygon;
 std::list<ProposedLifeParticle> segment_particles;
 
 
-std::string exampleAnimal = std::string("rzgzbz gg .");
+std::string exampleAnimal = std::string("rzgzbz  gg  ..  gg  ..................  ");
 
 
 
@@ -575,7 +575,7 @@ int drawAnimalFromChar (unsigned int i)
 		case '.':
 		{
 #ifdef ANIMAL_DRAWING_READOUT
-			printf("go to new segment\n");
+			printf("go to new segment. old segment pixels %lu\n", segment_particles.size());
 #endif
 
 			// commit the segment drawing to the sprite
@@ -587,6 +587,8 @@ int drawAnimalFromChar (unsigned int i)
 					a->segments[animalCursorSegmentNumber].frameA[i] = it->color;
 					a->segments[animalCursorSegmentNumber].frameB[i] = it->color;
 					a->segments[animalCursorSegmentNumber].frameC[i] = it->color;
+
+					printf("pizel %f %f %f %f \n", it->color.r, it->color.g, it->color.b, it->color.a );
 				}
 			}
 
@@ -602,7 +604,7 @@ int drawAnimalFromChar (unsigned int i)
 		{
 
 #ifdef ANIMAL_DRAWING_READOUT
-			printf("commit working poly and start new poly\n");
+			printf("commit working poly and start new poly. old poly size: %lu\n", working_polygon.size());
 #endif
 			// commit the last polygon to the sprite.
 			std::list<vec_i2>::iterator it;
@@ -618,33 +620,77 @@ int drawAnimalFromChar (unsigned int i)
 
 				if (count == working_polygon.size() - 1)
 				{
+
+					printf("drawing line from start to finish\n");
+
 					it = working_polygon.begin();
-					segment_particles.splice(segment_particles.end(), EFLA_E(   lineEnd,  *(it)) );
+
+					std::list<ProposedLifeParticle> newParticles =  EFLA_E(   lineEnd,  *(it)) ;
+					std::list<ProposedLifeParticle>::iterator np;
+					for (np = newParticles.begin(); np != newParticles.end(); ++np)
+					{
+						np->color = animalCursorColor;
+					}
+
+					segment_particles.splice(segment_particles.end(), newParticles);
+
+
+
 					break;
 				}
 				else
 				{
-					segment_particles.splice(segment_particles.end(), EFLA_E(   lineEnd,  *(it)) );
+
+					printf("drawing line\n");
+
+					printf("segmentParticles %lu\n", segment_particles.size());
+
+
+					std::list<ProposedLifeParticle> newParticles =  EFLA_E(   lineEnd,  *(it)) ;
+					std::list<ProposedLifeParticle>::iterator np;
+					for (np = newParticles.begin(); np != newParticles.end(); ++np)
+					{
+						np->color = animalCursorColor;
+					}
+					segment_particles.splice(segment_particles.end(),newParticles);
 				}
 				count++;
 			}
+
+
+
 
 			working_polygon.clear();
 
 			// draw a n sided polygon in the vertices buffer.
 			// the first char is the number of vertices
-			animalCursorString++; if (animalCursorString > seedGrid[i].genes.length()) { return -1; }
-			unsigned int numberModifier = alphanumeric( seedGrid[i].genes[animalCursorString] );
-			unsigned int nPolyVertices = numberModifier ;
+
+			unsigned int nPolyVertices = 0;
+			unsigned int numberModifier  = 0;
+			while (true)
+			{
+				animalCursorString++; if (animalCursorString > seedGrid[i].genes.length()) { return -1; }
+				numberModifier = alphanumeric( seedGrid[i].genes[animalCursorString] );
+				nPolyVertices = numberModifier ;
+
+				if (nPolyVertices > 0) {break;}
+			}
+
+
+
+			printf("nPolyVertices. char %c, sming %u\n", seedGrid[i].genes[animalCursorString] , animalCursorString);
+
 
 			// the second char is the radius
 			animalCursorString++; if (animalCursorString > seedGrid[i].genes.length()) { return -1; }
 			numberModifier = alphanumeric( seedGrid[i].genes[animalCursorString] );
 			animalCursorSegmentRadius = numberModifier ;
 
+#ifdef ANIMAL_DRAWING_READOUT
+			printf("new poly radius: %u, new poly n: %u\n", animalCursorSegmentRadius, nPolyVertices );
+#endif
 
-
-			for (int i = 0; i < nPolyVertices; ++i)
+			for (unsigned int i = 0; i < nPolyVertices; ++i)
 			{
 				float angle = (i * ((1 * 3.1415) / nPolyVertices)  ) + (0.5 * 3.1415);  // only 1 pi so it draws a semi circle.
 				working_polygon.push_back ( vec_i2( animalCursorSegmentRadius * cos(angle), animalCursorSegmentRadius * sin(angle)) );
@@ -663,7 +709,10 @@ int drawAnimalFromChar (unsigned int i)
 			animalCursorString++; if (animalCursorString > seedGrid[i].genes.length()) { return -1; }
 			unsigned int numberModifier = alphanumeric( seedGrid[i].genes[animalCursorString] );
 			unsigned int moveVertex = numberModifier;
-			moveVertex = moveVertex % working_polygon.size();
+			if (working_polygon.size() > 0)
+			{
+				moveVertex = moveVertex % working_polygon.size();
+			}
 
 			// the second char is x movement
 			animalCursorString++; if (animalCursorString > seedGrid[i].genes.length()) { return -1; }
@@ -750,8 +799,8 @@ void drawAnimalFromSeed(unsigned int i)
 	animalCursorSegmentRadius = 5;
 	animalCursorSegmentAngle = 0.0f;
 	animalCursor = 0;
-	animalCursorLegThickness = 1;
-	animalCursorLegLength = 10;
+	// animalCursorLegThickness = 1;
+	// animalCursorLegLength = 10;
 	animalCursorColor = Color(0.5f, 0.5f, 0.5f, 1.0f);
 	animalCursorSegmentNumber = 0;
 	animalCursorEnergyDebt = 100.0f;
@@ -777,44 +826,56 @@ void drawAnimalFromSeed(unsigned int i)
 
 
 
-		// commit the last working poly to the segment particles list
-		std::list<vec_i2>::iterator it;
+		// // commit the last working poly to the segment particles list
+		// std::list<vec_i2>::iterator it;
 
-		// draw lines connecting the vertices.
-		unsigned int count = 0;
-		for (it = working_polygon.begin(); it != working_polygon.end(); ++it)
-		{
-			vec_i2 lineEnd = *(it);
-			++it;
+		// // draw lines connecting the vertices.
+		// unsigned int count = 0;
+		// for (it = working_polygon.begin(); it != working_polygon.end(); ++it)
+		// {
+		// 	vec_i2 lineEnd = *(it);
+		// 	++it;
 
-			if (count == working_polygon.size() - 1)
-			{
-				it = working_polygon.begin();
-				segment_particles.splice(segment_particles.end(), EFLA_E(   lineEnd,  *(it)) );
-				break;
-			}
-			else
-			{
-				segment_particles.splice(segment_particles.end(), EFLA_E(   lineEnd,  *(it)) );
-			}
-			count++;
-		}
+		// 	if (count == working_polygon.size() - 1)
+		// 	{
 
-		working_polygon.clear();
+		// 			printf("drawing line from start to finish\n");
 
 
 
-		// commit the segment drawing to the sprite, just to retain any uncommitted work
-		for (std::list<ProposedLifeParticle>::iterator it = segment_particles.begin(); it != segment_particles.end(); ++it)
-		{
-			unsigned int i = (it->position.y * sizeAnimalSprite) + it->position.x;
-			if ( i < (sizeAnimalSprite * sizeAnimalSprite))
-			{
-				a->segments[animalCursorSegmentNumber].frameA[i] = it->color;
-				a->segments[animalCursorSegmentNumber].frameB[i] = it->color;
-				a->segments[animalCursorSegmentNumber].frameC[i] = it->color;
-			}
-		}
+		// 		it = working_polygon.begin();
+		// 		segment_particles.splice(segment_particles.end(), EFLA_E(   lineEnd,  *(it)) );
+		// 		break;
+		// 	}
+		// 	else
+		// 	{
+
+		// 		// drawing line
+
+		// 		printf("drawing line\n");
+
+
+		// 		segment_particles.splice(segment_particles.end(), EFLA_E(   lineEnd,  *(it)) );
+		// 	}
+		// 	count++;
+		// }
+
+		// working_polygon.clear();
+
+
+
+		// // commit the segment drawing to the sprite, just to retain any uncommitted work
+		// for (std::list<ProposedLifeParticle>::iterator it = segment_particles.begin(); it != segment_particles.end(); ++it)
+		// {
+		// 	unsigned int i = (it->position.y * sizeX) + it->position.x;
+		// 	if ( i < (sizeAnimalSprite * sizeAnimalSprite))
+		// 	{
+		// 		printf("prinaint pnixel %u  \n", i );
+		// 		a->segments[animalCursorSegmentNumber].frameA[i] = it->color;
+		// 		a->segments[animalCursorSegmentNumber].frameB[i] = it->color;
+		// 		a->segments[animalCursorSegmentNumber].frameC[i] = it->color;
+		// 	}
+		// }
 
 
 
@@ -1033,6 +1094,8 @@ void setAnimalSpritePixel ( AnimalSegment  s, unsigned int pixelIndex )
 	// s->position
 
 
+
+
 	// find the x, y offset of the pixel from the origin in sprite coordinates.
 	int pixelX = (pixelIndex % sizeAnimalSprite) - (sizeAnimalSprite / 2);
 	int pixelY = (pixelIndex / sizeAnimalSprite) - (sizeAnimalSprite / 2);
@@ -1045,6 +1108,7 @@ void setAnimalSpritePixel ( AnimalSegment  s, unsigned int pixelIndex )
 
 	int worldI = (worldY * sizeX) + worldX;
 
+printf( "setAnimalSpritePixel pixelxy %i %i, pixelIndex %u, segmentxy %i %i\n ", pixelX, pixelY, pixelIndex, segmentX, segmentY);
 
 	if ( worldI > totalSize) {return;}
 
@@ -1234,13 +1298,16 @@ void incrementAnimalSegmentPositions (unsigned int animalIndex, unsigned int i, 
 				}
 			}
 
-			for ( int j = (a.segmentsUsed - 1); j > 0; --j)
+			for ( unsigned int j = (a.segmentsUsed - 1); j > 0; --j)
 			{
 				a.segments[j].position = a.segments[j - 1].position;
 			}
 
+			printf("updating segment 0 pos to %u\n", i);
 			a.segments[0].position = i;
 		}
+
+			animals[animalIndex] = a;
 	}
 }
 
@@ -1254,11 +1321,11 @@ void updateAnimalDrawing(unsigned int i)
 
 		unsigned int count = 0;
 		// for (s = a->segments.begin(); s !=  a->segments.end(); ++s)
-		for (	int j = 0; j < a->segmentsUsed; j++ )
+		for (	unsigned int j = 0; j < a->segmentsUsed; j++ )
 		{
-			// AnimalSegment * s = &(a->segments[j]);
+			AnimalSegment * s = &(a->segments[j]);
 			// std::vector<AnimalSpritePixel>::iterator p;
-
+			printf( "smengment pnition %u\n", s->position );
 
 			for (unsigned int k = 0; k < (sizeAnimalSprite * sizeAnimalSprite); ++k)
 			{
@@ -1683,28 +1750,59 @@ void createRandomWorld()
 
 			// create a background star with random blackbody color and alpha
 
-			float randomStarAlpha = RNG();
-			randomStarAlpha = randomStarAlpha * randomStarAlpha * randomStarAlpha * randomStarAlpha * randomStarAlpha * randomStarAlpha * randomStarAlpha; // cubing the value or more shifts the distribution lower while preserving the range.
-				
-			randomStarAlpha = randomStarAlpha/2;
 
 			unsigned int randomColorTemperature = extremelyFastNumberFromZeroTo(5000);
 			Color randomStarColor = blackbodyLookup(randomColorTemperature);
+
+			float randomStarAlpha = RNG();
+			randomStarAlpha = randomStarAlpha * randomStarAlpha * randomStarAlpha * randomStarAlpha * randomStarAlpha * randomStarAlpha * randomStarAlpha; // cubing the value or more shifts the distribution lower while preserving the range.
+			randomStarAlpha = randomStarAlpha / 2;
+
 			randomStarColor.a = randomStarAlpha;
 
 			memcpy( &(backgroundSky[ a_offset ]), &randomStarColor, 					sizeof(Color) );
 
 
 
-			if (extremelyFastNumberFromZeroTo(100) ==  0)
-			{
+			// if (true)
+			// {
 
-				// make the star into a little cross by also coloring the squares above, below, and to the sides.
+			// make the star into a little cross by also coloring the squares above, below, and to the sides.
+
+			// unsigned int starNeighbours[] =
+			// {
+			// 	i + sizeX,
+			// 	i + 1,
+			// 	// i - 1,
+			// 	// i - sizeX
+			// };
+
+			// for ( unsigned int j = 0; j < 2; ++j)
+			// {
+
+
+			// 	unsigned int j__color_offset = (starNeighbours[j] * numberOfFieldsPerVertex) ;
+
+			// 	if (j__color_offset > (totalSize * numberOfFieldsPerVertex)) {j__color_offset = totalSize * numberOfFieldsPerVertex;}
+// 			if (i > (sizeX + 1) && i < (totalSize - (sizeX+1)))
+
+// {
+// 			memcpy( &(backgroundSky[ ((i + sizeX)*numberOfFieldsPerVertex) ]), &randomStarColor, 					sizeof(Color) );
+// 			memcpy( &(backgroundSky[ ((i - sizeX)*numberOfFieldsPerVertex) ]), &randomStarColor, 					sizeof(Color) );
+// 			memcpy( &(backgroundSky[ ((i + 1)*numberOfFieldsPerVertex)     ]), &randomStarColor, 					sizeof(Color) );
+// 			memcpy( &(backgroundSky[ ((i - 1)*numberOfFieldsPerVertex)     ]), &randomStarColor, 					sizeof(Color) );
+
+
+// }
+
+
+			//
+
+			// }
 
 
 
-
-			}
+			// }
 
 
 
