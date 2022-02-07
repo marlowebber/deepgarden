@@ -140,7 +140,7 @@ ProposedLifeParticle::ProposedLifeParticle(Color color, vec_u2 position, unsigne
 // ANIMAL DRAWING
 unsigned int animalCursorFrame = FRAME_A;
 unsigned int animalCursorString = 0;
-unsigned int animalCursorSegmentRadius = 5;
+unsigned int animalCursorSegmentRadius = 2;
 float animalCursorSegmentAngle = 0.0f;
 unsigned int animalCursor = 0;
 // int animalCursorLegThickness = 1;
@@ -148,7 +148,7 @@ unsigned int animalCursor = 0;
 Color animalCursorColor = Color(0.5f, 0.5f, 0.5f, 1.0f);
 unsigned int animalCursorSegmentNumber = 0;
 float animalCursorEnergyDebt = 0.0f;
-unsigned int animaCursorEnergySource = ENERGYSOURCE_PLANT;
+unsigned int animalCursorEnergySource = ENERGYSOURCE_PLANT;
 float animalCursorLimbLowerAngle = 0.0f;
 float animalCursorLimbUpperAngle = 0.5 * 3.1415f;
 unsigned int animalRecursionLevel = 0;
@@ -588,7 +588,7 @@ int drawAnimalFromChar (unsigned int i)
 					a->segments[animalCursorSegmentNumber].frameB[i] = it->color;
 					a->segments[animalCursorSegmentNumber].frameC[i] = it->color;
 
-					printf("pizel %f %f %f %f \n", it->color.r, it->color.g, it->color.b, it->color.a );
+					// printf("pizel %f %f %f %f \n", it->color.r, it->color.g, it->color.b, it->color.a );
 				}
 			}
 
@@ -609,56 +609,75 @@ int drawAnimalFromChar (unsigned int i)
 			// commit the last polygon to the sprite.
 			std::list<vec_i2>::iterator it;
 
-			// draw lines connecting the vertices.
-			unsigned int count = 0;
-			for (it = working_polygon.begin(); it != working_polygon.end(); ++it)
+
+			// commit the working poly vertices to the sprite.
+			if (true)
 			{
-				vec_i2 lineEnd = *(it);
-				++it;
 
-				printf("umu %i, %i, ojoh %i, %i\n", it->x, it->y, lineEnd.x, lineEnd.y);
-
-				if (count == working_polygon.size() - 1)
+				for (it = working_polygon.begin(); it != working_polygon.end(); ++it)
 				{
 
-					printf("drawing line from start to finish\n");
-
-					it = working_polygon.begin();
-
-					std::list<ProposedLifeParticle> newParticles =  EFLA_E(   lineEnd,  *(it)) ;
-					std::list<ProposedLifeParticle>::iterator np;
-					for (np = newParticles.begin(); np != newParticles.end(); ++np)
-					{
-						np->color = animalCursorColor;
-					}
-
-					segment_particles.splice(segment_particles.end(), newParticles);
-
-
-
-					break;
+					unsigned int ux = it->x;
+					unsigned int uy = it->y;
+					segment_particles.push_back(  ProposedLifeParticle(animalCursorColor, vec_u2(ux, uy), animalCursorEnergySource  ));
 				}
-				else
-				{
-
-					printf("drawing line\n");
-
-					printf("segmentParticles %lu\n", segment_particles.size());
-
-
-					std::list<ProposedLifeParticle> newParticles =  EFLA_E(   lineEnd,  *(it)) ;
-					std::list<ProposedLifeParticle>::iterator np;
-					for (np = newParticles.begin(); np != newParticles.end(); ++np)
-					{
-						np->color = animalCursorColor;
-					}
-					segment_particles.splice(segment_particles.end(),newParticles);
-				}
-				count++;
 			}
 
+			if (false)
+			{
+				// draw lines connecting the vertices.
+				unsigned int count = 0;
+				for (it = working_polygon.begin(); it != working_polygon.end(); ++it)
+				{
+					vec_i2 lineEnd = *(it);
+					++it;
+
+					// printf("umu %i, %i, ojoh %i, %i\n", it->x, it->y, lineEnd.x, lineEnd.y);
 
 
+
+					if (count == working_polygon.size() - 1)
+					{
+
+						printf("drawing line from start to finish\n");
+
+						it = working_polygon.begin();
+
+						std::list<ProposedLifeParticle> newParticles =  EFLA_E(   lineEnd,  *(it)) ;
+						std::list<ProposedLifeParticle>::iterator np;
+						for (np = newParticles.begin(); np != newParticles.end(); ++np)
+						{
+							np->color = animalCursorColor;
+						}
+
+						segment_particles.splice(segment_particles.end(), newParticles);
+
+
+
+						break;
+					}
+					else
+					{
+
+						printf("drawing line\n");
+
+						// printf("segmentParticles %lu\n", segment_particles.size());
+
+
+						std::list<ProposedLifeParticle> newParticles =  EFLA_E(   lineEnd,  *(it)) ;
+						std::list<ProposedLifeParticle>::iterator np;
+						for (np = newParticles.begin(); np != newParticles.end(); ++np)
+						{
+							np->color = animalCursorColor;
+						}
+						segment_particles.splice(segment_particles.end(), newParticles);
+					}
+
+					count++;
+				}
+
+
+			}
 
 			working_polygon.clear();
 
@@ -678,7 +697,7 @@ int drawAnimalFromChar (unsigned int i)
 
 
 
-			printf("nPolyVertices. char %c, sming %u\n", seedGrid[i].genes[animalCursorString] , animalCursorString);
+			// printf("nPolyVertices. char %c, sming %u\n", seedGrid[i].genes[animalCursorString] , animalCursorString);
 
 
 			// the second char is the radius
@@ -692,8 +711,17 @@ int drawAnimalFromChar (unsigned int i)
 
 			for (unsigned int i = 0; i < nPolyVertices; ++i)
 			{
-				float angle = (i * ((1 * 3.1415) / nPolyVertices)  ) + (0.5 * 3.1415);  // only 1 pi so it draws a semi circle.
-				working_polygon.push_back ( vec_i2( animalCursorSegmentRadius * cos(angle), animalCursorSegmentRadius * sin(angle)) );
+				float fi = i;
+				float angle = (i * ((1.0f * 3.1415f) / nPolyVertices)  ) + (0.5f * 3.1415f);  // only 1 pi so it draws a semi circle.
+				float halfSpriteSize = (sizeAnimalSprite/2);
+
+				float fnewVertX = (animalCursorSegmentRadius * cos(angle)) + halfSpriteSize;
+				float fnewVertY = (animalCursorSegmentRadius * sin(angle)) + halfSpriteSize;
+
+				int newVertX = fnewVertX;
+				int newVertY = fnewVertY;
+
+				working_polygon.push_back ( vec_i2( newVertX,newVertY ) );
 			}
 
 
@@ -796,7 +824,7 @@ void drawAnimalFromSeed(unsigned int i)
 {
 	animalCursorFrame = FRAME_A;
 	animalCursorString = 0;
-	animalCursorSegmentRadius = 5;
+	animalCursorSegmentRadius = 2;
 	animalCursorSegmentAngle = 0.0f;
 	animalCursor = 0;
 	// animalCursorLegThickness = 1;
@@ -1108,7 +1136,7 @@ void setAnimalSpritePixel ( AnimalSegment  s, unsigned int pixelIndex )
 
 	int worldI = (worldY * sizeX) + worldX;
 
-printf( "setAnimalSpritePixel pixelxy %i %i, pixelIndex %u, segmentxy %i %i\n ", pixelX, pixelY, pixelIndex, segmentX, segmentY);
+// printf( "setAnimalSpritePixel pixelxy %i %i, pixelIndex %u, segmentxy %i %i\n ", pixelX, pixelY, pixelIndex, segmentX, segmentY);
 
 	if ( worldI > totalSize) {return;}
 
@@ -1303,11 +1331,11 @@ void incrementAnimalSegmentPositions (unsigned int animalIndex, unsigned int i, 
 				a.segments[j].position = a.segments[j - 1].position;
 			}
 
-			printf("updating segment 0 pos to %u\n", i);
+			// printf("updating segment 0 pos to %u\n", i);
 			a.segments[0].position = i;
 		}
 
-			animals[animalIndex] = a;
+		animals[animalIndex] = a;
 	}
 }
 
@@ -1325,7 +1353,7 @@ void updateAnimalDrawing(unsigned int i)
 		{
 			AnimalSegment * s = &(a->segments[j]);
 			// std::vector<AnimalSpritePixel>::iterator p;
-			printf( "smengment pnition %u\n", s->position );
+			// printf( "smengment pnition %u\n", s->position );
 
 			for (unsigned int k = 0; k < (sizeAnimalSprite * sizeAnimalSprite); ++k)
 			{
