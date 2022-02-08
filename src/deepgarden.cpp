@@ -157,7 +157,7 @@ std::list<vec_i2> working_polygon;
 std::list<ProposedLifeParticle> segment_particles;
 
 
-std::string exampleAnimal = std::string(" rzgzbz  ggmgg.  ");
+std::string exampleAnimal = std::string(" rzgzbz  pggmggg . ");
 
 
 
@@ -572,9 +572,10 @@ int drawAnimalFromChar (unsigned int i)
 		case '.':
 		{
 #ifdef ANIMAL_DRAWING_READOUT
-			printf("Commit segment to sprite and go to new segment.\n" );
+			printf("Commit segment to sprite and go to new segment. " );
 #endif
 			// commit the segment drawing to the sprite
+			unsigned int count = 0;
 			for (std::list<ProposedLifeParticle>::iterator it = segment_particles.begin(); it != segment_particles.end(); ++it)
 			{
 				unsigned int i = (it->position.y * sizeAnimalSprite) + it->position.x;
@@ -583,17 +584,65 @@ int drawAnimalFromChar (unsigned int i)
 					a->segments[animalCursorSegmentNumber].frameA[i] = it->color;
 					a->segments[animalCursorSegmentNumber].frameB[i] = it->color;
 					a->segments[animalCursorSegmentNumber].frameC[i] = it->color;
+					count++;
 				}
 			}
+#ifdef ANIMAL_DRAWING_READOUT
+			printf("The amount of committed particles was %u.\n", count );
+#endif
 			segment_particles.clear();
 			animalCursorSegmentNumber++;
 			break;
 		}
-		case ' ':  // commit the working polygon and start a new one.
+
+		case 'p': // populate the working polygon.
+		{
+			#ifdef ANIMAL_DRAWING_READOUT
+			printf("Populate working polygon.\n" );
+#endif
+			// draw a n sided polygon in the vertices buffer.
+			// the first char is the number of vertices
+			unsigned int nPolyVertices = 0;
+			unsigned int numberModifier  = 0;
+			while (true)
+			{
+				animalCursorString++; if (animalCursorString > seedGrid[i].genes.length()) { return -1; }
+				numberModifier = alphanumeric( seedGrid[i].genes[animalCursorString] );
+				nPolyVertices = numberModifier ;
+				if (nPolyVertices > 0) {break;}
+			}
+
+#ifdef ANIMAL_DRAWING_READOUT
+			printf("char %c, index %u. Set the number of vertices of the new polygon to %u\n", seedGrid[i].genes[animalCursorString] , animalCursorString, numberModifier);
+#endif
+			// the second char is the radius
+			animalCursorString++; if (animalCursorString > seedGrid[i].genes.length()) { return -1; }
+			numberModifier = alphanumeric( seedGrid[i].genes[animalCursorString] );
+			animalCursorSegmentRadius = numberModifier ;
+
+#ifdef ANIMAL_DRAWING_READOUT
+			printf("char %c, index %u. Set radius of the new polygon to %u\n", seedGrid[i].genes[animalCursorString] , animalCursorString, numberModifier);
+#endif
+			for (unsigned int i = 0; i < nPolyVertices; ++i)
+			{
+				float fi = i;
+				float angle = (i * ((1.0f * 3.1415f) / nPolyVertices)  ) + (0.5f * 3.1415f);  // only 1 pi so it draws a semi circle.
+				float halfSpriteSize = (sizeAnimalSprite / 2);
+				float fnewVertX = (animalCursorSegmentRadius * cos(angle)) + halfSpriteSize;
+				float fnewVertY = (animalCursorSegmentRadius * sin(angle)) + halfSpriteSize;
+				int newVertX = fnewVertX;
+				int newVertY = fnewVertY;
+				working_polygon.push_back ( vec_i2( newVertX, newVertY ) );
+			}
+
+			break;
+		}
+
+		case ' ':  // commit the working polygon.
 		{
 
 #ifdef ANIMAL_DRAWING_READOUT
-			printf("Commit working polygon to segment and begin new polygon.\n");
+			printf("Commit working polygon to segment and clear working polygon.\n");
 #endif
 			std::list<vec_i2>::iterator it;
 			if (true)
@@ -640,40 +689,6 @@ int drawAnimalFromChar (unsigned int i)
 				}
 			}
 			working_polygon.clear();
-			// draw a n sided polygon in the vertices buffer.
-			// the first char is the number of vertices
-			unsigned int nPolyVertices = 0;
-			unsigned int numberModifier  = 0;
-			while (true)
-			{
-				animalCursorString++; if (animalCursorString > seedGrid[i].genes.length()) { return -1; }
-				numberModifier = alphanumeric( seedGrid[i].genes[animalCursorString] );
-				nPolyVertices = numberModifier ;
-				if (nPolyVertices > 0) {break;}
-			}
-
-#ifdef ANIMAL_DRAWING_READOUT
-			printf("char %c, index %u. Set the number of vertices of the new polygon to %u\n", seedGrid[i].genes[animalCursorString] , animalCursorString, numberModifier);
-#endif
-			// the second char is the radius
-			animalCursorString++; if (animalCursorString > seedGrid[i].genes.length()) { return -1; }
-			numberModifier = alphanumeric( seedGrid[i].genes[animalCursorString] );
-			animalCursorSegmentRadius = numberModifier ;
-
-#ifdef ANIMAL_DRAWING_READOUT
-			printf("char %c, index %u. Set radius of the new polygon to %u\n", seedGrid[i].genes[animalCursorString] , animalCursorString, numberModifier);
-#endif
-			for (unsigned int i = 0; i < nPolyVertices; ++i)
-			{
-				float fi = i;
-				float angle = (i * ((1.0f * 3.1415f) / nPolyVertices)  ) + (0.5f * 3.1415f);  // only 1 pi so it draws a semi circle.
-				float halfSpriteSize = (sizeAnimalSprite / 2);
-				float fnewVertX = (animalCursorSegmentRadius * cos(angle)) + halfSpriteSize;
-				float fnewVertY = (animalCursorSegmentRadius * sin(angle)) + halfSpriteSize;
-				int newVertX = fnewVertX;
-				int newVertY = fnewVertY;
-				working_polygon.push_back ( vec_i2( newVertX, newVertY ) );
-			}
 
 			break;
 		}
@@ -692,7 +707,7 @@ int drawAnimalFromChar (unsigned int i)
 			{
 				moveVertex = moveVertex % working_polygon.size();
 			}
-			#ifdef ANIMAL_DRAWING_READOUT
+#ifdef ANIMAL_DRAWING_READOUT
 			printf("char %c, index %u. The vertex to move is %u\n", seedGrid[i].genes[animalCursorString] , animalCursorString, numberModifier);
 #endif
 
