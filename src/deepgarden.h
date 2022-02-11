@@ -100,8 +100,9 @@ extern const unsigned int MATERIAL_VACUUM ;
 #define VISUALIZE_ENERGY      2
 #define VISUALIZE_TEMPERATURE 3
 #define VISUALIZE_PHASE       4
+#define VISUALIZE_PRESSURE	  5
 
-#define NUMBER_OF_VISUALIZERS 4 // i use a ++ to scroll through the list of visualizers. Please keep the declarations in numeric order and update this if you add more.
+#define NUMBER_OF_VISUALIZERS 5 // i use a ++ to scroll through the list of visualizers. Please keep the declarations in numeric order and update this if you add more.
 
 
 
@@ -163,6 +164,8 @@ void decreaseLampBrightness ();
 
 void thread_plantDrawing();
 
+void thread_weather();
+
 void save();
 
 void load();
@@ -186,4 +189,5 @@ void dropAllSeeds();
 
 
 void eraseAllLife();
+
 #endif

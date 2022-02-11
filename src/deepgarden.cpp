@@ -8,13 +8,14 @@
 
 #include "main.h"
 
-// #define THREAD_TIMING_READOUT 1
+#define THREAD_TIMING_READOUT 1
 // #define PLANT_DRAWING_READOUT 1
 #define ANIMAL_DRAWING_READOUT 1
 #define DRAW_ANIMALS 1
 
 bool useGerminationMaterial = false;
 bool animalReproductionEnabled = false;
+bool doWeather = false;
 
 #define RENDERING_THREADS 4
 
@@ -37,10 +38,8 @@ const Color phaseTingeSolid =  Color( 1.0f, 1.0f, 1.0f, 0.2f );
 const Color phaseTingeLiquid = Color( -1.0f, -1.0f, -1.0f, 0.2f );
 const Color phaseTingeGas =    Color( -1.0f, -1.0f, -1.0f, 0.4f );
 
-
 int neighbourOffsets[] =
 {
-
 	- 1,
 	- sizeX - 1,
 	- sizeX ,
@@ -59,19 +58,8 @@ float * colorGrid = new float[totalSize * numberOfFieldsPerVertex ];		// the col
 float * lifeColorGrid  	= new float[totalSize * numberOfFieldsPerVertex ];  // the same but concerning growing plants. Because plant color information is not easily stored anywhere else, this grid must be preserved in save and load operations.
 float * animationGrid 	= new float[totalSize * numberOfFieldsPerVertex ];	// the same, but for the sprites of animals. This is updated every turn, and animals carry their own copy of their sprites, so this does not need to be preserved.
 float * seedColorGrid  	= new float[totalSize * numberOfFieldsPerVertex];   // the same, but for the colors of seeds and falling photons.
-float * ppGrid  	= new float[totalSize * numberOfFieldsPerVertex];
-
-
+float * ppGrid       	= new float[totalSize * numberOfFieldsPerVertex];
 float * backgroundSky  	= new float[totalSize * numberOfFieldsPerVertex];
-
-
-
-// perform a variety of post processing artistic styles.
-// things like 'glowing because of temperature' need to be calculated all the time, because things are constantly changing temperature.
-// float * postProcessingGrid = new float[totalSize * numberOfFieldsPerVertex];
-
-
-
 
 // PLANT DRAWING
 unsigned int recursion_level = 0;
@@ -92,7 +80,6 @@ Color cursor_color = Color(0.1f, 0.1f, 0.1f, 1.0f);
 Color cursor_seedColor = Color(0.1f, 0.1f, 0.1f, 1.0f);
 float lengthNoise = 0.0f;
 float energyDebtSoFar = 0.0f;
-
 
 // a tree with a long stem and a fan of branches.
 std::string plant_Pycad = std::string( "rqgqbqxuydzb. lz addlzf." );
@@ -118,7 +105,6 @@ std::string plant_LardGrass = std::string( "rgggbuxuyuzu. oiilfflbflbf  " );
 // a blob of jelly.
 std::string plant_Primordial = std::string( "rmgmbmxmymzm. lbflafe. " );
 
-
 struct ProposedLifeParticle
 {
 	Color color = Color(0.5f, 0.5f, 0.5f, 1.0f);
@@ -135,16 +121,12 @@ ProposedLifeParticle::ProposedLifeParticle(Color color, vec_u2 position, unsigne
 	this->energySource = energySource;
 }
 
-
-
 // ANIMAL DRAWING
 unsigned int animalCursorFrame = FRAME_A;
 unsigned int animalCursorString = 0;
 unsigned int animalCursorSegmentRadius = 2;
 float animalCursorSegmentAngle = 0.0f;
 unsigned int animalCursor = 0;
-// int animalCursorLegThickness = 1;
-// int animalCursorLegLength = 5;
 Color animalCursorColor = Color(0.5f, 0.5f, 0.5f, 1.0f);
 unsigned int animalCursorSegmentNumber = 0;
 float animalCursorEnergyDebt = 0.0f;
@@ -156,31 +138,21 @@ unsigned int animalRecursionLevel = 0;
 std::list<vec_i2> working_polygon;
 std::list<ProposedLifeParticle> segment_particles;
 
+std::string exampleAnimal = std::string(" rzgzbz  pmmmbmg . ");
 
-std::string exampleAnimal = std::string(" rzgzbz  pzzmbmg .  pzzmbmg . ");
-
-
-
-
-
-// vec_i2 wind = vec_i2(0, 0);
-unsigned int wind;
 int defaultTemperature = 300;
-
-
+int radiantHeatIntensity = 50; // this is a physical constant that determines how much heat radiates from material, and how strongly material heat is coupled to the atmosphere.
 
 unsigned int sunlightDirection = 2;
 unsigned int sunlightEnergy = 10;
 unsigned int sunlightHeatCoeff = 1;
 unsigned int sunlightTemp = 1000;
 unsigned int sunlightPenetrationDepth = 20; // light is slightly reduced traveling through solid things. this affects plants in game as well as being an artistic effect. This number is how far the light goes into solid things.
-// unsigned int sunlightColor = blackbodyLookup(sunlightTemp)
-Color sunlightColor = color_white_clear;
 
+Color sunlightColor = color_white_clear;
 
 unsigned int nGerminatedSeeds = 0;
 unsigned int lampBrightness = 10;
-
 
 // raw energy values are DIVIDED by these numbers to get the result. So more means less.
 unsigned int lightEfficiency   = 10000;
@@ -191,16 +163,13 @@ unsigned int meatEfficiency    = 1000;
 unsigned int seedEfficiency    = 10;
 unsigned int mineralEfficiency = 10;
 
-
-
 vec_u2 playerCursor = vec_u2(0, 0);
 
 bool sprinkleErodingRain = false;
 
-
-
 float maximumDisplayEnergy = 1.0f;
 float maximumDisplayTemperature = 1000.0f;
+float maximumDisplayPressure = 1.0f;
 
 unsigned int visualizer = VISUALIZE_MATERIAL;
 
@@ -208,24 +177,20 @@ std::list<unsigned int> identities;
 
 std::list<vec_u2> v_seeds;
 
-
 unsigned int animationChangeCount = 0;
 unsigned int animationGlobalFrame = FRAME_A;
 
-
-
 struct Weather
 {
-
-	// unsigned int temperature;
-	// unsigned int pressure;
+	int temperature;
+	int pressure;
 	unsigned int direction;
 	Weather();
 };
 Weather::Weather()
 {
-	// this->temperature = 0;
-	// this->pressure = 0;
+	this->temperature = 100;
+	this->pressure = 100;
 	this->direction = 0;
 }
 
@@ -233,6 +198,62 @@ Weather weatherGrid[totalSize];
 
 void thread_weather()
 {
+#ifdef THREAD_TIMING_READOUT
+	auto start = std::chrono::steady_clock::now();
+#endif
+	if (doWeather)
+	{
+		for (unsigned int i = (sizeX + 1); i < (totalSize - (sizeX + 1)) ; ++i)
+		{
+			// air and weather simulation can be acheived simply by the use of the combined gas law
+			// PV / t = k
+			// P = pressure, V =  volume, t = temperature, k = a constant.
+
+			// when comparing the same substance under two different sets of conditions, the equation can be written as:
+			// ((p1 * v1) / t1   ) = ( (p2 * v2) / t2  )
+			// this is used to propagate the simulation state between neighbours.
+
+			// rearranged to solve for t1, with volume parts removed (they are all just 1):
+			//  t1 = (p1 * t2 ) / ( p2 );
+
+			// rearranged to solve for p1,
+			// p1 = (p2  *t1 ) / (t2 )
+
+
+			// unsigned int highestNeighbourPressure = 0;
+
+			// go through each weather grid square, check the neighbours. set the wind direction in this square away from the highest pressure neighbour.
+			// for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
+			// {
+
+			unsigned int neighbour = i + neighbourOffsets[ extremelyFastNumberFromZeroTo(N_NEIGHBOURS - 1) ] ;
+
+			// compute your own temperature.
+			if (weatherGrid[neighbour].pressure   > 0)
+			{
+				weatherGrid[i].temperature = ( weatherGrid[i].pressure         * weatherGrid[neighbour].temperature ) / (weatherGrid[neighbour].pressure    );
+			}
+
+			// compute your own pressure.
+			if (weatherGrid[neighbour].temperature)
+			{
+				weatherGrid[i].pressure    = ( weatherGrid[neighbour].pressure * weatherGrid[i].temperature         ) / (weatherGrid[neighbour].temperature );
+			}
+
+			// if (weatherGrid[neighbour ].pressure > highestNeighbourPressure  )
+			// {
+			// 	highestNeighbourPressure = weatherGrid[ neighbourOffsets[j] ].pressure ;
+			// 	weatherGrid[i].direction = j;
+			// }
+			// }
+		}
+	}
+
+#ifdef THREAD_TIMING_READOUT
+	auto end = std::chrono::steady_clock::now();
+	auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+	std::cout << "thread_weather " << elapsed.count() << " microseconds." << std::endl;
+#endif
 
 }
 
@@ -240,15 +261,11 @@ struct Material
 {
 	unsigned int crystal_n;
 	unsigned int crystal_condition;
-
 	Color color = Color(0.0f, 0.0f, 1.0f, 1.0f);
-
 	unsigned int melting;
 	unsigned int boiling;
 	int insulativity;
-
 	unsigned int availability;
-
 	Material();
 };
 
@@ -256,20 +273,15 @@ Material::Material()
 {
 	this->crystal_condition = CONDITION_GREATERTHAN;
 	this->crystal_n = 2;
-
 	this->color = color_grey;
 	this->melting = 500;
 	this->boiling = 1000;
 	this->insulativity = 2;
 }
 
-
 std::vector<Material> materials;
 
 const unsigned int MATERIAL_VACUUM = 0;
-
-
-
 
 struct Particle
 {
@@ -317,8 +329,6 @@ transportableLifeParticle::transportableLifeParticle()
 	this->energy = 0.0f;
 	this->energySource = ENERGYSOURCE_LIGHT;
 }
-
-
 
 struct SeedParticle
 {
@@ -397,34 +407,13 @@ SeedParticle * seedGrid = new SeedParticle[totalSize];
 std::list<ProposedLifeParticle> v;
 std::list<ProposedLifeParticle> v_extrudedParticles;
 
-// struct AnimalSpritePixel
-// {
-// 	int localPosition ;//= 0;
-// 	Color color = Color(1.0f, 1.0f, 1.0f, 1.0f);
-// 	AnimalSpritePixel( );
-// };
-
-// AnimalSpritePixel::AnimalSpritePixel(
-//     // int localPosition, Color color
-// )
-// {
-// 	this->localPosition = 0;
-// 	this->color = color_clear ;
-// }
-
 struct AnimalSegment
 {
-
 	unsigned int position;
 	unsigned int animationFrame;
-	// std::vector<AnimalSpritePixel> frameA;
-	// std::vector<AnimalSpritePixel> frameB;
-	// std::vector<AnimalSpritePixel> frameC;
-
 	Color frameA[sizeAnimalSprite * sizeAnimalSprite];
 	Color frameB[sizeAnimalSprite * sizeAnimalSprite];
 	Color frameC[sizeAnimalSprite * sizeAnimalSprite];
-
 	AnimalSegment();
 };
 
@@ -432,12 +421,9 @@ AnimalSegment::AnimalSegment()
 {
 	this->animationFrame = FRAME_A;
 	this->position = 0;
-
 	for (int i = 0; i < (sizeAnimalSprite * sizeAnimalSprite); ++i)
 	{
-		// this->frameA[i] = AnimalSpritePixel();
 		this->frameA[i] = color_clear;
-		// this->frameA[i].localPosition = 0;
 	}
 
 }
@@ -448,12 +434,8 @@ struct Animal
 	float reproductionCost;
 	unsigned int reach;
 	unsigned int movementChance;
-	// std::vector<AnimalSegment> segments;
-
 	AnimalSegment segments[maxAnimalSegments];
-
 	unsigned int segmentsUsed;
-
 	unsigned int movementFlags;
 	unsigned int direction;
 	unsigned int energyFlags;
@@ -470,7 +452,6 @@ Animal::Animal()
 	this->reach = 5;
 	this->movementChance = 4;
 	this->segmentsUsed = 1;
-	// this->segments.push_back(AnimalSegment());
 
 	for (int i = 0; i < maxAnimalSegments; ++i)
 	{
@@ -480,31 +461,16 @@ Animal::Animal()
 	this->movementFlags = MOVEMENT_ONPOWDER | MOVEMENT_ONSOLID;
 }
 
-
-// struct World
-// {
-// 	unsigned int backgroundTemperature;
-
-// };
-
-
 struct WorldInformation
 {
-
 	unsigned int nMaterials;
 	unsigned int nAnimals;
-
-
 };
-
-
 
 // THE EXTREMELY FAST LINE ALGORITHM Variation E (Addition Fixed Point PreCalc Small Display)
 // Small Display (256x256) resolution.
 std::list<ProposedLifeParticle> EFLA_E(vec_i2 start, vec_i2 end)
 {
-
-
 	int x  = start.x;
 	int y  = start.y;
 	int x2 = end.x;
@@ -514,8 +480,6 @@ std::list<ProposedLifeParticle> EFLA_E(vec_i2 start, vec_i2 end)
 	{
 		printf(" You have used EFLA_E with a number that is too big for it! \n");
 		printf("EFLA_E startx %i starty %i , endx %i endy %i \n", start.x, start.y, end.x, end.y);
-
-
 	}
 
 	std::list<ProposedLifeParticle> v;
@@ -567,315 +531,251 @@ std::list<ProposedLifeParticle> EFLA_E(vec_i2 start, vec_i2 end)
 	return v;
 }
 
-
 // return 0 to continue drawing sequence, return -1 to break sequence by one level.
 int drawAnimalFromChar (unsigned int i, Animal * a, std::string genes )
 {
-	// if (seedGrid[i].parentIdentity < animals.size() )
-	// {
-		// Animal * a = &(animals[seedGrid[i].parentIdentity]);
-		if (animalCursorString >= genes.length()) {return -1;}
-		if (animalCursorSegmentNumber >= maxAnimalSegments) {return -1;}
-		animalCursorString++;
-		char c = genes[animalCursorString];
+
+	if (animalCursorString >= genes.length())           {return -1;}
+	if (animalCursorSegmentNumber >= maxAnimalSegments) {return -1;}
+
+	animalCursorString++;
+	char c = genes[animalCursorString];
+
 #ifdef ANIMAL_DRAWING_READOUT
-		printf("char %c, index %u. ", genes[animalCursorString], animalCursorString );
+	printf("char %c, index %u. ", genes[animalCursorString], animalCursorString );
 #endif
-		switch (c)
-		{
-		case '.':
-		{
+	switch (c)
+	{
+	case '.': // commit the segment drawing to the sprite
+	{
 #ifdef ANIMAL_DRAWING_READOUT
-			printf("Commit segment to sprite and go to new segment. " );
+		printf("Commit segment to sprite and go to new segment. " );
 #endif
-			// commit the segment drawing to the sprite
-			int count = 0;
-			for (std::list<ProposedLifeParticle>::iterator it = segment_particles.begin(); it != segment_particles.end(); ++it)
+		int count = 0;
+		for (std::list<ProposedLifeParticle>::iterator it = segment_particles.begin(); it != segment_particles.end(); ++it)
+		{
+			int j = (it->position.y * sizeAnimalSprite) + it->position.x;
+			if ( j < (sizeAnimalSprite * sizeAnimalSprite) && j >= 0)
 			{
-				int j = (it->position.y * sizeAnimalSprite) + it->position.x;
-				if ( j < (sizeAnimalSprite * sizeAnimalSprite) && j >= 0)
+				a->segments[animalCursorSegmentNumber].frameA[j] = it->color;
+				a->segments[animalCursorSegmentNumber].frameB[j] = it->color;
+				a->segments[animalCursorSegmentNumber].frameC[j] = it->color;
+				count++;
+			}
+		}
+#ifdef ANIMAL_DRAWING_READOUT
+		printf("The amount of committed particles was %u.\n", count );
+#endif
+		segment_particles.clear();
+		animalCursorSegmentNumber++;
+		return 0;
+	}
+
+	case 'p': // populate the working polygon.
+	{
+#ifdef ANIMAL_DRAWING_READOUT
+		printf("Clear and populate working polygon.\n" );
+#endif
+		working_polygon.clear();
+		// draw a n sided polygon in the vertices buffer.
+		// the first char is the number of vertices
+		int nPolyVertices = 0;
+		int numberModifier  = 0;
+		while (true)
+		{
+			animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
+			numberModifier = (alphanumeric( genes[animalCursorString] ) ) / 2;
+			nPolyVertices = numberModifier ;
+			if (nPolyVertices > 0) {break;}
+		}
+
+#ifdef ANIMAL_DRAWING_READOUT
+		printf("char %c, index %u. Set the number of vertices of the new polygon to %u\n", genes[animalCursorString] , animalCursorString, numberModifier);
+#endif
+		// the second char is the radius
+		animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
+		numberModifier = alphanumeric( genes[animalCursorString] ) / 2;
+		animalCursorSegmentRadius = numberModifier ;
+
+#ifdef ANIMAL_DRAWING_READOUT
+		printf("char %c, index %u. Set radius of the new polygon to %u\n", genes[animalCursorString] , animalCursorString, numberModifier);
+#endif
+		for ( int j = 0; j <= nPolyVertices; ++j)
+		{
+			float fj = j;
+			float angle = (fj * (3.1415f / nPolyVertices)  ) + (0.5f * 3.1415f);  // only 1 pi so it draws a semi circle.
+			float fnewVertX = (animalCursorSegmentRadius * cos(angle)) ;
+			float fnewVertY = (animalCursorSegmentRadius * sin(angle)) ;
+			int newVertX = fnewVertX;
+			int newVertY = fnewVertY;
+			working_polygon.push_back ( vec_i2( newVertX, newVertY ) );
+		}
+		return 0;
+	}
+
+	case ' ':  // commit the working polygon.
+	{
+
+#ifdef ANIMAL_DRAWING_READOUT
+		printf("Commit working polygon to segment\n");
+#endif
+		if (working_polygon.size() > 0)
+		{
+			// mirror the working vertices in X axis before lines are drawn.
+			// mirroring is done before line drawing to prevent confusion at the y intercept.
+			if (true)
+			{
+				std::list<vec_i2> mirrorVerts;
+				int count = 0;
+				for (std::list<vec_i2>::iterator it = working_polygon.begin(); it != working_polygon.end(); ++it)
 				{
+					int mirrorX =  it->x * -1; ;//((sizeAnimalSprite / 2) - it->x ) + (sizeAnimalSprite / 2);
+					mirrorVerts.push_back( vec_i2( mirrorX , it->y ) );
+					count++;
+				}
+				mirrorVerts.reverse(); // prevents a 'twist' in the geometry
+				working_polygon.splice(working_polygon.end(), mirrorVerts);
+			}
 
-
-					a->segments[animalCursorSegmentNumber].frameA[j] = it->color;
-					a->segments[animalCursorSegmentNumber].frameB[j] = it->color;
-					a->segments[animalCursorSegmentNumber].frameC[j] = it->color;
+			// draw lines connecting the vertices.
+			if (true)
+			{
+				int count = 0;
+				vec_i2 lastVert = working_polygon.back();
+				for (std::list<vec_i2>::iterator it = working_polygon.begin(); it != working_polygon.end(); ++it)
+				{
+					vec_i2 currentVert = *(it);
+					std::list<ProposedLifeParticle> newParticles =  EFLA_E(   lastVert, currentVert  ) ;
+					for (std::list<ProposedLifeParticle>::iterator np = newParticles.begin(); np != newParticles.end(); ++np)
+					{
+						np->color = animalCursorColor;
+						segment_particles.push_back( *(np)  );
+					}
+					lastVert = currentVert;
 					count++;
 				}
 			}
-#ifdef ANIMAL_DRAWING_READOUT
-			printf("The amount of committed particles was %u.\n", count );
-#endif
-			segment_particles.clear();
-			animalCursorSegmentNumber++;
-			return 0;
-		}
 
-		case 'p': // populate the working polygon.
-		{
-#ifdef ANIMAL_DRAWING_READOUT
-			printf("Clear and populate working polygon.\n" );
-#endif
+			// scan-fill the polygon.
+			if (false)
+			{
+				for (int j = 0; j < (sizeAnimalSprite * sizeAnimalSprite); ++j)
+				{
 
+				}
+			}
 			working_polygon.clear();
-			// draw a n sided polygon in the vertices buffer.
-			// the first char is the number of vertices
-			int nPolyVertices = 0;
-			int numberModifier  = 0;
-			while (true)
+		}
+		return 0;
+	}
+	case 'm':
+	{
+
+#ifdef ANIMAL_DRAWING_READOUT
+		printf("Move a vertex in the working polygon: \n");
+#endif
+		// move a vertex equally in all sprites, distorting the polygon
+		// the first char is which vertex to choose
+		animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
+		int numberModifier = alphanumeric( genes[animalCursorString] );
+		int moveVertex = numberModifier;
+		if (working_polygon.size() > 0)
+		{
+			moveVertex = moveVertex % working_polygon.size();
+		}
+#ifdef ANIMAL_DRAWING_READOUT
+		printf("char %c, index %u. The vertex to move is %u\n", genes[animalCursorString] , animalCursorString, numberModifier);
+#endif
+		// the second char is x movement
+		animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
+		numberModifier = alphanumeric( genes[animalCursorString] );
+		int moveX = (numberModifier - 13) / 2;
+
+#ifdef ANIMAL_DRAWING_READOUT
+		printf("char %c, index %u. Move X by %i\n", genes[animalCursorString] , animalCursorString, numberModifier);
+#endif
+		// the second char is y movement
+		animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
+		numberModifier = alphanumeric( genes[animalCursorString] );
+		int moveY = (numberModifier - 13) / 2;
+
+#ifdef ANIMAL_DRAWING_READOUT
+		printf("char %c, index %u. Move Y by %i\n", genes[animalCursorString] , animalCursorString, numberModifier);
+#endif
+		std::list<vec_i2>::iterator it;
+		int count = 0;
+		for (it = working_polygon.begin(); it != working_polygon.end(); ++it)
+		{
+			if (count == moveVertex)
 			{
-				animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
-				numberModifier = (alphanumeric( genes[animalCursorString] ) ) / 2;
-				nPolyVertices = numberModifier ;
-				if (nPolyVertices > 0) {break;}
+				// make sure the move operation does not push the vertex outside of the sprite boundary.
+				if      (it->x + moveX > ((sizeAnimalSprite / 2) *  1 )  ) { it->x = (sizeAnimalSprite / 2) *  1; }
+				else if (it->x + moveX < ((sizeAnimalSprite / 2) * -1 )  ) { it->x = (sizeAnimalSprite / 2) * -1; }
+				else                                                       { it->x += moveX;}
+
+				// make sure the move operation does not push the vertex outside of the sprite boundary.
+				if      (it->y + moveY > ((sizeAnimalSprite / 2) *  1 )  ) { it->y = (sizeAnimalSprite / 2) *  1; }
+				else if (it->y + moveY < ((sizeAnimalSprite / 2) * -1 )  ) { it->y = (sizeAnimalSprite / 2) * -1; }
+				else                                                       { it->y += moveY;}
 			}
-
-#ifdef ANIMAL_DRAWING_READOUT
-			printf("char %c, index %u. Set the number of vertices of the new polygon to %u\n", genes[animalCursorString] , animalCursorString, numberModifier);
-#endif
-			// the second char is the radius
-			animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
-			numberModifier = alphanumeric( genes[animalCursorString] ) / 2;
-			animalCursorSegmentRadius = numberModifier ;
-
-#ifdef ANIMAL_DRAWING_READOUT
-			printf("char %c, index %u. Set radius of the new polygon to %u\n", genes[animalCursorString] , animalCursorString, numberModifier);
-#endif
-			for ( int j = 0; j <= nPolyVertices; ++j)
-			{
-
-				// printf("a\n");
-				float fj = j;
-				float angle = (fj * (3.1415f / nPolyVertices)  ) + (0.5f * 3.1415f);  // only 1 pi so it draws a semi circle.
-				float halfSpriteSize = (sizeAnimalSprite / 2);
-				float fnewVertX = (animalCursorSegmentRadius * cos(angle)) + halfSpriteSize;
-				float fnewVertY = (animalCursorSegmentRadius * sin(angle)) + halfSpriteSize;
-				int newVertX = fnewVertX;
-				int newVertY = fnewVertY;
-
-				printf("A new vertex was added to the working polygon. x %i y %i \n", newVertX, newVertY);
-
-				// printf("b\n");
-				working_polygon.push_back ( vec_i2( newVertX, newVertY ) );
-			}
-
-			// printf("c\n");
-
-			return 0;
+			count++;
 		}
 
-		case ' ':  // commit the working polygon.
-		{
+		return 0;
+	}
+	case 'r':
+	{
+#ifdef ANIMAL_DRAWING_READOUT
+		printf("Set red component: \n");
+#endif
+		animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
+		float numberModifier = alphanumeric( genes[animalCursorString] );
+		numberModifier = numberModifier / 26;
 
 #ifdef ANIMAL_DRAWING_READOUT
-			printf("Commit working polygon to segment\n");
+		printf("char %c, index %u. Set red to %f\n", genes[animalCursorString] , animalCursorString, numberModifier);
 #endif
-			if (working_polygon.size() > 0)
-			{
-
-				// mirror the working vertices in X axis before lines are drawn.
-				// mirroring is done before line drawing to prevent confusion at the y intercept.
-				if (true)
-				{
-					// if (working_polygon.size() > 0)
-					// {
-					std::list<vec_i2> mirrorVerts;
-					int count = 0;
-					for (std::list<vec_i2>::iterator it = working_polygon.begin(); it != working_polygon.end(); ++it)
-					{
-
-
-						printf("it->x %i \n", it->x );
-						printf("  count %i \n",  count );
-						printf("  sizeAnimalSprite/2 %i\n", sizeAnimalSprite / 2);
-
-
-
-
-						int mirrorX = ((sizeAnimalSprite / 2) - it->x ) + (sizeAnimalSprite / 2);
-						mirrorVerts.push_back( vec_i2( mirrorX , it->y ) );
-						count++;
-					}
-					mirrorVerts.reverse(); // prevents a 'twist' in the geometry
-					working_polygon.splice(working_polygon.end(), mirrorVerts);
-					// }
-				}
-
-
-				// draw lines connecting the vertices.
-				if (true)
-				{
-					int count = 0;
-					// unsigned int expectedVerts = working_polygon.size();
-					vec_i2 lastVert = working_polygon.back();
-
-					for (std::list<vec_i2>::iterator it = working_polygon.begin(); it != working_polygon.end(); ++it)
-					{
-
-						printf("a\n");
-
-						vec_i2 currentVert = *(it);
-						std::list<ProposedLifeParticle> newParticles =  EFLA_E(   lastVert,currentVert  ) ;
-						for (std::list<ProposedLifeParticle>::iterator np = newParticles.begin(); np != newParticles.end(); ++np)
-						{
-
-
-						printf("b\n");
-
-							np->color = animalCursorColor;
-							segment_particles.push_back( *(np)  );
-						}
-
-
-						printf("c\n");
-
-						// segment_particles.splice(segment_particles.end(), newParticles);
-
-
-						lastVert = currentVert;
-						count++;
-					}
-
-
-						printf("d\n");
-
-				}
-
-
-
-				// scan-fill the polygon.
-				if (false)
-				{
-
-					for (int j = 0; j < (sizeAnimalSprite * sizeAnimalSprite); ++j)
-					{
-
-					}
-
-				}
-
-				working_polygon.clear();
-			}
-
-			return 0;
-		}
-		case 'm':
-		{
+		animalCursorColor = Color(  numberModifier, animalCursorColor.g, animalCursorColor.b, 1.0f    );
+		return 0;
+	}
+	case 'g':
+	{
+#ifdef ANIMAL_DRAWING_READOUT
+		printf("Set green component: \n");
+#endif
+		animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
+		float numberModifier = alphanumeric( genes[animalCursorString] );
+		numberModifier = numberModifier / 26;
 
 #ifdef ANIMAL_DRAWING_READOUT
-			printf("Move a vertex in the working polygon: \n");
+		printf("char %c, index %u. Set green to %f\n", genes[animalCursorString] , animalCursorString, numberModifier);
 #endif
-			// move a vertex equally in all sprites, distorting the polygon
-			// the first char is which vertex to choose
-			animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
-			int numberModifier = alphanumeric( genes[animalCursorString] );
-			int moveVertex = numberModifier;
-			if (working_polygon.size() > 0)
-			{
-				moveVertex = moveVertex % working_polygon.size();
-			}
+		animalCursorColor = Color(  animalCursorColor.r, numberModifier, animalCursorColor.b, 1.0f    );
+		return 0;
+	}
+	case 'b':
+	{
 #ifdef ANIMAL_DRAWING_READOUT
-			printf("char %c, index %u. The vertex to move is %u\n", genes[animalCursorString] , animalCursorString, numberModifier);
+		printf("Set blue component\n");
 #endif
-
-			// the second char is x movement
-			animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
-			numberModifier = alphanumeric( genes[animalCursorString] );
-			int moveX = (numberModifier - 13) / 2;
+		animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
+		float numberModifier = alphanumeric( genes[animalCursorString] );
+		numberModifier = numberModifier / 26;
 
 #ifdef ANIMAL_DRAWING_READOUT
-			printf("char %c, index %u. Move X by %i\n", genes[animalCursorString] , animalCursorString, numberModifier);
+		printf("char %c, index %u. Set blue to %f\n", genes[animalCursorString] , animalCursorString, numberModifier);
 #endif
-			// the second char is y movement
-			animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
-			numberModifier = alphanumeric( genes[animalCursorString] );
-			int moveY = (numberModifier - 13) / 2;
-
+		animalCursorColor = Color(  animalCursorColor.r, animalCursorColor.g, numberModifier, 1.0f    );
+		return 0;
+	}
+	default:
+	{
 #ifdef ANIMAL_DRAWING_READOUT
-			printf("char %c, index %u. Move Y by %i\n", genes[animalCursorString] , animalCursorString, numberModifier);
+		printf("Skip.\n");
 #endif
-			std::list<vec_i2>::iterator it;
-			int count = 0;
-			for (it = working_polygon.begin(); it != working_polygon.end(); ++it)
-			{
-				if (count == moveVertex)
-				{
-
-					// make sure the move operation does not push the vertex outside of the sprite boundary.
-					if      (it->x + moveX > ((sizeAnimalSprite / 2) *  1 )  ) { it->x = (sizeAnimalSprite / 2) *  1; }
-					else if (it->x + moveX < ((sizeAnimalSprite / 2) * -1 )  ) { it->x = (sizeAnimalSprite / 2) * -1; }
-					else                                                       { it->x += moveX;}
-
-					// make sure the move operation does not push the vertex outside of the sprite boundary.
-					if      (it->y + moveY > ((sizeAnimalSprite / 2) *  1 )  ) { it->y = (sizeAnimalSprite / 2) *  1; }
-					else if (it->y + moveY < ((sizeAnimalSprite / 2) * -1 )  ) { it->y = (sizeAnimalSprite / 2) * -1; }
-					else                                                       { it->y += moveY;}
-
-
-				}
-				count++;
-			}
-
-			return 0;
-		}
-		case 'r':
-		{
-#ifdef ANIMAL_DRAWING_READOUT
-			printf("Set red component: \n");
-#endif
-			animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
-			float numberModifier = alphanumeric( genes[animalCursorString] );
-			numberModifier = numberModifier / 26;
-
-#ifdef ANIMAL_DRAWING_READOUT
-			printf("char %c, index %u. Set red to %f\n", genes[animalCursorString] , animalCursorString, numberModifier);
-#endif
-
-			animalCursorColor = Color(  numberModifier, animalCursorColor.g, animalCursorColor.b, 1.0f    );
-			return 0;
-		}
-		case 'g':
-		{
-#ifdef ANIMAL_DRAWING_READOUT
-			printf("Set green component: \n");
-#endif
-			animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
-			float numberModifier = alphanumeric( genes[animalCursorString] );
-			numberModifier = numberModifier / 26;
-
-#ifdef ANIMAL_DRAWING_READOUT
-			printf("char %c, index %u. Set green to %f\n", genes[animalCursorString] , animalCursorString, numberModifier);
-#endif
-
-			animalCursorColor = Color(  animalCursorColor.r, numberModifier, animalCursorColor.b, 1.0f    );
-			return 0;
-		}
-		case 'b':
-		{
-#ifdef ANIMAL_DRAWING_READOUT
-			printf("Set blue component\n");
-#endif
-			animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
-			float numberModifier = alphanumeric( genes[animalCursorString] );
-			numberModifier = numberModifier / 26;
-
-#ifdef ANIMAL_DRAWING_READOUT
-			printf("char %c, index %u. Set blue to %f\n", genes[animalCursorString] , animalCursorString, numberModifier);
-#endif
-
-			animalCursorColor = Color(  animalCursorColor.r, animalCursorColor.g, numberModifier, 1.0f    );
-			return 0;
-		}
-		default:
-		{
-#ifdef ANIMAL_DRAWING_READOUT
-			printf("Skip.\n");
-#endif
-
-			return 0;
-		}
-		}
-	// }
+		return 0;
+	}
+	}
 	return -1;
 }
 
@@ -891,8 +791,6 @@ void drawAnimalFromSeed(unsigned int i)
 	animalCursorColor = Color(0.5f, 0.5f, 0.5f, 1.0f);
 	animalCursorSegmentNumber = 0;
 	animalCursorEnergyDebt = 100.0f;
-
-
 	working_polygon.clear();
 	segment_particles.clear();
 
@@ -900,22 +798,14 @@ void drawAnimalFromSeed(unsigned int i)
 
 	if (animalIdentity < animals.size() && seedGrid[i].stage == STAGE_ANIMAL)
 	{
-
-
-
 		seedGrid[i].drawingInProgress = true;
 
 		// to improve code stability, this operation passes the animal and genome by literal value instead of by reference
 		// it is operated on in a factory-like way and then the original is overwritten with the modified copy
-
-		Animal  a = Animal(); //animals[animalIdentity];
+		Animal  a = Animal();
 		std::string genome = seedGrid[i].genes;
-
 		printf("Drawing an animal at %u with genome length %lu \nThe first and last characters are ignored.\n", i, seedGrid[i].genes.length());
-
-		// int genomeLength = genome.length();
 		int count = 0;
-
 		while (true)
 		{
 			if (drawAnimalFromChar(i, &a, genome) < 0 ) { break; }
@@ -925,9 +815,7 @@ void drawAnimalFromSeed(unsigned int i)
 		}
 		a.reproductionCost = animalCursorEnergyDebt;
 		a.energy = 0;
-
 		animals[animalIdentity] = a;
-
 		seedGrid[i].drawingInProgress = false;
 	}
 }
@@ -956,7 +844,6 @@ void setPhoton(  unsigned int i)
 
 void setErodingRain(  unsigned int i)
 {
-
 	seedGrid[i].energy = 0.0f;
 	seedGrid[i].stage = STAGE_ERODINGRAIN;
 	memcpy( (&seedColorGrid[i * numberOfFieldsPerVertex]) ,  &(color_purple),  sizeof(Color) );
@@ -974,10 +861,8 @@ void clearSeedParticle( unsigned int i)
 void toggleErodingRain ()
 {
 	sprinkleErodingRain = !sprinkleErodingRain ;
-
 	if (!sprinkleErodingRain)
 	{
-
 		for (int i = 0; i < totalSize; ++i)
 		{
 			if (seedGrid[i].stage == STAGE_ERODINGRAIN)
@@ -1001,55 +886,21 @@ void swapSeedParticle(unsigned int a, unsigned int b)
 	memcpy( &seedColorGrid[ a_offset ], temp_color, 					sizeof(Color) );
 }
 
-
-// // swap the particle but duplicate the color
-// void swapPhoton(unsigned int a, unsigned int b)
-// {
-// 	SeedParticle tempSeed = seedGrid[b];
-// 	seedGrid[b] = seedGrid[a];
-// 	seedGrid[a] = tempSeed;
-// 	// float temp_color[4];
-// 	unsigned int a_offset = (a * numberOfFieldsPerVertex) ;
-// 	unsigned int b_offset = (b * numberOfFieldsPerVertex) ;
-// 	// memcpy( temp_color, 				&seedColorGrid[ b_offset ] , 	sizeof(Color) ); // 4x floats of 4 bytes each
-// 	memcpy( &seedColorGrid[ b_offset], 	&seedColorGrid[ a_offset] , 	sizeof(Color) );
-// 	// memcpy( &seedColorGrid[ a_offset ], temp_color, 					sizeof(Color) );
-// }
-
-
 // travel from the indicated square in the light direction, marking cells as illuminated or dark along your way.
 void photate( unsigned int i )
 {
-
 	unsigned int currentPosition = i;
-
-
 	unsigned int blocked = 0;
-
-	// unsigned int applicableBrightness = lampBrightness;
-
-
-	// printf("nuguet %u \n", applicableBrightness);
 	while (true)
 	{
-
 		unsigned int x = currentPosition % sizeX;
 		unsigned int y = currentPosition / sizeX;
-
-
 		currentPosition = neighbourOffsets[sunlightDirection] + currentPosition;
-
 		if (currentPosition > totalSize) {break;}
-
 		unsigned int b_offset = (currentPosition * numberOfFieldsPerVertex) ;
-
 		if (
 		    grid[currentPosition].phase == PHASE_SOLID ||
 		    grid[currentPosition].phase == PHASE_POWDER ||
-
-		    // grid[currentPosition].phase == PHASE_LIQUID ||
-
-		    // grid[currentPosition].phase == PHASE_GAS ||
 		    lifeGrid[currentPosition].identity > 0x00 ||
 		    seedGrid[currentPosition].stage != STAGE_NULL
 		)
@@ -1059,130 +910,59 @@ void photate( unsigned int i )
 
 		if (!blocked)
 		{
-
 			seedGrid[currentPosition].energy = lampBrightness;
 			memcpy( &seedColorGrid[ b_offset], 	&color_clear , 	sizeof(Color) );
 		}
 		else
 		{
-
 			if (seedGrid[currentPosition].stage == STAGE_NULL)
 			{
-
-
 				seedGrid[currentPosition].energy = lampBrightness  / blocked;
-
-
-
 				memcpy( &seedColorGrid[ b_offset], 	&color_shadow , 	sizeof(Color) );
-
-
 				unsigned int a_offset = (b_offset) + 3;
-
 				seedColorGrid[a_offset] = 1 / (seedGrid[currentPosition].energy ) ;
 
-
 				// 0 at 700, 100% at 1000
-
 				if (grid[currentPosition].temperature > 600 )
 				{
-
-
 					seedColorGrid[a_offset] = seedColorGrid[a_offset] / 2;
-
-
-
 					if (grid[currentPosition].temperature > 1000)
 					{
-
 						seedColorGrid[a_offset] = 0;
-
 					}
-
-
 				}
-
-
-
 				if (seedColorGrid[a_offset] > 0.5f) {seedColorGrid[a_offset] = 0.5f;}
 				if (grid[currentPosition].phase == PHASE_VACUUM && lifeGrid[currentPosition].identity == 0x00) {seedColorGrid[a_offset] = 0.0f;}
-
 			}
-
-
-
 		}
-
-
 		if (x == 0 || y == 0 || x >= sizeX || y >= sizeY) {break;}
-
 	}
-
-
-
 }
-
 
 void setAnimalSpritePixel ( AnimalSegment  s, unsigned int pixelIndex )
 {
-	// unsigned int j_offset = (s->position + p.localPosition) ;
-	// unsigned int j__color_offset = (j_offset * numberOfFieldsPerVertex) ;
-
-
-	// get the segment position.
-	// s->position
-
-
-
-
 	// find the x, y offset of the pixel from the origin in sprite coordinates.
 	int pixelX = (pixelIndex % sizeAnimalSprite) - (sizeAnimalSprite / 2);
 	int pixelY = (pixelIndex / sizeAnimalSprite) - (sizeAnimalSprite / 2);
-
 	int segmentX = s.position % sizeX;
 	int segmentY = s.position / sizeX;
-
 	int worldX = segmentX + pixelX;
 	int worldY = segmentY + pixelY;
-
 	int worldI = (worldY * sizeX) + worldX;
-
-// printf( "setAnimalSpritePixel pixelxy %i %i, pixelIndex %u, segmentxy %i %i\n ", pixelX, pixelY, pixelIndex, segmentX, segmentY);
-
 	if ( worldI > totalSize) {return;}
-
 	int j__color_offset = (worldI * numberOfFieldsPerVertex) ;
-
-
-
-
 	if (s.animationFrame == FRAME_A)
 	{
-
-
-
 		memcpy( &animationGrid[ j__color_offset], 	&( s.frameA[pixelIndex]  ) , 	sizeof(Color) );
-
-
 	}
 	else if (s.animationFrame == FRAME_B)
 	{
-
-
 		memcpy( &animationGrid[ j__color_offset], 	&( s.frameB[pixelIndex]  ) , 	sizeof(Color) );
-
 	}
 	else if (s.animationFrame == FRAME_C)
 	{
-
 		memcpy( &animationGrid[ j__color_offset], 	&( s.frameC[pixelIndex]  ) , 	sizeof(Color) );
-
-
 	}
-
-
-
-
 }
 
 void swapAnimalSpritePixel (unsigned int a, unsigned int b)
@@ -1224,18 +1004,15 @@ void mutateSentence ( std::string * genes )
 
 	for (unsigned int i = 0; i < genesLength; ++i)
 	{
-		// // swap a letter
+		// swap a letter // https://stackoverflow.com/questions/20132650/how-to-select-random-letters-in-c
 		if (extremelyFastNumberFromZeroTo(256) == 0)
 		{
-			// 	// https://stackoverflow.com/questions/20132650/how-to-select-random-letters-in-c
 			(*genes)[i] = (char)('a' + rand() % 26);
 		}
 
-		// // add a letter
+		//  add a letter
 		if (extremelyFastNumberFromZeroTo(256) == 0)
 		{
-			// char randomCharacter = (char)('a' + rand() % 26);
-			// genes->insert(    extremelyFastNumberFromZeroTo( (genes->length() - 1) )  ,  &randomCharacter  );
 			genes->push_back(  (char)('a' + rand() % 26)  );
 		}
 
@@ -1270,11 +1047,9 @@ void mutateSentence ( std::string * genes )
 
 void incrementAnimalSegmentPositions (unsigned int animalIndex, unsigned int i, bool falling)
 {
-
 	if (animalIndex < animals.size())
 	{
 		Animal  a = animals[animalIndex];
-
 		if (a.energy > a.reproductionCost && animalReproductionEnabled)
 		{
 			unsigned int nSolidNeighbours = 0;
@@ -1296,29 +1071,17 @@ void incrementAnimalSegmentPositions (unsigned int animalIndex, unsigned int i, 
 		bool segmentPhase = 0;
 
 		// Update animal segment positions. Only do this if the animal has actually moved (otherwise it will pile into one square).
-		// if (
-		// 	// !(a.segments.empty())
-
-		// 	)
-		// {
-		// 	// printf("KUUUUNNNN %lu\n", a.segments.size());
 		if (a.segments[0].position != i)
 		{
 			// set the position of the 0th segment to the new index, and everyone elses position is shifted forward by 1.
 			bool segmentPhase = false;
-
 			if (a.segments[0].animationFrame == FRAME_A) {segmentPhase = true;}
-
 			for (unsigned int j = 0; j < maxAnimalSegments; ++j)
 			{
-
 				if ( j >= a.segmentsUsed)
-
 				{
 					continue;
 				}
-
-
 				if (falling)
 				{
 					a.segments[j].animationFrame = FRAME_C;
@@ -1341,11 +1104,8 @@ void incrementAnimalSegmentPositions (unsigned int animalIndex, unsigned int i, 
 			{
 				a.segments[j].position = a.segments[j - 1].position;
 			}
-
-			// printf("updating segment 0 pos to %u\n", i);
 			a.segments[0].position = i;
 		}
-
 		animals[animalIndex] = a;
 	}
 }
@@ -1355,29 +1115,18 @@ void updateAnimalDrawing(unsigned int i)
 	if (seedGrid[i].parentIdentity < animals.size())
 	{
 		Animal * a = &(animals[seedGrid[i].parentIdentity]);
-
-		// std::vector<AnimalSegment>::iterator s;
-
 		unsigned int count = 0;
-		// for (s = a->segments.begin(); s !=  a->segments.end(); ++s)
 		for (	unsigned int j = 0; j < a->segmentsUsed; j++ )
 		{
 			AnimalSegment * s = &(a->segments[j]);
-			// std::vector<AnimalSpritePixel>::iterator p;
-			// printf( "smengment pnition %u\n", s->position );
-
 			for (unsigned int k = 0; k < (sizeAnimalSprite * sizeAnimalSprite); ++k)
 			{
 				setAnimalSpritePixel( a->segments[j], k);
 			}
-
 			count++;
-
 		}
 	}
 }
-
-
 
 void setParticle(unsigned int material, unsigned int i)
 {
@@ -1388,7 +1137,6 @@ void setParticle(unsigned int material, unsigned int i)
 	memcpy( &colorGrid[ a_offset ], & (materials[material].color), 16 );
 }
 
-
 void clearParticle( unsigned int i)
 {
 	grid[i].temperature = defaultTemperature;
@@ -1397,7 +1145,6 @@ void clearParticle( unsigned int i)
 	unsigned int a_offset = (i * numberOfFieldsPerVertex);
 	memcpy( &colorGrid[ a_offset ], &color_clear, 16 );
 }
-
 
 void swapParticle (unsigned int a, unsigned int b)
 {
@@ -1420,9 +1167,6 @@ void copyParticle(unsigned int from, unsigned int to)
 	memcpy( &colorGrid[ to_offset ],  &colorGrid[ from_offset ], 16 );
 }
 
-
-
-
 void resetMaterials()
 {
 	materials.clear();
@@ -1432,7 +1176,6 @@ void resetMaterials()
 	vacuum.boiling = 0;
 	vacuum.insulativity = 1000;
 	materials.push_back(vacuum);
-
 	Material bumdirt = Material();
 
 	// a change to the materials list is dramatic. The material of a grid square is used as an array index to look up a material which may not exist.
@@ -1444,15 +1187,12 @@ void resetMaterials()
 	}
 }
 
-
-
 void setLifeParticle( std::string genes, unsigned int identity, unsigned int i, Color color, unsigned int energySource)
 {
 	lifeGrid[i].identity = identity;
 	lifeGrid[i].genes  = genes;
 	lifeGrid[i].energy = 0.0f;
 	lifeGrid[i].energySource = energySource;
-
 	memcpy( (&lifeColorGrid[i * numberOfFieldsPerVertex]),  &(color),  sizeof(Color) );
 
 	// to draw 'shadows', find the particle that's one pixel down and one across, and set its color down by half.
@@ -1473,7 +1213,6 @@ void swapLifeParticle(unsigned int a, unsigned int b)
 	memcpy( &tempLife,  &(lifeGrid[a]), 	 sizeof(LifeParticle) );
 	memcpy( &(lifeGrid[a]),  &(lifeGrid[b]), sizeof(LifeParticle) );
 	memcpy( &(lifeGrid[b]),  &tempLife, 	 sizeof(LifeParticle) );
-
 	float temp_color[4];
 	unsigned int a_offset = (a * numberOfFieldsPerVertex)  ;
 	unsigned int b_offset = (b * numberOfFieldsPerVertex)  ;
@@ -1482,18 +1221,13 @@ void swapLifeParticle(unsigned int a, unsigned int b)
 	memcpy( &lifeColorGrid[ a_offset ], temp_color, sizeof(Color) );
 }
 
-
-
 void clearLifeParticle(unsigned int i)
 {
 	lifeGrid[i].identity = 0x00;
 	lifeGrid[i].genes.clear();
 	lifeGrid[i].energy = 0.0f;
 	lifeGrid[i].energySource = ENERGYSOURCE_LIGHT;
-
 	memcpy( (&lifeColorGrid[i * numberOfFieldsPerVertex]),  &(color_clear),  sizeof(Color) );
-
-
 }
 
 void clearColorGrids(unsigned int i)
@@ -1502,13 +1236,13 @@ void clearColorGrids(unsigned int i)
 	unsigned int y = i / sizeX;
 	float fx = x;
 	float fy = y;
-	unsigned int a_offset = (i * numberOfFieldsPerVertex) ;
-	backgroundSky[ 		a_offset + 0] = 0.0f;
-	backgroundSky[ 		a_offset + 1] = 0.0f;
-	backgroundSky[ 		a_offset + 2] = 0.0f;
-	backgroundSky[ 		a_offset + 3] = 0.0f;
-	backgroundSky[ 		a_offset + 4] = fx;
-	backgroundSky[ 		a_offset + 5] = fy;
+	unsigned int    a_offset      = (i * numberOfFieldsPerVertex) ;
+	backgroundSky[ 	a_offset + 0] = 0.0f;
+	backgroundSky[ 	a_offset + 1] = 0.0f;
+	backgroundSky[ 	a_offset + 2] = 0.0f;
+	backgroundSky[ 	a_offset + 3] = 0.0f;
+	backgroundSky[ 	a_offset + 4] = fx;
+	backgroundSky[ 	a_offset + 5] = fy;
 	colorGrid[ 		a_offset + 0] = 0.0f;
 	colorGrid[ 		a_offset + 1] = 0.0f;
 	colorGrid[ 		a_offset + 2] = 0.0f;
@@ -1521,19 +1255,18 @@ void clearColorGrids(unsigned int i)
 	lifeColorGrid[ 	a_offset + 3] = 0.0f;
 	lifeColorGrid[ 	a_offset + 4] = fx;
 	lifeColorGrid[ 	a_offset + 5] = fy;
-	animationGrid[ a_offset + 0] = 0.0f;
-	animationGrid[ a_offset + 1] = 0.0f;
-	animationGrid[ a_offset + 2] = 0.0f;
-	animationGrid[ a_offset + 3] = 0.0f;
-	animationGrid[ a_offset + 4] = fx;
-	animationGrid[ a_offset + 5] = fy;
+	animationGrid[  a_offset + 0] = 0.0f;
+	animationGrid[  a_offset + 1] = 0.0f;
+	animationGrid[  a_offset + 2] = 0.0f;
+	animationGrid[  a_offset + 3] = 0.0f;
+	animationGrid[  a_offset + 4] = fx;
+	animationGrid[  a_offset + 5] = fy;
 	seedColorGrid[ 	a_offset + 0] = 0.0f;
 	seedColorGrid[ 	a_offset + 1] = 0.0f;
 	seedColorGrid[ 	a_offset + 2] = 0.0f;
 	seedColorGrid[ 	a_offset + 3] = 0.5f;
 	seedColorGrid[ 	a_offset + 4] = fx;
 	seedColorGrid[ 	a_offset + 5] = fy;
-
 }
 
 void clearColorGridB()
@@ -1578,28 +1311,18 @@ void clearGrids()
 	}
 }
 
-
-
 void paintMaterialCircle(unsigned int k, unsigned int radius, unsigned int material, unsigned int temperature)
 {
 	unsigned int x = k % sizeX;
 	unsigned int y = k / sizeX;
-
-
 	unsigned int lower = k - (radius * sizeX);
-
 	unsigned int upper = k + (radius * sizeX);
-
-
 	for (unsigned int i = lower; i < upper; ++i)
 	{
-
 		unsigned int circleCursorX = i % sizeX;
 		unsigned int circleCursorY = i / sizeX;
-
 		if (  magnitude_int (  circleCursorX - x , circleCursorY - y )  < radius )
 		{
-
 			unsigned int l = i % totalSize;
 			setParticle(material, l );
 			grid[l].temperature = temperature;
@@ -1607,109 +1330,82 @@ void paintMaterialCircle(unsigned int k, unsigned int radius, unsigned int mater
 	}
 }
 
-
 Color blackbodyLookup( unsigned int temperature )
 {
 	if (temperature > 0 && temperature < 600 )
 	{
 		return color_clear;;
 	}
-	else if (temperature < 772)
+	else if (temperature < 772) // faint red
 	{
-		// faint red
 		return Color(0.16f, 0.0f, 0.0f, 0.03f);
 	}
-	else if (temperature < 852)
+	else if (temperature < 852) // blood red
 	{
-		// blood red
 		return  Color(0.33f, 0.0f, 0.0f, 0.11f);
 	}
-	else if (temperature < 908)
+	else if (temperature < 908) // dark cherry
 	{
-		// dark cherry
 		return Color(0.5f, 0.0f, 0.0f, 0.20f);
 	}
-	else if (temperature < 963)
+	else if (temperature < 963) // medium cherry
 	{
-		// medium cherry
 		return Color(0.66f, 0.0f, 0.0f, 0.27f);
 	}
-	else if (temperature < 1019)
+	else if (temperature < 1019) // cherry
 	{
-		// cherry
 		return Color(0.833f, 0.0f, 0.0f, 0.36f);
 	}
-	else if (temperature < 1060)
+	else if (temperature < 1060) // bright cherry
 	{
-		// bright cherry
 		return  Color(1.0f, 0.0f, 0.0f, 0.45f);
 	}
-	else if (temperature < 1116)
+	else if (temperature < 1116) // salmon (??)
 	{
-		// salmon (??)
 		return  Color(1.0f, 0.25f, 0.0f, 0.53f);
 	}
-	else if (temperature < 1188)
+	else if (temperature < 1188) // dark orange
 	{
-		// dark orange
 		return Color(1.0f, 0.5f, 0.0f, 0.61f);
 	}
-	else if (temperature < 1213)
+	else if (temperature < 1213) // orange
 	{
-		// orange
 		return Color(1.0f, 0.75f, 0.0f, 0.70f);
 	}
-	else if (temperature < 1272)
+	else if (temperature < 1272) // lemon
 	{
-		// lemon
 		return Color(1.0f, 1.0f, 0.0f, 0.78f);
 	}
-	else if (temperature < 1352)
+	else if (temperature < 1352) // light yellow
 	{
-		// light yellow
 		return  Color(1.0f, 1.0f, 0.5f, 0.86f);
 	}
-	else if (temperature < 5000)
+	else if (temperature < 5000) // white
 	{
-		// white
 		return  Color(1.0f, 1.0f, 1.0f, 0.91f);
 	}
-	else if (temperature < 10000)
+	else if (temperature < 10000) // cool white
 	{
-		// cool white
 		return  Color(0.95f, 0.95f, 1.0f, 1.0f);
 	}
-	else
+	else // blue
 	{
-		// blue
 		return Color(0.9f, 0.9f, 1.0f, 1.0f);
 	}
 }
 
 void createRandomWorld()
 {
-
 	clearGrids();
-
-	// materials.clear();
-	// materials.push_back(bumdirt);
-
 	resetMaterials();
-
 	sunlightColor = blackbodyLookup(sunlightTemp);
-
 	defaultTemperature = RNG() * 1500;
-
-
 	unsigned int nNewMaterials = 5;
 	for (unsigned int k = 0; k < nNewMaterials; ++k)
 	{
-
-
 		Material newMaterial = Material();
 		newMaterial.boiling = RNG() * 3000;
 		newMaterial.melting = RNG() * newMaterial.boiling;
-
 		newMaterial.crystal_n = extremelyFastNumberFromZeroTo(4);
 
 		unsigned int randomCondition =  extremelyFastNumberFromZeroTo(4);
@@ -1730,215 +1426,48 @@ void createRandomWorld()
 		newMaterial.color.g = RNG();
 		newMaterial.color.b = RNG();
 
-
-
 		materials.push_back(newMaterial);
-
-
 	}
-
-
 
 	for (unsigned int k = 0; k < materials.size(); ++k)
 	{
-
-
 		materials[k]. availability = extremelyFastNumberFromZeroTo(50);
-
-
 		for (unsigned int i = 0; i < sizeX; ++i)
 		{
-
 			if (extremelyFastNumberFromZeroTo(100) == 0)
 			{
 				unsigned int radius = extremelyFastNumberFromZeroTo(materials[k]. availability  );
-
-				// float frandomX = RNG() * sizeX;
-				// float frandomY = RNG() * sizeY;
-
-				// unsigned int randomX = frandomX; //extremelyFastNumberFromZeroTo(sizeX );
-				// unsigned int randomY = frandomY; //extremelyFastNumberFromZeroTo(sizeY );
-
-				// printf("ranom x %u, random y %u\n", randomX,  randomY);
-
-				// unsigned int randomi = (randomY * sizeX) + randomX;
-
-
-
-
-
 				paintMaterialCircle(i + (50 * sizeX * (k + 1)  ), radius , k , 10000000 );
 			}
-
 		}
 	}
-
 
 	// compute the background sky
 	for (unsigned int i = 0; i < totalSize; ++i)
 	{
-
-
 		unsigned int a_offset  = i * numberOfFieldsPerVertex;
-
 		memcpy( &(backgroundSky[ a_offset ]), &color_black, 					sizeof(Color) );
-
-
 		if (extremelyFastNumberFromZeroTo(100) ==  0)
 		{
-
 			// create a background star with random blackbody color and alpha
-
-
 			unsigned int randomColorTemperature = extremelyFastNumberFromZeroTo(5000);
 			Color randomStarColor = blackbodyLookup(randomColorTemperature);
-
 			float randomStarAlpha = RNG();
 			randomStarAlpha = randomStarAlpha * randomStarAlpha * randomStarAlpha * randomStarAlpha * randomStarAlpha * randomStarAlpha * randomStarAlpha; // cubing the value or more shifts the distribution lower while preserving the range.
 			randomStarAlpha = randomStarAlpha / 2;
-
 			randomStarColor.a = randomStarAlpha;
-
 			memcpy( &(backgroundSky[ a_offset ]), &randomStarColor, 					sizeof(Color) );
-
-
-
-			// if (true)
-			// {
-
-			// make the star into a little cross by also coloring the squares above, below, and to the sides.
-
-			// unsigned int starNeighbours[] =
-			// {
-			// 	i + sizeX,
-			// 	i + 1,
-			// 	// i - 1,
-			// 	// i - sizeX
-			// };
-
-			// for ( unsigned int j = 0; j < 2; ++j)
-			// {
-
-
-			// 	unsigned int j__color_offset = (starNeighbours[j] * numberOfFieldsPerVertex) ;
-
-			// 	if (j__color_offset > (totalSize * numberOfFieldsPerVertex)) {j__color_offset = totalSize * numberOfFieldsPerVertex;}
-// 			if (i > (sizeX + 1) && i < (totalSize - (sizeX+1)))
-
-// {
-// 			memcpy( &(backgroundSky[ ((i + sizeX)*numberOfFieldsPerVertex) ]), &randomStarColor, 					sizeof(Color) );
-// 			memcpy( &(backgroundSky[ ((i - sizeX)*numberOfFieldsPerVertex) ]), &randomStarColor, 					sizeof(Color) );
-// 			memcpy( &(backgroundSky[ ((i + 1)*numberOfFieldsPerVertex)     ]), &randomStarColor, 					sizeof(Color) );
-// 			memcpy( &(backgroundSky[ ((i - 1)*numberOfFieldsPerVertex)     ]), &randomStarColor, 					sizeof(Color) );
-
-
-// }
-
-
-			//
-
-			// }
-
-
-
-			// }
-
-
-
-
 		}
-
-
 	}
-
-
-
-	// // setup the x and y positions in the color grid. these never change so you can just calculate them once.
-	// unsigned int x = 0;
-	// unsigned int y = 0;
-	// for (unsigned int i = 0; i < totalSize; ++i)
-	// {
-	// 	x = i % sizeX;
-	// 	y = i / sizeX;
-	// 	// float fx = x;
-	// 	// float fy = y;
-
-
-	// 	if (i > sizeX && i < 50 * sizeX)
-
-	// 	{
-
-	// 		if (RNG() < availability)
-	// 		{
-
-	// 			setParticle( k, i);
-	// 		}
-	// 	}
-	// }
-
-
-
-
-
-
-
-
-
-	// setAnimal( ( 60 * sizeX ) + 50);
-
-
-
-
-	// // set everything to a random temperature
-	// float frandomtemp = RNG() * 1000;
-	// unsigned int randomTemp = frandomtemp;
-	// for (unsigned int i = 0; i < totalSize; ++i)
-	// {
-	// 	grid[i].temperature = randomTemp;
-	// }
-
-
-
 }
-
-
-
-
-// void prepareBackgroundSky()
-// {
-
-
-
-
-
-
-
-
-
-// }
-
-
 
 void initialize ()
 {
 	// https://stackoverflow.com/questions/9459035/why-does-rand-yield-the-same-sequence-of-numbers-on-every-run
 	srand((unsigned int)time(NULL));
-	// setupExtremelyFastNumberGenerators();
-
 	cursor_seedColor = color_yellow;
 	clearGrids();
-
-
-
 	resetMaterials();
-
-	// createRandomWorld();
-
-
-	// load();
-
-
-
 }
 
 void setEverythingHot()
@@ -2011,7 +1540,6 @@ void clearLiquids()
 	}
 }
 
-
 void setNeutralTemp ()
 {
 	for (unsigned int i = 0; i < totalSize; ++i)
@@ -2020,55 +1548,24 @@ void setNeutralTemp ()
 	}
 }
 
-
 void setExtremeTempPoint (unsigned int x , unsigned  int y)
 {
-
 	unsigned int i = ((y * sizeX) + x) % totalSize;
-
 	grid[i].temperature = 10000000;
 }
-
-
-
-
 
 // updates a location on the color grid with a material's new color information, based on phase and temperature.
 void materialPostProcess(unsigned int i)
 {
-
-	// return;
 	unsigned int x = i % sizeX;
 	unsigned int y = i / sizeX;
-
-	// float fx = x;
-	// float fy = y;
-
-	// figure out the blackbody temperature.
-	// https://www.iforgeiron.com/uploads/monthly_2015_08/ForgingTemperatureColors.jpg.2948a8585818155020d14fe17038cf33.jpg
-	// it is drawn directly over the top of the
-
 	Color ppColor =  color_clear;
-
-
-
-
-	// if (seedGrid[i].stage == STAGE_NULL && seedGrid[i].energy == 0x00)
-	// {
-	// 	ppColor = addColor(ppColor, tingeShadow);
-	// }
-	// Color ppColor = color_clear;
-
-
 	if (grid[i].phase != PHASE_VACUUM)
 	{
-
 		if (grid[i].material  < materials.size())
 		{
-			ppColor =  materials[ grid[i].material ].color  ;//materialColor(grid[i].material);  //
-
+			ppColor =  materials[ grid[i].material ].color ;
 		}
-
 		if (grid[i].phase == PHASE_GAS)
 		{
 			ppColor = addColor(ppColor, phaseTingeGas);
@@ -2081,64 +1578,19 @@ void materialPostProcess(unsigned int i)
 		{
 			ppColor = addColor(ppColor, phaseTingeSolid);
 		}
-
-
-
-
 		ppColor = addColor(ppColor, blackbodyLookup( grid[i].temperature ) );
-
 	}
-
-	// else
-	// {
-	// 	ppColor = color_clear;
-	// }
-
 	colorGrid[ (i * numberOfFieldsPerVertex) + 0 ] = ppColor.r;
 	colorGrid[ (i * numberOfFieldsPerVertex) + 1 ] = ppColor.g;
 	colorGrid[ (i * numberOfFieldsPerVertex) + 2 ] = ppColor.b;
 	colorGrid[ (i * numberOfFieldsPerVertex) + 3 ] = ppColor.a;
-	// colorGrid[ (i * numberOfFieldsPerVertex) + 4 ] = fx;
-	// colorGrid[ (i * numberOfFieldsPerVertex) + 5 ] = fy;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// unsigned int currentPosition = i;
-// 		unsigned int squareBelow = currentPosition - sizeX;
-
-
-
-
-
-
-
-
-
-
 
 void thread_temperature2_sector ( unsigned int from, unsigned int to )
 {
-
-
-
-	// printf("from %u to %u \n", from, to);
-
 	for (unsigned int i = from; i < to; ++i)
 	{
 		unsigned int currentPosition = i;
-
 		if (grid[currentPosition].phase != PHASE_VACUUM)
 		{
 			// exchange heat with a neighbour.
@@ -2152,13 +1604,25 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 			}
 			else
 			{
-				// if neighbour is a vacuum, radiate heat away into space. more so if it is hotter.
-				int crntmp = grid[currentPosition].temperature;
-				int dftmp = defaultTemperature;
-				int radiantHeat = (crntmp - dftmp) / 50;
-				grid[currentPosition].temperature -= radiantHeat;
+				if (doWeather)
+				{
+					// exchange heat with the weather grid.
+					int avgTemp = (((grid[currentPosition].temperature ) - (weatherGrid[thermoNeighbour].temperature)) ) ;
+					avgTemp = avgTemp / materials[ grid[currentPosition].material ].insulativity;
+					weatherGrid[thermoNeighbour].temperature += avgTemp;
+					grid[currentPosition].temperature -= avgTemp;
+				}
+				else
+				{
+					// if neighbour is a vacuum, radiate heat away into space. more so if it is hotter.
+					int crntmp = grid[currentPosition].temperature;
+					int dftmp = defaultTemperature;
+					int radiantHeat = (crntmp - dftmp) / radiantHeatIntensity;
+					grid[currentPosition].temperature -= radiantHeat;
+					float fradiantHeat = radiantHeat;
+					weatherGrid[currentPosition].temperature += fradiantHeat;
+				}
 			}
-
 			if (extremelyFastNumberFromZeroTo(4) == 0) // only check phase sometimes bcoz its lots of work.
 			{
 				// Phase change logic, which also includes crystallization.
@@ -2267,7 +1731,6 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 								if (nAttachableNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
 							}
 						}
-
 						else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_EDGE)
 						{
 							if (longestSolidStreak == 3 && (longestSolidStreakOffset % 2) == 1 )
@@ -2275,7 +1738,6 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 								if (nAttachableNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
 							}
 						}
-
 						else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_ROW)
 						{
 							if (longestSolidStreak == materials[grid[currentPosition].material].crystal_n )
@@ -2283,7 +1745,6 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 								if (nAttachableNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
 							}
 						}
-
 						else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_LEFTN)
 						{
 							if (	grid[currentPosition + (materials[grid[currentPosition].material].crystal_n) ].phase == PHASE_SOLID)
@@ -2291,7 +1752,6 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 								if (nAttachableNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
 							}
 						}
-
 						else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_NOTLEFTRIGHTN)
 						{
 							if (
@@ -2349,7 +1809,6 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 			if (grid[currentPosition].phase  == PHASE_POWDER)
 			{
 				unsigned int neighbour = neighbourOffsets[ (  1 +  extremelyFastNumberFromZeroTo(2) )  ] + currentPosition;
-
 				if ((    grid[neighbour].phase == PHASE_VACUUM) ||
 				        (grid[neighbour].phase == PHASE_GAS) ||
 				        (grid[neighbour].phase == PHASE_LIQUID)  )
@@ -2357,14 +1816,12 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 					swapParticle(currentPosition, neighbour);
 					currentPosition = neighbour;
 				}
-
 			}
 
 			// movement instructions for LIQUIDS
 			else if (grid[currentPosition].phase == PHASE_LIQUID)
 			{
 				unsigned int neighbour = neighbourOffsets[ (  0 +  extremelyFastNumberFromZeroTo(4) )  ] + currentPosition;
-
 				if ((    grid[neighbour].phase == PHASE_VACUUM) ||
 				        (grid[neighbour].phase == PHASE_GAS) ||
 				        (grid[neighbour].phase == PHASE_LIQUID)     )
@@ -2382,9 +1839,8 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 				// alternate between wind movement and random scatter movement, to look more natural.
 				if (extremelyFastNumberFromZeroTo(1) == 0)
 				{
-					neighbour = neighbourOffsets[wind] + currentPosition;
+					neighbour = neighbourOffsets[ weatherGrid[currentPosition].direction ] + currentPosition;
 				}
-
 				if (grid[neighbour].phase  == PHASE_VACUUM || (grid[neighbour].phase == PHASE_GAS) )
 				{
 					swapParticle(currentPosition, neighbour);
@@ -2392,13 +1848,7 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 			}
 		}
 	}
-
-
 }
-
-
-
-
 
 void thread_temperature2 ()
 {
@@ -2407,52 +1857,25 @@ void thread_temperature2 ()
 #endif
 	unsigned int n_threads = 1;
 
-
 	std::list<boost::thread> threads;
 
 	for (unsigned int i = 0; i <= n_threads; ++i)
 	{
-
-
-
-
-
-
-
-		float ffrom = (i  - 0.5  ) ; ///(n_threads+1) )    * totalSize );
-		float fto   = (i + 0.5) ;///(n_threads+1) )    * totalSize );
-
+		float ffrom = (i  - 0.5  ) ;
+		float fto   = (i + 0.5)    ;
 		ffrom = ffrom / (n_threads );
 		fto = fto / (n_threads );
-
-		// printf("natural from %f to %f \n", ffrom, fto);
-
-
 		if (ffrom < 0) {ffrom = 0;}
 		if (fto < 0) {fto = 0;}
-
-
 		ffrom *= totalSize;
 		fto *= totalSize;
-
 		unsigned int from = ffrom;
 		unsigned int to = fto;
-
-
-
-
 		if (from < (sizeX + 1)) {from = (sizeX + 1);}
-
 		if (to > totalSize - (sizeX + 1)) {to = totalSize - (sizeX + 1);}
-
 		boost::thread t99{  thread_temperature2_sector, from  , to  } ;
-
 		threads.push_back( std::move(t99) );
-
-
-
 	}
-
 	for (auto& t : threads)
 	{
 		t.join();
@@ -2466,154 +1889,21 @@ void thread_temperature2 ()
 
 }
 
-
-
-
-
 // return a random integer in the range. It is inclusive of both end values.
 unsigned int randomIntegerInRange (unsigned int from, unsigned int to)
 {
 	return from + ( std::rand() % ( to - from + 1 ) );
 }
 
-// void physics_sector (unsigned int from, unsigned int to)
-// {
-// #ifdef THREAD_TIMING_READOUT
-// 	auto start = std::chrono::steady_clock::now();
-// #endif
-
-// 	for (unsigned int i = from; i < to; ++i)
-// 	{
-// 		unsigned int currentPosition = i;
-// 		unsigned int squareBelow = currentPosition - sizeX;
-
-// 		if (grid[currentPosition].phase  == PHASE_POWDER)
-// 		{
-// 			for (unsigned int k = 0; k < 1; ++k) // instead of checking all of them every turn, you can check half or less and it doesn't make a difference for gameplay.
-// 			{
-// 				unsigned int index = extremelyFastNumberFromZeroTo(2);
-// 				// chemistry(currentPosition, neighbours[index]);
-// 				if ((grid[neighbourOffsets[index] + i].phase == PHASE_VACUUM) ||  (grid[neighbourOffsets[index] + i].phase == PHASE_GAS) ||  (grid[neighbourOffsets[index] + i].phase == PHASE_LIQUID)  )
-// 				{
-// 					swapParticle(currentPosition, neighbourOffsets[index] + i);
-// 					currentPosition = neighbourOffsets[index] + i;
-// 					break;
-// 				}
-// 			}
-// 		}
-
-// 		// movement instructions for LIQUIDS
-// 		else if (grid[currentPosition].phase == PHASE_LIQUID)
-// 		{
-// 			unsigned int offset = extremelyFastNumberFromZeroTo(4);
-// 			for (unsigned int k = 0; k < 5; ++k)
-// 			{
-// 				unsigned int index = (k + offset) % 5;
-// 				if ((grid[neighbourOffsets[index] + i].phase == PHASE_VACUUM) || (grid[neighbourOffsets[index] + i].phase == PHASE_GAS) ||  (grid[neighbourOffsets[index] + i].phase == PHASE_LIQUID)     )
-// 				{
-// 					swapParticle(currentPosition, neighbourOffsets[index] + i);
-// 					currentPosition = neighbourOffsets[index] + i;
-// 					break;
-// 				}
-// 			}
-// 		}
-
-// 		// movement instructions for GASES
-// 		else if (grid[currentPosition].phase == PHASE_GAS)
-// 		{
-// 			for (unsigned int j = 0; j < 3; ++j)
-// 			{
-// 				unsigned int index = extremelyFastNumberFromZeroTo(7);
-
-// 				// alternate between wind movement and random scatter movement, to look more natural.
-// 				if (extremelyFastNumberFromZeroTo(1) == 0)
-// 				{
-// 					// the wind pushes in a certain direction.
-// 					// however wind is expressed as a vec_i2, and we need it as a single number.
-// 					// this is basically a very fast lookup table to tell you the answer.
-// 					if (wind.y > 0)
-// 					{
-// 						index = 5; // directly up
-// 						if (wind.x > 0)
-// 						{
-// 							index = 4; // up and to the right
-// 						}
-// 						else if (wind.x < 0)
-// 						{
-// 							index = 7; // and so on, allowing the index to remain at its original random value if the wind in that axis was 0.
-// 						}
-// 					}
-// 					else if (wind.y < 0)
-// 					{
-// 						index = 1; // directly down
-// 						if (wind.x > 0)
-// 						{
-// 							index = 3;
-// 						}
-// 						else if (wind.x < 0)
-// 						{
-// 							index = 1;
-// 						}
-// 					}
-// 					else
-// 					{
-// 						if (wind.x > 0)
-// 						{
-// 							index = 4;
-// 						}
-// 						else if (wind.x < 0)
-// 						{
-// 							index = 0;
-// 						}
-// 					}
-// 				}
-
-// 				if (grid[neighbourOffsets[index] + i].phase  == PHASE_VACUUM || (grid[neighbourOffsets[index] + i].phase == PHASE_GAS) )
-// 				{
-// 					swapParticle(currentPosition, neighbourOffsets[index] + i);
-// 					break;
-// 				}
-// 			}
-
-// 		}
-// 	}
-// #ifdef THREAD_TIMING_READOUT
-// 	auto end = std::chrono::steady_clock::now();
-// 	auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-// 	std::cout << "thread_physics_sector " << elapsed.count() << " microseconds." << std::endl;
-// #endif
-// }
-
 void thread_physics ()
 {
-
 #ifdef THREAD_TIMING_READOUT
 	auto start = std::chrono::steady_clock::now();
 #endif
-
-
 	if (extremelyFastNumberFromZeroTo(100) == 0)
 	{
-// make sure randomness is random
+		// make sure randomness is really random
 		seedExtremelyFastNumberGenerators();
-
-
-
-	}
-
-
-	// blow the wind
-	if (extremelyFastNumberFromZeroTo(100) == 0)
-	{
-		// int16_t windRand =  extremelyFastNumberFromZeroTo( 2);
-		// wind.x = windRand - 1;
-		// windRand =  extremelyFastNumberFromZeroTo( 2);
-		// wind.y = windRand - 1;
-
-
-
-
-		wind = extremelyFastNumberFromZeroTo(7);
 	}
 
 	// sprinkle eroding rain
@@ -2621,57 +1911,26 @@ void thread_physics ()
 	{
 		for (int i = (sizeY - 2) * sizeX; i < (sizeY - 1)*sizeX; ++i)
 		{
-			// if (extremelyFastNumberFromZeroTo(lampBrightness) == 0)
-			// {
 			setErodingRain(   i);
-			// }
 		}
 	}
-
 	else
 	{
 		for (int i = (sizeY - 2) * sizeX; i < (sizeY - 1)*sizeX; ++i)
 		{
-
-
-
-
 			if (extremelyFastNumberFromZeroTo(4) == 0)
 			{
-				// setPhoton(   i);
 				photate(i);
-
 			}
 		}
 	}
-
-
 	unsigned int processChunkSize = (totalSize / 10);
 	for (unsigned int i = 0; i < processChunkSize; ++i)
 	{
-		// if (extremelyFastNumberFromZeroTo(10) == 0)
-		// {
-
 		unsigned int x = extremelyFastNumberFromZeroTo(sizeX - 1);
 		unsigned int y = extremelyFastNumberFromZeroTo(sizeY - 1);
-
-
 		materialPostProcess(  (y * sizeX) + x  );
-		// }
 	}
-
-// 	unsigned int quad1 = totalSize / 4;
-// 	unsigned int quad2 = totalSize / 2;
-// 	unsigned int quad3 = (totalSize / 4) * 3;
-// 	boost::thread t11{ physics_sector, (sizeX + 1), quad1 };
-// 	boost::thread t12{ physics_sector, (quad1 + 1), quad2 };
-// 	boost::thread t13{ physics_sector, (quad2 + 1), quad3 };
-// 	boost::thread t14{ physics_sector, (quad3 + 1), (totalSize - sizeX - 1) };
-// 	t11.join();
-// 	t12.join();
-// 	t13.join();
-// 	t14.join();
-
 #ifdef THREAD_TIMING_READOUT
 	auto end = std::chrono::steady_clock::now();
 	auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
@@ -2689,7 +1948,6 @@ void toggleEnergyGridDisplay ()
 	visualizer = (visualizer + 1 ) % (NUMBER_OF_VISUALIZERS + 1);
 }
 
-
 void thread_graphics()
 {
 #ifdef THREAD_TIMING_READOUT
@@ -2702,9 +1960,7 @@ void thread_graphics()
 	{
 		unsigned int nVertsToRenderThisTurn = 1 * totalSize;
 		long unsigned int totalNumberOfFields = nVertsToRenderThisTurn * numberOfFieldsPerVertex;
-
 		float * energyColorGrid = new float[totalNumberOfFields];
-
 		unsigned int x = 0;
 		unsigned int y = 0;
 		for (unsigned int i = 0; i < totalSize; ++i)
@@ -2720,12 +1976,9 @@ void thread_graphics()
 			energyColorGrid[ (i * numberOfFieldsPerVertex) + 4 ] = fx;
 			energyColorGrid[ (i * numberOfFieldsPerVertex) + 5 ] = fy;
 		}
-
 		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, energyColorGrid, GL_DYNAMIC_DRAW );
 		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
-
 		postDraw();
-
 		delete [] energyColorGrid;
 	}
 
@@ -2733,9 +1986,7 @@ void thread_graphics()
 	{
 		unsigned int nVertsToRenderThisTurn = 1 * totalSize;
 		long unsigned int totalNumberOfFields = nVertsToRenderThisTurn * numberOfFieldsPerVertex;
-
 		float * energyColorGrid = new float[totalNumberOfFields];
-
 		unsigned int x = 0;
 		unsigned int y = 0;
 		for (unsigned int i = 0; i < totalSize; ++i)
@@ -2744,19 +1995,28 @@ void thread_graphics()
 			if (!x) { y = i / sizeX; }
 			float fx = x;
 			float fy = y;
-			energyColorGrid[ (i * numberOfFieldsPerVertex) + 0 ] = grid[i].temperature / maximumDisplayTemperature;
-			energyColorGrid[ (i * numberOfFieldsPerVertex) + 1 ] = grid[i].temperature / maximumDisplayTemperature;
-			energyColorGrid[ (i * numberOfFieldsPerVertex) + 2 ] = grid[i].temperature / maximumDisplayTemperature;
-			energyColorGrid[ (i * numberOfFieldsPerVertex) + 3 ] = 1.0f;
-			energyColorGrid[ (i * numberOfFieldsPerVertex) + 4 ] = fx;
-			energyColorGrid[ (i * numberOfFieldsPerVertex) + 5 ] = fy;
+			if (grid[i].phase == PHASE_VACUUM)
+			{
+				energyColorGrid[ (i * numberOfFieldsPerVertex) + 0 ] = weatherGrid[i].temperature / maximumDisplayTemperature;
+				energyColorGrid[ (i * numberOfFieldsPerVertex) + 1 ] = weatherGrid[i].temperature / maximumDisplayTemperature;
+				energyColorGrid[ (i * numberOfFieldsPerVertex) + 2 ] = weatherGrid[i].temperature / maximumDisplayTemperature;
+				energyColorGrid[ (i * numberOfFieldsPerVertex) + 3 ] = 1.0f;
+				energyColorGrid[ (i * numberOfFieldsPerVertex) + 4 ] = fx;
+				energyColorGrid[ (i * numberOfFieldsPerVertex) + 5 ] = fy;
+			}
+			else
+			{
+				energyColorGrid[ (i * numberOfFieldsPerVertex) + 0 ] = grid[i].temperature / maximumDisplayTemperature;
+				energyColorGrid[ (i * numberOfFieldsPerVertex) + 1 ] = grid[i].temperature / maximumDisplayTemperature;
+				energyColorGrid[ (i * numberOfFieldsPerVertex) + 2 ] = grid[i].temperature / maximumDisplayTemperature;
+				energyColorGrid[ (i * numberOfFieldsPerVertex) + 3 ] = 1.0f;
+				energyColorGrid[ (i * numberOfFieldsPerVertex) + 4 ] = fx;
+				energyColorGrid[ (i * numberOfFieldsPerVertex) + 5 ] = fy;
+			}
 		}
-
 		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, energyColorGrid, GL_DYNAMIC_DRAW );
 		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
-
 		postDraw();
-
 		delete [] energyColorGrid;
 	}
 
@@ -2764,9 +2024,7 @@ void thread_graphics()
 	{
 		unsigned int nVertsToRenderThisTurn = 1 * totalSize;
 		long unsigned int totalNumberOfFields = nVertsToRenderThisTurn * numberOfFieldsPerVertex;
-
 		float * energyColorGrid = new float[totalNumberOfFields];
-
 		unsigned int x = 0;
 		unsigned int y = 0;
 		for (unsigned int i = 0; i < totalSize; ++i)
@@ -2806,22 +2064,39 @@ void thread_graphics()
 				energyColorGrid[ (i * numberOfFieldsPerVertex) + 1 ] = 1.0f;
 				energyColorGrid[ (i * numberOfFieldsPerVertex) + 2 ] = 1.0f;
 			}
-
-
-
-
-
-
 			energyColorGrid[ (i * numberOfFieldsPerVertex) + 3 ] = 1.0f;
 			energyColorGrid[ (i * numberOfFieldsPerVertex) + 4 ] = fx;
 			energyColorGrid[ (i * numberOfFieldsPerVertex) + 5 ] = fy;
 		}
-
 		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, energyColorGrid, GL_DYNAMIC_DRAW );
 		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
-
 		postDraw();
+		delete [] energyColorGrid;
+	}
 
+	else if (visualizer == VISUALIZE_PRESSURE)
+	{
+		unsigned int nVertsToRenderThisTurn = 1 * totalSize;
+		long unsigned int totalNumberOfFields = nVertsToRenderThisTurn * numberOfFieldsPerVertex;
+		float * energyColorGrid = new float[totalNumberOfFields];
+		unsigned int x = 0;
+		unsigned int y = 0;
+		for (unsigned int i = 0; i < totalSize; ++i)
+		{
+			x = i % sizeX;
+			if (!x) { y = i / sizeX; }
+			float fx = x;
+			float fy = y;
+			energyColorGrid[ (i * numberOfFieldsPerVertex) + 0 ] = weatherGrid[i].pressure / maximumDisplayPressure;
+			energyColorGrid[ (i * numberOfFieldsPerVertex) + 1 ] = weatherGrid[i].pressure / maximumDisplayPressure;
+			energyColorGrid[ (i * numberOfFieldsPerVertex) + 2 ] = weatherGrid[i].pressure / maximumDisplayPressure;
+			energyColorGrid[ (i * numberOfFieldsPerVertex) + 3 ] = 1.0f;
+			energyColorGrid[ (i * numberOfFieldsPerVertex) + 4 ] = fx;
+			energyColorGrid[ (i * numberOfFieldsPerVertex) + 5 ] = fy;
+		}
+		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, energyColorGrid, GL_DYNAMIC_DRAW );
+		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
+		postDraw();
 		delete [] energyColorGrid;
 	}
 
@@ -2830,12 +2105,8 @@ void thread_graphics()
 		unsigned int nVertsToRenderThisTurn = 1 * totalSize;
 		long unsigned int totalNumberOfFields = nVertsToRenderThisTurn * numberOfFieldsPerVertex;
 
-
-
-
 		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, backgroundSky, GL_DYNAMIC_DRAW );
 		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
-
 
 		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, colorGrid, GL_DYNAMIC_DRAW );
 		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
@@ -2843,28 +2114,18 @@ void thread_graphics()
 		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, lifeColorGrid, GL_DYNAMIC_DRAW );
 		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
 
-
-
 		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, animationGrid, GL_DYNAMIC_DRAW );
 		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
 
 		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, seedColorGrid, GL_DYNAMIC_DRAW );
 		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
 
-
-
-		// glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, ppGrid, GL_DYNAMIC_DRAW );
-		// glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
-
-
 		postDraw();
-
 
 		for (unsigned int i = 0; i < totalSize; ++i)
 		{
 			animationGrid[ (i * numberOfFieldsPerVertex ) + 3] = 0.0f;
 		}
-
 	}
 
 #ifdef THREAD_TIMING_READOUT
@@ -2910,47 +2171,21 @@ int drawCharacter ( std::string genes , unsigned int identity)
 	switch (c)
 	{
 
-	case 'm':
+	case 'm': // set germination material
 	{
-
 		cursor_string++; if (cursor_string > genesize) {return -1;}
-
 		int numberModifier = 0.0f;
 		while (!numberModifier) {	numberModifier = alphanumeric( genes[cursor_string] ); cursor_string++; if (cursor_string > genesize) {return -1;} }
-
-
-		/*
-		#define MATERIAL_WATER 		 8
-		#define MATERIAL_QUARTZ 	 9
-		#define MATERIAL_AMPHIBOLE 	 10
-		#define MATERIAL_OLIVINE 	 11
-		*/
-
-		//
 		numberModifier = numberModifier % materials.size();
-
-		// if 		(numberModifier == 0) 	{cursor_germinationMaterial = MATERIAL_WATER;}
-		// else if (numberModifier == 1)   {cursor_germinationMaterial = MATERIAL_QUARTZ;}
-		// else if (numberModifier == 2)   {cursor_germinationMaterial = MATERIAL_AMPHIBOLE;}
-		// else if (numberModifier == 3)   {
 		cursor_germinationMaterial = numberModifier;
-		// }
-
-
-		// printf("set germination material to %u\n", cursor_germinationMaterial);
-
-
-		// set germination material
 		break;
 	}
 
 	case 'q': // set energy source.
 	{
 		cursor_string++; if (cursor_string > genesize) {return -1;}
-
 		int numberModifier = 0.0f;
 		while (!numberModifier) {	numberModifier = alphanumeric( genes[cursor_string] ); cursor_string++; if (cursor_string > genesize) {return -1;} }
-
 		cursor_energySource = numberModifier % 4; // or however many there are (plus one);
 #ifdef PLANT_DRAWING_READOUT
 		printf("set energy source to %u\n", cursor_energySource);
@@ -2961,12 +2196,9 @@ int drawCharacter ( std::string genes , unsigned int identity)
 	case 't': // branch. a sequence that grows at an angle to the main trunk
 	{
 		cursor_string++; if (cursor_string > genesize) {return -1;}
-
 		float numberModifier = 0.0f;
 		while (!numberModifier) {	numberModifier = alphanumeric( genes[cursor_string] ); cursor_string++; if (cursor_string > genesize) {return -1;} }
-
 		float branchRotation = ((numberModifier - 13.0f) / 13.0f) * 3.14159f;
-
 #ifdef PLANT_DRAWING_READOUT
 		printf("branch with angle %f\n", branchRotation);
 #endif
@@ -3126,7 +2358,6 @@ int drawCharacter ( std::string genes , unsigned int identity)
 		if (newScalingFactor < 0.1f) {newScalingFactor = 0.1f;}
 		scalingFactor = newScalingFactor;
 
-
 #ifdef PLANT_DRAWING_READOUT
 		printf("sequence. repeats %i, scalingFactor %f\n", repeats, scalingFactor);
 #endif
@@ -3267,11 +2498,7 @@ int drawCharacter ( std::string genes , unsigned int identity)
 			{
 				if (grid[i].phase == PHASE_VACUUM || grid[i].phase == PHASE_GAS || grid[i].phase == PHASE_LIQUID)
 				{
-
-
-
 					setLifeParticle(  genes, identity, i, it->color, it->energySource);
-
 					if (seedGrid[i].stage != STAGE_ANIMAL)
 					{
 						clearSeedParticle(i);
@@ -3510,8 +2737,7 @@ void drawPlantFromSeed( std::string genes, unsigned int i )
 	origin = cursor_grid;
 	prevCursor_grid = cursor_grid;
 	accumulatedRotation = (0.5 * 3.1415);
-	cursor_germinationMaterial =  0;  //MATERIAL_VACUUM;//MATERIAL_QUARTZ;
-
+	cursor_germinationMaterial =  0;
 	cursor_energySource = ENERGYSOURCE_LIGHT;
 
 	float randomN =  extremelyFastNumberFromZeroTo(100) ;
@@ -3571,15 +2797,9 @@ void drawPlantFromSeed( std::string genes, unsigned int i )
 		unsigned int i = (it->y * sizeX) + it->x;
 		if ( i < totalSize)
 		{
-
-
 			if (grid[i].phase == PHASE_VACUUM || grid[i].phase == PHASE_GAS || grid[i].phase == PHASE_LIQUID)
 			{
-
-
-
 				setSeedParticle(  genes, identity, energyDebtSoFar, i, cursor_germinationMaterial);
-				// seedGrid[i].germinationMaterial = cursor_germinationMaterial;
 				mutateSentence(&(seedGrid[i].genes));
 			}
 		}
@@ -3600,68 +2820,17 @@ void thread_life()
 			x = i % sizeX;
 			if (!x) { y = i / sizeX; }
 
-			// unsigned int squareBelow = i - sizeX;
-			// unsigned int squareAbove = i + sizeX;
-			// unsigned int neighbours[] =
-			// {
-			// 	squareBelow - 1,
-			// 	squareBelow,
-			// 	squareBelow + 1,
-			// 	i + 1,
-			// 	squareAbove + 1,
-			// 	squareAbove,
-			// 	squareAbove - 1,
-			// 	i - 1,
-			// };
-
-
-
-
-
 			// if the plant is illuminated, it receives energy.
 			if ( lifeGrid[i].energySource == ENERGYSOURCE_LIGHT )
 			{
-
 				if (seedGrid[i].stage == STAGE_NULL)
 				{
 					lifeGrid[i].energy += seedGrid[i].energy / lightEfficiency;
 				}
-
 			}
 
-
-
-
-
-
 			unsigned int neighbourMaterialA = MATERIAL_VACUUM;
-
-			// for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
-			// {
-
-
 			unsigned int neighbour = (neighbourOffsets[ extremelyFastNumberFromZeroTo(N_NEIGHBOURS) ] + i) % totalSize;
-
-			// hot plants light on fire
-			// if (true)
-			// {
-			// 	if (grid[neighbour].material != PHASE_VACUUM)
-			// 	{
-			// 		if (grid[neighbour].temperature > 600 )
-			// 		{
-			// 			// printf("a plant lit on fire\n");
-			// 			clearLifeParticle(i);
-			// 			setParticle(MATERIAL_FIRE, i);
-			// 			grid[i].phase = PHASE_GAS;
-			// 			grid[i].temperature = 1000;
-			// 			break;
-			// 		}
-			// 	}
-			// }
-
-
-
-
 
 			// if there is a neighbouring cell from the same plant, equalize energy with it.
 			if (lifeGrid[neighbour].identity == lifeGrid[i].identity)
@@ -3676,13 +2845,9 @@ void thread_life()
 			{
 				if (neighbourMaterialA != MATERIAL_VACUUM)
 				{
-					if (grid[i].material != neighbourMaterialA)
+					if (grid[i].material != neighbourMaterialA) // you have found a pair of dissimilar neighbours
 					{
-						// you have found a pair of dissimilar neighbours
-						// if (extremelyFastNumberFromZeroTo(64) == 0x00)
-						// {
 						lifeGrid[i].energy +=  mineralEfficiency;
-						// }
 						neighbourMaterialA = MATERIAL_VACUUM; // reset for another go around.
 					}
 				}
@@ -3699,12 +2864,9 @@ void thread_life()
 				{
 					if (lifeGrid[neighbour].energy > 0.0f)
 					{
-						// if (extremelyFastNumberFromZeroTo(64) == 0x00)
-						// {
 						float takenAmount = lifeGrid[neighbour].energy / plantEfficiency;
 						lifeGrid[i].energy += takenAmount ;
 						lifeGrid[neighbour].energy -= takenAmount;
-						// }
 					}
 				}
 			}
@@ -3716,14 +2878,10 @@ void thread_life()
 				{
 					if (seedGrid[neighbour].parentIdentity != lifeGrid[i].identity )
 					{
-						// if (extremelyFastNumberFromZeroTo(64) == 0x00)
-						// {
 						lifeGrid[i].energy += seedEfficiency;
-						// }
 					}
 				}
 			}
-			// }
 		}
 	}
 
@@ -3741,27 +2899,12 @@ void thread_plantDrawing()
 #endif
 	for (unsigned int i =  0; i < totalSize; ++i)
 	{
-
-		// if (crudOps) {printf("stopped plantdrawing because of crud\n"); return;}
-
-
 		if (seedGrid[i].stage == STAGE_SPROUT)
 		{
-			// if (seedGrid[i].parentIdentity > 0)
-			// {
-			// if (grid[i].material == seedGrid[i].germinationMaterial)
-			// {
-
-
-			// printf("Drawing plant... ");
 			drawPlantFromSeed(seedGrid[i].genes, i);
-			// printf("done.\n");
-
 			clearSeedParticle(i);
 			nGerminatedSeeds ++;
 			continue;
-			// }
-			// }
 		}
 	}
 #ifdef THREAD_TIMING_READOUT
@@ -3779,19 +2922,11 @@ unsigned int walkAnAnimal(unsigned int i)
 	if (seedGrid[i].parentIdentity < animals.size())
 	{
 		Animal * a = &(animals[seedGrid[i].parentIdentity]);
-
 		bool moved = false;
-		// bool haveAWalkableNeighbour = false;
-
-		// int reach_int = a->reach;
-
 		if (extremelyFastNumberFromZeroTo(a->movementChance) == 0)
 		{
 			for (unsigned int move = 0; move < a->reach; ++move)
 			{
-				// bool movedThisTurn = false;
-				// bool ateANeighbour = false;
-
 				// check the neighbour cells starting in the direction of travel.
 				// then, check the cells closest to the direction of travel.
 				// then, the cells at right angles to the direction of travel. and so on. this is vital to coherent movement.
@@ -3835,7 +2970,6 @@ unsigned int walkAnAnimal(unsigned int i)
 
 				else if (  (a->energyFlags & ENERGYSOURCE_PLANT ) == ENERGYSOURCE_PLANT   )
 				{
-
 					if (lifeGrid[neighbour].identity > 0x00)
 					{
 						if (lifeGrid[neighbour].energy > 0.0f)
@@ -3858,7 +2992,6 @@ unsigned int walkAnAnimal(unsigned int i)
 
 				else if (  (a->energyFlags & ENERGYSOURCE_ANIMAL ) == ENERGYSOURCE_ANIMAL   )
 				{
-
 					if (seedGrid[neighbour].stage == STAGE_ANIMAL )
 					{
 						a->energy += animals[seedGrid[neighbour].parentIdentity].energy;
@@ -3866,11 +2999,6 @@ unsigned int walkAnAnimal(unsigned int i)
 						clearSeedParticle(neighbour);
 					}
 				}
-
-
-
-
-
 
 				if (  (a->movementFlags & MOVEMENT_ONPOWDER ) == MOVEMENT_ONPOWDER   )
 				{
@@ -3883,31 +3011,19 @@ unsigned int walkAnAnimal(unsigned int i)
 							{
 								currentPosition = neighbour; // say that this cell is the current position, and then break.
 								moved = true;
-								// break;
 							}
 						}
 					}
-					// }
-					// break;
 				}
-
-
 
 				if (  (a->movementFlags & MOVEMENT_INPLANTS ) == MOVEMENT_INPLANTS   )
 				{
-					// if (grid[neighbour].phase == PHASE_VACUUM) // if one of the neighbouring cells is a material type and phase that the animal can exist within
-					// {
 					if (lifeGrid[neighbour].identity > 0x00)
 					{
 						currentPosition = neighbour; // say that this cell is the current position, and then break.
 						moved = true;
-						// break;
 					}
-					// }
-
-					// break;
 				}
-
 
 				if (  (a->movementFlags & MOVEMENT_INLIQUID ) == MOVEMENT_INLIQUID   )
 				{
@@ -3915,12 +3031,8 @@ unsigned int walkAnAnimal(unsigned int i)
 					{
 						currentPosition = neighbour; // say that this cell is the current position, and then break.
 						moved = true;
-						// break;
 					}
-
-					// break;
 				}
-
 
 				if (  (a->movementFlags & MOVEMENT_INAIR ) == MOVEMENT_INAIR   )
 				{
@@ -3928,12 +3040,8 @@ unsigned int walkAnAnimal(unsigned int i)
 					{
 						currentPosition = neighbour; // say that this cell is the current position, and then break.
 						moved = true;
-						// break;
-					}
-
-					// break;
+					};
 				}
-
 
 				if (  (a->movementFlags & MOVEMENT_ONSOLID ) == MOVEMENT_ONSOLID   )
 				{
@@ -3942,60 +3050,35 @@ unsigned int walkAnAnimal(unsigned int i)
 						for (int l = 0; l < N_NEIGHBOURS; ++l) // and it has a neighbour of a type and phase the animal can walk on
 						{
 							int neighboursNeighbour = (neighbour + neighbourOffsets[l]);
-							if (neighboursNeighbour != currentPosition && neighboursNeighbour != i) {
-
-
+							if (neighboursNeighbour != currentPosition && neighboursNeighbour != i)
+							{
 								if (  grid[ neighboursNeighbour ] .phase == PHASE_SOLID )
 								{
 									currentPosition = neighbour; // say that this cell is the current position, and then break.
 									moved = true;
-									// break;
 								}
 							}
 						}
 					}
-
-					// break;
 				}
-				// }
 			}
 		}
-		// else
-		// {
-		// 	for (int l = 0; l < N_NEIGHBOURS; ++l)
-		// 	{
-		// 		int neighbour = (neighbourOffsets[l] + currentPosition);
-		// 		if (  grid[ neighbour ] .phase == PHASE_POWDER )
-		// 		{
-		// 			haveAWalkableNeighbour = true;
-		// 			break;
-		// 		}
-		// 	}
-		// }
 
 		// after having repeated <reach> moves, swap the cell and update the segment positions.
 		if (	moved )
 		{
-			// printf("MOVED TO %u from %u\n", currentPosition, i);
 			swapSeedParticle(i, currentPosition);
 			incrementAnimalSegmentPositions( seedGrid[i].parentIdentity, i, false );
 		}
 		else
 		{
-
-
 			if (((a->movementFlags & MOVEMENT_INAIR) !=  MOVEMENT_INAIR)    )
 			{
 				if (grid[squareBelow].phase == PHASE_VACUUM || grid[squareBelow].phase == PHASE_GAS )
 				{
 					swapSeedParticle(currentPosition, squareBelow);
 					incrementAnimalSegmentPositions( seedGrid[i].parentIdentity, currentPosition, true );
-					// printf("fell down\n");
 				}
-			}
-			else
-			{
-				// printf("stuck / nothing\n");
 			}
 		}
 	}
@@ -4009,32 +3092,15 @@ unsigned int walkAnAnimal(unsigned int i)
 	return result;
 }
 
-
 // fade the color in random seedgrid squares if the particle there is not a seed. this makes photon trails fade over time.
 void updateSeedgridColor (unsigned int i)
 {
-
-
 	if (seedGrid[i].stage == STAGE_NULL)
 	{
-
-
-
-// SeedParticle tempSeed = seedGrid[b];
-		// seedGrid[b] = seedGrid[a];
-		// seedGrid[a] = tempSeed;
-		// float temp_color[4];
 		unsigned int a_offset = (i * numberOfFieldsPerVertex) ;
-		// unsigned int b_offset = (b * numberOfFieldsPerVertex) ;
-		// memcpy( temp_color, 				&seedColorGrid[ b_offset ] , 	sizeof(Color) ); // 4x floats of 4 bytes each
-		// memcpy( &seedColorGrid[ b_offset], 	&seedColorGrid[ a_offset] , 	sizeof(Color) );
-		// memcpy( &seedColorGrid[ a_offset ], temp_color, 					sizeof(Color) );
-		// seedGrid[i].e
-
 		seedColorGrid[ a_offset  + 3] *= 0.5;
 	}
 }
-
 
 void thread_seeds()
 {
@@ -4043,134 +3109,20 @@ void thread_seeds()
 #endif
 	for (unsigned int i = (sizeX + 1); i < (totalSize - (sizeX + 1)); ++i)
 	{
-
-
-
-
-
-		// // PHOTONS. Some of the particles on the seed grid are particles of light that fall downwards.
-		// if (seedGrid[i].stage == STAGE_PHOTON)
-		// {
-		// 	// unsigned int squareBelow = i - sizeX;
-
-		// 	unsigned int neighbour = neighbourOffsets[sunlightDirection] + i;
-
-		// 	// if they touch a plant...
-		// 	if (lifeGrid[neighbour].identity > 0)
-		// 	{
-		// 		// which has a photosynthetic leaf...
-		// 		if (lifeGrid[neighbour].energySource == ENERGYSOURCE_LIGHT)
-		// 		{
-		// 			if (extremelyFastNumberFromZeroTo(8) == 0)
-		// 			{
-		// 				// it consumes the photon as energy
-		// 				lifeGrid[neighbour].energy += sunlightEnergy;
-		// 				clearSeedParticle(i);
-		// 				continue;
-		// 			}
-		// 			else
-		// 			{
-		// 				// if the photon falls on a seed, it cannot occupy the same place, so the photon is destroyed.
-		// 				if (seedGrid[neighbour].stage != 0x00)
-		// 				{
-		// 					clearSeedParticle(i);
-		// 					continue;
-		// 				}
-		// 				else
-		// 				{
-
-
-
-		// 					swapPhoton( i, neighbour);
-		// 					continue;
-		// 				}
-		// 			}
-		// 		}
-		// 	}
-
-		// 	// the photon falls downward if nothing is below it. They can travel into water.
-		// 	if (grid[neighbour].phase != PHASE_VACUUM && grid[neighbour].phase != PHASE_GAS && grid[neighbour].phase != PHASE_LIQUID
-		// 	   )
-		// 	{
-		// 		grid[neighbour].temperature += (sunlightEnergy * sunlightHeatCoeff);
-		// 		clearSeedParticle(i);
-		// 		continue;
-		// 	}
-		// 	else
-		// 	{
-		// 		// if it falls on material, it is destroyed.
-		// 		if (seedGrid[neighbour].stage != 0x00)
-		// 		{
-		// 			clearSeedParticle(i);
-		// 			continue;
-		// 		}
-		// 		swapPhoton( i, neighbour);
-		// 		continue;
-		// 	}
-		// 	continue;
-		// }
-
-
-
 		// SEEDS. Some of the particles on the seed grid are seeds that fall downwards.
-		// if (seedGrid[i].parentIdentity > 0 )
-		// {
 		if (seedGrid[i].stage == STAGE_FRUIT)
 		{
 			if (extremelyFastNumberFromZeroTo(1) == 0) 		// get blown by the wind only some of the time
 			{
-				// while (true) 								// this while loop is just here so you can 'break' out of it to end this sequence quickly.
-				// {
-				unsigned int neighbour = neighbourOffsets[wind] + i;
-				// if (wind.x > 0)
-				// {
-				// 	neighbour = i + 1;
-				// 	if ((grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS  ) && seedGrid[neighbour].stage == 0x00  )
-				// 	{
-				// 		swapSeedParticle( i, neighbour );
-				// 		continue;
-				// 	}
-				// }
-				// else if (wind.x < 0)
-				// {
-				// 	neighbour = i - 1;
+				unsigned int neighbour = neighbourOffsets[ weatherGrid[i].direction ] + i;
 				if ((grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS  ) && seedGrid[neighbour].stage == 0x00  )
 				{
 					swapSeedParticle( i, neighbour );
 					continue;
 				}
-				// }
-				// continue;
-				// }
-
-				// while (true) 								// this while loop is just here so you can 'break' out of it to end this sequence quickly.
-				// {
-				// 	unsigned int neighbour;
-				// 	if (wind.y > 0)
-				// 	{
-				// 		neighbour = i + sizeX;
-				// 		if ((grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS  ) && seedGrid[neighbour].stage == 0x00  )
-				// 		{
-				// 			swapSeedParticle( i, neighbour );
-				// 			continue;
-				// 		}
-				// 	}
-				// 	else if (wind.y < 0)
-				// 	{
-				// 		neighbour = i - sizeX;
-				// 		if ((grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS  ) && seedGrid[neighbour].stage == 0x00  )
-				// 		{
-				// 			swapSeedParticle( i, neighbour );
-				// 			continue;
-				// 		}					//
-				// 	}
-				// 	continue;
-				// }
 			}
-
 			unsigned int j = extremelyFastNumberFromZeroTo(4);
 			unsigned int neighbour;
-
 			if (		j == 0)		{ neighbour = i - sizeX - 1 ;	}
 			else if (	j == 1)		{ neighbour = i - sizeX	 	;	}
 			else if (	j == 2)		{ neighbour = i - sizeX + 1 ;	}
@@ -4226,10 +3178,6 @@ void thread_seeds()
 			}
 			continue;
 		}
-		// continue;
-		// }
-
-
 
 		else if (seedGrid[i].stage == STAGE_ERODINGRAIN)
 		{
@@ -4237,16 +3185,12 @@ void thread_seeds()
 			bool movedThisTurn = false;
 			unsigned int neighbours[] =
 			{
-
 				currentPosition - 1,
 				currentPosition - sizeX - 1,
 				currentPosition - sizeX,
 				currentPosition - sizeX + 1,
 				currentPosition + 1
 			};
-
-
-
 
 			unsigned int offset = extremelyFastNumberFromZeroTo(4);
 			unsigned int rainNeighbours = 0;
@@ -4255,25 +3199,10 @@ void thread_seeds()
 				unsigned int index = (k + offset) % 5;
 				if ((grid[neighbours[index]].phase == PHASE_VACUUM) || (grid[neighbours[index]].phase == PHASE_GAS )      )
 				{
-
-					if (seedGrid[currentPosition].energy >= 1.0f)
-					{
-
-						// setParticle( MATERIAL_QUARTZ, currentPosition);
-						// seedGrid[currentPosition].energy -= 1.0f;
-						// continue;
-					}
-
-
 					movedThisTurn = true;
 					currentPosition = neighbours[index];
-					// seedGrid[currentPosition].parentIdentity = 0x00;
-
-
 					if (seedGrid[currentPosition].energy < 1.0f)
 					{
-
-
 						unsigned int neighbours2[] =
 						{
 							currentPosition - 1,
@@ -4285,85 +3214,49 @@ void thread_seeds()
 
 						for (unsigned int h = 0; h < 5; ++h)
 						{
-
 							unsigned int index2 = (h + offset) % 5;
-
 							if (neighbours2[index2] > totalSize) {continue;}
-
 							if (grid[neighbours2[index2]].phase == PHASE_SOLID )
 							{
-
 								clearParticle(neighbours2[index2]);
 								seedGrid[currentPosition].energy += 1.0f;
 								break;
-
 							}
 						}
-
-
 					}
-
-
-
-
-
-
-
 					break;
 				}
 			}
-
 			swapSeedParticle( i, currentPosition);
-
 			continue;
 		}
-
-
 		else if (seedGrid[i].stage == STAGE_ANIMAL)
 		{
-
 			if (seedGrid[i].drawingInProgress) {continue;} // don't move the animal while it is being drawn.
-
 			if (seedGrid[i].parentIdentity < animals.size())
 			{
 				Animal * a = &(animals[seedGrid[i].parentIdentity]);
-
 				if (extremelyFastNumberFromZeroTo(64) == 0)
 				{
-
 					a->direction = extremelyFastNumberFromZeroTo(7);
-
 				}
-
 				walkAnAnimal(i);
-
 #ifdef DRAW_ANIMALS
 				updateAnimalDrawing(i);
 #endif
-
 			}
 			continue;
 		}
-
 		else
 		{
-
-			// if (extremelyFastNumberFromZeroTo(100) == 0)
-			// {
-			// 	updateSeedgridColor(i);
-			// }
 			continue;
-
 		}
-
 	}
-
 #ifdef THREAD_TIMING_READOUT
 	auto end = std::chrono::steady_clock::now();
 	auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 	std::cout << "thread_seeds " << elapsed.count() << " microseconds." << std::endl;
 #endif
-
 }
 
 void sendLifeToBackground ()
@@ -4413,7 +3306,6 @@ void sendLifeToBackground ()
 
 void insertRandomSeed()
 {
-
 	unsigned int x = 0;
 	unsigned int y = 0;
 
@@ -4429,7 +3321,7 @@ void insertRandomSeed()
 		{
 			std::string exampleSentence = std::string("");
 
-			unsigned int randomPlantIndex = 7;//extremelyFastNumberFromZeroTo(7);
+			unsigned int randomPlantIndex = 7;
 
 			switch (randomPlantIndex)
 			{
@@ -4463,7 +3355,6 @@ void insertRandomSeed()
 				exampleSentence = plant_ParbasarbTree;
 				break;
 			}
-
 			case 6:
 			{
 				exampleSentence = plant_LardGrass;
@@ -4480,64 +3371,32 @@ void insertRandomSeed()
 			if (materials.size() > 0)
 			{
 				randomGerminationMaterial = extremelyFastNumberFromZeroTo(materials.size() - 1);
-
-				// cursor_germinationMaterial = randomGerminationMaterial;
 				setSeedParticle(exampleSentence, newIdentity() , 0, i, randomGerminationMaterial);
 				seedGrid[i].stage = STAGE_FRUIT;
-
-
-
-
-				// std::string materialGene = std::string("89898989m");
-				// materialGene.push_back( numeralphabetic(randomGerminationMaterial) );
-
-				// seedGrid[i].genes.insert(0, materialGene);
-				// seedGrid[i].genes += materialGene;
-
-				// printf("%s\n", seedGrid[i].genes.c_str());
 			}
-
-
-
-			// seedGrid[i].germinationMaterial = randomGerminationMaterial;
 		}
 	}
 }
 
-
-
 void insertRandomAnimal ()
 {
-
-
 	unsigned int x = 0;
 	unsigned int y = 0;
-
 	unsigned int targetX = extremelyFastNumberFromZeroTo(sizeX);
 	unsigned int targetY = extremelyFastNumberFromZeroTo(sizeY / 2) + (sizeY / 2);
-
 	for (unsigned int i = (sizeX + 1); i < (totalSize - (sizeX + 1)); ++i)
 	{
 		x = i % sizeX;
 		if (!x) { y = i / sizeX; }
-
 		if (x == targetX && y == targetY)
 		{
-
 			setAnimal( i );
-
-
 		}
-
 	}
-
-
 }
-
 
 void increaseLampBrightness ()
 {
-	// printf("increaseLampBrightness\n");
 	lampBrightness ++;
 	lampBrightness = lampBrightness % maxLampBrightness;
 }
@@ -4552,7 +3411,6 @@ void save ()
 {
 	printf("SAVING GAME\n");
 
-
 	WorldInformation newWorldInfo;
 	newWorldInfo.nAnimals = animals.size();
 	newWorldInfo.nMaterials = materials.size();
@@ -4560,11 +3418,7 @@ void save ()
 	std::ofstream out884(std::string("save/WorldInformation").c_str());
 	out884.write( (char*)(&newWorldInfo), sizeof(WorldInformation));
 	out884.close();
-
-
-
 	printf("- saved world information\n");
-
 
 	// transcribe the entire world state to file.
 	std::ofstream out6(std::string("save/grid").c_str());
@@ -4649,133 +3503,61 @@ void save ()
 
 	printf("- saved color grids\n");
 
-
 	// you need to save the materials and animals vectors as well somehow, even though their size is unknown.
-
 	std::ofstream out879("save/materials");
-	// for (unsigned int i = 0; i < materials.size(); ++i)
-	// {
-	// 	out879 << materials[i]  << '\n';
-	// }
-
-	// for (const auto &p : materials)
-	// {
-	// 	out879 << p << '\n';
-	// }
-
 	const char* pointer = reinterpret_cast<const char*>(&materials[0]);
 	size_t bytes = materials.size() * sizeof(Material);
 	out879.write(pointer, bytes);
-
 	out879.close();
 
 	std::ofstream out8579("save/animals");
-	// // for (unsigned int i = 0; i < animals.size(); ++i)
-	// // {
-	// // 	out8579 << animals[i]  << '\n';
-	// // }
-
-	// for (const auto &p : animals)
-	// {
-	// 	out8579 << p << '\n';
-	// }
-
-
 	pointer = reinterpret_cast<const char*>(&animals[0]);
 	bytes = animals.size() * sizeof(Animal);
 	out8579.write(pointer, bytes);
-
 	out8579.close();
-
 }
 
 
 void load_materials(unsigned int m)
 {
-
-
-
 	// load the materials
 	if (true)
 	{
-
-		// materials.clear();
-
-		// materials.push_back(bumdirt);
-
 		resetMaterials();
-
 		for (int i = 0; i < m; ++i)
 		{
-
-			printf("- material \n" );
-
 			materials.push_back(Material());
 		}
-
 
 		std::ifstream in56(std::string("save/materials").c_str());
 		in56.read( (char *)(&(materials[0])), sizeof(Material) *  m);
 		in56.close();
 	}
 
-
 	std::ifstream in6(std::string("save/grid").c_str());
 	in6.read( (char *)(&(grid[0])), sizeof(Particle) *  totalSize);
 	in6.close();
-
-
 	printf("loaded material grid and material colors\n");
-
 }
-
-
 
 void load_animals(unsigned int m)
 {
-
-
-
 	if (true)
 	{
-
 		animals.clear();
-
-		// animals.push_back(bumdirt);
-
 		for (int i = 0; i < m; ++i)
 		{
-
-			// printf("- animal \n" );
-
 			animals.push_back(Animal());
 		}
-
-
 		std::ifstream in556(std::string("save/animals").c_str());
 		in556.read( (char *)(&(animals[0])), sizeof(Animal) *  m);
 		in556.close();
 	}
-
-
-	// std::ifstream in6(std::string("save/grid").c_str());
-	// in6.read( (char *)(&(grid[0])), sizeof(Particle) *  totalSize);
-	// in6.close();
-
-
 	printf("loaded animals\n");
-
 }
-
-
 
 void load_colorgrids()
 {
-// std::ifstream in1(std::string("save/lifeGrid").c_str());
-	// in1.read(  (char *)(lifeGrid) , sizeof(LifeParticle) * totalSize);
-	// in1.close();
-
-
 	std::ifstream in3(std::string("save/colorGrid").c_str());
 	in3.read( (char *)( &(colorGrid[0])  ), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
 	in3.close();
@@ -4795,34 +3577,15 @@ void load_colorgrids()
 	printf("- loaded color grids\n");
 }
 
-
-
 void load_life()
 {
-
-
-
 	transportableLifeParticle* transportableLifeGrid = new transportableLifeParticle[totalSize];
-	// std::memset(transportableLifeGrid, 0x00, sizeof(transportableLifeParticle) * totalSize);
-
-
-
 	std::ifstream in22(std::string("save/transportableLifeGrid").c_str());
 	in22.read( (char*)( &(transportableLifeGrid[0])), sizeof(transportableLifeParticle) * totalSize);
 	in22.close();
-
-
-
 	for (unsigned int i = 0; i < totalSize; ++i)
 	{
-
 		lifeGrid[i] = LifeParticle();
-
-		// 	printf("veguntus %u\n", i);
-		// printf("- ennelmennel %u, %u\n", lifeGrid[i].energySource, i);
-		// printf("- bee %u\n", transportableLifeGrid[i].energySource);
-
-
 		lifeGrid[i].energySource = transportableLifeGrid[i].energySource;
 		lifeGrid[i].energy = transportableLifeGrid[i].energy;
 		lifeGrid[i].identity = transportableLifeGrid[i].identity;
@@ -4831,33 +3594,6 @@ void load_life()
 	delete [] transportableLifeGrid;
 
 	printf("- loaded transportable life grid\n");
-
-
-
-
-
-
-	// 	// read lengths of both files
-	// if (true)
-	// {
-	// 	std::ifstream in5(std::string("save/lifeGeneGrid").c_str());
-	// 	std::string line = std::string("");
-	// 	unsigned int i = 0;
-	// 	for (std::string line; std::getline(in5, line, '\n'); )
-	// 	{
-	// 		i++;
-	// 	}
-
-	// 	printf("lifeGeneGrid lines: %u\n", i);
-
-	// 	std::ifstream in500(std::string("save/seedGeneGrid").c_str());
-	// 	i = 0;
-	// 	for (std::string line; std::getline(in500, line, '\n'); )
-	// 	{
-	// 		i++;
-	// 	}
-	// 	printf("seedGeneGrid lines: %u\n", i);
-	// }
 
 	// load life genes
 	if (true)
@@ -4879,14 +3615,9 @@ void load_life()
 	}
 }
 
-
-
 void load_seeds()
 {
-
 	transportableSeed* transportableSeedGrid = new transportableSeed[totalSize];
-	// std::memset(transportableSeedGrid, 0x00, sizeof(transportableSeed) * totalSize);
-
 	std::ifstream in2(std::string("save/transportableSeedGrid").c_str());
 	in2.read( (char*)(  &(transportableSeedGrid[0])), sizeof(transportableSeed) * totalSize);
 	in2.close();
@@ -4918,7 +3649,6 @@ void load_seeds()
 		}
 		printf("- loaded seed genomes\n");
 	}
-
 }
 
 void load ()
@@ -4936,7 +3666,6 @@ void load ()
 	in336.read( (char *)(&newWorldInfo), sizeof(WorldInformation) );
 	in336.close();
 
-
 	printf("- loaded world information\n");
 
 	load_colorgrids();
@@ -4948,79 +3677,14 @@ void load ()
 	load_seeds();
 
 	load_animals(newWorldInfo.nAnimals);
-
-	// // read lengths of both files
-	// if (true)
-	// {
-	// 	std::ifstream in5(std::string("save/lifeGeneGrid").c_str());
-	// 	std::string line = std::string("");
-	// 	unsigned int i = 0;
-	// 	for (std::string line; std::getline(in5, line, '\n'); )
-	// 	{
-	// 		i++;
-	// 	}
-
-	// 	printf("lifeGeneGrid lines: %u\n", i);
-
-	// 	std::ifstream in500(std::string("save/seedGeneGrid").c_str());
-	// 	i = 0;
-	// 	for (std::string line; std::getline(in500, line, '\n'); )
-	// 	{
-	// 		i++;
-	// 	}
-	// 	printf("seedGeneGrid lines: %u\n", i);
-	// }
-
-	// // load life genes
-	// if (true)
-	// {
-	// 	std::ifstream in5(std::string("save/lifeGeneGrid").c_str());
-	// 	std::string line = std::string("");
-	// 	unsigned int i = 0;
-	// 	for (std::string line; std::getline(in5, line, '\n'); )
-	// 	{
-	// 		lifeGrid[i].genes.clear();
-	// 		if (i < totalSize)
-	// 		{
-	// 			lifeGrid[i].genes.assign(line);
-	// 		}
-	// 		in5.clear();
-	// 		i++;
-	// 	}
-	// 	printf("- loaded life genomes\n");
-	// }
-
-	// // load seed genes
-	// if (true)
-	// {
-	// 	std::ifstream in500(std::string("save/seedGeneGrid").c_str());
-	// 	std::string line = std::string("");
-	// 	unsigned int i = 0;
-	// 	for (std::string line; std::getline(in500, line, '\n'); )
-	// 	{
-	// 		if (i < totalSize)
-	// 		{
-	// 			seedGrid[i].genes.assign(line);
-	// 		}
-	// 		in500.clear();
-	// 		i++;
-	// 	}
-	// 	printf("- loaded seed genomes\n");
-	// }
-
-
-
-
 }
 
 
 void eraseFallenSeeds()
 {
 	// clean up all the fallen seeds in the world. it can be annoying if they accumulate too much.
-
 	for (int i = 0; i < totalSize; ++i)
 	{
-
 		if (seedGrid[i].stage == STAGE_FRUIT || seedGrid[i].stage == STAGE_SPROUT )
 		{
 			clearSeedParticle(i);
@@ -5028,25 +3692,19 @@ void eraseFallenSeeds()
 	}
 }
 
-
 void dropAllSeeds()
 {
-
 	for (int i = 0; i < totalSize; ++i)
 	{
 		if (seedGrid[i].stage == STAGE_BUD)
 		{
 			seedGrid[i].energy = 0.0f;
 		}
-
 	}
 }
 
-
-
 void eraseAllLife()
 {
-
 	for (int i = 0; i < totalSize; ++i)
 	{
 		if (seedGrid[i].stage == STAGE_BUD || seedGrid[i].stage == STAGE_FRUIT || seedGrid[i].stage == STAGE_SPROUT)
@@ -5054,20 +3712,15 @@ void eraseAllLife()
 			clearSeedParticle(i);
 		}
 
-
 		if (lifeGrid[i].identity > 0x00)
 		{
 			clearLifeParticle(i);
 		}
-
 	}
 }
 
-
 void manualErode ()
 {
-
-
 	// remove every cell with a vacuum neighbour.
 	for (int i = 0; i < totalSize; ++i)
 	{
@@ -5088,12 +3741,7 @@ void manualErode ()
 			}
 		}
 	}
-
-
 }
-
-
-
 
 void drawAHill(unsigned int hillXIndex, unsigned int hillWidth)
 {
@@ -5108,14 +3756,12 @@ void drawAHill(unsigned int hillXIndex, unsigned int hillWidth)
 			if (indexA > totalSize || indexB > totalSize) {continue;}
 			swapParticle( indexA, indexB); // centered on hillXIndex, move all cells that are hillWidth in either direction up by 1 square.
 			swapParticle( indexB, indexC);
-
 		}
 	}
 }
 
 void drawRandomLandscape()
 {
-
 	unsigned int randomHillX = extremelyFastNumberFromZeroTo(sizeX);
 	unsigned int randomHillWidth = extremelyFastNumberFromZeroTo(500);
 	for (int i = 0; i < extremelyFastNumberFromZeroTo(500); ++i)
