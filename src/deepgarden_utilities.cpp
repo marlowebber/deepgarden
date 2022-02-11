@@ -37,31 +37,18 @@ vec_f2 rotatePointPrecomputed( vec_f2 center, float s, float c, vec_f2 point)
 	return vec_f2(point.x, point.y);
 };
 
-
-
 float magnitude_int( int x,  int y)
 {
 	float mag = sqrt(x * x + y * y);
 	return mag;
 }
 
-
-
 int distanceBetweenPoints( vec_i2 a, vec_i2 b )
 {
-
 	int diffX = abs(a.x - b.x);
 	int diffY = abs(a.y - b.y);
-
-
-
 	return magnitude_int( diffX,  diffY);
-
 }
-
-
-
-
 
 // lookup table for character alphanumeric values
 int alphanumeric (char c)
@@ -163,25 +150,15 @@ int alphanumeric (char c)
 	case '/': { val = 26; break; }
 	case '?': { val = 0; break; }
 	}
-
-
-
-
-
-
 	return val;
 }
-
-
 
 // produce a letter that would correspond to a particular value.
 char numeralphabetic (int i)
 {
-
 	if ( i >= 26) {return 'z';}
 	switch (i)
 	{
-
 	case 1: {  return 'a'; break;  }
 	case 2: {  return 'b'; break;  }
 	case 3: {  return 'c'; break;  }
@@ -207,13 +184,9 @@ char numeralphabetic (int i)
 	case 23: {  return 'w'; break;  }
 	case 24: {  return 'x'; break;  }
 	case 25: {  return 'y'; break;  }
-
 	}
-
 	return 'a';
-
 }
-
 
 float RNG()
 {
@@ -222,26 +195,6 @@ float RNG()
 	static std::uniform_real_distribution<> dis(0, 1);
 	return dis(e);
 }
-
-
-
-
-// template <typename U = uint64_t> class RandomizerWithSentinelShift {
-//   public:
-//     template <typename Rng> bool operator()(Rng &rng) {
-//         if (UNLIKELY(1 == m_rand)) {
-//             m_rand = std::uniform_int_distribution<U>{}(rng) | s_mask_left1;
-//         }
-//         bool const ret = m_rand & 1;
-//         m_rand >>= 1;
-//         return ret;
-//     }
-
-//   private:
-//     static constexpr const U s_mask_left1 = U(1) << (sizeof(U) * 8 - 1);
-//     U m_rand = 1;
-// };
-
 
 inline uint16_t extremelyFastRandomByte()
 {
@@ -266,10 +219,8 @@ uint16_t extremelyFastNumberFromZeroTo( uint16_t to)
 	return ( extremelyFastRandomByte() % ( to + 1 ) );
 }
 
-
 void seedExtremelyFastNumberGenerators()
 {
-
 	x = 0;
 	y = 0;
 	z = 0;
@@ -278,7 +229,6 @@ void seedExtremelyFastNumberGenerators()
 	if (RNG() < 0.5)  {x = 1;}
 	if (RNG() < 0.5)  {y = 1;}
 	if (RNG() < 0.5)  {z = 1;}
-
 }
 
 

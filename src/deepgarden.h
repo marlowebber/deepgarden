@@ -17,10 +17,7 @@ using namespace glm;
 
 #include <boost/thread.hpp>
 
-
-// #include "deepgarden.h"
 #include "deepgarden_utilities.h"
-
 
 #define sizeX 4096
 #define sizeY 256
@@ -43,18 +40,6 @@ struct Color
 
 // Material is what flavor a square can be. It controls color, melting temperature, and phase change rules
 extern const unsigned int MATERIAL_VACUUM ;
-// #define MATERIAL_VACUUM		 1
-// #define MATERIAL_PHOTON  	 2       
-// #define MATERIAL_SEED 		 3
-// #define MATERIAL_IRON 		 4
-// #define MATERIAL_STONE 		 5
-// #define MATERIAL_OXYGEN 	 6
-// #define MATERIAL_GOLD 		 7
-// #define MATERIAL_WATER 		 8
-// #define MATERIAL_QUARTZ 	 9
-// #define MATERIAL_AMPHIBOLE 	 10
-// #define MATERIAL_OLIVINE 	 11
-// #define MATERIAL_FIRE        12
 
 // Phase is what set of physical rules are applied to each square each turn, and is used by the program to determine how to treat the square in many other situations.
 #define PHASE_NULL			 0
@@ -101,10 +86,7 @@ extern const unsigned int MATERIAL_VACUUM ;
 #define VISUALIZE_TEMPERATURE 3
 #define VISUALIZE_PHASE       4
 #define VISUALIZE_PRESSURE	  5
-
 #define NUMBER_OF_VISUALIZERS 5 // i use a ++ to scroll through the list of visualizers. Please keep the declarations in numeric order and update this if you add more.
-
-
 
 // logical conditions used for crystallisation.
 #define CONDITION_GREATERTHAN      1
@@ -117,10 +99,7 @@ extern const unsigned int MATERIAL_VACUUM ;
 #define CONDITION_ROW              128
 #define CONDITION_LEFTN            256
 #define CONDITION_NOTLEFTRIGHTN    512
-
-#define CONDITION_NOTLRNEIGHBOURS    1024
-
-
+#define CONDITION_NOTLRNEIGHBOURS  1024
 
 float RNG();
 
@@ -142,10 +121,8 @@ void setNeutralTemp () ;
 
 void thread_temperature2 ();
 
-
 void thread_life();
 void thread_seeds();
-
 
 void setExtremeTempPoint (unsigned int x ,unsigned  int y);
 void sendLifeToBackground ();
@@ -156,11 +133,9 @@ void insertRandomAnimal ();
 
 void toggleEnergyGridDisplay ();
 
-
 void increaseLampBrightness ();
 
 void decreaseLampBrightness ();
-
 
 void thread_plantDrawing();
 
@@ -186,7 +161,6 @@ void clearGases();
 void clearLiquids();
 
 void dropAllSeeds();
-
 
 void eraseAllLife();
 

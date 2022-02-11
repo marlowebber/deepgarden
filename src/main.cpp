@@ -18,28 +18,15 @@ bool flagLoad = false;
 
 unsigned int loadCooldown = 0;
 
-
-
-
-
-
-
-
 void quit ()
 {
-
 	flagQuit = true;
-	// flagSave = true;
 }
 
 void togglePause ()
 {
 	paused = !paused;
 }
-
-
-
-
 
 void thread_interface()
 {
@@ -89,7 +76,6 @@ void thread_interface()
 				clearGrids() ;
 				break;
 
-
 			case SDLK_b:
 				setNeutralTemp();
 				break;
@@ -106,20 +92,13 @@ void thread_interface()
 				toggleEnergyGridDisplay();
 				break;
 
-
-
 			case SDLK_s:
-				// save();
 				flagSave = true;
 				break;
 
-
-
 			case SDLK_l:
-				// load();
 				flagLoad = true;
 				break;
-
 
 			case SDLK_LEFTBRACKET:
 				increaseLampBrightness();
@@ -129,12 +108,9 @@ void thread_interface()
 				decreaseLampBrightness();
 				break;
 
-
-
 			case SDLK_v:
 				drawRandomLandscape();
 				break;
-
 
 			case SDLK_e:
 				toggleErodingRain();
@@ -144,11 +120,9 @@ void thread_interface()
 				manualErode();
 				break;
 
-
 			case SDLK_k:
 				createRandomWorld();
 				break;
-
 
 			case SDLK_p:
 				togglePause();
@@ -178,9 +152,6 @@ void thread_interface()
 				eraseAllLife();
 				break;
 
-
-
-
 			case SDLK_ESCAPE:
 				quit();
 			}
@@ -193,15 +164,11 @@ void thread_interface()
 			{
 			case SDL_BUTTON_LEFT:
 			{
-				// printf("x %i, y %i", mouseX, mouseY);
-
 				unsigned int mouseusu = mouseX;
 				unsigned int mousewewe = mouseY;
-
 				setExtremeTempPoint (mouseusu, mousewewe);
 				break;
 			}
-
 			}
 			break;
 		}
@@ -210,19 +177,14 @@ void thread_interface()
 		{
 			mouseX = event.motion.x;
 			mouseY = event.motion.y;
-
-
-
 		}
 		}
 	}
 }
 
-
 // plant drawing runs in variable time but is always slower than everything else. this threading arrangement lets it run forever, but at its own pace.
 void thread_supervisor_plantDrawing()
 {
-
 	while (true)
 	{
 		boost::thread t101 { thread_plantDrawing};
@@ -230,75 +192,40 @@ void thread_supervisor_plantDrawing()
 	}
 }
 
-
-
 int main( int argc, char * argv[] )
 {
 	setupGraphics();
 	initialize();
-
-
-
 	boost::thread t100 { thread_supervisor_plantDrawing};
-
-
 	for ( ;; )
 	{
-
-
 		// start all the threads and then wait for them to finish.
 		// start threads in order of chunkiest to least chunky.
-
-
 		if (!crudOps && !paused)
 		{
-
-
 			boost::thread t99{ thread_temperature2 };
-
 			boost::thread t2{ thread_physics };
-
-
 			boost::thread t3{ thread_weather };
-
-
 			boost::thread t6{ thread_interface };
-
 			boost::thread t7 { thread_life};
-
 			boost::thread t8 { thread_seeds};
 
 			// graphics only seems to work in this thread, so we can just say that's what this thread is for.
-
 			thread_graphics();
 
 			t8.join();
-
 			t7.join();
-
 			t6.join();
-
 			t3.join();
-
 			t2.join();
-
 			t99.join();
-
 		}
 		else
 		{
-
 			boost::thread t6{ thread_interface };
-
 			thread_graphics();
-
 			t6.join();
-
 		}
-
-
-		// t100.join();
-
 
 		// these operations can't be done while threading is happening. wait for the turn to finish, then use them.
 		if (flagSave)
