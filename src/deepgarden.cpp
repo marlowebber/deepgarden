@@ -569,17 +569,17 @@ std::list<ProposedLifeParticle> EFLA_E(vec_i2 start, vec_i2 end)
 
 
 // return 0 to continue drawing sequence, return -1 to break sequence by one level.
-int drawAnimalFromChar (unsigned int i)
+int drawAnimalFromChar (unsigned int i, Animal * a, std::string genes )
 {
-	if (seedGrid[i].parentIdentity < animals.size() )
-	{
-		Animal * a = &(animals[seedGrid[i].parentIdentity]);
-		if (animalCursorString >= seedGrid[i].genes.length()) {return -1;}
+	// if (seedGrid[i].parentIdentity < animals.size() )
+	// {
+		// Animal * a = &(animals[seedGrid[i].parentIdentity]);
+		if (animalCursorString >= genes.length()) {return -1;}
 		if (animalCursorSegmentNumber >= maxAnimalSegments) {return -1;}
 		animalCursorString++;
-		char c = seedGrid[i].genes[animalCursorString];
+		char c = genes[animalCursorString];
 #ifdef ANIMAL_DRAWING_READOUT
-		printf("char %c, index %u. ", seedGrid[i].genes[animalCursorString], animalCursorString );
+		printf("char %c, index %u. ", genes[animalCursorString], animalCursorString );
 #endif
 		switch (c)
 		{
@@ -593,8 +593,10 @@ int drawAnimalFromChar (unsigned int i)
 			for (std::list<ProposedLifeParticle>::iterator it = segment_particles.begin(); it != segment_particles.end(); ++it)
 			{
 				int j = (it->position.y * sizeAnimalSprite) + it->position.x;
-				if ( j < (sizeAnimalSprite * sizeAnimalSprite))
+				if ( j < (sizeAnimalSprite * sizeAnimalSprite) && j >= 0)
 				{
+
+
 					a->segments[animalCursorSegmentNumber].frameA[j] = it->color;
 					a->segments[animalCursorSegmentNumber].frameB[j] = it->color;
 					a->segments[animalCursorSegmentNumber].frameC[j] = it->color;
@@ -622,22 +624,22 @@ int drawAnimalFromChar (unsigned int i)
 			int numberModifier  = 0;
 			while (true)
 			{
-				animalCursorString++; if (animalCursorString > seedGrid[i].genes.length()) { return -1; }
-				numberModifier = (alphanumeric( seedGrid[i].genes[animalCursorString] ) ) / 2;
+				animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
+				numberModifier = (alphanumeric( genes[animalCursorString] ) ) / 2;
 				nPolyVertices = numberModifier ;
 				if (nPolyVertices > 0) {break;}
 			}
 
 #ifdef ANIMAL_DRAWING_READOUT
-			printf("char %c, index %u. Set the number of vertices of the new polygon to %u\n", seedGrid[i].genes[animalCursorString] , animalCursorString, numberModifier);
+			printf("char %c, index %u. Set the number of vertices of the new polygon to %u\n", genes[animalCursorString] , animalCursorString, numberModifier);
 #endif
 			// the second char is the radius
-			animalCursorString++; if (animalCursorString > seedGrid[i].genes.length()) { return -1; }
-			numberModifier = alphanumeric( seedGrid[i].genes[animalCursorString] ) / 2;
+			animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
+			numberModifier = alphanumeric( genes[animalCursorString] ) / 2;
 			animalCursorSegmentRadius = numberModifier ;
 
 #ifdef ANIMAL_DRAWING_READOUT
-			printf("char %c, index %u. Set radius of the new polygon to %u\n", seedGrid[i].genes[animalCursorString] , animalCursorString, numberModifier);
+			printf("char %c, index %u. Set radius of the new polygon to %u\n", genes[animalCursorString] , animalCursorString, numberModifier);
 #endif
 			for ( int j = 0; j <= nPolyVertices; ++j)
 			{
@@ -765,32 +767,32 @@ int drawAnimalFromChar (unsigned int i)
 #endif
 			// move a vertex equally in all sprites, distorting the polygon
 			// the first char is which vertex to choose
-			animalCursorString++; if (animalCursorString > seedGrid[i].genes.length()) { return -1; }
-			int numberModifier = alphanumeric( seedGrid[i].genes[animalCursorString] );
+			animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
+			int numberModifier = alphanumeric( genes[animalCursorString] );
 			int moveVertex = numberModifier;
 			if (working_polygon.size() > 0)
 			{
 				moveVertex = moveVertex % working_polygon.size();
 			}
 #ifdef ANIMAL_DRAWING_READOUT
-			printf("char %c, index %u. The vertex to move is %u\n", seedGrid[i].genes[animalCursorString] , animalCursorString, numberModifier);
+			printf("char %c, index %u. The vertex to move is %u\n", genes[animalCursorString] , animalCursorString, numberModifier);
 #endif
 
 			// the second char is x movement
-			animalCursorString++; if (animalCursorString > seedGrid[i].genes.length()) { return -1; }
-			numberModifier = alphanumeric( seedGrid[i].genes[animalCursorString] );
+			animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
+			numberModifier = alphanumeric( genes[animalCursorString] );
 			int moveX = (numberModifier - 13) / 2;
 
 #ifdef ANIMAL_DRAWING_READOUT
-			printf("char %c, index %u. Move X by %i\n", seedGrid[i].genes[animalCursorString] , animalCursorString, numberModifier);
+			printf("char %c, index %u. Move X by %i\n", genes[animalCursorString] , animalCursorString, numberModifier);
 #endif
 			// the second char is y movement
-			animalCursorString++; if (animalCursorString > seedGrid[i].genes.length()) { return -1; }
-			numberModifier = alphanumeric( seedGrid[i].genes[animalCursorString] );
+			animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
+			numberModifier = alphanumeric( genes[animalCursorString] );
 			int moveY = (numberModifier - 13) / 2;
 
 #ifdef ANIMAL_DRAWING_READOUT
-			printf("char %c, index %u. Move Y by %i\n", seedGrid[i].genes[animalCursorString] , animalCursorString, numberModifier);
+			printf("char %c, index %u. Move Y by %i\n", genes[animalCursorString] , animalCursorString, numberModifier);
 #endif
 			std::list<vec_i2>::iterator it;
 			int count = 0;
@@ -821,12 +823,12 @@ int drawAnimalFromChar (unsigned int i)
 #ifdef ANIMAL_DRAWING_READOUT
 			printf("Set red component: \n");
 #endif
-			animalCursorString++; if (animalCursorString > seedGrid[i].genes.length()) { return -1; }
-			float numberModifier = alphanumeric( seedGrid[i].genes[animalCursorString] );
+			animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
+			float numberModifier = alphanumeric( genes[animalCursorString] );
 			numberModifier = numberModifier / 26;
 
 #ifdef ANIMAL_DRAWING_READOUT
-			printf("char %c, index %u. Set red to %f\n", seedGrid[i].genes[animalCursorString] , animalCursorString, numberModifier);
+			printf("char %c, index %u. Set red to %f\n", genes[animalCursorString] , animalCursorString, numberModifier);
 #endif
 
 			animalCursorColor = Color(  numberModifier, animalCursorColor.g, animalCursorColor.b, 1.0f    );
@@ -837,12 +839,12 @@ int drawAnimalFromChar (unsigned int i)
 #ifdef ANIMAL_DRAWING_READOUT
 			printf("Set green component: \n");
 #endif
-			animalCursorString++; if (animalCursorString > seedGrid[i].genes.length()) { return -1; }
-			float numberModifier = alphanumeric( seedGrid[i].genes[animalCursorString] );
+			animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
+			float numberModifier = alphanumeric( genes[animalCursorString] );
 			numberModifier = numberModifier / 26;
 
 #ifdef ANIMAL_DRAWING_READOUT
-			printf("char %c, index %u. Set green to %f\n", seedGrid[i].genes[animalCursorString] , animalCursorString, numberModifier);
+			printf("char %c, index %u. Set green to %f\n", genes[animalCursorString] , animalCursorString, numberModifier);
 #endif
 
 			animalCursorColor = Color(  animalCursorColor.r, numberModifier, animalCursorColor.b, 1.0f    );
@@ -853,12 +855,12 @@ int drawAnimalFromChar (unsigned int i)
 #ifdef ANIMAL_DRAWING_READOUT
 			printf("Set blue component\n");
 #endif
-			animalCursorString++; if (animalCursorString > seedGrid[i].genes.length()) { return -1; }
-			float numberModifier = alphanumeric( seedGrid[i].genes[animalCursorString] );
+			animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
+			float numberModifier = alphanumeric( genes[animalCursorString] );
 			numberModifier = numberModifier / 26;
 
 #ifdef ANIMAL_DRAWING_READOUT
-			printf("char %c, index %u. Set blue to %f\n", seedGrid[i].genes[animalCursorString] , animalCursorString, numberModifier);
+			printf("char %c, index %u. Set blue to %f\n", genes[animalCursorString] , animalCursorString, numberModifier);
 #endif
 
 			animalCursorColor = Color(  animalCursorColor.r, animalCursorColor.g, numberModifier, 1.0f    );
@@ -873,13 +875,14 @@ int drawAnimalFromChar (unsigned int i)
 			return 0;
 		}
 		}
-	}
+	// }
 	return -1;
 }
 
 // given an animal seed at position i (the method by which they are transported and reproduced), turn it into a complete animal
 void drawAnimalFromSeed(unsigned int i)
 {
+	// reset everything to the beginning state
 	animalCursorFrame = FRAME_A;
 	animalCursorString = 0;
 	animalCursorSegmentRadius = 2;
@@ -888,27 +891,42 @@ void drawAnimalFromSeed(unsigned int i)
 	animalCursorColor = Color(0.5f, 0.5f, 0.5f, 1.0f);
 	animalCursorSegmentNumber = 0;
 	animalCursorEnergyDebt = 100.0f;
+
+
 	working_polygon.clear();
 	segment_particles.clear();
-	if (seedGrid[i].parentIdentity < animals.size() && seedGrid[i].stage == STAGE_ANIMAL)
+
+	unsigned int animalIdentity = seedGrid[i].parentIdentity;
+
+	if (animalIdentity < animals.size() && seedGrid[i].stage == STAGE_ANIMAL)
 	{
 
+
+
 		seedGrid[i].drawingInProgress = true;
-		Animal * a = &(animals[seedGrid[i].parentIdentity]);
+
+		// to improve code stability, this operation passes the animal and genome by literal value instead of by reference
+		// it is operated on in a factory-like way and then the original is overwritten with the modified copy
+
+		Animal  a = Animal(); //animals[animalIdentity];
+		std::string genome = seedGrid[i].genes;
+
 		printf("Drawing an animal at %u with genome length %lu \nThe first and last characters are ignored.\n", i, seedGrid[i].genes.length());
 
-		int genomeLength = seedGrid[i].genes.length();
+		// int genomeLength = genome.length();
 		int count = 0;
 
 		while (true)
 		{
-			if (drawAnimalFromChar(i) < 0 ) { break; }
-			if (animalCursorString >= seedGrid[i].genes.length()) {break;}
-			if (count > genomeLength) {break;}
+			if (drawAnimalFromChar(i, &a, genome) < 0 ) { break; }
+			if (animalCursorString >= genome.length()) {break;}
+			if (count > genome.length()) {break;}
 			count++;
 		}
-		a->reproductionCost = animalCursorEnergyDebt;
-		a->energy = 0;
+		a.reproductionCost = animalCursorEnergyDebt;
+		a.energy = 0;
+
+		animals[animalIdentity] = a;
 
 		seedGrid[i].drawingInProgress = false;
 	}
@@ -4303,7 +4321,8 @@ void thread_seeds()
 
 		else if (seedGrid[i].stage == STAGE_ANIMAL)
 		{
-			if (seedGrid[i].drawingInProgress) {continue;}
+
+			if (seedGrid[i].drawingInProgress) {continue;} // don't move the animal while it is being drawn.
 
 			if (seedGrid[i].parentIdentity < animals.size())
 			{
