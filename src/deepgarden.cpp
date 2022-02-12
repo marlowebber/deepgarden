@@ -8,7 +8,7 @@
 
 #include "main.h"
 
-#define THREAD_TIMING_READOUT 1
+// #define THREAD_TIMING_READOUT 1
 // #define PLANT_DRAWING_READOUT 1
 #define ANIMAL_DRAWING_READOUT 1
 #define DRAW_ANIMALS 1
@@ -138,7 +138,7 @@ unsigned int animalRecursionLevel = 0;
 std::list<vec_i2> working_polygon;
 std::list<ProposedLifeParticle> segment_particles;
 
-std::string exampleAnimal = std::string(" rzgzbz  pmmmbmg . ");
+std::string exampleAnimal = std::string(" rzgzbz  pmmmbaamcmz . ");
 
 int defaultTemperature = 300;
 int radiantHeatIntensity = 50; // this is a physical constant that determines how much heat radiates from material, and how strongly material heat is coupled to the atmosphere.
@@ -208,24 +208,13 @@ void thread_weather()
 			// air and weather simulation can be acheived simply by the use of the combined gas law
 			// PV / t = k
 			// P = pressure, V =  volume, t = temperature, k = a constant.
-
 			// when comparing the same substance under two different sets of conditions, the equation can be written as:
 			// ((p1 * v1) / t1   ) = ( (p2 * v2) / t2  )
 			// this is used to propagate the simulation state between neighbours.
-
 			// rearranged to solve for t1, with volume parts removed (they are all just 1):
 			//  t1 = (p1 * t2 ) / ( p2 );
-
 			// rearranged to solve for p1,
 			// p1 = (p2  *t1 ) / (t2 )
-
-
-			// unsigned int highestNeighbourPressure = 0;
-
-			// go through each weather grid square, check the neighbours. set the wind direction in this square away from the highest pressure neighbour.
-			// for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
-			// {
-
 			unsigned int neighbour = i + neighbourOffsets[ extremelyFastNumberFromZeroTo(N_NEIGHBOURS - 1) ] ;
 
 			// compute your own temperature.
@@ -240,14 +229,29 @@ void thread_weather()
 				weatherGrid[i].pressure    = ( weatherGrid[neighbour].pressure * weatherGrid[i].temperature         ) / (weatherGrid[neighbour].temperature );
 			}
 
-			// if (weatherGrid[neighbour ].pressure > highestNeighbourPressure  )
-			// {
-			// 	highestNeighbourPressure = weatherGrid[ neighbourOffsets[j] ].pressure ;
-			// 	weatherGrid[i].direction = j;
-			// }
-			// }
+
 		}
 	}
+
+
+	// else
+
+	// {
+	// 	 int highestNeighbourTemperature = 0;
+
+
+	// 	// go through each weather grid square, check the neighbours. set the wind direction in this square away from the highest pressure neighbour.
+	// 	for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
+	// 	{
+
+
+	// 	if (weatherGrid[neighbour ].pressure > highestNeighbourPressure  )
+	// 	{
+	// 		highestNeighbourPressure = weatherGrid[ neighbourOffsets[j] ].pressure ;
+	// 		weatherGrid[i].direction = j;
+	// 	}
+	// 	}
+	// }
 
 #ifdef THREAD_TIMING_READOUT
 	auto end = std::chrono::steady_clock::now();
@@ -531,6 +535,10 @@ std::list<ProposedLifeParticle> EFLA_E(vec_i2 start, vec_i2 end)
 	return v;
 }
 
+
+
+
+
 // return 0 to continue drawing sequence, return -1 to break sequence by one level.
 int drawAnimalFromChar (unsigned int i, Animal * a, std::string genes )
 {
@@ -546,72 +554,75 @@ int drawAnimalFromChar (unsigned int i, Animal * a, std::string genes )
 #endif
 	switch (c)
 	{
-	case '.': // commit the segment drawing to the sprite
-	{
-#ifdef ANIMAL_DRAWING_READOUT
-		printf("Commit segment to sprite and go to new segment. " );
-#endif
-		int count = 0;
-		for (std::list<ProposedLifeParticle>::iterator it = segment_particles.begin(); it != segment_particles.end(); ++it)
-		{
-			int j = (it->position.y * sizeAnimalSprite) + it->position.x;
-			if ( j < (sizeAnimalSprite * sizeAnimalSprite) && j >= 0)
-			{
-				a->segments[animalCursorSegmentNumber].frameA[j] = it->color;
-				a->segments[animalCursorSegmentNumber].frameB[j] = it->color;
-				a->segments[animalCursorSegmentNumber].frameC[j] = it->color;
-				count++;
-			}
-		}
-#ifdef ANIMAL_DRAWING_READOUT
-		printf("The amount of committed particles was %u.\n", count );
-#endif
-		segment_particles.clear();
-		animalCursorSegmentNumber++;
-		return 0;
-	}
+// 	case '.': // commit the segment drawing to the sprite
+// 	{
+// #ifdef ANIMAL_DRAWING_READOUT
+// 		printf("Commit segment to sprite and go to new segment. " );
+// #endif
+// 		int count = 0;
+// 		for (std::list<ProposedLifeParticle>::iterator it = segment_particles.begin(); it != segment_particles.end(); ++it)
+// 		{
+// 			int j = (it->position.y * sizeAnimalSprite) + it->position.x;
+// 			if ( j < (sizeAnimalSprite * sizeAnimalSprite) && j >= 0)
+// 			{
+// 				a->segments[animalCursorSegmentNumber].frameA[j] = it->color;
+// 				a->segments[animalCursorSegmentNumber].frameB[j] = it->color;
+// 				a->segments[animalCursorSegmentNumber].frameC[j] = it->color;
+// 				count++;
+// 			}
+// 		}
 
-	case 'p': // populate the working polygon.
-	{
-#ifdef ANIMAL_DRAWING_READOUT
-		printf("Clear and populate working polygon.\n" );
-#endif
-		working_polygon.clear();
-		// draw a n sided polygon in the vertices buffer.
-		// the first char is the number of vertices
-		int nPolyVertices = 0;
-		int numberModifier  = 0;
-		while (true)
-		{
-			animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
-			numberModifier = (alphanumeric( genes[animalCursorString] ) ) / 2;
-			nPolyVertices = numberModifier ;
-			if (nPolyVertices > 0) {break;}
-		}
 
-#ifdef ANIMAL_DRAWING_READOUT
-		printf("char %c, index %u. Set the number of vertices of the new polygon to %u\n", genes[animalCursorString] , animalCursorString, numberModifier);
-#endif
-		// the second char is the radius
-		animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
-		numberModifier = alphanumeric( genes[animalCursorString] ) / 2;
-		animalCursorSegmentRadius = numberModifier ;
 
-#ifdef ANIMAL_DRAWING_READOUT
-		printf("char %c, index %u. Set radius of the new polygon to %u\n", genes[animalCursorString] , animalCursorString, numberModifier);
-#endif
-		for ( int j = 0; j <= nPolyVertices; ++j)
-		{
-			float fj = j;
-			float angle = (fj * (3.1415f / nPolyVertices)  ) + (0.5f * 3.1415f);  // only 1 pi so it draws a semi circle.
-			float fnewVertX = (animalCursorSegmentRadius * cos(angle)) ;
-			float fnewVertY = (animalCursorSegmentRadius * sin(angle)) ;
-			int newVertX = fnewVertX;
-			int newVertY = fnewVertY;
-			working_polygon.push_back ( vec_i2( newVertX, newVertY ) );
-		}
-		return 0;
-	}
+// #ifdef ANIMAL_DRAWING_READOUT
+// 		printf("The amount of committed particles was %u.\n", count );
+// #endif
+// 		segment_particles.clear();
+// 		animalCursorSegmentNumber++;
+// 		return 0;
+// 	}
+
+// 	case 'p': // populate the working polygon.
+// 	{
+// #ifdef ANIMAL_DRAWING_READOUT
+// 		printf("Clear and populate working polygon.\n" );
+// #endif
+// 		working_polygon.clear();
+// 		// draw a n sided polygon in the vertices buffer.
+// 		// the first char is the number of vertices
+// 		int nPolyVertices = 0;
+// 		int numberModifier  = 0;
+// 		while (true)
+// 		{
+// 			animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
+// 			numberModifier = (alphanumeric( genes[animalCursorString] ) ) / 4;
+// 			nPolyVertices = numberModifier ;
+// 			if (nPolyVertices > 0) {break;}
+// 		}
+
+// #ifdef ANIMAL_DRAWING_READOUT
+// 		printf("char %c, index %u. Set the number of vertices of the new polygon to %u\n", genes[animalCursorString] , animalCursorString, numberModifier);
+// #endif
+// 		// the second char is the radius
+// 		animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
+// 		numberModifier = alphanumeric( genes[animalCursorString] ) / 4;
+// 		animalCursorSegmentRadius = numberModifier ;
+
+// #ifdef ANIMAL_DRAWING_READOUT
+// 		printf("char %c, index %u. Set radius of the new polygon to %u\n", genes[animalCursorString] , animalCursorString, numberModifier);
+// #endif
+// 		for ( int j = 0; j <= nPolyVertices; ++j)
+// 		{
+// 			float fj = j;
+// 			float angle = (fj * (3.1415f / nPolyVertices)  ) + (0.5f * 3.1415f);  // only 1 pi so it draws a semi circle.
+// 			float fnewVertX = (animalCursorSegmentRadius * cos(angle)) + (sizeAnimalSprite / 2);
+// 			float fnewVertY = (animalCursorSegmentRadius * sin(angle)) + (sizeAnimalSprite / 2);
+// 			int newVertX = fnewVertX;
+// 			int newVertY = fnewVertY;
+// 			working_polygon.push_back ( vec_i2( newVertX, newVertY ) );
+// 		}
+// 		return 0;
+// 	}
 
 	case ' ':  // commit the working polygon.
 	{
@@ -629,7 +640,7 @@ int drawAnimalFromChar (unsigned int i, Animal * a, std::string genes )
 				int count = 0;
 				for (std::list<vec_i2>::iterator it = working_polygon.begin(); it != working_polygon.end(); ++it)
 				{
-					int mirrorX =  it->x * -1; ;//((sizeAnimalSprite / 2) - it->x ) + (sizeAnimalSprite / 2);
+					int mirrorX = ((sizeAnimalSprite / 2) - it->x ) + (sizeAnimalSprite / 2);
 					mirrorVerts.push_back( vec_i2( mirrorX , it->y ) );
 					count++;
 				}
@@ -656,16 +667,93 @@ int drawAnimalFromChar (unsigned int i, Animal * a, std::string genes )
 				}
 			}
 
-			// scan-fill the polygon.
-			if (false)
-			{
-				for (int j = 0; j < (sizeAnimalSprite * sizeAnimalSprite); ++j)
-				{
 
-				}
-			}
 			working_polygon.clear();
 		}
+
+
+
+
+
+#ifdef ANIMAL_DRAWING_READOUT
+		printf("Commit segment to sprite and go to new segment. " );
+#endif
+		int count = 0;
+		for (std::list<ProposedLifeParticle>::iterator it = segment_particles.begin(); it != segment_particles.end(); ++it)
+		{
+			int j = (it->position.y * sizeAnimalSprite) + it->position.x;
+			if ( j < (sizeAnimalSprite * sizeAnimalSprite) && j >= 0)
+			{
+				a->segments[animalCursorSegmentNumber].frameA[j] = it->color;
+				a->segments[animalCursorSegmentNumber].frameB[j] = it->color;
+				a->segments[animalCursorSegmentNumber].frameC[j] = it->color;
+				count++;
+			}
+		}
+
+
+
+#ifdef ANIMAL_DRAWING_READOUT
+		printf("The amount of committed particles was %u.\n", count );
+#endif
+		segment_particles.clear();
+
+
+		// don't advance the segment if the prior one was empty. No empty segments!
+		if (count > 0)
+		{
+			animalCursorSegmentNumber++;
+		}
+
+
+
+
+
+#ifdef ANIMAL_DRAWING_READOUT
+		printf("Clear and populate working polygon.\n" );
+#endif
+		working_polygon.clear();
+		// draw a n sided polygon in the vertices buffer.
+		// the first char is the number of vertices
+		int nPolyVertices = 0;
+		int numberModifier  = 0;
+		while (true)
+		{
+			animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
+			numberModifier = (alphanumeric( genes[animalCursorString] ) ) / 4;
+			nPolyVertices = numberModifier ;
+			if (nPolyVertices > 0) {break;}
+		}
+
+#ifdef ANIMAL_DRAWING_READOUT
+		printf("char %c, index %u. Set the number of vertices of the new polygon to %u\n", genes[animalCursorString] , animalCursorString, numberModifier);
+#endif
+		// the second char is the radius
+		animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
+		numberModifier = alphanumeric( genes[animalCursorString] ) / 4;
+		animalCursorSegmentRadius = numberModifier ;
+
+#ifdef ANIMAL_DRAWING_READOUT
+		printf("char %c, index %u. Set radius of the new polygon to %u\n", genes[animalCursorString] , animalCursorString, numberModifier);
+#endif
+		for ( int j = 0; j <= nPolyVertices; ++j)
+		{
+			float fj = j;
+			float angle = (fj * (3.1415f / nPolyVertices)  ) + (0.5f * 3.1415f);  // only 1 pi so it draws a semi circle.
+			float fnewVertX = (animalCursorSegmentRadius * cos(angle)) + (sizeAnimalSprite / 2);
+			float fnewVertY = (animalCursorSegmentRadius * sin(angle)) + (sizeAnimalSprite / 2);
+			int newVertX = fnewVertX;
+			int newVertY = fnewVertY;
+			working_polygon.push_back ( vec_i2( newVertX, newVertY ) );
+		}
+
+
+
+
+
+
+
+
 		return 0;
 	}
 	case 'm':
@@ -692,7 +780,7 @@ int drawAnimalFromChar (unsigned int i, Animal * a, std::string genes )
 		int moveX = (numberModifier - 13) / 2;
 
 #ifdef ANIMAL_DRAWING_READOUT
-		printf("char %c, index %u. Move X by %i\n", genes[animalCursorString] , animalCursorString, numberModifier);
+		printf("char %c, index %u. Move X by %i\n", genes[animalCursorString] , animalCursorString, moveX);
 #endif
 		// the second char is y movement
 		animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
@@ -700,7 +788,7 @@ int drawAnimalFromChar (unsigned int i, Animal * a, std::string genes )
 		int moveY = (numberModifier - 13) / 2;
 
 #ifdef ANIMAL_DRAWING_READOUT
-		printf("char %c, index %u. Move Y by %i\n", genes[animalCursorString] , animalCursorString, numberModifier);
+		printf("char %c, index %u. Move Y by %i\n", genes[animalCursorString] , animalCursorString, moveY);
 #endif
 		std::list<vec_i2>::iterator it;
 		int count = 0;
