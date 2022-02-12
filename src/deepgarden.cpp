@@ -539,6 +539,78 @@ std::list<ProposedLifeParticle> EFLA_E(vec_i2 start, vec_i2 end)
 
 
 
+
+void fillAPolygon(Animal * a, unsigned int usegmentNumber)
+{
+
+	int segmentNumber = usegmentNumber;
+
+	// traverse the sprite.  you will be setting alpha to -1 to mark a pixel that has connection to the outside.
+	// if a pixel is an edge neighbour (cardinal direction) of a -1 pixel or the edge of the sprite, set it also to -1.
+	// ignore pixels that have an alpha value other than 0 or -1. this way, you will not intrude into the image.
+	// print the output.
+
+	for (unsigned int i = 0; i < sizeAnimalSprite * sizeAnimalSprite; ++i)
+	{
+
+		if (
+		    (
+		        i < sizeAnimalSprite  										||  // if i is on the bottom edge of the sprite, or
+		        i > ((sizeAnimalSprite - 1)*sizeAnimalSprite)              	||  // if i is on the top edge of the sprite, or
+		        i % sizeAnimalSprite == 0                               	||  // if i is on one side of the sprite, or
+		        i % sizeAnimalSprite == 1            	    // if i is on the other edge of the sprite
+		    ) &&
+		    (
+		        a->segments[segmentNumber].frameA[i].a == 0.0f						// and the pixel is not already drawn.
+		    )
+
+		)
+		{
+			a->segments[segmentNumber].frameA[i].a = -1.0f;						// set the alpha to -1.0f, which does not occur in our drawings normally, and so can be used to mark a pixel with connection to the edge.
+		}
+
+
+	}
+
+	for (unsigned int k = 0; k < (sizeAnimalSprite/2); ++k) // multiple passes help to ensure there are no daggy bits left 
+	{
+		for (unsigned int i = 0; i < (sizeAnimalSprite * sizeAnimalSprite); ++i)
+		{
+			if ( a->segments[segmentNumber].frameA[  i ].a > 0.0f) {continue;}
+			unsigned int spriteNeighbours[] =												// calculate the addresses of the four cardinal neighbours.
+			{
+				i - 1,
+				i + 1,
+				i - sizeAnimalSprite,
+				i + sizeAnimalSprite
+			};
+
+			for (unsigned int j = 0; j < 4; ++j)
+			{
+				unsigned int neighbour = spriteNeighbours[j];
+				if (neighbour > (sizeAnimalSprite * sizeAnimalSprite)) {continue;}
+				if (
+				    a->segments[segmentNumber].frameA[  neighbour ].a == -1.0f
+				)
+				{
+					a->segments[segmentNumber].frameA[  i ].a = -1.0f;
+				}
+			}
+		}
+	}
+
+	for (unsigned int i = 0; i < sizeAnimalSprite * sizeAnimalSprite; ++i)
+	{
+		if      (a->segments[segmentNumber].frameA[i].a == -1.0f) { printf("_"); }
+		else if (a->segments[segmentNumber].frameA[i].a ==  0.0f) { printf("O"); }
+		else if (a->segments[segmentNumber].frameA[i].a >  0.0f)  { printf("X"); }
+		if      (i % sizeAnimalSprite == 0)                       { printf("\n"); }
+	}
+}
+
+
+
+
 // return 0 to continue drawing sequence, return -1 to break sequence by one level.
 int drawAnimalFromChar (unsigned int i, Animal * a, std::string genes )
 {
@@ -693,15 +765,23 @@ int drawAnimalFromChar (unsigned int i, Animal * a, std::string genes )
 
 
 
+
+
+
+
 #ifdef ANIMAL_DRAWING_READOUT
 		printf("The amount of committed particles was %u.\n", count );
 #endif
 		segment_particles.clear();
 
 
-		// don't advance the segment if the prior one was empty. No empty segments!
+		// don't advance the segment if the prior one was empty. No empty segments! don't bother filling empty segments either!
 		if (count > 0)
 		{
+
+
+			fillAPolygon(a, animalCursorSegmentNumber);
+
 			animalCursorSegmentNumber++;
 		}
 
