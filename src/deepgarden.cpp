@@ -713,9 +713,7 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 			}
 
 
-#ifdef ANIMAL_DRAWING_READOUT
-			printf("Commit segment to sprite and go to new segment. " );
-#endif
+
 			int count = 0;
 			for (std::list<ProposedLifeParticle>::iterator it = segment_particles[frameIndex].begin(); it != segment_particles[frameIndex].end(); ++it)
 			{
@@ -728,26 +726,30 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 			}
 
 #ifdef ANIMAL_DRAWING_READOUT
-			printf("The amount of committed particles was %u.\n", count );
+			printf("Commit segment to sprite. The amount of committed particles was %u.\n", count );
 #endif
 
 
-			if (count > 0) // don't advance the segment if the prior one was empty. No empty segments! don't bother filling empty segments either!
-			{
-				fillAPolygon(animalIndex, animalCursorSegmentNumber, frameIndex);
+			// if (count > 0) // don't advance the segment if the prior one was empty. No empty segments! don't bother filling empty segments either!
+			// {
+			fillAPolygon(animalIndex, animalCursorSegmentNumber, frameIndex);
 
 
-				animalCursorSegmentNumber++;
-			}
+			// }
 
 #ifdef ANIMAL_DRAWING_READOUT
-			printf("Clear and populate working polygon.\n" );
+			printf("Clear working polygons.\n" );
 #endif
 			segment_particles[frameIndex].clear();
 			working_polygon[frameIndex].clear();
 
 		}
 
+
+#ifdef ANIMAL_DRAWING_READOUT
+		printf("Go to new segment. \n" );
+#endif
+		animalCursorSegmentNumber++;
 
 		// draw a n sided polygon in the vertices buffer.
 		// the first char is the number of vertices
@@ -787,21 +789,19 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 		}
 		return 0;
 	}
-	case 'm':
+
+	case 'o':
 	{
 
 #ifdef ANIMAL_DRAWING_READOUT
-		printf("Move a vertex in the working polygon: \n");
+		printf("Move a vertex in the working polygon equally in all frames: \n");
 #endif
 		// move a vertex equally in all sprites, distorting the polygon
 		// the first char is which vertex to choose
 		animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
 		int numberModifier = alphanumeric( genes[animalCursorString] );
 		int moveVertex = numberModifier;
-		if (working_polygon[animalCursorFrame].size() > 0)
-		{
-			moveVertex = moveVertex % working_polygon[animalCursorFrame].size();
-		}
+
 #ifdef ANIMAL_DRAWING_READOUT
 		printf("char %c, index %u. The vertex to move is %u\n", genes[animalCursorString] , animalCursorString, numberModifier);
 #endif
@@ -823,6 +823,78 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 #endif
 
 
+		for (int frameIndex = 0; frameIndex < numberOfFrames; ++frameIndex) // this operation applies to all frames.
+		{
+			if (working_polygon[frameIndex].size() > 0)
+			{
+				moveVertex = moveVertex % working_polygon[frameIndex].size();
+			}
+
+			std::list<vec_i2>::iterator it;
+			int count = 0;
+			for (it = working_polygon[frameIndex].begin(); it != working_polygon[frameIndex].end(); ++it)
+			{
+				if (count == moveVertex)
+				{
+					// make sure the move operation does not push the vertex outside of the sprite boundary.
+					if      (it->x + moveX > ((sizeAnimalSprite / 2) *  1 )  ) { it->x = (sizeAnimalSprite / 2) *  1; }
+					else if (it->x + moveX < ((sizeAnimalSprite / 2) * -1 )  ) { it->x = (sizeAnimalSprite / 2) * -1; }
+					else                                                       { it->x += moveX;}
+
+					// make sure the move operation does not push the vertex outside of the sprite boundary.
+					if      (it->y + moveY > ((sizeAnimalSprite / 2) *  1 )  ) { it->y = (sizeAnimalSprite / 2) *  1; }
+					else if (it->y + moveY < ((sizeAnimalSprite / 2) * -1 )  ) { it->y = (sizeAnimalSprite / 2) * -1; }
+					else                                                       { it->y += moveY;}
+				}
+				count++;
+			}
+
+
+		}
+
+		return 0;
+	}
+
+
+	case 'm':
+	{
+
+#ifdef ANIMAL_DRAWING_READOUT
+		printf("Move a vertex in the working polygon, in the active frame only: \n");
+#endif
+		// move a vertex equally in all sprites, distorting the polygon
+		// the first char is which vertex to choose
+		animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
+		int numberModifier = alphanumeric( genes[animalCursorString] );
+		int moveVertex = numberModifier;
+
+#ifdef ANIMAL_DRAWING_READOUT
+		printf("char %c, index %u. The vertex to move is %u\n", genes[animalCursorString] , animalCursorString, numberModifier);
+#endif
+		// the second char is x movement
+		animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
+		numberModifier = alphanumeric( genes[animalCursorString] );
+		int moveX = (numberModifier - 13) / 2;
+
+#ifdef ANIMAL_DRAWING_READOUT
+		printf("char %c, index %u. Move X by %i\n", genes[animalCursorString] , animalCursorString, moveX);
+#endif
+		// the second char is y movement
+		animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
+		numberModifier = alphanumeric( genes[animalCursorString] );
+		int moveY = (numberModifier - 13) / 2;
+
+#ifdef ANIMAL_DRAWING_READOUT
+		printf("char %c, index %u. Move Y by %i\n", genes[animalCursorString] , animalCursorString, moveY);
+#endif
+
+
+
+		if (working_polygon[animalCursorFrame].size() > 0)
+		{
+			moveVertex = moveVertex % working_polygon[animalCursorFrame].size();
+		}
+
 		std::list<vec_i2>::iterator it;
 		int count = 0;
 		for (it = working_polygon[animalCursorFrame].begin(); it != working_polygon[animalCursorFrame].end(); ++it)
@@ -841,6 +913,9 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 			}
 			count++;
 		}
+
+
+
 
 		return 0;
 	}
