@@ -138,7 +138,7 @@ unsigned int animalRecursionLevel = 0;
 std::list<vec_i2> working_polygon[numberOfFrames];
 std::list<ProposedLifeParticle> segment_particles[numberOfFrames];
 
-std::string exampleAnimal = std::string(" rzgzbz  pmmmbaamcmz . ");
+std::string exampleAnimal = std::string(" rzgzbz  pmmmbaamcmz .g");
 
 int defaultTemperature = 300;
 int radiantHeatIntensity = 50; // this is a physical constant that determines how much heat radiates from material, and how strongly material heat is coupled to the atmosphere.
@@ -665,91 +665,117 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 	{
 
 #ifdef ANIMAL_DRAWING_READOUT
-		printf("Commit working polygon to segment\n");
+		printf("Commit working polygon to segment : ");
 #endif
 
+
+
+		// first, check to see if the segment has actually been populated. this is often not the case early in the gene string.
+		// if it is not ready, skip to the part where you set up new polygons.
+		unsigned int readyFrames  = 0;
 		for (int frameIndex = 0; frameIndex < numberOfFrames; ++frameIndex) // this operation applies to all frames.
 		{
 			if (working_polygon[frameIndex].size() > 0)
 			{
-
-				// mirror the working vertices in X axis before lines are drawn.
-				// mirroring is done before line drawing to prevent confusion at the y intercept.
-				if (true)
-				{
-					std::list<vec_i2> mirrorVerts;
-					int count = 0;
-					for (std::list<vec_i2>::iterator it = working_polygon[frameIndex].begin(); it != working_polygon[frameIndex].end(); ++it)
-					{
-						int mirrorX = ((sizeAnimalSprite / 2) - it->x ) + (sizeAnimalSprite / 2);
-						mirrorVerts.push_back( vec_i2( mirrorX , it->y ) );
-						count++;
-					}
-					mirrorVerts.reverse(); // prevents a 'twist' in the geometry
-					working_polygon[frameIndex].splice(working_polygon[frameIndex].end(), mirrorVerts);
-				}
-
-				// draw lines connecting the vertices.
-				if (true)
-				{
-					int count = 0;
-					vec_i2 lastVert = working_polygon[frameIndex].back();
-					for (std::list<vec_i2>::iterator it = working_polygon[frameIndex].begin(); it != working_polygon[frameIndex].end(); ++it)
-					{
-						vec_i2 currentVert = *(it);
-						std::list<ProposedLifeParticle> newParticles =  EFLA_E(   lastVert, currentVert  ) ;
-						for (std::list<ProposedLifeParticle>::iterator np = newParticles.begin(); np != newParticles.end(); ++np)
-						{
-							np->color = animalCursorColor;
-							segment_particles[frameIndex].push_back( *(np)  );
-						}
-						lastVert = currentVert;
-						count++;
-					}
-				}
-
-
-				working_polygon[frameIndex].clear();
+				readyFrames++;
 			}
+		}
+		if (readyFrames == numberOfFrames)
+		{
+// 
 
 
-
-			int count = 0;
-			for (std::list<ProposedLifeParticle>::iterator it = segment_particles[frameIndex].begin(); it != segment_particles[frameIndex].end(); ++it)
-			{
-				int j = (it->position.y * sizeAnimalSprite) + it->position.x;
-				if ( j < (sizeAnimalSprite * sizeAnimalSprite) && j >= 0)
-				{
-					a->segments[animalCursorSegmentNumber].frames[ (sizeAnimalSprite * sizeAnimalSprite * frameIndex) + j ] = it->color;
-					count++;
-				}
-			}
-
-#ifdef ANIMAL_DRAWING_READOUT
-			printf("Commit segment to sprite. The amount of committed particles was %u.\n", count );
-#endif
-
-
-			// if (count > 0) // don't advance the segment if the prior one was empty. No empty segments! don't bother filling empty segments either!
-			// {
-			fillAPolygon(animalIndex, animalCursorSegmentNumber, frameIndex);
-
-
+			// 	return 0;
 			// }
 
-#ifdef ANIMAL_DRAWING_READOUT
-			printf("Clear working polygons.\n" );
-#endif
-			segment_particles[frameIndex].clear();
-			working_polygon[frameIndex].clear();
+			for (int frameIndex = 0; frameIndex < numberOfFrames; ++frameIndex) // this operation applies to all frames.
+			{
+				if (working_polygon[frameIndex].size() > 0)
+				{
 
+					// mirror the working vertices in X axis before lines are drawn.
+					// mirroring is done before line drawing to prevent confusion at the y intercept.
+					if (true)
+					{
+						std::list<vec_i2> mirrorVerts;
+						int count = 0;
+						for (std::list<vec_i2>::iterator it = working_polygon[frameIndex].begin(); it != working_polygon[frameIndex].end(); ++it)
+						{
+							int mirrorX = ((sizeAnimalSprite / 2) - it->x ) + (sizeAnimalSprite / 2);
+							mirrorVerts.push_back( vec_i2( mirrorX , it->y ) );
+							count++;
+						}
+						mirrorVerts.reverse(); // prevents a 'twist' in the geometry
+						working_polygon[frameIndex].splice(working_polygon[frameIndex].end(), mirrorVerts);
+					}
+
+					// draw lines connecting the vertices.
+					if (true)
+					{
+						int count = 0;
+						vec_i2 lastVert = working_polygon[frameIndex].back();
+						for (std::list<vec_i2>::iterator it = working_polygon[frameIndex].begin(); it != working_polygon[frameIndex].end(); ++it)
+						{
+							vec_i2 currentVert = *(it);
+							std::list<ProposedLifeParticle> newParticles =  EFLA_E(   lastVert, currentVert  ) ;
+							for (std::list<ProposedLifeParticle>::iterator np = newParticles.begin(); np != newParticles.end(); ++np)
+							{
+								np->color = animalCursorColor;
+								segment_particles[frameIndex].push_back( *(np)  );
+							}
+							lastVert = currentVert;
+							count++;
+						}
+					}
+
+
+					working_polygon[frameIndex].clear();
+				}
+
+
+
+				int count = 0;
+				for (std::list<ProposedLifeParticle>::iterator it = segment_particles[frameIndex].begin(); it != segment_particles[frameIndex].end(); ++it)
+				{
+					int j = (it->position.y * sizeAnimalSprite) + it->position.x;
+					if ( j < (sizeAnimalSprite * sizeAnimalSprite) && j >= 0)
+					{
+						a->segments[animalCursorSegmentNumber].frames[ (sizeAnimalSprite * sizeAnimalSprite * frameIndex) + j ] = it->color;
+						count++;
+					}
+				}
+
+#ifdef ANIMAL_DRAWING_READOUT
+				printf("\nCommit segment to sprite. The amount of committed particles was %u.\n", count );
+#endif
+
+
+				// if (count > 0) // don't advance the segment if the prior one was empty. No empty segments! don't bother filling empty segments either!
+				// {
+				fillAPolygon(animalIndex, animalCursorSegmentNumber, frameIndex);
+
+
+				// }
+
+#ifdef ANIMAL_DRAWING_READOUT
+				printf("Clear working polygons.\n" );
+#endif
+				segment_particles[frameIndex].clear();
+				working_polygon[frameIndex].clear();
+
+			}
+
+
+#ifdef ANIMAL_DRAWING_READOUT
+			printf("Go to new segment. \n" );
+#endif
+			animalCursorSegmentNumber++;
 		}
-
-
+		else {
 #ifdef ANIMAL_DRAWING_READOUT
-		printf("Go to new segment. \n" );
+			printf("The segment was not ready to commit.\n");
 #endif
-		animalCursorSegmentNumber++;
+		}
 
 		// draw a n sided polygon in the vertices buffer.
 		// the first char is the number of vertices
@@ -4007,4 +4033,5 @@ void drawLandscapeFromString(std::string genes)
 			break;
 		}
 	}
+
 }
