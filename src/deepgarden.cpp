@@ -409,15 +409,27 @@ AnimalSegment::AnimalSegment()
 
 struct Animal
 {
-	float energy;
-	float reproductionCost;
-	unsigned int reach;
-	unsigned int movementChance;
+
+
+	// unsigned int movementChance;
 	AnimalSegment segments[maxAnimalSegments];
 	unsigned int segmentsUsed;
 	unsigned int movementFlags;
 	unsigned int direction;
 	unsigned int energyFlags;
+
+	unsigned int landMovementChance;
+	unsigned int fluidMovementChance;
+	float potency;
+	unsigned int reach;
+	int attack;
+	int defence;
+	float maxStoredEnergy;
+	float energy;
+	float reproductionCost;
+	int hitPoints;
+
+
 	Animal();
 };
 
@@ -427,10 +439,23 @@ Animal::Animal()
 {
 	this->energyFlags = ENERGYSOURCE_PLANT;
 	this->direction = 4;
-	this->energy = 0.0f;
-	this->reach = 5;
-	this->movementChance = 4;
+	// this->energy = 0.0f;
+	// this->reach = 5;
+	// this->movementChance = 4;
 	this->segmentsUsed = 0;
+
+
+	this->landMovementChance = 4;
+	this->fluidMovementChance = 16;
+	this->potency = 4.0f;
+	this->reach = 4;
+	this->attack = 4;
+	this->defence = 4;
+	this->maxStoredEnergy = 100.0f;
+	this->energy = 50.0f;
+	this->reproductionCost = 100.0f;
+	this->hitPoints = 16;
+
 
 	for (int i = 0; i < maxAnimalSegments; ++i)
 	{
@@ -1015,6 +1040,283 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 	return -1;
 }
 
+
+
+void measureAnimalQualities(unsigned int animalIndex)
+{
+	if (animalIndex >= animals.size())				{return;}
+
+	Animal * a = &(animals[animalIndex]);
+
+// Land movement chance  = surface area difference between A and B sprite, avg over all segments
+// fluid movement chance = total area differences between A and B sprite, avg over all segments
+// potency               = bright color, universal expense & quality modifier. Avg over all segments
+// Reach                 = distance from center of the furthest motion-involved pixel
+// Attack stat = diffs between B and C sprite, sum over all segments
+// Defence stat = coefficient of drawing circularity on the B sprite, avg over all segments
+// Maximum stored energy, reproduction cost, hit points = total area sum over all segments
+
+	// landMovementChance
+	unsigned int avgSurfaceAreaDiff = 0;
+	for (unsigned int j = 0; j < a->segmentsUsed; ++j)
+	{
+		unsigned int diffsThisSegment = 0;
+		for (unsigned int k = 0; k < (sizeAnimalSprite * sizeAnimalSprite); ++k)
+		{
+			// check if the pixel is set in B.
+			unsigned int pixelIndexA = (sizeAnimalSprite * sizeAnimalSprite * FRAME_A) + k;
+			unsigned int pixelIndexB = (sizeAnimalSprite * sizeAnimalSprite * FRAME_B) + k;
+
+			if (a->segments[j].frames[pixelIndexB].a > 0.0f)
+			{
+				// check that the pixel is SURFACE, which means it has an empty cardinal neighbour.
+				unsigned int surface = false;
+				unsigned int neighbours[] =
+				{
+					k - 1,
+					k + 1,
+					k - sizeAnimalSprite,
+					k + sizeAnimalSprite
+				};
+				for (unsigned int l = 0; l < 4; ++l)
+				{
+					unsigned int neighbourIndex = pixelIndexA + (neighbours[l] % (sizeAnimalSprite * sizeAnimalSprite));
+
+					if (a->segments[j].frames[ neighbourIndex].a == 0.0f)
+					{
+						surface = true;
+						break;
+					}
+				}
+
+				if (surface)
+				{
+					// check if the pixel is NOT set in A.
+					if (a->segments[j].frames[pixelIndexA].a == 0.0f)
+					{
+						diffsThisSegment ++;
+					}
+				}
+			}
+		}
+		avgSurfaceAreaDiff += diffsThisSegment;
+	}
+	avgSurfaceAreaDiff = (avgSurfaceAreaDiff / a->segmentsUsed);
+	a->landMovementChance = avgSurfaceAreaDiff;
+
+	// fluidMovementChance
+	unsigned int avgAreaDiff = 0;
+	for (unsigned int j = 0; j < a->segmentsUsed; ++j)
+	{
+		unsigned int diffsThisSegment = 0;
+		for (unsigned int k = 0; k < (sizeAnimalSprite * sizeAnimalSprite); ++k)
+		{
+			// check if the pixel is set in B.
+			unsigned int pixelIndexA = (sizeAnimalSprite * sizeAnimalSprite * FRAME_A) + k;
+			unsigned int pixelIndexB = (sizeAnimalSprite * sizeAnimalSprite * FRAME_B) + k;
+
+			if (a->segments[j].frames[pixelIndexB].a > 0.0f)
+			{
+				// check if the pixel is NOT set in A.
+				if (a->segments[j].frames[pixelIndexA].a == 0.0f)
+				{
+					diffsThisSegment ++;
+				}
+			}
+		}
+		avgAreaDiff += diffsThisSegment;
+	}
+	avgAreaDiff = (avgAreaDiff / a->segmentsUsed);
+	a->fluidMovementChance = avgAreaDiff;
+
+
+
+	// potency
+	float avgColorIntensity = 0;
+	for (unsigned int j = 0; j < a->segmentsUsed; ++j)
+	{
+		float colorIntensityThisSegment = 0;
+		float countThisSegment = 0;
+		for (unsigned int k = 0; k < (sizeAnimalSprite * sizeAnimalSprite); ++k)
+		{
+			// check if the pixel is set in B.
+			unsigned int pixelOffset = (sizeAnimalSprite * sizeAnimalSprite * FRAME_B) + k;
+
+			if (a->segments[j].frames[pixelOffset].a > 0.0f)
+			{
+				float avgPixelColor = ( a->segments[j].frames[pixelOffset].r + a->segments[j].frames[pixelOffset].g + a->segments[j].frames[pixelOffset].b ) / 3;
+
+				float redDiff   = abs(a->segments[j].frames[pixelOffset].r - avgPixelColor);
+				float greenDiff = abs(a->segments[j].frames[pixelOffset].g - avgPixelColor);
+				float blueDiff  = abs(a->segments[j].frames[pixelOffset].b - avgPixelColor);
+
+				colorIntensityThisSegment += redDiff;
+				colorIntensityThisSegment += greenDiff;
+				colorIntensityThisSegment += blueDiff;
+
+				countThisSegment += 1.0f;
+			}
+		}
+		colorIntensityThisSegment  = colorIntensityThisSegment / countThisSegment;
+		avgColorIntensity += colorIntensityThisSegment;
+	}
+	avgColorIntensity = avgColorIntensity / a->segmentsUsed;
+	a->potency = avgColorIntensity;
+
+
+	// reach
+	float largestReach = 0;
+	for (unsigned int j = 0; j < a->segmentsUsed; ++j)
+	{
+		for (unsigned int k = 0; k < (sizeAnimalSprite * sizeAnimalSprite); ++k)
+		{
+			// check if the pixel is set in B.
+			unsigned int pixelIndexA = (sizeAnimalSprite * sizeAnimalSprite * FRAME_A) + k;
+			unsigned int pixelIndexB = (sizeAnimalSprite * sizeAnimalSprite * FRAME_B) + k;
+
+			if (a->segments[j].frames[pixelIndexB].a > 0.0f)
+			{
+				// check if the pixel is NOT set in A.
+				if (a->segments[j].frames[pixelIndexA].a == 0.0f)
+				{
+
+					// find how far the pixel is from the center.
+					int pixelX = k % sizeAnimalSprite;
+					int pixelY = k / sizeAnimalSprite;
+					int centerX = (sizeAnimalSprite / 2);
+					int centerY = (sizeAnimalSprite / 2);
+					int diffX = pixelX - centerX;
+					int diffY = pixelY - centerY;
+					float pixelDistance = magnitude_int(diffX, diffY);
+
+					if (pixelDistance > largestReach)
+					{
+						largestReach = pixelDistance;
+					}
+
+				}
+
+			}
+		}
+	}
+	a->reach = largestReach;
+
+
+	// attack
+	unsigned int avgACAreaDiff = 0;
+	for (unsigned int j = 0; j < a->segmentsUsed; ++j)
+	{
+		unsigned int diffsThisSegment = 0;
+		for (unsigned int k = 0; k < (sizeAnimalSprite * sizeAnimalSprite); ++k)
+		{
+			// check if the pixel is set in A.
+			unsigned int pixelIndexA = (sizeAnimalSprite * sizeAnimalSprite * FRAME_A) + k;
+			unsigned int pixelIndexC = (sizeAnimalSprite * sizeAnimalSprite * FRAME_C) + k;
+
+			if (a->segments[j].frames[pixelIndexA].a > 0.0f)
+			{
+				// check if the pixel is NOT set in C.
+				if (a->segments[j].frames[pixelIndexC].a == 0.0f)
+				{
+					diffsThisSegment ++;
+				}
+			}
+		}
+		avgACAreaDiff += diffsThisSegment;
+	}
+	avgACAreaDiff = (avgACAreaDiff / a->segmentsUsed);
+	a->attack = avgACAreaDiff;
+
+
+
+	// defence
+	float averageCircularity = 0.0f;
+	for (unsigned int j = 0; j < a->segmentsUsed; ++j)
+	{
+		float averageDistanceFromCenterThisSegment = 0.0f;
+		float countThisSegment = 0.0f;
+		for (unsigned int k = 0; k < (sizeAnimalSprite * sizeAnimalSprite); ++k)
+		{
+			// check if the pixel is set in B.
+			unsigned int pixelIndexB = (sizeAnimalSprite * sizeAnimalSprite * FRAME_B) + k;
+
+			if (a->segments[j].frames[pixelIndexB].a > 0.0f)
+			{
+				// check that the pixel is SURFACE, which means it has an empty cardinal neighbour.
+				unsigned int surface = false;
+				unsigned int neighbours[] =
+				{
+					k - 1,
+					k + 1,
+					k - sizeAnimalSprite,
+					k + sizeAnimalSprite
+				};
+				for (unsigned int l = 0; l < 4; ++l)
+				{
+					unsigned int neighbourIndex = pixelIndexB + (neighbours[l] % (sizeAnimalSprite * sizeAnimalSprite));
+
+					if (a->segments[j].frames[ neighbourIndex].a == 0.0f)
+					{
+						surface = true;
+						break;
+					}
+				}
+
+				if (surface)
+				{
+
+					// find how far the pixel is from the center.
+					int pixelX = k % sizeAnimalSprite;
+					int pixelY = k / sizeAnimalSprite;
+					int centerX = (sizeAnimalSprite / 2);
+					int centerY = (sizeAnimalSprite / 2);
+					int diffX = pixelX - centerX;
+					int diffY = pixelY - centerY;
+					float pixelDistance = magnitude_int(diffX, diffY);
+
+
+					averageDistanceFromCenterThisSegment += pixelDistance;
+					countThisSegment += 1.0f;
+
+				}
+			}
+		}
+		averageDistanceFromCenterThisSegment = averageDistanceFromCenterThisSegment / countThisSegment;
+		averageCircularity += averageDistanceFromCenterThisSegment;
+	}
+	averageCircularity = averageCircularity / a->segmentsUsed;
+	a->defence = averageCircularity;
+
+
+
+
+	// maxStoredEnergy
+	// reproductionCost
+	// hitPoints
+	unsigned int totalArea = 0.0f;
+	for (unsigned int j = 0; j < a->segmentsUsed; ++j)
+	{
+		unsigned int diffsThisSegment = 0;
+		for (unsigned int k = 0; k < (sizeAnimalSprite * sizeAnimalSprite); ++k)
+		{
+			// check if the pixel is set in B.
+			unsigned int pixelIndexB = (sizeAnimalSprite * sizeAnimalSprite * FRAME_B) + k;
+
+			if (a->segments[j].frames[pixelIndexB].a > 0.0f)
+			{
+				totalArea ++;
+			}
+		}
+	}
+	a->maxStoredEnergy = totalArea;
+	a->reproductionCost = totalArea;
+	a->hitPoints = totalArea;
+
+
+}
+
+
+
 // given an animal seed at position i (the method by which they are transported and reproduced), turn it into a complete animal
 void drawAnimalFromSeed(unsigned int i)
 {
@@ -1040,7 +1342,7 @@ void drawAnimalFromSeed(unsigned int i)
 	unsigned int animalIndex = animals.size() - 1;
 	seedGrid[i].parentIdentity = animalIndex;
 
-	#ifdef ANIMAL_DRAWING_READOUT
+#ifdef ANIMAL_DRAWING_READOUT
 	printf("New animal with ID %u \n", animalIndex);
 #endif
 
@@ -1352,13 +1654,13 @@ void incrementAnimalSegmentPositions (unsigned int animalIndex, unsigned int i, 
 				// }
 				if (falling)
 				{
-					a->segments[j].animationFrame = 2;
+					a->segments[j].animationFrame = FRAME_C;
 				}
 				else
 				{
 
-					if (a->segments[j].animationFrame == 1) { a->segments[j].animationFrame = 0;}
-					else {a->segments[j].animationFrame = 1;}
+					if (a->segments[j].animationFrame == FRAME_B) { a->segments[j].animationFrame = FRAME_A;}
+					else {a->segments[j].animationFrame = FRAME_B;}
 				}
 
 
@@ -1373,7 +1675,7 @@ void incrementAnimalSegmentPositions (unsigned int animalIndex, unsigned int i, 
 			{
 				a->segments[j].position = a->segments[j - 1].position;
 
-				
+
 			}
 			a->segments[0].position = i;
 
@@ -2267,84 +2569,38 @@ unsigned int walkAnAnimal(unsigned int i)
 	{
 		Animal * a = &(animals[seedGrid[i].parentIdentity]);
 		bool moved = false;
-		if (extremelyFastNumberFromZeroTo(a->movementChance) == 0)
+		// if (extremelyFastNumberFromZeroTo(a->movementChance) == 0)
+		// {
+		for (unsigned int move = 0; move < a->reach; ++move)
 		{
-			for (unsigned int move = 0; move < a->reach; ++move)
+			// check the neighbour cells starting in the direction of travel.
+			// then, check the cells closest to the direction of travel.
+			// then, the cells at right angles to the direction of travel. and so on. this is vital to coherent movement.
+			int sign = 1;
+			unsigned int neighbour = (currentPosition + neighbourOffsets[a->direction]) % totalSize;
+			for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
 			{
-				// check the neighbour cells starting in the direction of travel.
-				// then, check the cells closest to the direction of travel.
-				// then, the cells at right angles to the direction of travel. and so on. this is vital to coherent movement.
-				int sign = 1;
-				unsigned int neighbour = (currentPosition + neighbourOffsets[a->direction]) % totalSize;
-				for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
+				// starting at a place in the neighbours array, move n steps to the right, then n+1 steps left.. access it with neighbourOffsets[k];
+				int k = ( (a->direction) + (j * sign)) % N_NEIGHBOURS;
+				k += (extremelyFastNumberFromZeroTo(2) - 1); // also, do it with some jitter or else you will get stuck constantly.
+				k = k % N_NEIGHBOURS;
+				if (k < 0) {k += N_NEIGHBOURS;}
+				sign *= -1;
+
+				neighbour = (currentPosition + neighbourOffsets[k] ) % totalSize;
+
+				// if one of the neighbouring cells is a material type and phase that the animal can exist within
+				if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS || grid[neighbour].phase == PHASE_LIQUID)
 				{
-					// starting at a place in the neighbours array, move n steps to the right, then n+1 steps left.. access it with neighbourOffsets[k];
-					int k = ( (a->direction) + (j * sign)) % N_NEIGHBOURS;
-					k += (extremelyFastNumberFromZeroTo(2) - 1); // also, do it with some jitter or else you will get stuck constantly.
-					k = k % N_NEIGHBOURS;
-					if (k < 0) {k += N_NEIGHBOURS;}
-					sign *= -1;
-
-					neighbour = (currentPosition + neighbourOffsets[k] ) % totalSize;
-
-					// if one of the neighbouring cells is a material type and phase that the animal can exist within
-					if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS || grid[neighbour].phase == PHASE_LIQUID)
-					{
-						break;
-					}
+					break;
 				}
+			}
 
-				// if the neighbour is a food the animal can eat, eat it
-				if (  (a->energyFlags & ENERGYSOURCE_LIGHT ) == ENERGYSOURCE_LIGHT   )
-				{
-					if (seedGrid[neighbour].stage == STAGE_NULL )
-					{
-						a->energy += seedGrid[neighbour].energy;
-					}
-				}
 
-				else if (  (a->energyFlags & ENERGYSOURCE_SEED ) == ENERGYSOURCE_SEED   )
-				{
-					if (seedGrid[neighbour].stage == STAGE_BUD || seedGrid[neighbour].stage == STAGE_FRUIT ||  seedGrid[neighbour].stage == STAGE_SPROUT )
-					{
-						a->energy += 10.0f ;
-						clearSeedParticle(neighbour);
-					}
-				}
 
-				else if (  (a->energyFlags & ENERGYSOURCE_PLANT ) == ENERGYSOURCE_PLANT   )
-				{
-					if (lifeGrid[neighbour].identity > 0x00)
-					{
-						if (lifeGrid[neighbour].energy > 0.0f)
-						{
-							a->energy += lifeGrid[neighbour].energy;
-							lifeGrid[neighbour].energy = 0.0f;
-							clearLifeParticle(neighbour);
-						}
-					}
-				}
-
-				else if (  (a->energyFlags & ENERGYSOURCE_MINERAL ) == ENERGYSOURCE_MINERAL   )
-				{
-					if (grid[neighbour].phase != PHASE_VACUUM)
-					{
-						a->energy += 1.0f;
-						clearParticle( neighbour);
-					}
-				}
-
-				else if (  (a->energyFlags & ENERGYSOURCE_ANIMAL ) == ENERGYSOURCE_ANIMAL   )
-				{
-					if (seedGrid[neighbour].stage == STAGE_ANIMAL )
-					{
-						a->energy += animals[seedGrid[neighbour].parentIdentity].energy;
-						printf("an animal ate another animal!\n");
-						clearSeedParticle(neighbour);
-					}
-				}
-
-				if (  (a->movementFlags & MOVEMENT_ONPOWDER ) == MOVEMENT_ONPOWDER   )
+			if (  (a->movementFlags & MOVEMENT_ONPOWDER ) == MOVEMENT_ONPOWDER   )
+			{
+				if (extremelyFastNumberFromZeroTo(a->landMovementChance) == 0)
 				{
 					for (int l = 0; l < N_NEIGHBOURS; ++l) // and it has a neighbour of a type and phase the animal can walk on
 					{
@@ -2359,8 +2615,11 @@ unsigned int walkAnAnimal(unsigned int i)
 						}
 					}
 				}
+			}
 
-				if (  (a->movementFlags & MOVEMENT_INPLANTS ) == MOVEMENT_INPLANTS   )
+			if (  (a->movementFlags & MOVEMENT_INPLANTS ) == MOVEMENT_INPLANTS   )
+			{
+				if (extremelyFastNumberFromZeroTo(a->landMovementChance) == 0)
 				{
 					if (lifeGrid[neighbour].identity > 0x00)
 					{
@@ -2368,8 +2627,11 @@ unsigned int walkAnAnimal(unsigned int i)
 						moved = true;
 					}
 				}
+			}
 
-				if (  (a->movementFlags & MOVEMENT_INLIQUID ) == MOVEMENT_INLIQUID   )
+			if (  (a->movementFlags & MOVEMENT_INLIQUID ) == MOVEMENT_INLIQUID   )
+			{
+				if (extremelyFastNumberFromZeroTo(a->fluidMovementChance) == 0)
 				{
 					if (grid[neighbour].phase == PHASE_LIQUID) // if one of the neighbouring cells is a material type and phase that the animal can exist within
 					{
@@ -2377,17 +2639,23 @@ unsigned int walkAnAnimal(unsigned int i)
 						moved = true;
 					}
 				}
+			}
 
-				if (  (a->movementFlags & MOVEMENT_INAIR ) == MOVEMENT_INAIR   )
+			if (  (a->movementFlags & MOVEMENT_INAIR ) == MOVEMENT_INAIR   )
+			{
+				if (extremelyFastNumberFromZeroTo(a->fluidMovementChance) == 0)
 				{
 					if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS) // if one of the neighbouring cells is a material type and phase that the animal can exist within
 					{
 						currentPosition = neighbour; // say that this cell is the current position, and then break.
 						moved = true;
-					};
+					}
 				}
+			}
 
-				if (  (a->movementFlags & MOVEMENT_ONSOLID ) == MOVEMENT_ONSOLID   )
+			if (  (a->movementFlags & MOVEMENT_ONSOLID ) == MOVEMENT_ONSOLID   )
+			{
+				if (extremelyFastNumberFromZeroTo(a->landMovementChance) == 0)
 				{
 					if (grid[neighbour].phase == PHASE_VACUUM) // if one of the neighbouring cells is a material type and phase that the animal can exist within
 					{
@@ -2407,6 +2675,7 @@ unsigned int walkAnAnimal(unsigned int i)
 				}
 			}
 		}
+		// }
 
 		// after having repeated <reach> moves, swap the cell and update the segment positions.
 		if (	moved )
@@ -2418,7 +2687,7 @@ unsigned int walkAnAnimal(unsigned int i)
 		{
 			if (((a->movementFlags & MOVEMENT_INAIR) !=  MOVEMENT_INAIR)    )
 			{
-				currentPosition = (squareBelow + (extremelyFastNumberFromZeroTo(2) -1 )) % totalSize;
+				currentPosition = (squareBelow + (extremelyFastNumberFromZeroTo(2) - 1 )) % totalSize;
 
 				if (grid[currentPosition].phase == PHASE_VACUUM || grid[currentPosition].phase == PHASE_GAS )
 				{
@@ -2427,6 +2696,67 @@ unsigned int walkAnAnimal(unsigned int i)
 				}
 			}
 		}
+
+
+
+
+		// get a new neighbour (it may be any kind, not just a walkable one)
+		unsigned int neighbour = (currentPosition + neighbourOffsets[extremelyFastNumberFromZeroTo(N_NEIGHBOURS) ]) % totalSize;
+
+		// if the neighbour is a food the animal can eat, eat it
+		if (  (a->energyFlags & ENERGYSOURCE_LIGHT ) == ENERGYSOURCE_LIGHT   )
+		{
+			if (seedGrid[neighbour].stage == STAGE_NULL )
+			{
+				a->energy += seedGrid[neighbour].energy;
+			}
+		}
+
+		else if (  (a->energyFlags & ENERGYSOURCE_SEED ) == ENERGYSOURCE_SEED   )
+		{
+			if (seedGrid[neighbour].stage == STAGE_BUD || seedGrid[neighbour].stage == STAGE_FRUIT ||  seedGrid[neighbour].stage == STAGE_SPROUT )
+			{
+				a->energy += 10.0f ;
+				clearSeedParticle(neighbour);
+			}
+		}
+
+		else if (  (a->energyFlags & ENERGYSOURCE_PLANT ) == ENERGYSOURCE_PLANT   )
+		{
+			if (lifeGrid[neighbour].identity > 0x00)
+			{
+				if (lifeGrid[neighbour].energy > 0.0f)
+				{
+					a->energy += lifeGrid[neighbour].energy;
+					lifeGrid[neighbour].energy = 0.0f;
+					clearLifeParticle(neighbour);
+				}
+			}
+		}
+
+		else if (  (a->energyFlags & ENERGYSOURCE_MINERAL ) == ENERGYSOURCE_MINERAL   )
+		{
+			if (grid[neighbour].phase != PHASE_VACUUM)
+			{
+				a->energy += 1.0f;
+				clearParticle( neighbour);
+			}
+		}
+
+		else if (  (a->energyFlags & ENERGYSOURCE_ANIMAL ) == ENERGYSOURCE_ANIMAL   )
+		{
+			if (seedGrid[neighbour].stage == STAGE_ANIMAL )
+			{
+				a->energy += animals[seedGrid[neighbour].parentIdentity].energy;
+				printf("an animal ate another animal!\n");
+				clearSeedParticle(neighbour);
+			}
+		}
+
+
+
+
+
 	}
 
 	else
