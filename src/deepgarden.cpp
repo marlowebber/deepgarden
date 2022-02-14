@@ -138,7 +138,7 @@ unsigned int animalRecursionLevel = 0;
 std::list<vec_i2> working_polygon[numberOfFrames];
 std::list<ProposedLifeParticle> segment_particles[numberOfFrames];
 
-std::string exampleAnimal = std::string(" rzgzbz  pmmmbaamcmz .g");
+std::string exampleAnimal = std::string(" rzgzbz  pmombaamcmz .g");
 
 int defaultTemperature = 300;
 int radiantHeatIntensity = 50; // this is a physical constant that determines how much heat radiates from material, and how strongly material heat is coupled to the atmosphere.
@@ -746,7 +746,7 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 				}
 
 #ifdef ANIMAL_DRAWING_READOUT
-				printf("\nCommit segment to sprite. The amount of committed particles was %u.\n", count );
+				printf("\nCommit segment to sprite. The amount of committed particles was %u.\nFrame %u.\n", count, frameIndex );
 #endif
 
 
@@ -826,7 +826,8 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 		// the first char is which vertex to choose
 		animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
 		int numberModifier = alphanumeric( genes[animalCursorString] );
-		int moveVertex = numberModifier;
+
+		int moveVertex = numberModifier % working_polygon[FRAME_A].size(); // it should be the same in all of them anyway
 
 #ifdef ANIMAL_DRAWING_READOUT
 		printf("char %c, index %u. The vertex to move is %u\n", genes[animalCursorString] , animalCursorString, numberModifier);
