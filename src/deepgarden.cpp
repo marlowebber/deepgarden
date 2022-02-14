@@ -963,26 +963,6 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 	}
 
 
-	case 'z':
-	{
-#ifdef ANIMAL_DRAWING_READOUT
-		printf("Change segment cursor: ");
-#endif
-		animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
-		unsigned int numberModifier = alphanumeric( genes[animalCursorString] );
-		numberModifier = numberModifier % a->segmentsUsed;
-
-
-#ifdef ANIMAL_DRAWING_READOUT
-		printf("char %c, index %u. Set animal segment cursor to %u\n", genes[animalCursorString] , animalCursorString, numberModifier);
-#endif
-
-
-		animalCursorSegmentNumber = numberModifier;
-
-
-		return 0;
-	}
 
 	case 'r':
 	{
