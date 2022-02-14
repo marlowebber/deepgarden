@@ -540,14 +540,25 @@ std::list<ProposedLifeParticle> EFLA_E(vec_i2 start, vec_i2 end)
 
 
 
-void fillAPolygon(Animal * a, unsigned int usegmentNumber)
+void fillAPolygon(unsigned int animalIndex, unsigned int usegmentNumber)
 {
+
+
+	if (animalIndex >= animals.size()  ) {return;}
+
+	Animal * a  = &(animals[animalIndex]);
+
 
 	int segmentNumber = usegmentNumber;
 
 	// traverse the sprite.  you will be setting alpha to -1 to mark a pixel that has connection to the outside.
 	// if a pixel is an edge neighbour (cardinal direction) of a -1 pixel or the edge of the sprite, set it also to -1.
 	// ignore pixels that have an alpha value other than 0 or -1. this way, you will not intrude into the image.
+
+	// if the shapes is not allowed to extend beyond the edges of the sprite, then it is guaranteed that none of the edge squares
+
+	// this way, extending the 'outside the polygon'-ness from the edge squares inward is formally safe to do
+
 	// print the output.
 
 	for (unsigned int i = 0; i < sizeAnimalSprite * sizeAnimalSprite; ++i)
@@ -558,7 +569,7 @@ void fillAPolygon(Animal * a, unsigned int usegmentNumber)
 		        i < sizeAnimalSprite  										||  // if i is on the bottom edge of the sprite, or
 		        i > ((sizeAnimalSprite - 1)*sizeAnimalSprite)              	||  // if i is on the top edge of the sprite, or
 		        i % sizeAnimalSprite == 0                               	||  // if i is on one side of the sprite, or
-		        i % sizeAnimalSprite == 1            	    // if i is on the other edge of the sprite
+		        i % sizeAnimalSprite == (sizeAnimalSprite-1)            	    // if i is on the other edge of the sprite
 		    ) &&
 		    (
 		        a->segments[segmentNumber].frameA[i].a == 0.0f						// and the pixel is not already drawn.
@@ -572,7 +583,7 @@ void fillAPolygon(Animal * a, unsigned int usegmentNumber)
 
 	}
 
-	for (unsigned int k = 0; k < (sizeAnimalSprite/2); ++k) // multiple passes help to ensure there are no daggy bits left 
+	for (unsigned int k = 0; k < (sizeAnimalSprite / 2); ++k) // multiple passes help to ensure there are no daggy bits left
 	{
 		for (unsigned int i = 0; i < (sizeAnimalSprite * sizeAnimalSprite); ++i)
 		{
@@ -601,22 +612,45 @@ void fillAPolygon(Animal * a, unsigned int usegmentNumber)
 
 	for (unsigned int i = 0; i < sizeAnimalSprite * sizeAnimalSprite; ++i)
 	{
-		if      (a->segments[segmentNumber].frameA[i].a == -1.0f) { printf("_"); }
-		else if (a->segments[segmentNumber].frameA[i].a ==  0.0f) { printf("O"); }
-		else if (a->segments[segmentNumber].frameA[i].a >  0.0f)  { printf("X"); }
-		if      (i % sizeAnimalSprite == 0)                       { printf("\n"); }
+		if      (i % sizeAnimalSprite == 0)
+		{
+			printf("\n");
+		}
+		if      (a->segments[segmentNumber].frameA[i].a == -1.0f)
+		{
+			printf("_");
+			a->segments[segmentNumber].frameA[i].a = 0.0f;
+		}
+		else if (a->segments[segmentNumber].frameA[i].a ==  0.0f)
+		{
+			printf("O");
+			a->segments[segmentNumber].frameA[i].r = animalCursorColor.r;
+			a->segments[segmentNumber].frameA[i].g = animalCursorColor.g;
+			a->segments[segmentNumber].frameA[i].b = animalCursorColor.b;
+			a->segments[segmentNumber].frameA[i].a = 1.0f;
+		}
+		else if (a->segments[segmentNumber].frameA[i].a >  0.0f)
+		{
+			printf("X");
+		}
+
 	}
+
+	printf("\n");
 }
 
 
 
 
 // return 0 to continue drawing sequence, return -1 to break sequence by one level.
-int drawAnimalFromChar (unsigned int i, Animal * a, std::string genes )
+int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string genes )
 {
 
 	if (animalCursorString >= genes.length())           {return -1;}
 	if (animalCursorSegmentNumber >= maxAnimalSegments) {return -1;}
+	if (animalIndex >= animals.size())				{return -1;}
+
+	Animal * a = &(animals[animalIndex]);
 
 	animalCursorString++;
 	char c = genes[animalCursorString];
@@ -626,75 +660,6 @@ int drawAnimalFromChar (unsigned int i, Animal * a, std::string genes )
 #endif
 	switch (c)
 	{
-// 	case '.': // commit the segment drawing to the sprite
-// 	{
-// #ifdef ANIMAL_DRAWING_READOUT
-// 		printf("Commit segment to sprite and go to new segment. " );
-// #endif
-// 		int count = 0;
-// 		for (std::list<ProposedLifeParticle>::iterator it = segment_particles.begin(); it != segment_particles.end(); ++it)
-// 		{
-// 			int j = (it->position.y * sizeAnimalSprite) + it->position.x;
-// 			if ( j < (sizeAnimalSprite * sizeAnimalSprite) && j >= 0)
-// 			{
-// 				a->segments[animalCursorSegmentNumber].frameA[j] = it->color;
-// 				a->segments[animalCursorSegmentNumber].frameB[j] = it->color;
-// 				a->segments[animalCursorSegmentNumber].frameC[j] = it->color;
-// 				count++;
-// 			}
-// 		}
-
-
-
-// #ifdef ANIMAL_DRAWING_READOUT
-// 		printf("The amount of committed particles was %u.\n", count );
-// #endif
-// 		segment_particles.clear();
-// 		animalCursorSegmentNumber++;
-// 		return 0;
-// 	}
-
-// 	case 'p': // populate the working polygon.
-// 	{
-// #ifdef ANIMAL_DRAWING_READOUT
-// 		printf("Clear and populate working polygon.\n" );
-// #endif
-// 		working_polygon.clear();
-// 		// draw a n sided polygon in the vertices buffer.
-// 		// the first char is the number of vertices
-// 		int nPolyVertices = 0;
-// 		int numberModifier  = 0;
-// 		while (true)
-// 		{
-// 			animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
-// 			numberModifier = (alphanumeric( genes[animalCursorString] ) ) / 4;
-// 			nPolyVertices = numberModifier ;
-// 			if (nPolyVertices > 0) {break;}
-// 		}
-
-// #ifdef ANIMAL_DRAWING_READOUT
-// 		printf("char %c, index %u. Set the number of vertices of the new polygon to %u\n", genes[animalCursorString] , animalCursorString, numberModifier);
-// #endif
-// 		// the second char is the radius
-// 		animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
-// 		numberModifier = alphanumeric( genes[animalCursorString] ) / 4;
-// 		animalCursorSegmentRadius = numberModifier ;
-
-// #ifdef ANIMAL_DRAWING_READOUT
-// 		printf("char %c, index %u. Set radius of the new polygon to %u\n", genes[animalCursorString] , animalCursorString, numberModifier);
-// #endif
-// 		for ( int j = 0; j <= nPolyVertices; ++j)
-// 		{
-// 			float fj = j;
-// 			float angle = (fj * (3.1415f / nPolyVertices)  ) + (0.5f * 3.1415f);  // only 1 pi so it draws a semi circle.
-// 			float fnewVertX = (animalCursorSegmentRadius * cos(angle)) + (sizeAnimalSprite / 2);
-// 			float fnewVertY = (animalCursorSegmentRadius * sin(angle)) + (sizeAnimalSprite / 2);
-// 			int newVertX = fnewVertX;
-// 			int newVertY = fnewVertY;
-// 			working_polygon.push_back ( vec_i2( newVertX, newVertY ) );
-// 		}
-// 		return 0;
-// 	}
 
 	case ' ':  // commit the working polygon.
 	{
@@ -743,10 +708,6 @@ int drawAnimalFromChar (unsigned int i, Animal * a, std::string genes )
 			working_polygon.clear();
 		}
 
-
-
-
-
 #ifdef ANIMAL_DRAWING_READOUT
 		printf("Commit segment to sprite and go to new segment. " );
 #endif
@@ -763,31 +724,18 @@ int drawAnimalFromChar (unsigned int i, Animal * a, std::string genes )
 			}
 		}
 
-
-
-
-
-
-
 #ifdef ANIMAL_DRAWING_READOUT
 		printf("The amount of committed particles was %u.\n", count );
 #endif
-		segment_particles.clear();
-
 
 		// don't advance the segment if the prior one was empty. No empty segments! don't bother filling empty segments either!
 		if (count > 0)
 		{
-
-
-			fillAPolygon(a, animalCursorSegmentNumber);
+			fillAPolygon(animalIndex, animalCursorSegmentNumber);
+			segment_particles.clear();
 
 			animalCursorSegmentNumber++;
 		}
-
-
-
-
 
 #ifdef ANIMAL_DRAWING_READOUT
 		printf("Clear and populate working polygon.\n" );
@@ -826,14 +774,6 @@ int drawAnimalFromChar (unsigned int i, Animal * a, std::string genes )
 			int newVertY = fnewVertY;
 			working_polygon.push_back ( vec_i2( newVertX, newVertY ) );
 		}
-
-
-
-
-
-
-
-
 		return 0;
 	}
 	case 'm':
@@ -962,28 +902,29 @@ void drawAnimalFromSeed(unsigned int i)
 	working_polygon.clear();
 	segment_particles.clear();
 
-	unsigned int animalIdentity = seedGrid[i].parentIdentity;
+	unsigned int animalIndex = seedGrid[i].parentIdentity;
 
-	if (animalIdentity < animals.size() && seedGrid[i].stage == STAGE_ANIMAL)
+	if (animalIndex < animals.size() && seedGrid[i].stage == STAGE_ANIMAL)
 	{
 		seedGrid[i].drawingInProgress = true;
 
 		// to improve code stability, this operation passes the animal and genome by literal value instead of by reference
 		// it is operated on in a factory-like way and then the original is overwritten with the modified copy
-		Animal  a = Animal();
+		// Animal  a = Animal();
+		animals[animalIndex] = Animal();
 		std::string genome = seedGrid[i].genes;
 		printf("Drawing an animal at %u with genome length %lu \nThe first and last characters are ignored.\n", i, seedGrid[i].genes.length());
 		int count = 0;
 		while (true)
 		{
-			if (drawAnimalFromChar(i, &a, genome) < 0 ) { break; }
+			if (drawAnimalFromChar(i, animalIndex, genome) < 0 ) { break; }
 			if (animalCursorString >= genome.length()) {break;}
 			if (count > genome.length()) {break;}
 			count++;
 		}
-		a.reproductionCost = animalCursorEnergyDebt;
-		a.energy = 0;
-		animals[animalIdentity] = a;
+		animals[animalIndex].reproductionCost = animalCursorEnergyDebt;
+		animals[animalIndex].energy = 0;
+		// animals[animalIdentity] = a;
 		seedGrid[i].drawingInProgress = false;
 	}
 }
