@@ -138,7 +138,7 @@ unsigned int animalRecursionLevel = 0;
 std::list<vec_i2> working_polygon[numberOfFrames];
 std::list<ProposedLifeParticle> segment_particles[numberOfFrames];
 
-std::string exampleAnimal = std::string(" rzgzbz  pmombaamcmz .g");
+std::string exampleAnimal = std::string(" rzgzbz  pmomba pmmcmz pmomba pmmcmz .g");
 
 int defaultTemperature = 300;
 int radiantHeatIntensity = 50; // this is a physical constant that determines how much heat radiates from material, and how strongly material heat is coupled to the atmosphere.
@@ -682,7 +682,7 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 		}
 		if (readyFrames == numberOfFrames)
 		{
-// 
+//
 
 
 			// 	return 0;
@@ -746,7 +746,7 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 				}
 
 #ifdef ANIMAL_DRAWING_READOUT
-				printf("\nCommit segment to sprite. The amount of committed particles was %u.\nFrame %u.\n", count, frameIndex );
+				printf("\nCommit segment to sprite. This will be segment %u, frame %u.\n The amount of committed particles was %u.\n", animalCursorSegmentNumber , frameIndex, count  );
 #endif
 
 
@@ -770,6 +770,7 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 			printf("Go to new segment. \n" );
 #endif
 			animalCursorSegmentNumber++;
+			a->segmentsUsed++;
 		}
 		else {
 #ifdef ANIMAL_DRAWING_READOUT
@@ -949,7 +950,7 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 	case 'f':
 	{
 #ifdef ANIMAL_DRAWING_READOUT
-		printf("Increment animal frame cursor: \n");
+		printf("Change frame cursor: ");
 #endif
 		animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
 		unsigned int numberModifier = alphanumeric( genes[animalCursorString] );
@@ -966,6 +967,29 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 
 		return 0;
 	}
+
+
+	case 'z':
+	{
+#ifdef ANIMAL_DRAWING_READOUT
+		printf("Change segment cursor: ");
+#endif
+		animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
+		unsigned int numberModifier = alphanumeric( genes[animalCursorString] );
+		numberModifier = numberModifier % a->segmentsUsed;
+
+
+#ifdef ANIMAL_DRAWING_READOUT
+		printf("char %c, index %u. Set animal segment cursor to %u\n", genes[animalCursorString] , animalCursorString, numberModifier);
+#endif
+
+
+		animalCursorSegmentNumber = numberModifier;
+
+
+		return 0;
+	}
+
 	case 'r':
 	{
 #ifdef ANIMAL_DRAWING_READOUT
@@ -1200,37 +1224,50 @@ void setAnimalSpritePixel ( AnimalSegment  s, unsigned int pixelIndex )
 	int worldI = (worldY * sizeX) + worldX;
 	if ( worldI > totalSize) {return;}
 	int j__color_offset = (worldI * numberOfFieldsPerVertex) ;
-	// if (s.animationFrame == FRAME_A)
-	// {
+	// memcpy( &animationGrid[ j__color_offset], 	&( s.frames[(sizeAnimalSprite * sizeAnimalSprite * s.animationFrame) + pixelIndex]  ) , 	sizeof(Color) );
 
-	memcpy( &animationGrid[ j__color_offset], 	&( s.frames[(sizeAnimalSprite * sizeAnimalSprite * s.animationFrame) + pixelIndex]  ) , 	sizeof(Color) );
+	if ( (s.frames[(sizeAnimalSprite * sizeAnimalSprite * s.animationFrame) + pixelIndex]).a > 0.0f  ) // only clear the pixel if it is not empty in the original image. This prevents disturbing other sprites.
+	{
+		memcpy( &animationGrid[ j__color_offset], &(	s.frames[(sizeAnimalSprite * sizeAnimalSprite * s.animationFrame) + pixelIndex] )  , 	sizeof(Color) );
+	}
 
-	// }
-	// else if (s.animationFrame == FRAME_B)
-	// {
-	// 	memcpy( &animationGrid[ j__color_offset], 	&( s.frameB[pixelIndex]  ) , 	sizeof(Color) );
-	// }
-	// else if (s.animationFrame == FRAME_C)
-	// {
-	// 	memcpy( &animationGrid[ j__color_offset], 	&( s.frameC[pixelIndex]  ) , 	sizeof(Color) );
-	// }
 }
 
-void swapAnimalSpritePixel (unsigned int a, unsigned int b)
+void clearAnimalSpritePixel ( AnimalSegment  s, unsigned int pixelIndex )
 {
-	float temp_color[4];
-	unsigned int a_offset = (a * numberOfFieldsPerVertex) ;
-	unsigned int b_offset = (b * numberOfFieldsPerVertex) ;
-	memcpy( temp_color, 				&animationGrid[ b_offset ] , 		sizeof(Color) ); // 4x floats of 4 bytes each
-	memcpy( &animationGrid[ b_offset], 	&animationGrid[ a_offset] , 	sizeof(Color) );
-	memcpy( &animationGrid[ a_offset ], temp_color, 						sizeof(Color) );
+	// find the x, y offset of the pixel from the origin in sprite coordinates.
+	int pixelX = (pixelIndex % sizeAnimalSprite) - (sizeAnimalSprite / 2);
+	int pixelY = (pixelIndex / sizeAnimalSprite) - (sizeAnimalSprite / 2);
+	int segmentX = s.position % sizeX;
+	int segmentY = s.position / sizeX;
+	int worldX = segmentX + pixelX;
+	int worldY = segmentY + pixelY;
+	int worldI = (worldY * sizeX) + worldX;
+	if ( worldI > totalSize) {return;}
+	int j__color_offset = (worldI * numberOfFieldsPerVertex) ;
+
+	if ( (s.frames[(sizeAnimalSprite * sizeAnimalSprite * s.animationFrame) + pixelIndex]).a > 0.0f  ) // only clear the pixel if it is not empty in the original image. This prevents disturbing other sprites.
+	{
+		memcpy( &animationGrid[ j__color_offset], 	&color_clear , 	sizeof(Color) );
+	}
+
 }
 
-void clearAnimalSpritePixel(unsigned int i)
-{
-	unsigned int a_offset = (i * numberOfFieldsPerVertex) ;
-	memcpy( &animationGrid[ a_offset], 	&(color_clear) , 	sizeof(Color) );
-}
+// void swapAnimalSpritePixel (unsigned int a, unsigned int b)
+// {
+// 	float temp_color[4];
+// 	unsigned int a_offset = (a * numberOfFieldsPerVertex) ;
+// 	unsigned int b_offset = (b * numberOfFieldsPerVertex) ;
+// 	memcpy( temp_color, 				&animationGrid[ b_offset ] , 		sizeof(Color) ); // 4x floats of 4 bytes each
+// 	memcpy( &animationGrid[ b_offset], 	&animationGrid[ a_offset] , 	sizeof(Color) );
+// 	memcpy( &animationGrid[ a_offset ], temp_color, 						sizeof(Color) );
+// }
+
+// void clearAnimalSpritePixel(unsigned int i)
+// {
+// 	unsigned int a_offset = (i * numberOfFieldsPerVertex) ;
+// 	memcpy( &animationGrid[ a_offset], 	&(color_clear) , 	sizeof(Color) );
+// }
 
 void setAnimal(unsigned int i)
 {
@@ -1300,8 +1337,8 @@ void incrementAnimalSegmentPositions (unsigned int animalIndex, unsigned int i, 
 {
 	if (animalIndex < animals.size())
 	{
-		Animal  a = animals[animalIndex];
-		if (a.energy > a.reproductionCost && animalReproductionEnabled)
+		Animal * a = &(animals[animalIndex]);
+		if (a->energy > a->reproductionCost && animalReproductionEnabled)
 		{
 			unsigned int nSolidNeighbours = 0;
 			for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
@@ -1312,72 +1349,115 @@ void incrementAnimalSegmentPositions (unsigned int animalIndex, unsigned int i, 
 					printf("animal reproduced\n");
 					setAnimal( neighbour );
 					mutateSentence(  &(seedGrid[neighbour].genes) );
-					a.energy = 0.0f;
+					a->energy = 0.0f;
 					return;
 					break;
 				}
 			}
 		}
 
-		bool segmentPhase = 0;
+		// bool segmentPhase = 0;
+
 
 		// Update animal segment positions. Only do this if the animal has actually moved (otherwise it will pile into one square).
-		if (a.segments[0].position != i)
+		if (a->segments[0].position != i)
 		{
-			// set the position of the 0th segment to the new index, and everyone elses position is shifted forward by 1.
-			bool segmentPhase = false;
-			if (a.segments[0].animationFrame == FRAME_A) {segmentPhase = true;}
-			for (unsigned int j = 0; j < maxAnimalSegments; ++j)
+
+			for (unsigned int j = 0; j < a->segmentsUsed; ++j)
 			{
-				if ( j >= a.segmentsUsed)
+				for (unsigned int k = 0; k < (sizeAnimalSprite * sizeAnimalSprite); ++k)
 				{
-					continue;
+					clearAnimalSpritePixel( a->segments[j], k);
 				}
+			}
+
+
+			// set the position of the 0th segment to the new index, and everyone elses position is shifted forward by 1.
+			// bool segmentPhase = false;
+			// if (a->segments[0].animationFrame == FRAME_A) {segmentPhase = true;}
+			for (unsigned int j = 0; j < a->segmentsUsed; ++j)
+			{
+				// if ( j >= a.segmentsUsed)
+				// {
+				// 	continue;
+				// }
 				if (falling)
 				{
-					a.segments[j].animationFrame = FRAME_C;
+					a->segments[j].animationFrame = FRAME_C;
 				}
 				else
 				{
-					if (segmentPhase)
-					{
-						a.segments[j].animationFrame = FRAME_B;
-					}
-					else
-					{
-						a.segments[j].animationFrame = FRAME_A;
-					}
-					segmentPhase = !segmentPhase;
+					// if (segmentPhase)
+					// {
+					// 	a->segments[j].animationFrame = FRAME_B;
+					// }
+					// else
+					// {
+					a->segments[j].animationFrame++;
+					a->segments[j].animationFrame = a->segments[j].animationFrame / 2;
+					// }
+					// segmentPhase = !segmentPhase;
+				}
+
+
+				// a->segments[j].animationFrame = FRAME_C; // JUST FOR EXPERIMENT!!! DO NOT LEAVE IN!
+
+			}
+
+
+
+
+			for ( unsigned int j = (a->segmentsUsed - 1); j > 0; --j)
+			{
+				a->segments[j].position = a->segments[j - 1].position;
+
+				for (unsigned int k = 0; k < (sizeAnimalSprite * sizeAnimalSprite); ++k)
+				{
+					setAnimalSpritePixel( a->segments[j], k);
 				}
 			}
-
-			for ( unsigned int j = (a.segmentsUsed - 1); j > 0; --j)
-			{
-				a.segments[j].position = a.segments[j - 1].position;
-			}
-			a.segments[0].position = i;
+			a->segments[0].position = i;
 		}
-		animals[animalIndex] = a;
+		// animals[animalIndex] = a;
 	}
 }
 
-void updateAnimalDrawing(unsigned int i)
-{
-	if (seedGrid[i].parentIdentity < animals.size())
-	{
-		Animal * a = &(animals[seedGrid[i].parentIdentity]);
-		unsigned int count = 0;
-		for (	unsigned int j = 0; j < a->segmentsUsed; j++ )
-		{
-			AnimalSegment * s = &(a->segments[j]);
-			for (unsigned int k = 0; k < (sizeAnimalSprite * sizeAnimalSprite); ++k)
-			{
-				setAnimalSpritePixel( a->segments[j], k);
-			}
-			count++;
-		}
-	}
-}
+
+// void clearAnimalDrawing(unsigned int i)
+// {
+// 	if (seedGrid[i].parentIdentity < animals.size())
+// 	{
+// 		Animal * a = &(animals[seedGrid[i].parentIdentity]);
+// 		// unsigned int count = 0;
+// 		for (	unsigned int j = 0; j < a->segmentsUsed; j++ )
+// 		{
+// 			AnimalSegment * s = &(a->segments[j]);
+// 			for (unsigned int k = 0; k < (sizeAnimalSprite * sizeAnimalSprite); ++k)
+// 			{
+// 				clearAnimalSpritePixel( a->segments[j], k);
+// 			}
+// 			// count++;
+// 		}
+// 	}
+// }
+
+// void updateAnimalDrawing(unsigned int i)
+// {
+// 	if (seedGrid[i].parentIdentity < animals.size())
+// 	{
+// 		Animal * a = &(animals[seedGrid[i].parentIdentity]);
+// 		// unsigned int count = 0;
+// 		for (	unsigned int j = 0; j < a->segmentsUsed; j++ )
+// 		{
+// 			AnimalSegment * s = &(a->segments[j]);
+// 			for (unsigned int k = 0; k < (sizeAnimalSprite * sizeAnimalSprite); ++k)
+// 			{
+// 				setAnimalSpritePixel( a->segments[j], k);
+// 			}
+// 			// count++;
+// 		}
+// 	}
+// }
 
 void setParticle(unsigned int material, unsigned int i)
 {
@@ -1520,20 +1600,26 @@ void clearColorGrids(unsigned int i)
 	seedColorGrid[ 	a_offset + 5] = fy;
 }
 
-void clearColorGridB()
+void clearAnimationGrid()
 {
-	memset( animationGrid, 0.0f, sizeof(float) * numberOfFieldsPerVertex * totalSize );
+	// memset( animationGrid, 0.0f, sizeof(float) * numberOfFieldsPerVertex * totalSize );
 	unsigned int x = 0;
 	unsigned int y = 0;
 	for (unsigned int i = 0; i < totalSize; ++i)
 	{
 		x = i % sizeX;
 		y = i / sizeX;
-		float fx = x;
-		float fy = y;
+		// float fx = x;
+		// float fy = y;
 		unsigned int a_offset = (i * numberOfFieldsPerVertex) ;
-		animationGrid[ a_offset + 4] = fx;
-		animationGrid[ a_offset + 5] = fy;
+		// animationGrid[ a_offset + 0] = fx;
+		// animationGrid[ a_offset + 1] = fy;
+		// animationGrid[ a_offset + 2] = fy;
+		// animationGrid[ a_offset + 3] = fy;
+
+		memcpy( &animationGrid[a_offset], & color_clear, sizeof(Color) );
+
+		// memset( (animationGrid + (a_offset*(sizeof(float)) ))  , 0.0f , sizeof(float ) * 3)
 	}
 }
 
@@ -2365,6 +2451,23 @@ void thread_graphics()
 		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, lifeColorGrid, GL_DYNAMIC_DRAW );
 		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
 
+		// for (unsigned int i = 0; i < totalSize; ++i)
+		// {
+		// 	animationGrid[ (i * numberOfFieldsPerVertex ) + 3] = 0.0f;
+		// }
+
+		// clearAnimationGrid();
+
+		// for (unsigned int i = 0; i < totalSize; ++i)
+		// {
+		// 	// animationGrid[ (i * numberOfFieldsPerVertex ) + 3] = 0.0f;
+		// 	if (seedGrid[i].stage == STAGE_ANIMAL)
+		// 	{
+		// 		updateAnimalDrawing(i);
+		// 	}
+		// }
+
+
 		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, animationGrid, GL_DYNAMIC_DRAW );
 		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
 
@@ -2373,10 +2476,7 @@ void thread_graphics()
 
 		postDraw();
 
-		for (unsigned int i = 0; i < totalSize; ++i)
-		{
-			animationGrid[ (i * numberOfFieldsPerVertex ) + 3] = 0.0f;
-		}
+
 	}
 
 #ifdef THREAD_TIMING_READOUT
@@ -3486,6 +3586,7 @@ void thread_seeds()
 			if (seedGrid[i].drawingInProgress) {continue;} // don't move the animal while it is being drawn.
 			if (seedGrid[i].parentIdentity < animals.size())
 			{
+				// clearAnimalDrawing(i);
 				Animal * a = &(animals[seedGrid[i].parentIdentity]);
 				if (extremelyFastNumberFromZeroTo(64) == 0)
 				{
@@ -3493,7 +3594,7 @@ void thread_seeds()
 				}
 				walkAnAnimal(i);
 #ifdef DRAW_ANIMALS
-				updateAnimalDrawing(i);
+				// updateAnimalDrawing(i);
 #endif
 			}
 			continue;
@@ -3526,10 +3627,10 @@ void sendLifeToBackground ()
 	unsigned int seedReductionRatio = nSeeds / nSeedsDesired;
 	for (unsigned int i = 0; i < totalSize; ++i)
 	{
-		animationGrid[ (i * numberOfFieldsPerVertex) + 0 ] = lifeColorGrid[(i * numberOfFieldsPerVertex) + 0];
-		animationGrid[ (i * numberOfFieldsPerVertex) + 1 ] = lifeColorGrid[(i * numberOfFieldsPerVertex) + 1];
-		animationGrid[ (i * numberOfFieldsPerVertex) + 2 ] = lifeColorGrid[(i * numberOfFieldsPerVertex) + 2];
-		animationGrid[ (i * numberOfFieldsPerVertex) + 3 ] = lifeColorGrid[(i * numberOfFieldsPerVertex) + 3] = 0.5f;
+		// animationGrid[ (i * numberOfFieldsPerVertex) + 0 ] = lifeColorGrid[(i * numberOfFieldsPerVertex) + 0];
+		// animationGrid[ (i * numberOfFieldsPerVertex) + 1 ] = lifeColorGrid[(i * numberOfFieldsPerVertex) + 1];
+		// animationGrid[ (i * numberOfFieldsPerVertex) + 2 ] = lifeColorGrid[(i * numberOfFieldsPerVertex) + 2];
+		// animationGrid[ (i * numberOfFieldsPerVertex) + 3 ] = lifeColorGrid[(i * numberOfFieldsPerVertex) + 3] = 0.5f;
 
 		lifeColorGrid[ (i * numberOfFieldsPerVertex) + 0 ] = 0.0f;
 		lifeColorGrid[ (i * numberOfFieldsPerVertex) + 1 ] = 0.0f;
