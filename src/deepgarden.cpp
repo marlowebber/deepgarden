@@ -135,8 +135,8 @@ float animalCursorLimbLowerAngle = 0.0f;
 float animalCursorLimbUpperAngle = 0.5 * 3.1415f;
 unsigned int animalRecursionLevel = 0;
 
-std::list<vec_i2> working_polygon;
-std::list<ProposedLifeParticle> segment_particles;
+std::list<vec_i2> working_polygon[numberOfFrames];
+std::list<ProposedLifeParticle> segment_particles[numberOfFrames];
 
 std::string exampleAnimal = std::string(" rzgzbz  pmmmbaamcmz . ");
 
@@ -415,9 +415,7 @@ struct AnimalSegment
 {
 	unsigned int position;
 	unsigned int animationFrame;
-	Color frameA[sizeAnimalSprite * sizeAnimalSprite];
-	Color frameB[sizeAnimalSprite * sizeAnimalSprite];
-	Color frameC[sizeAnimalSprite * sizeAnimalSprite];
+	Color frames[sizeAnimalSprite * sizeAnimalSprite * numberOfFrames];
 	AnimalSegment();
 };
 
@@ -427,7 +425,7 @@ AnimalSegment::AnimalSegment()
 	this->position = 0;
 	for (int i = 0; i < (sizeAnimalSprite * sizeAnimalSprite); ++i)
 	{
-		this->frameA[i] = color_clear;
+		this->frames[(sizeAnimalSprite * sizeAnimalSprite * animationFrame) + i] = color_clear;
 	}
 
 }
@@ -540,7 +538,7 @@ std::list<ProposedLifeParticle> EFLA_E(vec_i2 start, vec_i2 end)
 
 
 
-void fillAPolygon(unsigned int animalIndex, unsigned int usegmentNumber)
+void fillAPolygon(unsigned int animalIndex, unsigned int usegmentNumber, unsigned int frame)
 {
 
 
@@ -548,6 +546,8 @@ void fillAPolygon(unsigned int animalIndex, unsigned int usegmentNumber)
 
 	Animal * a  = &(animals[animalIndex]);
 
+
+	unsigned int frameOffset = (sizeAnimalSprite * sizeAnimalSprite) * frame;
 
 	int segmentNumber = usegmentNumber;
 
@@ -569,15 +569,15 @@ void fillAPolygon(unsigned int animalIndex, unsigned int usegmentNumber)
 		        i < sizeAnimalSprite  										||  // if i is on the bottom edge of the sprite, or
 		        i > ((sizeAnimalSprite - 1)*sizeAnimalSprite)              	||  // if i is on the top edge of the sprite, or
 		        i % sizeAnimalSprite == 0                               	||  // if i is on one side of the sprite, or
-		        i % sizeAnimalSprite == (sizeAnimalSprite-1)            	    // if i is on the other edge of the sprite
+		        i % sizeAnimalSprite == (sizeAnimalSprite - 1)            	  // if i is on the other edge of the sprite
 		    ) &&
 		    (
-		        a->segments[segmentNumber].frameA[i].a == 0.0f						// and the pixel is not already drawn.
+		        a->segments[segmentNumber].frames[ frameOffset + i].a == 0.0f						// and the pixel is not already drawn.
 		    )
 
 		)
 		{
-			a->segments[segmentNumber].frameA[i].a = -1.0f;						// set the alpha to -1.0f, which does not occur in our drawings normally, and so can be used to mark a pixel with connection to the edge.
+			a->segments[segmentNumber].frames[frameOffset + i].a = -1.0f;						// set the alpha to -1.0f, which does not occur in our drawings normally, and so can be used to mark a pixel with connection to the edge.
 		}
 
 
@@ -587,7 +587,7 @@ void fillAPolygon(unsigned int animalIndex, unsigned int usegmentNumber)
 	{
 		for (unsigned int i = 0; i < (sizeAnimalSprite * sizeAnimalSprite); ++i)
 		{
-			if ( a->segments[segmentNumber].frameA[  i ].a > 0.0f) {continue;}
+			if ( a->segments[segmentNumber].frames[ frameOffset + i ].a > 0.0f) {continue;}
 			unsigned int spriteNeighbours[] =												// calculate the addresses of the four cardinal neighbours.
 			{
 				i - 1,
@@ -601,10 +601,10 @@ void fillAPolygon(unsigned int animalIndex, unsigned int usegmentNumber)
 				unsigned int neighbour = spriteNeighbours[j];
 				if (neighbour > (sizeAnimalSprite * sizeAnimalSprite)) {continue;}
 				if (
-				    a->segments[segmentNumber].frameA[  neighbour ].a == -1.0f
+				    a->segments[segmentNumber].frames[ frameOffset +  neighbour ].a == -1.0f
 				)
 				{
-					a->segments[segmentNumber].frameA[  i ].a = -1.0f;
+					a->segments[segmentNumber].frames[ frameOffset +  i ].a = -1.0f;
 				}
 			}
 		}
@@ -616,20 +616,20 @@ void fillAPolygon(unsigned int animalIndex, unsigned int usegmentNumber)
 		{
 			printf("\n");
 		}
-		if      (a->segments[segmentNumber].frameA[i].a == -1.0f)
+		if      (a->segments[segmentNumber].frames[ frameOffset + i].a == -1.0f)
 		{
 			printf("_");
-			a->segments[segmentNumber].frameA[i].a = 0.0f;
+			a->segments[segmentNumber].frames[frameOffset + i].a = 0.0f;
 		}
-		else if (a->segments[segmentNumber].frameA[i].a ==  0.0f)
+		else if (a->segments[segmentNumber].frames[ frameOffset + i].a ==  0.0f)
 		{
 			printf("O");
-			a->segments[segmentNumber].frameA[i].r = animalCursorColor.r;
-			a->segments[segmentNumber].frameA[i].g = animalCursorColor.g;
-			a->segments[segmentNumber].frameA[i].b = animalCursorColor.b;
-			a->segments[segmentNumber].frameA[i].a = 1.0f;
+			a->segments[segmentNumber].frames[frameOffset + i].r = animalCursorColor.r;
+			a->segments[segmentNumber].frames[frameOffset + i].g = animalCursorColor.g;
+			a->segments[segmentNumber].frames[frameOffset + i].b = animalCursorColor.b;
+			a->segments[segmentNumber].frames[frameOffset + i].a = 1.0f;
 		}
-		else if (a->segments[segmentNumber].frameA[i].a >  0.0f)
+		else if (a->segments[segmentNumber].frames[frameOffset + i].a >  0.0f)
 		{
 			printf("X");
 		}
@@ -667,80 +667,88 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 #ifdef ANIMAL_DRAWING_READOUT
 		printf("Commit working polygon to segment\n");
 #endif
-		if (working_polygon.size() > 0)
-		{
-			// mirror the working vertices in X axis before lines are drawn.
-			// mirroring is done before line drawing to prevent confusion at the y intercept.
-			if (true)
-			{
-				std::list<vec_i2> mirrorVerts;
-				int count = 0;
-				for (std::list<vec_i2>::iterator it = working_polygon.begin(); it != working_polygon.end(); ++it)
-				{
-					int mirrorX = ((sizeAnimalSprite / 2) - it->x ) + (sizeAnimalSprite / 2);
-					mirrorVerts.push_back( vec_i2( mirrorX , it->y ) );
-					count++;
-				}
-				mirrorVerts.reverse(); // prevents a 'twist' in the geometry
-				working_polygon.splice(working_polygon.end(), mirrorVerts);
-			}
 
-			// draw lines connecting the vertices.
-			if (true)
+		for (int frameIndex = 0; frameIndex < numberOfFrames; ++frameIndex) // this operation applies to all frames.
+		{
+			if (working_polygon[frameIndex].size() > 0)
 			{
-				int count = 0;
-				vec_i2 lastVert = working_polygon.back();
-				for (std::list<vec_i2>::iterator it = working_polygon.begin(); it != working_polygon.end(); ++it)
+
+				// mirror the working vertices in X axis before lines are drawn.
+				// mirroring is done before line drawing to prevent confusion at the y intercept.
+				if (true)
 				{
-					vec_i2 currentVert = *(it);
-					std::list<ProposedLifeParticle> newParticles =  EFLA_E(   lastVert, currentVert  ) ;
-					for (std::list<ProposedLifeParticle>::iterator np = newParticles.begin(); np != newParticles.end(); ++np)
+					std::list<vec_i2> mirrorVerts;
+					int count = 0;
+					for (std::list<vec_i2>::iterator it = working_polygon[frameIndex].begin(); it != working_polygon[frameIndex].end(); ++it)
 					{
-						np->color = animalCursorColor;
-						segment_particles.push_back( *(np)  );
+						int mirrorX = ((sizeAnimalSprite / 2) - it->x ) + (sizeAnimalSprite / 2);
+						mirrorVerts.push_back( vec_i2( mirrorX , it->y ) );
+						count++;
 					}
-					lastVert = currentVert;
+					mirrorVerts.reverse(); // prevents a 'twist' in the geometry
+					working_polygon[frameIndex].splice(working_polygon[frameIndex].end(), mirrorVerts);
+				}
+
+				// draw lines connecting the vertices.
+				if (true)
+				{
+					int count = 0;
+					vec_i2 lastVert = working_polygon[frameIndex].back();
+					for (std::list<vec_i2>::iterator it = working_polygon[frameIndex].begin(); it != working_polygon[frameIndex].end(); ++it)
+					{
+						vec_i2 currentVert = *(it);
+						std::list<ProposedLifeParticle> newParticles =  EFLA_E(   lastVert, currentVert  ) ;
+						for (std::list<ProposedLifeParticle>::iterator np = newParticles.begin(); np != newParticles.end(); ++np)
+						{
+							np->color = animalCursorColor;
+							segment_particles[frameIndex].push_back( *(np)  );
+						}
+						lastVert = currentVert;
+						count++;
+					}
+				}
+
+
+				working_polygon[frameIndex].clear();
+			}
+
+
+#ifdef ANIMAL_DRAWING_READOUT
+			printf("Commit segment to sprite and go to new segment. " );
+#endif
+			int count = 0;
+			for (std::list<ProposedLifeParticle>::iterator it = segment_particles[frameIndex].begin(); it != segment_particles[frameIndex].end(); ++it)
+			{
+				int j = (it->position.y * sizeAnimalSprite) + it->position.x;
+				if ( j < (sizeAnimalSprite * sizeAnimalSprite) && j >= 0)
+				{
+					a->segments[animalCursorSegmentNumber].frames[ (sizeAnimalSprite * sizeAnimalSprite * frameIndex) + j ] = it->color;
 					count++;
 				}
 			}
 
-
-			working_polygon.clear();
-		}
-
 #ifdef ANIMAL_DRAWING_READOUT
-		printf("Commit segment to sprite and go to new segment. " );
+			printf("The amount of committed particles was %u.\n", count );
 #endif
-		int count = 0;
-		for (std::list<ProposedLifeParticle>::iterator it = segment_particles.begin(); it != segment_particles.end(); ++it)
-		{
-			int j = (it->position.y * sizeAnimalSprite) + it->position.x;
-			if ( j < (sizeAnimalSprite * sizeAnimalSprite) && j >= 0)
+
+
+			if (count > 0) // don't advance the segment if the prior one was empty. No empty segments! don't bother filling empty segments either!
 			{
-				a->segments[animalCursorSegmentNumber].frameA[j] = it->color;
-				a->segments[animalCursorSegmentNumber].frameB[j] = it->color;
-				a->segments[animalCursorSegmentNumber].frameC[j] = it->color;
-				count++;
+				fillAPolygon(animalIndex, animalCursorSegmentNumber, frameIndex);
+
+
+				animalCursorSegmentNumber++;
 			}
-		}
 
 #ifdef ANIMAL_DRAWING_READOUT
-		printf("The amount of committed particles was %u.\n", count );
+			printf("Clear and populate working polygon.\n" );
 #endif
+			segment_particles[frameIndex].clear();
+			working_polygon[frameIndex].clear();
 
-		// don't advance the segment if the prior one was empty. No empty segments! don't bother filling empty segments either!
-		if (count > 0)
-		{
-			fillAPolygon(animalIndex, animalCursorSegmentNumber);
-			segment_particles.clear();
-
-			animalCursorSegmentNumber++;
 		}
 
-#ifdef ANIMAL_DRAWING_READOUT
-		printf("Clear and populate working polygon.\n" );
-#endif
-		working_polygon.clear();
+
 		// draw a n sided polygon in the vertices buffer.
 		// the first char is the number of vertices
 		int nPolyVertices = 0;
@@ -764,15 +772,18 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 #ifdef ANIMAL_DRAWING_READOUT
 		printf("char %c, index %u. Set radius of the new polygon to %u\n", genes[animalCursorString] , animalCursorString, numberModifier);
 #endif
-		for ( int j = 0; j <= nPolyVertices; ++j)
+		for (int frameIndex = 0; frameIndex < numberOfFrames; ++frameIndex) // this operation applies to all frames.
 		{
-			float fj = j;
-			float angle = (fj * (3.1415f / nPolyVertices)  ) + (0.5f * 3.1415f);  // only 1 pi so it draws a semi circle.
-			float fnewVertX = (animalCursorSegmentRadius * cos(angle)) + (sizeAnimalSprite / 2);
-			float fnewVertY = (animalCursorSegmentRadius * sin(angle)) + (sizeAnimalSprite / 2);
-			int newVertX = fnewVertX;
-			int newVertY = fnewVertY;
-			working_polygon.push_back ( vec_i2( newVertX, newVertY ) );
+			for ( int j = 0; j <= nPolyVertices; ++j)
+			{
+				float fj = j;
+				float angle = (fj * (3.1415f / nPolyVertices)  ) + (0.5f * 3.1415f);  // only 1 pi so it draws a semi circle.
+				float fnewVertX = (animalCursorSegmentRadius * cos(angle)) + (sizeAnimalSprite / 2);
+				float fnewVertY = (animalCursorSegmentRadius * sin(angle)) + (sizeAnimalSprite / 2);
+				int newVertX = fnewVertX;
+				int newVertY = fnewVertY;
+				working_polygon[frameIndex].push_back ( vec_i2( newVertX, newVertY ) );
+			}
 		}
 		return 0;
 	}
@@ -787,9 +798,9 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 		animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
 		int numberModifier = alphanumeric( genes[animalCursorString] );
 		int moveVertex = numberModifier;
-		if (working_polygon.size() > 0)
+		if (working_polygon[animalCursorFrame].size() > 0)
 		{
-			moveVertex = moveVertex % working_polygon.size();
+			moveVertex = moveVertex % working_polygon[animalCursorFrame].size();
 		}
 #ifdef ANIMAL_DRAWING_READOUT
 		printf("char %c, index %u. The vertex to move is %u\n", genes[animalCursorString] , animalCursorString, numberModifier);
@@ -810,9 +821,11 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 #ifdef ANIMAL_DRAWING_READOUT
 		printf("char %c, index %u. Move Y by %i\n", genes[animalCursorString] , animalCursorString, moveY);
 #endif
+
+
 		std::list<vec_i2>::iterator it;
 		int count = 0;
-		for (it = working_polygon.begin(); it != working_polygon.end(); ++it)
+		for (it = working_polygon[animalCursorFrame].begin(); it != working_polygon[animalCursorFrame].end(); ++it)
 		{
 			if (count == moveVertex)
 			{
@@ -828,6 +841,26 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 			}
 			count++;
 		}
+
+		return 0;
+	}
+	case 'f':
+	{
+#ifdef ANIMAL_DRAWING_READOUT
+		printf("Increment animal frame cursor: \n");
+#endif
+		animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
+		unsigned int numberModifier = alphanumeric( genes[animalCursorString] );
+		numberModifier = numberModifier % 2;
+
+
+#ifdef ANIMAL_DRAWING_READOUT
+		printf("char %c, index %u. Set animal frame cursor to %u\n", genes[animalCursorString] , animalCursorString, numberModifier);
+#endif
+
+
+		animalCursorFrame = numberModifier;
+
 
 		return 0;
 	}
@@ -899,8 +932,13 @@ void drawAnimalFromSeed(unsigned int i)
 	animalCursorColor = Color(0.5f, 0.5f, 0.5f, 1.0f);
 	animalCursorSegmentNumber = 0;
 	animalCursorEnergyDebt = 100.0f;
-	working_polygon.clear();
-	segment_particles.clear();
+
+	for (int frameIndex = 0; frameIndex < numberOfFrames; ++frameIndex)
+	{
+		working_polygon[frameIndex].clear();
+		segment_particles[frameIndex].clear();
+	}
+
 
 	unsigned int animalIndex = seedGrid[i].parentIdentity;
 
@@ -1060,18 +1098,20 @@ void setAnimalSpritePixel ( AnimalSegment  s, unsigned int pixelIndex )
 	int worldI = (worldY * sizeX) + worldX;
 	if ( worldI > totalSize) {return;}
 	int j__color_offset = (worldI * numberOfFieldsPerVertex) ;
-	if (s.animationFrame == FRAME_A)
-	{
-		memcpy( &animationGrid[ j__color_offset], 	&( s.frameA[pixelIndex]  ) , 	sizeof(Color) );
-	}
-	else if (s.animationFrame == FRAME_B)
-	{
-		memcpy( &animationGrid[ j__color_offset], 	&( s.frameB[pixelIndex]  ) , 	sizeof(Color) );
-	}
-	else if (s.animationFrame == FRAME_C)
-	{
-		memcpy( &animationGrid[ j__color_offset], 	&( s.frameC[pixelIndex]  ) , 	sizeof(Color) );
-	}
+	// if (s.animationFrame == FRAME_A)
+	// {
+
+	memcpy( &animationGrid[ j__color_offset], 	&( s.frames[(sizeAnimalSprite * sizeAnimalSprite * s.animationFrame) + pixelIndex]  ) , 	sizeof(Color) );
+
+	// }
+	// else if (s.animationFrame == FRAME_B)
+	// {
+	// 	memcpy( &animationGrid[ j__color_offset], 	&( s.frameB[pixelIndex]  ) , 	sizeof(Color) );
+	// }
+	// else if (s.animationFrame == FRAME_C)
+	// {
+	// 	memcpy( &animationGrid[ j__color_offset], 	&( s.frameC[pixelIndex]  ) , 	sizeof(Color) );
+	// }
 }
 
 void swapAnimalSpritePixel (unsigned int a, unsigned int b)

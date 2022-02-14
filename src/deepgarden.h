@@ -27,6 +27,8 @@ using namespace glm;
 #define sizeAnimalSprite 16
 #define maxAnimalSegments 8
 
+#define numberOfFrames     3         
+
 struct Color
 {
 	float r;
@@ -68,11 +70,10 @@ extern const unsigned int MATERIAL_VACUUM ;
 #define ENERGYSOURCE_PLANT   8
 #define ENERGYSOURCE_ANIMAL  16
 
-// Frames are the sprites used to animate animals. A and B are used to animate movement while C is used for idleness.
-#define FRAME_A 1
-#define FRAME_B 2
-#define FRAME_C 3
-
+ // Frames are the sprites used to animate animals. A and B are used to animate movement while C is used for idleness.
+#define FRAME_A 0
+#define FRAME_B 1
+#define FRAME_C 2
 // Movement controls where an animal is allowed to go. This is a hereditary, mutable quality.
 #define MOVEMENT_ONPOWDER  1
 #define MOVEMENT_INLIQUID   2
