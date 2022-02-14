@@ -50,7 +50,6 @@ int neighbourOffsets[] =
 	+sizeX - 1
 };
 
-
 const unsigned int totalSize = sizeX * sizeY;
 const unsigned int numberOfFieldsPerVertex = 6; /*  R, G, B, A, X, Y  */
 
@@ -138,7 +137,7 @@ unsigned int animalRecursionLevel = 0;
 std::list<vec_i2> working_polygon[numberOfFrames];
 std::list<ProposedLifeParticle> segment_particles[numberOfFrames];
 
-std::string exampleAnimal = std::string(" rzgzbz  pmomba pmmcmz pmomba pmmcmz .g");
+std::string exampleAnimal = std::string(" rzgzbz  pmomba pmmcmz pmomba pmmcmz");
 
 int defaultTemperature = 300;
 int radiantHeatIntensity = 50; // this is a physical constant that determines how much heat radiates from material, and how strongly material heat is coupled to the atmosphere.
@@ -228,30 +227,8 @@ void thread_weather()
 			{
 				weatherGrid[i].pressure    = ( weatherGrid[neighbour].pressure * weatherGrid[i].temperature         ) / (weatherGrid[neighbour].temperature );
 			}
-
-
 		}
 	}
-
-
-	// else
-
-	// {
-	// 	 int highestNeighbourTemperature = 0;
-
-
-	// 	// go through each weather grid square, check the neighbours. set the wind direction in this square away from the highest pressure neighbour.
-	// 	for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
-	// 	{
-
-
-	// 	if (weatherGrid[neighbour ].pressure > highestNeighbourPressure  )
-	// 	{
-	// 		highestNeighbourPressure = weatherGrid[ neighbourOffsets[j] ].pressure ;
-	// 		weatherGrid[i].direction = j;
-	// 	}
-	// 	}
-	// }
 
 #ifdef THREAD_TIMING_READOUT
 	auto end = std::chrono::steady_clock::now();
@@ -453,7 +430,7 @@ Animal::Animal()
 	this->energy = 0.0f;
 	this->reach = 5;
 	this->movementChance = 4;
-	this->segmentsUsed = 1;
+	this->segmentsUsed = 0;
 
 	for (int i = 0; i < maxAnimalSegments; ++i)
 	{
@@ -533,37 +510,22 @@ std::list<ProposedLifeParticle> EFLA_E(vec_i2 start, vec_i2 end)
 	return v;
 }
 
-
-
-
-
-
 void fillAPolygon(unsigned int animalIndex, unsigned int usegmentNumber, unsigned int frame)
 {
-
-
 	if (animalIndex >= animals.size()  ) {return;}
-
 	Animal * a  = &(animals[animalIndex]);
-
-
 	unsigned int frameOffset = (sizeAnimalSprite * sizeAnimalSprite) * frame;
-
 	int segmentNumber = usegmentNumber;
 
 	// traverse the sprite.  you will be setting alpha to -1 to mark a pixel that has connection to the outside.
 	// if a pixel is an edge neighbour (cardinal direction) of a -1 pixel or the edge of the sprite, set it also to -1.
 	// ignore pixels that have an alpha value other than 0 or -1. this way, you will not intrude into the image.
-
 	// if the shapes is not allowed to extend beyond the edges of the sprite, then it is guaranteed that none of the edge squares
-
 	// this way, extending the 'outside the polygon'-ness from the edge squares inward is formally safe to do
-
 	// print the output.
 
 	for (unsigned int i = 0; i < sizeAnimalSprite * sizeAnimalSprite; ++i)
 	{
-
 		if (
 		    (
 		        i < sizeAnimalSprite  										||  // if i is on the bottom edge of the sprite, or
@@ -574,13 +536,10 @@ void fillAPolygon(unsigned int animalIndex, unsigned int usegmentNumber, unsigne
 		    (
 		        a->segments[segmentNumber].frames[ frameOffset + i].a == 0.0f						// and the pixel is not already drawn.
 		    )
-
 		)
 		{
 			a->segments[segmentNumber].frames[frameOffset + i].a = -1.0f;						// set the alpha to -1.0f, which does not occur in our drawings normally, and so can be used to mark a pixel with connection to the edge.
 		}
-
-
 	}
 
 	for (unsigned int k = 0; k < (sizeAnimalSprite / 2); ++k) // multiple passes help to ensure there are no daggy bits left
@@ -614,16 +573,22 @@ void fillAPolygon(unsigned int animalIndex, unsigned int usegmentNumber, unsigne
 	{
 		if      (i % sizeAnimalSprite == 0)
 		{
+#ifdef ANIMAL_DRAWING_READOUT
 			printf("\n");
+#endif
 		}
 		if      (a->segments[segmentNumber].frames[ frameOffset + i].a == -1.0f)
 		{
+#ifdef ANIMAL_DRAWING_READOUT
 			printf("_");
+#endif
 			a->segments[segmentNumber].frames[frameOffset + i].a = 0.0f;
 		}
 		else if (a->segments[segmentNumber].frames[ frameOffset + i].a ==  0.0f)
 		{
+#ifdef ANIMAL_DRAWING_READOUT
 			printf("O");
+#endif
 			a->segments[segmentNumber].frames[frameOffset + i].r = animalCursorColor.r;
 			a->segments[segmentNumber].frames[frameOffset + i].g = animalCursorColor.g;
 			a->segments[segmentNumber].frames[frameOffset + i].b = animalCursorColor.b;
@@ -631,12 +596,16 @@ void fillAPolygon(unsigned int animalIndex, unsigned int usegmentNumber, unsigne
 		}
 		else if (a->segments[segmentNumber].frames[frameOffset + i].a >  0.0f)
 		{
+#ifdef ANIMAL_DRAWING_READOUT
 			printf("X");
+#endif
 		}
 
 	}
 
+#ifdef ANIMAL_DRAWING_READOUT
 	printf("\n");
+#endif
 }
 
 
@@ -1050,7 +1019,7 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 void drawAnimalFromSeed(unsigned int i)
 {
 	// reset everything to the beginning state
-	animalCursorFrame = FRAME_A;
+	animalCursorFrame = 0;
 	animalCursorString = 0;
 	animalCursorSegmentRadius = 2;
 	animalCursorSegmentAngle = 0.0f;
@@ -1065,8 +1034,15 @@ void drawAnimalFromSeed(unsigned int i)
 		segment_particles[frameIndex].clear();
 	}
 
+	Animal newAnimal = Animal();
+	animals.push_back(newAnimal);
 
-	unsigned int animalIndex = seedGrid[i].parentIdentity;
+	unsigned int animalIndex = animals.size() - 1;
+	seedGrid[i].parentIdentity = animalIndex;
+
+	#ifdef ANIMAL_DRAWING_READOUT
+	printf("New animal with ID %u \n", animalIndex);
+#endif
 
 	if (animalIndex < animals.size() && seedGrid[i].stage == STAGE_ANIMAL)
 	{
@@ -1212,13 +1188,13 @@ void photate( unsigned int i )
 	}
 }
 
-void setAnimalSpritePixel ( AnimalSegment  s, unsigned int pixelIndex )
+void setAnimalSpritePixel ( AnimalSegment * s, unsigned int pixelIndex )
 {
 	// find the x, y offset of the pixel from the origin in sprite coordinates.
 	int pixelX = (pixelIndex % sizeAnimalSprite) - (sizeAnimalSprite / 2);
 	int pixelY = (pixelIndex / sizeAnimalSprite) - (sizeAnimalSprite / 2);
-	int segmentX = s.position % sizeX;
-	int segmentY = s.position / sizeX;
+	int segmentX = s->position % sizeX;
+	int segmentY = s->position / sizeX;
 	int worldX = segmentX + pixelX;
 	int worldY = segmentY + pixelY;
 	int worldI = (worldY * sizeX) + worldX;
@@ -1226,27 +1202,27 @@ void setAnimalSpritePixel ( AnimalSegment  s, unsigned int pixelIndex )
 	int j__color_offset = (worldI * numberOfFieldsPerVertex) ;
 	// memcpy( &animationGrid[ j__color_offset], 	&( s.frames[(sizeAnimalSprite * sizeAnimalSprite * s.animationFrame) + pixelIndex]  ) , 	sizeof(Color) );
 
-	if ( (s.frames[(sizeAnimalSprite * sizeAnimalSprite * s.animationFrame) + pixelIndex]).a > 0.0f  ) // only clear the pixel if it is not empty in the original image. This prevents disturbing other sprites.
+	if ( (s->frames[(sizeAnimalSprite * sizeAnimalSprite * s->animationFrame) + pixelIndex]).a > 0.0f  ) // only clear the pixel if it is not empty in the original image. This prevents disturbing other sprites.
 	{
-		memcpy( &animationGrid[ j__color_offset], &(	s.frames[(sizeAnimalSprite * sizeAnimalSprite * s.animationFrame) + pixelIndex] )  , 	sizeof(Color) );
+		memcpy( &animationGrid[ j__color_offset], &(	s->frames[(sizeAnimalSprite * sizeAnimalSprite * s->animationFrame) + pixelIndex] )  , 	sizeof(Color) );
 	}
 
 }
 
-void clearAnimalSpritePixel ( AnimalSegment  s, unsigned int pixelIndex )
+void clearAnimalSpritePixel ( AnimalSegment * s, unsigned int pixelIndex )
 {
 	// find the x, y offset of the pixel from the origin in sprite coordinates.
 	int pixelX = (pixelIndex % sizeAnimalSprite) - (sizeAnimalSprite / 2);
 	int pixelY = (pixelIndex / sizeAnimalSprite) - (sizeAnimalSprite / 2);
-	int segmentX = s.position % sizeX;
-	int segmentY = s.position / sizeX;
+	int segmentX = s->position % sizeX;
+	int segmentY = s->position / sizeX;
 	int worldX = segmentX + pixelX;
 	int worldY = segmentY + pixelY;
 	int worldI = (worldY * sizeX) + worldX;
 	if ( worldI > totalSize) {return;}
 	int j__color_offset = (worldI * numberOfFieldsPerVertex) ;
 
-	if ( (s.frames[(sizeAnimalSprite * sizeAnimalSprite * s.animationFrame) + pixelIndex]).a > 0.0f  ) // only clear the pixel if it is not empty in the original image. This prevents disturbing other sprites.
+	if ( (s->frames[(sizeAnimalSprite * sizeAnimalSprite * s->animationFrame) + pixelIndex]).a > 0.0f  ) // only clear the pixel if it is not empty in the original image. This prevents disturbing other sprites.
 	{
 		memcpy( &animationGrid[ j__color_offset], 	&color_clear , 	sizeof(Color) );
 	}
@@ -1274,13 +1250,6 @@ void setAnimal(unsigned int i)
 	seedGrid[i].genes = exampleAnimal;
 	seedGrid[i].stage = STAGE_ANIMAL;
 	seedGrid[i].energy = 0.0f;
-	Animal newAnimal = Animal();
-	animals.push_back(newAnimal);
-	seedGrid[i].parentIdentity = animals.size() - 1;
-
-#ifdef PLANT_DRAWING_READOUT
-	printf("seed with energy debt %f \n", energyDebt);
-#endif
 
 	memcpy( (&seedColorGrid[i * numberOfFieldsPerVertex]) ,  &(animalCursorColor),  sizeof(Color) );
 	drawAnimalFromSeed(i);
@@ -1344,7 +1313,7 @@ void incrementAnimalSegmentPositions (unsigned int animalIndex, unsigned int i, 
 			for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
 			{
 				unsigned int neighbour = neighbourOffsets[j] + i;
-				if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS )
+				if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS || grid[neighbour].phase == PHASE_LIQUID)
 				{
 					printf("animal reproduced\n");
 					setAnimal( neighbour );
@@ -1367,7 +1336,7 @@ void incrementAnimalSegmentPositions (unsigned int animalIndex, unsigned int i, 
 			{
 				for (unsigned int k = 0; k < (sizeAnimalSprite * sizeAnimalSprite); ++k)
 				{
-					clearAnimalSpritePixel( a->segments[j], k);
+					clearAnimalSpritePixel( &(a->segments[j]), k);
 				}
 			}
 
@@ -1383,20 +1352,13 @@ void incrementAnimalSegmentPositions (unsigned int animalIndex, unsigned int i, 
 				// }
 				if (falling)
 				{
-					a->segments[j].animationFrame = FRAME_C;
+					a->segments[j].animationFrame = 2;
 				}
 				else
 				{
-					// if (segmentPhase)
-					// {
-					// 	a->segments[j].animationFrame = FRAME_B;
-					// }
-					// else
-					// {
-					a->segments[j].animationFrame++;
-					a->segments[j].animationFrame = a->segments[j].animationFrame / 2;
-					// }
-					// segmentPhase = !segmentPhase;
+
+					if (a->segments[j].animationFrame == 1) { a->segments[j].animationFrame = 0;}
+					else {a->segments[j].animationFrame = 1;}
 				}
 
 
@@ -1411,12 +1373,22 @@ void incrementAnimalSegmentPositions (unsigned int animalIndex, unsigned int i, 
 			{
 				a->segments[j].position = a->segments[j - 1].position;
 
-				for (unsigned int k = 0; k < (sizeAnimalSprite * sizeAnimalSprite); ++k)
-				{
-					setAnimalSpritePixel( a->segments[j], k);
-				}
+				
 			}
 			a->segments[0].position = i;
+
+
+
+			for (unsigned int j = 0; j < a->segmentsUsed; ++j)
+			{
+				for (unsigned int k = 0; k < (sizeAnimalSprite * sizeAnimalSprite); ++k)
+				{
+					setAnimalSpritePixel( &(a->segments[j]), k);
+				}
+			}
+
+
+
 		}
 		// animals[animalIndex] = a;
 	}
@@ -2285,6 +2257,187 @@ void toggleEnergyGridDisplay ()
 	visualizer = (visualizer + 1 ) % (NUMBER_OF_VISUALIZERS + 1);
 }
 
+
+unsigned int walkAnAnimal(unsigned int i)
+{
+	unsigned int currentPosition = i;
+	unsigned int squareBelow = (currentPosition - sizeX) % totalSize;
+
+	if (seedGrid[i].parentIdentity < animals.size())
+	{
+		Animal * a = &(animals[seedGrid[i].parentIdentity]);
+		bool moved = false;
+		if (extremelyFastNumberFromZeroTo(a->movementChance) == 0)
+		{
+			for (unsigned int move = 0; move < a->reach; ++move)
+			{
+				// check the neighbour cells starting in the direction of travel.
+				// then, check the cells closest to the direction of travel.
+				// then, the cells at right angles to the direction of travel. and so on. this is vital to coherent movement.
+				int sign = 1;
+				unsigned int neighbour = (currentPosition + neighbourOffsets[a->direction]) % totalSize;
+				for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
+				{
+					// starting at a place in the neighbours array, move n steps to the right, then n+1 steps left.. access it with neighbourOffsets[k];
+					int k = ( (a->direction) + (j * sign)) % N_NEIGHBOURS;
+					k += (extremelyFastNumberFromZeroTo(2) - 1); // also, do it with some jitter or else you will get stuck constantly.
+					k = k % N_NEIGHBOURS;
+					if (k < 0) {k += N_NEIGHBOURS;}
+					sign *= -1;
+
+					neighbour = (currentPosition + neighbourOffsets[k] ) % totalSize;
+
+					// if one of the neighbouring cells is a material type and phase that the animal can exist within
+					if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS || grid[neighbour].phase == PHASE_LIQUID)
+					{
+						break;
+					}
+				}
+
+				// if the neighbour is a food the animal can eat, eat it
+				if (  (a->energyFlags & ENERGYSOURCE_LIGHT ) == ENERGYSOURCE_LIGHT   )
+				{
+					if (seedGrid[neighbour].stage == STAGE_NULL )
+					{
+						a->energy += seedGrid[neighbour].energy;
+					}
+				}
+
+				else if (  (a->energyFlags & ENERGYSOURCE_SEED ) == ENERGYSOURCE_SEED   )
+				{
+					if (seedGrid[neighbour].stage == STAGE_BUD || seedGrid[neighbour].stage == STAGE_FRUIT ||  seedGrid[neighbour].stage == STAGE_SPROUT )
+					{
+						a->energy += 10.0f ;
+						clearSeedParticle(neighbour);
+					}
+				}
+
+				else if (  (a->energyFlags & ENERGYSOURCE_PLANT ) == ENERGYSOURCE_PLANT   )
+				{
+					if (lifeGrid[neighbour].identity > 0x00)
+					{
+						if (lifeGrid[neighbour].energy > 0.0f)
+						{
+							a->energy += lifeGrid[neighbour].energy;
+							lifeGrid[neighbour].energy = 0.0f;
+							clearLifeParticle(neighbour);
+						}
+					}
+				}
+
+				else if (  (a->energyFlags & ENERGYSOURCE_MINERAL ) == ENERGYSOURCE_MINERAL   )
+				{
+					if (grid[neighbour].phase != PHASE_VACUUM)
+					{
+						a->energy += 1.0f;
+						clearParticle( neighbour);
+					}
+				}
+
+				else if (  (a->energyFlags & ENERGYSOURCE_ANIMAL ) == ENERGYSOURCE_ANIMAL   )
+				{
+					if (seedGrid[neighbour].stage == STAGE_ANIMAL )
+					{
+						a->energy += animals[seedGrid[neighbour].parentIdentity].energy;
+						printf("an animal ate another animal!\n");
+						clearSeedParticle(neighbour);
+					}
+				}
+
+				if (  (a->movementFlags & MOVEMENT_ONPOWDER ) == MOVEMENT_ONPOWDER   )
+				{
+					for (int l = 0; l < N_NEIGHBOURS; ++l) // and it has a neighbour of a type and phase the animal can walk on
+					{
+						int neighboursNeighbour = (neighbour + neighbourOffsets[l]);
+						if (neighboursNeighbour != currentPosition && neighboursNeighbour != i)
+						{
+							if (  grid[ neighboursNeighbour ] .phase == PHASE_POWDER )
+							{
+								currentPosition = neighbour; // say that this cell is the current position, and then break.
+								moved = true;
+							}
+						}
+					}
+				}
+
+				if (  (a->movementFlags & MOVEMENT_INPLANTS ) == MOVEMENT_INPLANTS   )
+				{
+					if (lifeGrid[neighbour].identity > 0x00)
+					{
+						currentPosition = neighbour; // say that this cell is the current position, and then break.
+						moved = true;
+					}
+				}
+
+				if (  (a->movementFlags & MOVEMENT_INLIQUID ) == MOVEMENT_INLIQUID   )
+				{
+					if (grid[neighbour].phase == PHASE_LIQUID) // if one of the neighbouring cells is a material type and phase that the animal can exist within
+					{
+						currentPosition = neighbour; // say that this cell is the current position, and then break.
+						moved = true;
+					}
+				}
+
+				if (  (a->movementFlags & MOVEMENT_INAIR ) == MOVEMENT_INAIR   )
+				{
+					if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS) // if one of the neighbouring cells is a material type and phase that the animal can exist within
+					{
+						currentPosition = neighbour; // say that this cell is the current position, and then break.
+						moved = true;
+					};
+				}
+
+				if (  (a->movementFlags & MOVEMENT_ONSOLID ) == MOVEMENT_ONSOLID   )
+				{
+					if (grid[neighbour].phase == PHASE_VACUUM) // if one of the neighbouring cells is a material type and phase that the animal can exist within
+					{
+						for (int l = 0; l < N_NEIGHBOURS; ++l) // and it has a neighbour of a type and phase the animal can walk on
+						{
+							int neighboursNeighbour = (neighbour + neighbourOffsets[l]);
+							if (neighboursNeighbour != currentPosition && neighboursNeighbour != i)
+							{
+								if (  grid[ neighboursNeighbour ] .phase == PHASE_SOLID )
+								{
+									currentPosition = neighbour; // say that this cell is the current position, and then break.
+									moved = true;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		// after having repeated <reach> moves, swap the cell and update the segment positions.
+		if (	moved )
+		{
+			swapSeedParticle(i, currentPosition);
+			incrementAnimalSegmentPositions( seedGrid[currentPosition].parentIdentity, currentPosition, false );
+		}
+		else
+		{
+			if (((a->movementFlags & MOVEMENT_INAIR) !=  MOVEMENT_INAIR)    )
+			{
+				currentPosition = (squareBelow + (extremelyFastNumberFromZeroTo(2) -1 )) % totalSize;
+
+				if (grid[currentPosition].phase == PHASE_VACUUM || grid[currentPosition].phase == PHASE_GAS )
+				{
+					swapSeedParticle(i, currentPosition);
+					incrementAnimalSegmentPositions( seedGrid[currentPosition].parentIdentity, currentPosition, true );
+				}
+			}
+		}
+	}
+
+	else
+	{
+		clearSeedParticle(i);
+	}
+
+	unsigned int result = currentPosition;
+	return result;
+}
+
 void thread_graphics()
 {
 #ifdef THREAD_TIMING_READOUT
@@ -2458,14 +2611,33 @@ void thread_graphics()
 
 		// clearAnimationGrid();
 
-		// for (unsigned int i = 0; i < totalSize; ++i)
-		// {
-		// 	// animationGrid[ (i * numberOfFieldsPerVertex ) + 3] = 0.0f;
-		// 	if (seedGrid[i].stage == STAGE_ANIMAL)
-		// 	{
-		// 		updateAnimalDrawing(i);
-		// 	}
-		// }
+		for (unsigned int i = 0; i < totalSize; ++i)
+		{
+			// animationGrid[ (i * numberOfFieldsPerVertex ) + 3] = 0.0f;
+			// if (seedGrid[i].stage == STAGE_ANIMAL)
+			// {
+			// 	// updateAnimalDrawing(i);
+			// }
+
+			if (seedGrid[i].stage == STAGE_ANIMAL)
+			{
+				if (seedGrid[i].drawingInProgress) {continue;} // don't move the animal while it is being drawn.
+				if (seedGrid[i].parentIdentity < animals.size())
+				{
+					// clearAnimalDrawing(i);
+					Animal * a = &(animals[seedGrid[i].parentIdentity]);
+					if (extremelyFastNumberFromZeroTo(64) == 0)
+					{
+						a->direction = extremelyFastNumberFromZeroTo(7);
+					}
+					walkAnAnimal(i);
+// #ifdef DRAW_ANIMALS
+// 					// updateAnimalDrawing(i);
+// #endif
+				}
+				continue;
+			}
+		}
 
 
 		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, animationGrid, GL_DYNAMIC_DRAW );
@@ -3265,183 +3437,6 @@ void thread_plantDrawing()
 #endif
 }
 
-unsigned int walkAnAnimal(unsigned int i)
-{
-	unsigned int currentPosition = i;
-	unsigned int squareBelow = currentPosition - sizeX;
-
-	if (seedGrid[i].parentIdentity < animals.size())
-	{
-		Animal * a = &(animals[seedGrid[i].parentIdentity]);
-		bool moved = false;
-		if (extremelyFastNumberFromZeroTo(a->movementChance) == 0)
-		{
-			for (unsigned int move = 0; move < a->reach; ++move)
-			{
-				// check the neighbour cells starting in the direction of travel.
-				// then, check the cells closest to the direction of travel.
-				// then, the cells at right angles to the direction of travel. and so on. this is vital to coherent movement.
-				int sign = 1;
-				unsigned int neighbour = (currentPosition + neighbourOffsets[a->direction]) % totalSize;
-				for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
-				{
-					// starting at a place in the neighbours array, move n steps to the right, then n+1 steps left.. access it with neighbourOffsets[k];
-					int k = ( (a->direction) + (j * sign)) % N_NEIGHBOURS;
-					k += (extremelyFastNumberFromZeroTo(2) - 1); // also, do it with some jitter or else you will get stuck constantly.
-					k = k % N_NEIGHBOURS;
-					if (k < 0) {k += N_NEIGHBOURS;}
-					sign *= -1;
-
-					neighbour = (currentPosition + neighbourOffsets[k] ) % totalSize;
-
-					// if one of the neighbouring cells is a material type and phase that the animal can exist within
-					if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS || grid[neighbour].phase == PHASE_LIQUID)
-					{
-						break;
-					}
-				}
-
-				// if the neighbour is a food the animal can eat, eat it
-				if (  (a->energyFlags & ENERGYSOURCE_LIGHT ) == ENERGYSOURCE_LIGHT   )
-				{
-					if (seedGrid[neighbour].stage == STAGE_NULL )
-					{
-						a->energy += seedGrid[neighbour].energy;
-					}
-				}
-
-				else if (  (a->energyFlags & ENERGYSOURCE_SEED ) == ENERGYSOURCE_SEED   )
-				{
-					if (seedGrid[neighbour].stage == STAGE_BUD || seedGrid[neighbour].stage == STAGE_FRUIT ||  seedGrid[neighbour].stage == STAGE_SPROUT )
-					{
-						a->energy += 10.0f ;
-						clearSeedParticle(neighbour);
-					}
-				}
-
-				else if (  (a->energyFlags & ENERGYSOURCE_PLANT ) == ENERGYSOURCE_PLANT   )
-				{
-					if (lifeGrid[neighbour].identity > 0x00)
-					{
-						if (lifeGrid[neighbour].energy > 0.0f)
-						{
-							a->energy += lifeGrid[neighbour].energy;
-							lifeGrid[neighbour].energy = 0.0f;
-							clearLifeParticle(neighbour);
-						}
-					}
-				}
-
-				else if (  (a->energyFlags & ENERGYSOURCE_MINERAL ) == ENERGYSOURCE_MINERAL   )
-				{
-					if (grid[neighbour].phase != PHASE_VACUUM)
-					{
-						a->energy += 1.0f;
-						clearParticle( neighbour);
-					}
-				}
-
-				else if (  (a->energyFlags & ENERGYSOURCE_ANIMAL ) == ENERGYSOURCE_ANIMAL   )
-				{
-					if (seedGrid[neighbour].stage == STAGE_ANIMAL )
-					{
-						a->energy += animals[seedGrid[neighbour].parentIdentity].energy;
-						printf("an animal ate another animal!\n");
-						clearSeedParticle(neighbour);
-					}
-				}
-
-				if (  (a->movementFlags & MOVEMENT_ONPOWDER ) == MOVEMENT_ONPOWDER   )
-				{
-					for (int l = 0; l < N_NEIGHBOURS; ++l) // and it has a neighbour of a type and phase the animal can walk on
-					{
-						int neighboursNeighbour = (neighbour + neighbourOffsets[l]);
-						if (neighboursNeighbour != currentPosition && neighboursNeighbour != i)
-						{
-							if (  grid[ neighboursNeighbour ] .phase == PHASE_POWDER )
-							{
-								currentPosition = neighbour; // say that this cell is the current position, and then break.
-								moved = true;
-							}
-						}
-					}
-				}
-
-				if (  (a->movementFlags & MOVEMENT_INPLANTS ) == MOVEMENT_INPLANTS   )
-				{
-					if (lifeGrid[neighbour].identity > 0x00)
-					{
-						currentPosition = neighbour; // say that this cell is the current position, and then break.
-						moved = true;
-					}
-				}
-
-				if (  (a->movementFlags & MOVEMENT_INLIQUID ) == MOVEMENT_INLIQUID   )
-				{
-					if (grid[neighbour].phase == PHASE_LIQUID) // if one of the neighbouring cells is a material type and phase that the animal can exist within
-					{
-						currentPosition = neighbour; // say that this cell is the current position, and then break.
-						moved = true;
-					}
-				}
-
-				if (  (a->movementFlags & MOVEMENT_INAIR ) == MOVEMENT_INAIR   )
-				{
-					if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS) // if one of the neighbouring cells is a material type and phase that the animal can exist within
-					{
-						currentPosition = neighbour; // say that this cell is the current position, and then break.
-						moved = true;
-					};
-				}
-
-				if (  (a->movementFlags & MOVEMENT_ONSOLID ) == MOVEMENT_ONSOLID   )
-				{
-					if (grid[neighbour].phase == PHASE_VACUUM) // if one of the neighbouring cells is a material type and phase that the animal can exist within
-					{
-						for (int l = 0; l < N_NEIGHBOURS; ++l) // and it has a neighbour of a type and phase the animal can walk on
-						{
-							int neighboursNeighbour = (neighbour + neighbourOffsets[l]);
-							if (neighboursNeighbour != currentPosition && neighboursNeighbour != i)
-							{
-								if (  grid[ neighboursNeighbour ] .phase == PHASE_SOLID )
-								{
-									currentPosition = neighbour; // say that this cell is the current position, and then break.
-									moved = true;
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-
-		// after having repeated <reach> moves, swap the cell and update the segment positions.
-		if (	moved )
-		{
-			swapSeedParticle(i, currentPosition);
-			incrementAnimalSegmentPositions( seedGrid[i].parentIdentity, i, false );
-		}
-		else
-		{
-			if (((a->movementFlags & MOVEMENT_INAIR) !=  MOVEMENT_INAIR)    )
-			{
-				if (grid[squareBelow].phase == PHASE_VACUUM || grid[squareBelow].phase == PHASE_GAS )
-				{
-					swapSeedParticle(currentPosition, squareBelow);
-					incrementAnimalSegmentPositions( seedGrid[i].parentIdentity, currentPosition, true );
-				}
-			}
-		}
-	}
-
-	else
-	{
-		clearSeedParticle(i);
-	}
-
-	unsigned int result = currentPosition;
-	return result;
-}
 
 // fade the color in random seedgrid squares if the particle there is not a seed. this makes photon trails fade over time.
 void updateSeedgridColor (unsigned int i)
@@ -3581,24 +3576,24 @@ void thread_seeds()
 			swapSeedParticle( i, currentPosition);
 			continue;
 		}
-		else if (seedGrid[i].stage == STAGE_ANIMAL)
-		{
-			if (seedGrid[i].drawingInProgress) {continue;} // don't move the animal while it is being drawn.
-			if (seedGrid[i].parentIdentity < animals.size())
-			{
-				// clearAnimalDrawing(i);
-				Animal * a = &(animals[seedGrid[i].parentIdentity]);
-				if (extremelyFastNumberFromZeroTo(64) == 0)
-				{
-					a->direction = extremelyFastNumberFromZeroTo(7);
-				}
-				walkAnAnimal(i);
-#ifdef DRAW_ANIMALS
-				// updateAnimalDrawing(i);
-#endif
-			}
-			continue;
-		}
+// 		else if (seedGrid[i].stage == STAGE_ANIMAL)
+// 		{
+// 			if (seedGrid[i].drawingInProgress) {continue;} // don't move the animal while it is being drawn.
+// 			if (seedGrid[i].parentIdentity < animals.size())
+// 			{
+// 				// clearAnimalDrawing(i);
+// 				Animal * a = &(animals[seedGrid[i].parentIdentity]);
+// 				if (extremelyFastNumberFromZeroTo(64) == 0)
+// 				{
+// 					a->direction = extremelyFastNumberFromZeroTo(7);
+// 				}
+// 				walkAnAnimal(i);
+// #ifdef DRAW_ANIMALS
+// 				// updateAnimalDrawing(i);
+// #endif
+// 			}
+// 			continue;
+// 		}
 		else
 		{
 			continue;
