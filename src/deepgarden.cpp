@@ -10,12 +10,13 @@
 
 // #define THREAD_TIMING_READOUT 1
 // #define PLANT_DRAWING_READOUT 1
-#define ANIMAL_DRAWING_READOUT 1
+// #define ANIMAL_DRAWING_READOUT 1
 // #define ANIMAL_BEHAVIOR_READOUT 1
+#define MUTATION_READOUT 1
 #define DRAW_ANIMALS 1
 
 bool useGerminationMaterial = false;
-bool animalReproductionEnabled = false;
+bool animalReproductionEnabled = true;
 bool doWeather = false;
 
 #define RENDERING_THREADS 4
@@ -138,7 +139,7 @@ unsigned int animalRecursionLevel = 0;
 std::list<vec_i2> working_polygon[numberOfFrames];
 std::list<ProposedLifeParticle> segment_particles[numberOfFrames];
 
-std::string exampleAnimal = std::string(" rzgzbz  pmmmba pmocmz pmmmba pmocmz");
+std::string exampleAnimal = std::string(" rmgmbm  pmmmba pmocmz pmmmba pmocmz");
 
 int defaultTemperature = 300;
 int radiantHeatIntensity = 50; // this is a physical constant that determines how much heat radiates from material, and how strongly material heat is coupled to the atmosphere.
@@ -1039,6 +1040,45 @@ void measureAnimalQualities(unsigned int animalIndex)
 #endif
 
 
+
+	// potency. a modifier that increases combat skills but makes the animal more energetically expensive.
+	// potency               = sum of color differences from the average color intensity.
+	float avgColorIntensity = 0;
+	for (unsigned int j = 0; j < a->segmentsUsed; ++j)
+	{
+		float colorIntensityThisSegment = 0;
+		float countThisSegment = 0;
+		for (unsigned int k = 0; k < (sizeAnimalSprite * sizeAnimalSprite); ++k)
+		{
+			// check if the pixel is set in B.
+			unsigned int pixelOffset = (sizeAnimalSprite * sizeAnimalSprite * FRAME_B) + k;
+
+			if (a->segments[j].frames[pixelOffset].a > 0.0f)
+			{
+				float avgPixelColor = ( a->segments[j].frames[pixelOffset].r + a->segments[j].frames[pixelOffset].g + a->segments[j].frames[pixelOffset].b ) / 3;
+
+				float redDiff   = abs(a->segments[j].frames[pixelOffset].r - avgPixelColor);
+				float greenDiff = abs(a->segments[j].frames[pixelOffset].g - avgPixelColor);
+				float blueDiff  = abs(a->segments[j].frames[pixelOffset].b - avgPixelColor);
+				colorIntensityThisSegment += redDiff;
+				colorIntensityThisSegment += greenDiff;
+				colorIntensityThisSegment += blueDiff;
+				countThisSegment += 1.0f;
+			}
+		}
+		colorIntensityThisSegment  = colorIntensityThisSegment / countThisSegment;
+		avgColorIntensity += colorIntensityThisSegment;
+	}
+	avgColorIntensity = avgColorIntensity / a->segmentsUsed;
+
+	a->potency = avgColorIntensity * 0.65f;
+
+
+#ifdef ANIMAL_DRAWING_READOUT
+	printf( "potency %f\n" , a->potency );
+#endif
+
+
 	// landMovementChance. The chance to move in a given turn if the animal is on solid, powder, or clinging to a plant.
 	// Land movement chance  = surface area difference between A and B sprite, avg over all segments
 	unsigned int avgSurfaceAreaDiff = 0;
@@ -1148,39 +1188,7 @@ void measureAnimalQualities(unsigned int animalIndex)
 	printf( "fluidMovementChance %u , the avgAreaDiff is %u \n" , a->fluidMovementChance, avgAreaDiff);
 #endif
 
-	// potency. a universal modifier that increases other qualities but makes the animal more energetically expensive.
-	// potency               = sum of color differences from the average color intensity.
-	float avgColorIntensity = 0;
-	for (unsigned int j = 0; j < a->segmentsUsed; ++j)
-	{
-		float colorIntensityThisSegment = 0;
-		float countThisSegment = 0;
-		for (unsigned int k = 0; k < (sizeAnimalSprite * sizeAnimalSprite); ++k)
-		{
-			// check if the pixel is set in B.
-			unsigned int pixelOffset = (sizeAnimalSprite * sizeAnimalSprite * FRAME_B) + k;
 
-			if (a->segments[j].frames[pixelOffset].a > 0.0f)
-			{
-				float avgPixelColor = ( a->segments[j].frames[pixelOffset].r + a->segments[j].frames[pixelOffset].g + a->segments[j].frames[pixelOffset].b ) / 3;
-
-				float redDiff   = abs(a->segments[j].frames[pixelOffset].r - avgPixelColor);
-				float greenDiff = abs(a->segments[j].frames[pixelOffset].g - avgPixelColor);
-				float blueDiff  = abs(a->segments[j].frames[pixelOffset].b - avgPixelColor);
-				colorIntensityThisSegment += redDiff;
-				colorIntensityThisSegment += greenDiff;
-				colorIntensityThisSegment += blueDiff;
-				countThisSegment += 1.0f;
-			}
-		}
-		colorIntensityThisSegment  = colorIntensityThisSegment / countThisSegment;
-		avgColorIntensity += colorIntensityThisSegment;
-	}
-	avgColorIntensity = avgColorIntensity / a->segmentsUsed;
-	a->potency = avgColorIntensity;
-#ifdef ANIMAL_DRAWING_READOUT
-	printf( "potency %f\n" , a->potency );
-#endif
 
 	// reach. the number of squares an animal can move in one turn.
 	// Reach                 = distance from center of the furthest motion-involved pixel
@@ -1249,9 +1257,15 @@ void measureAnimalQualities(unsigned int animalIndex)
 		avgBCAreaDiff += diffsThisSegment;
 	}
 	avgBCAreaDiff = (avgBCAreaDiff / a->segmentsUsed);
-	a->attack = avgBCAreaDiff;
+
+	float fdiff = avgBCAreaDiff;
+	float fpotencybonus = (fdiff * a->potency);
+	float fattack = fdiff + fpotencybonus;
+
+	a->attack =  fattack;
+
 #ifdef ANIMAL_DRAWING_READOUT
-	printf( "attack %u \n" , a->attack );
+	printf( "attack %u , potency bonus %f \n" , a->attack , fpotencybonus);
 #endif
 
 	// defence. the potential damage an animal can resist in one turn.
@@ -1355,9 +1369,13 @@ void measureAnimalQualities(unsigned int animalIndex)
 		averageCircularity += circularityThisSegment;
 	}
 	averageCircularity = averageCircularity / a->segmentsUsed;
-	a->defence = averageCircularity;
+
+	float faverageCircularity = averageCircularity;
+	float fdefence = averageCircularity + (averageCircularity * a->potency);
+
+	a->defence = fdefence;
 #ifdef ANIMAL_DRAWING_READOUT
-	printf( "defence %u \n" , a->defence );
+	printf( "defence %u , potency bonus %f \n" , a->defence , (averageCircularity * a->potency));
 #endif
 
 	// maxStoredEnergy. a freely useable pool of energy the animal can spend on reproduction and movement.
@@ -1380,10 +1398,17 @@ void measureAnimalQualities(unsigned int animalIndex)
 		}
 	}
 	a->maxStoredEnergy = totalArea;
-	a->reproductionCost = totalArea;
+
+
+	a->reproductionCost += (a->reproductionCost / 2); // this additional 50% supplies the baby with energy when it is born.
+	a->energy = a->reproductionCost / 2;
+	float freproductiveCost = a->reproductionCost;
+	freproductiveCost += freproductiveCost * a->potency;
+
+	a->reproductionCost = freproductiveCost;
 	a->hitPoints = totalArea;
 #ifdef ANIMAL_DRAWING_READOUT
-	printf( "maxStoredEnergy, reproductionCost, hitPoints %u \n" , totalArea );
+	printf( "maxStoredEnergy, hitPoints %u , reproductionCost %f\n" , totalArea , a->reproductionCost);
 #endif
 }
 
@@ -1425,7 +1450,10 @@ void drawAnimalFromSeed(unsigned int i)
 		// Animal  a = Animal();
 		animals[animalIndex] = Animal();
 		std::string genome = seedGrid[i].genes;
+
+#ifdef ANIMAL_DRAWING_READOUT
 		printf("Drawing an animal at %u with genome length %lu \nThe first and last characters are ignored.\n", i, seedGrid[i].genes.length());
+#endif
 		int count = 0;
 		while (true)
 		{
@@ -1620,9 +1648,9 @@ void clearAnimalSpritePixel ( AnimalSegment * s, unsigned int pixelIndex )
 // 	memcpy( &animationGrid[ a_offset], 	&(color_clear) , 	sizeof(Color) );
 // }
 
-void setAnimal(unsigned int i)
+void setAnimal(unsigned int i, std::string genes)
 {
-	seedGrid[i].genes = exampleAnimal;
+	seedGrid[i].genes = genes;
 	seedGrid[i].stage = STAGE_ANIMAL;
 	seedGrid[i].energy = 0.0f;
 
@@ -1632,49 +1660,110 @@ void setAnimal(unsigned int i)
 
 void mutateSentence ( std::string * genes )
 {
-	size_t genesLength = genes->length();
+	// size_t genesLength = genes->length();
 
-	for (unsigned int i = 0; i < genesLength; ++i)
+	// make a single point mutation in the animal.
+	unsigned int randomThingToChange = extremelyFastNumberFromZeroTo(3);
+	// unsigned int randomMutationCursor = extremelyFastNumberFromZeroTo(genesLength-2) ;
+
+
+
+#ifdef MUTATION_READOUT
+	printf("mutate : ");
+#endif
+
+	switch (randomThingToChange)
 	{
-		// swap a letter // https://stackoverflow.com/questions/20132650/how-to-select-random-letters-in-c
-		if (extremelyFastNumberFromZeroTo(256) == 0)
-		{
-			(*genes)[i] = (char)('a' + rand() % 26);
-		}
+	case 0:
+	{
+		// swap a letter
+		(*genes)[extremelyFastNumberFromZeroTo(genes->length() - 1)] = (char)('a' + rand() % 26);
 
-		//  add a letter
-		if (extremelyFastNumberFromZeroTo(256) == 0)
-		{
-			genes->push_back(  (char)('a' + rand() % 26)  );
-		}
-
-		// // add a punctuation
-		// if (extremelyFastNumberFromZeroTo(256) == 0)
-		// {
-
-		// 	char randomCharacter = ' '; ;//= (char)('a' + rand() % 26);
-
-		// 	unsigned int randomCharacterIndex = extremelyFastNumberFromZeroTo(3);
-		// 	switch (randomCharacterIndex)
-		// 	{
-		// 	case 0:
-		// 	{
-		// 		randomCharacter = ' ';
-		// 		break;
-		// 	}
-		// 	case 1:
-		// 	{
-		// 		randomCharacter = '.';
-		// 		break;
-		// 	}
-
-		// 	case 3:
-		// 	{
-		// 		randomCharacter = ',';
-		// 		break;
-		// 	}
-		// 	}
+#ifdef MUTATION_READOUT
+		printf("swap a letter               : ");
+#endif
+		break;
 	}
+	case 1:
+	{
+		// add a letter
+		genes->push_back(  (char)('a' + rand() % 26)  );
+
+#ifdef MUTATION_READOUT
+		printf("add a letter                : ");
+#endif
+		break;
+	}
+	case 2:
+	{
+		// remove a letter
+		genes->erase(extremelyFastNumberFromZeroTo(genes->length() - 1), 1);
+#ifdef MUTATION_READOUT
+		printf("remove a letter             : ");
+#endif
+		break;
+	}
+	case 3:
+	{
+		// swap a letter for punctuation
+		unsigned int randomPunctuation = extremelyFastNumberFromZeroTo(1);
+
+		if      (randomPunctuation == 0) { (*genes)[extremelyFastNumberFromZeroTo(genes->length() - 1)] = ' ' ; }
+		else if (randomPunctuation == 1) { (*genes)[extremelyFastNumberFromZeroTo(genes->length() - 1)] = '.' ; }
+
+#ifdef MUTATION_READOUT
+		printf("swap letter for punctuation : ");
+#endif
+
+		break;
+	}
+	}
+
+#ifdef MUTATION_READOUT
+	printf(" : %s\n", (*genes).c_str());
+#endif
+
+	// for (unsigned int i = 0; i < genesLength; ++i)
+	// {
+	// 	// swap a letter // https://stackoverflow.com/questions/20132650/how-to-select-random-letters-in-c
+	// 	if (extremelyFastNumberFromZeroTo(256) == 0)
+	// 	{
+	// 		(*genes)[i] = (char)('a' + rand() % 26);
+	// 	}
+
+	// 	//  add a letter
+	// 	if (extremelyFastNumberFromZeroTo(256) == 0)
+	// 	{
+	// 		genes->push_back(  (char)('a' + rand() % 26)  );
+	// 	}
+
+	// 	// // add a punctuation
+	// 	// if (extremelyFastNumberFromZeroTo(256) == 0)
+	// 	// {
+
+	// 	// 	char randomCharacter = ' '; ;//= (char)('a' + rand() % 26);
+
+	// 	// 	unsigned int randomCharacterIndex = extremelyFastNumberFromZeroTo(3);
+	// 	// 	switch (randomCharacterIndex)
+	// 	// 	{
+	// 	// 	case 0:
+	// 	// 	{
+	// 	// 		randomCharacter = ' ';
+	// 	// 		break;
+	// 	// 	}
+	// 	// 	case 1:
+	// 	// 	{
+	// 	// 		randomCharacter = '.';
+	// 	// 		break;
+	// 	// 	}
+
+	// 	// 	case 3:
+	// 	// 	{
+	// 	// 		randomCharacter = ',';
+	// 	// 		break;
+	// 	// 	}
+	// 	// 	}
+	// }
 }
 
 void incrementAnimalSegmentPositions (unsigned int animalIndex, unsigned int i, bool falling)
@@ -1690,9 +1779,16 @@ void incrementAnimalSegmentPositions (unsigned int animalIndex, unsigned int i, 
 				unsigned int neighbour = neighbourOffsets[j] + i;
 				if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS || grid[neighbour].phase == PHASE_LIQUID)
 				{
-					printf("animal reproduced\n");
-					setAnimal( neighbour );
+
+					setAnimal( neighbour , seedGrid[i].genes);
+#ifdef MUTATION_READOUT
+					printf("animal : ");
+#endif
+
 					mutateSentence(  &(seedGrid[neighbour].genes) );
+
+
+
 					a->energy = 0.0f;
 					return;
 					break;
@@ -2643,9 +2739,11 @@ unsigned int walkAnAnimal(unsigned int i)
 	unsigned int currentPosition = i;
 	unsigned int squareBelow = (currentPosition - sizeX) % totalSize;
 
-	if (seedGrid[i].parentIdentity < animals.size())
+	unsigned int animalIndex = seedGrid[i].parentIdentity;
+
+	if (animalIndex < animals.size())
 	{
-		Animal * a = &(animals[seedGrid[i].parentIdentity]);
+		Animal * a = &(animals[animalIndex]);
 		bool moved = false;
 		// if (extremelyFastNumberFromZeroTo(a->movementChance) == 0)
 		// {
@@ -2786,7 +2884,14 @@ unsigned int walkAnAnimal(unsigned int i)
 		{
 			if (seedGrid[neighbour].stage == STAGE_NULL )
 			{
+
+
 				a->energy += seedGrid[neighbour].energy;
+
+#ifdef ANIMAL_BEHAVIOR_READOUT
+				printf("animal %u absorbed %f of light. Has %f reproduces at %f.\n", animalIndex, seedGrid[neighbour].energy, a->energy, a->reproductionCost );
+#endif
+
 			}
 		}
 
@@ -2795,6 +2900,12 @@ unsigned int walkAnAnimal(unsigned int i)
 			if (seedGrid[neighbour].stage == STAGE_BUD || seedGrid[neighbour].stage == STAGE_FRUIT ||  seedGrid[neighbour].stage == STAGE_SPROUT )
 			{
 				a->energy += 10.0f ;
+
+
+#ifdef ANIMAL_BEHAVIOR_READOUT
+				printf("animal %u ate a seed for %f. Has %f reproduces at %f.\n", animalIndex, 10.0f, a->energy, a->reproductionCost );
+#endif
+
 				clearSeedParticle(neighbour);
 			}
 		}
@@ -2806,6 +2917,12 @@ unsigned int walkAnAnimal(unsigned int i)
 				if (lifeGrid[neighbour].energy > 0.0f)
 				{
 					a->energy += lifeGrid[neighbour].energy;
+
+
+#ifdef ANIMAL_BEHAVIOR_READOUT
+					printf("animal %u ate a plant for %f. Has %f reproduces at %f.\n", animalIndex, lifeGrid[neighbour].energy, a->energy, a->reproductionCost );
+#endif
+
 					lifeGrid[neighbour].energy = 0.0f;
 					clearLifeParticle(neighbour);
 				}
@@ -2817,6 +2934,11 @@ unsigned int walkAnAnimal(unsigned int i)
 			if (grid[neighbour].phase != PHASE_VACUUM)
 			{
 				a->energy += 1.0f;
+
+#ifdef ANIMAL_BEHAVIOR_READOUT
+				printf("animal %u ate a mineral for %f. Has %f reproduces at %f.\n" , animalIndex, 1.0f, a->energy, a->reproductionCost );
+#endif
+
 				clearParticle( neighbour);
 			}
 		}
@@ -2826,7 +2948,12 @@ unsigned int walkAnAnimal(unsigned int i)
 			if (seedGrid[neighbour].stage == STAGE_ANIMAL )
 			{
 				a->energy += animals[seedGrid[neighbour].parentIdentity].energy;
-				printf("an animal ate another animal!\n");
+				// printf("an animal ate another animal!\n");
+
+#ifdef ANIMAL_BEHAVIOR_READOUT
+				printf("animal %u ate another animal for %f. Has %f reproduces at %f.\n", animalIndex, animals[seedGrid[neighbour].parentIdentity].energy, a->energy, a->reproductionCost );
+#endif
+
 				clearSeedParticle(neighbour);
 			}
 		}
@@ -3731,6 +3858,9 @@ void drawPlantFromSeed( std::string genes, unsigned int i )
 			if (grid[i].phase == PHASE_VACUUM || grid[i].phase == PHASE_GAS || grid[i].phase == PHASE_LIQUID)
 			{
 				setSeedParticle(  genes, identity, energyDebtSoFar, i, cursor_germinationMaterial);
+#ifdef MUTATION_READOUT
+				printf("plant  : ");
+#endif
 				mutateSentence(&(seedGrid[i].genes));
 			}
 		}
@@ -4145,7 +4275,7 @@ void insertRandomAnimal ()
 		if (!x) { y = i / sizeX; }
 		if (x == targetX && y == targetY)
 		{
-			setAnimal( i );
+			setAnimal( i, exampleAnimal );
 		}
 	}
 }
