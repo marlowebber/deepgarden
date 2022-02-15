@@ -9,13 +9,13 @@
 #include "main.h"
 
 // #define THREAD_TIMING_READOUT 1
-// #define PLANT_DRAWING_READOUT 1
+#define PLANT_DRAWING_READOUT 1
 // #define ANIMAL_DRAWING_READOUT 1
 // #define ANIMAL_BEHAVIOR_READOUT 1
-#define MUTATION_READOUT 1
+// #define MUTATION_READOUT 1
 #define DRAW_ANIMALS 1
 
-bool useGerminationMaterial = false;
+bool useGerminationMaterial = true;
 bool animalReproductionEnabled = true;
 bool doWeather = false;
 
@@ -176,7 +176,8 @@ float maximumDisplayPressure = 1000.0f;
 
 unsigned int visualizer = VISUALIZE_MATERIAL;
 
-std::list<unsigned int> identities;
+std::vector<unsigned int> identities;
+std::vector<unsigned int> animal_identities;
 
 std::list<vec_u2> v_seeds;
 
@@ -364,7 +365,7 @@ unsigned int newIdentity ()
 	while (true)
 	{
 		bool used = false;
-		for (std::list<unsigned int>::iterator it = identities.begin(); it != identities.end(); ++it)
+		for (std::vector<unsigned int>::iterator it = identities.begin(); it != identities.end(); ++it)
 		{
 			if (identityCursor == *it)
 			{
@@ -389,7 +390,21 @@ unsigned int newIdentity ()
 
 void retireIdentity (unsigned int identityToRetire)
 {
-	identities.remove (identityToRetire);
+	// identities.remove (identityToRetire);
+	// identities.erase(identities.begin() + index);
+
+	// for vector
+	std::vector<unsigned int>::iterator it;
+	for ( it = identities.begin(); it != identities.end(); ++it)
+	{
+		if ( (*it) == identityToRetire )
+		{
+			break;
+		}
+	}
+	identities.erase( it );
+
+
 }
 
 Particle *  grid = new Particle[totalSize];
@@ -670,8 +685,6 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 		printf("Commit working polygon to segment : ");
 #endif
 
-
-
 		// first, check to see if the segment has actually been populated. this is often not the case early in the gene string.
 		// if it is not ready, skip to the part where you set up new polygons.
 		unsigned int readyFrames  = 0;
@@ -684,17 +697,10 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 		}
 		if (readyFrames == numberOfFrames)
 		{
-//
-
-
-			// 	return 0;
-			// }
-
 			for (int frameIndex = 0; frameIndex < numberOfFrames; ++frameIndex) // this operation applies to all frames.
 			{
 				if (working_polygon[frameIndex].size() > 0)
 				{
-
 					// mirror the working vertices in X axis before lines are drawn.
 					// mirroring is done before line drawing to prevent confusion at the y intercept.
 					if (true)
@@ -730,11 +736,8 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 						}
 					}
 
-
 					working_polygon[frameIndex].clear();
 				}
-
-
 
 				int count = 0;
 				for (std::list<ProposedLifeParticle>::iterator it = segment_particles[frameIndex].begin(); it != segment_particles[frameIndex].end(); ++it)
@@ -751,22 +754,16 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 				printf("\nCommit segment to sprite. This will be segment %u, frame %u.\n The amount of committed particles was %u.\n", animalCursorSegmentNumber , frameIndex, count  );
 #endif
 
+				// don't advance the segment if the prior one was empty. No empty segments! don't bother filling empty segments either!
 
-				// if (count > 0) // don't advance the segment if the prior one was empty. No empty segments! don't bother filling empty segments either!
-				// {
 				fillAPolygon(animalIndex, animalCursorSegmentNumber, frameIndex);
-
-
-				// }
 
 #ifdef ANIMAL_DRAWING_READOUT
 				printf("Clear working polygons.\n" );
 #endif
 				segment_particles[frameIndex].clear();
 				working_polygon[frameIndex].clear();
-
 			}
-
 
 #ifdef ANIMAL_DRAWING_READOUT
 			printf("Go to new segment. \n" );
@@ -851,8 +848,6 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 #ifdef ANIMAL_DRAWING_READOUT
 		printf("char %c, index %u. Move Y by %i\n", genes[animalCursorString] , animalCursorString, moveY);
 #endif
-
-
 		for (int frameIndex = 0; frameIndex < numberOfFrames; ++frameIndex) // this operation applies to all frames.
 		{
 			if (working_polygon[frameIndex].size() > 0)
@@ -878,14 +873,9 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 				}
 				count++;
 			}
-
-
 		}
-
 		return 0;
 	}
-
-
 	case 'm':
 	{
 
@@ -917,9 +907,6 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 #ifdef ANIMAL_DRAWING_READOUT
 		printf("char %c, index %u. Move Y by %i\n", genes[animalCursorString] , animalCursorString, moveY);
 #endif
-
-
-
 		if (working_polygon[animalCursorFrame].size() > 0)
 		{
 			moveVertex = moveVertex % working_polygon[animalCursorFrame].size();
@@ -943,10 +930,6 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 			}
 			count++;
 		}
-
-
-
-
 		return 0;
 	}
 	case 'f':
@@ -958,17 +941,64 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 		unsigned int numberModifier = alphanumeric( genes[animalCursorString] );
 		numberModifier = numberModifier % 2;
 
-
 #ifdef ANIMAL_DRAWING_READOUT
 		printf("char %c, index %u. Set animal frame cursor to %u\n", genes[animalCursorString] , animalCursorString, numberModifier);
 #endif
-
-
 		animalCursorFrame = numberModifier;
-
-
 		return 0;
 	}
+
+
+	case 'd':
+	{
+#ifdef ANIMAL_DRAWING_READOUT
+		printf("Change diet: ");
+#endif
+			animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
+		unsigned int numberModifier = alphanumeric( genes[animalCursorString] );
+		numberModifier = numberModifier % 4;
+
+		// ^= operator toggles the bit. this means the animal can have more than one movement type. It is important the ENERGYSOURCE_ defines are powers of 2 only.
+		if        (numberModifier == 0) { a->energyFlags  ^= ENERGYSOURCE_LIGHT; }
+		else if   (numberModifier == 1) { a->energyFlags  ^= ENERGYSOURCE_MINERAL; }
+		else if   (numberModifier == 2) { a->energyFlags  ^= ENERGYSOURCE_SEED; }
+		else if   (numberModifier == 3) { a->energyFlags  ^= ENERGYSOURCE_PLANT;    }
+		else if   (numberModifier == 4) { a->energyFlags  ^= ENERGYSOURCE_ANIMAL;  }
+
+
+#ifdef ANIMAL_DRAWING_READOUT
+		printf("char %c, index %u. Set diet to %u\n", genes[animalCursorString] , animalCursorString, a->energyFlags);
+#endif
+		animalCursorFrame = numberModifier;
+		return 0;
+	}
+
+
+
+	case 'n':
+	{
+#ifdef ANIMAL_DRAWING_READOUT
+		printf("Change movement type: ");
+#endif
+		animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
+		unsigned int numberModifier = alphanumeric( genes[animalCursorString] );
+		numberModifier = numberModifier % 4;
+
+		// ^= operator toggles the bit. this means the animal can have more than one movement type. It is important the MOVEMENT_ defines are powers of 2 only.
+		if        (numberModifier == 0) { a->movementFlags  ^= MOVEMENT_ONPOWDER; }
+		else if   (numberModifier == 1) { a->movementFlags  ^= MOVEMENT_INLIQUID; }
+		else if   (numberModifier == 2) { a->movementFlags  ^= MOVEMENT_INPLANTS; }
+		else if   (numberModifier == 3) { a->movementFlags  ^= MOVEMENT_INAIR;    }
+		else if   (numberModifier == 4) { a->movementFlags  ^= MOVEMENT_ONSOLID;  }
+
+
+#ifdef ANIMAL_DRAWING_READOUT
+		printf("char %c, index %u. Set movement type to %u\n", genes[animalCursorString] , animalCursorString, a->movementFlags );
+#endif
+		animalCursorFrame = numberModifier;
+		return 0;
+	}
+
 
 
 
@@ -1028,8 +1058,6 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 	return -1;
 }
 
-
-
 void measureAnimalQualities(unsigned int animalIndex)
 {
 	if (animalIndex >= animals.size())				{return;}
@@ -1038,8 +1066,6 @@ void measureAnimalQualities(unsigned int animalIndex)
 #ifdef ANIMAL_DRAWING_READOUT
 	printf( "measureAnimalQualities on animal %u \n" , animalIndex );
 #endif
-
-
 
 	// potency. a modifier that increases combat skills but makes the animal more energetically expensive.
 	// potency               = sum of color differences from the average color intensity.
@@ -1073,11 +1099,9 @@ void measureAnimalQualities(unsigned int animalIndex)
 
 	a->potency = avgColorIntensity * 0.65f;
 
-
 #ifdef ANIMAL_DRAWING_READOUT
 	printf( "potency %f\n" , a->potency );
 #endif
-
 
 	// landMovementChance. The chance to move in a given turn if the animal is on solid, powder, or clinging to a plant.
 	// Land movement chance  = surface area difference between A and B sprite, avg over all segments
@@ -1121,18 +1145,13 @@ void measureAnimalQualities(unsigned int animalIndex)
 
 				if (surface)
 				{
-					// check if the pixel is NOT set in A.
-					// if (a->segments[j].frames[pixelIndexA].a == 0.0f)
-					// {
 					diffsThisSegment ++;
-					// }
 				}
 			}
 		}
 		avgSurfaceAreaDiff += diffsThisSegment;
 	}
 	avgSurfaceAreaDiff = (avgSurfaceAreaDiff / a->segmentsUsed);
-	// a->landMovementChance = avgSurfaceAreaDiff;
 
 	// the movement chance should range between 0 and about 30.
 	// similar to the wing equation, except half the values because edges are naturally smaller than areas.
@@ -1141,7 +1160,6 @@ void measureAnimalQualities(unsigned int animalIndex)
 	{
 		a->landMovementChance = 32 - ( avgSurfaceAreaDiff / 2 );
 	}
-
 
 #ifdef ANIMAL_DRAWING_READOUT
 	printf( "landMovementChance %u , the avgSurfaceAreaDiff is %u\n" , a->landMovementChance, avgSurfaceAreaDiff );
@@ -1167,7 +1185,6 @@ void measureAnimalQualities(unsigned int animalIndex)
 			if (  (pixelStateA != pixelStateB) || (pixelStateB != pixelStateC) || (pixelStateA != pixelStateC)   )
 			{
 				diffsThisSegment ++;
-				// }
 			}
 		}
 		avgAreaDiff += diffsThisSegment;
@@ -1188,8 +1205,6 @@ void measureAnimalQualities(unsigned int animalIndex)
 	printf( "fluidMovementChance %u , the avgAreaDiff is %u \n" , a->fluidMovementChance, avgAreaDiff);
 #endif
 
-
-
 	// reach. the number of squares an animal can move in one turn.
 	// Reach                 = distance from center of the furthest motion-involved pixel
 	int largestReach = 1;
@@ -1209,7 +1224,6 @@ void measureAnimalQualities(unsigned int animalIndex)
 			if (a->segments[j].frames[pixelIndexC].a > 0.0f ) {pixelStateC = true;}
 			if (  (pixelStateA != pixelStateB) || (pixelStateB != pixelStateC) || (pixelStateA != pixelStateC)   )
 			{
-
 				// printf("the pixel was set in one frame but not in another\n");
 				// find how far the pixel is from the center.
 				int pixelX = k % sizeAnimalSprite;
@@ -1361,7 +1375,6 @@ void measureAnimalQualities(unsigned int animalIndex)
 
 					float pixelDistance = magnitude_int(diffFromAverageX, diffFromAverageY);
 					circularityThisSegment += pixelDistance;
-					// countThisSegment += 1.0f;
 				}
 			}
 		}
@@ -1378,10 +1391,9 @@ void measureAnimalQualities(unsigned int animalIndex)
 	printf( "defence %u , potency bonus %f \n" , a->defence , (averageCircularity * a->potency));
 #endif
 
-	// maxStoredEnergy. a freely useable pool of energy the animal can spend on reproduction and movement.
+
 	// reproductionCost. the amount of energy it takes to make an offspring of this animal.
-	// hitPoints. the amount of damage an animal can absorb before it dies.
-	// Maximum stored energy, reproduction cost, hit points = total area sum over all segments
+	//  reproduction cost = total area sum over all segments
 	unsigned int totalArea = 0;
 	for (unsigned int j = 0; j < a->segmentsUsed; ++j)
 	{
@@ -1397,18 +1409,46 @@ void measureAnimalQualities(unsigned int animalIndex)
 			}
 		}
 	}
-	a->maxStoredEnergy = totalArea;
-
-
 	a->reproductionCost += (a->reproductionCost / 2); // this additional 50% supplies the baby with energy when it is born.
-	a->energy = a->reproductionCost / 2;
 	float freproductiveCost = a->reproductionCost;
 	freproductiveCost += freproductiveCost * a->potency;
 
 	a->reproductionCost = freproductiveCost;
-	a->hitPoints = totalArea;
 #ifdef ANIMAL_DRAWING_READOUT
-	printf( "maxStoredEnergy, hitPoints %u , reproductionCost %f\n" , totalArea , a->reproductionCost);
+	printf( "reproductionCost %f\n" , a->reproductionCost);
+#endif
+
+	// maxStoredEnergy. a freely useable pool of energy the animal can spend on reproduction and movement.
+	// hitPoints. the amount of damage an animal can absorb before it dies.
+	// these two things are equal to the total amount of pixels that do not move in between sprites
+	unsigned int constantArea = 0;
+	for (unsigned int j = 0; j < a->segmentsUsed; ++j)
+	{
+		unsigned int diffsThisSegment = 0;
+		for (unsigned int k = 0; k < (sizeAnimalSprite * sizeAnimalSprite); ++k)
+		{
+			// check if the pixel is set in B.
+			// check if the pixel is set in any of the sprites, and not set in another.
+			unsigned int pixelIndexA = (sizeAnimalSprite * sizeAnimalSprite * FRAME_A) + k;
+			unsigned int pixelIndexB = (sizeAnimalSprite * sizeAnimalSprite * FRAME_B) + k;
+			unsigned int pixelIndexC = (sizeAnimalSprite * sizeAnimalSprite * FRAME_C) + k;
+			bool pixelStateA = false;
+			bool pixelStateB = false;
+			bool pixelStateC = false;
+			if (a->segments[j].frames[pixelIndexA].a > 0.0f ) {pixelStateA = true;}
+			if (a->segments[j].frames[pixelIndexB].a > 0.0f ) {pixelStateB = true;}
+			if (a->segments[j].frames[pixelIndexC].a > 0.0f ) {pixelStateC = true;}
+			if (  pixelStateA && pixelStateB && pixelStateC  )
+			{
+				constantArea ++;
+			}
+		}
+	}
+	a->maxStoredEnergy = constantArea;
+	a->hitPoints = constantArea;
+
+#ifdef ANIMAL_DRAWING_READOUT
+	printf( "maxStoredEnergy %f, hitPoints %i\n" , a->reproductionCost, a->hitPoints);
 #endif
 }
 
@@ -2747,6 +2787,7 @@ unsigned int walkAnAnimal(unsigned int i)
 		bool moved = false;
 		// if (extremelyFastNumberFromZeroTo(a->movementChance) == 0)
 		// {
+		unsigned int numberOfMoves = 0;
 		for (unsigned int move = 0; move < a->reach; ++move)
 		{
 			// check the neighbour cells starting in the direction of travel.
@@ -2787,13 +2828,14 @@ unsigned int walkAnAnimal(unsigned int i)
 							{
 								currentPosition = neighbour; // say that this cell is the current position, and then break.
 								moved = true;
+								numberOfMoves++;
 							}
 						}
 					}
 				}
 			}
 
-			if (  (a->movementFlags & MOVEMENT_INPLANTS ) == MOVEMENT_INPLANTS   )
+			else if (  (a->movementFlags & MOVEMENT_INPLANTS ) == MOVEMENT_INPLANTS   )
 			{
 				if (extremelyFastNumberFromZeroTo(a->landMovementChance) == 0)
 				{
@@ -2801,11 +2843,12 @@ unsigned int walkAnAnimal(unsigned int i)
 					{
 						currentPosition = neighbour; // say that this cell is the current position, and then break.
 						moved = true;
+						numberOfMoves++;
 					}
 				}
 			}
 
-			if (  (a->movementFlags & MOVEMENT_INLIQUID ) == MOVEMENT_INLIQUID   )
+			else if (  (a->movementFlags & MOVEMENT_INLIQUID ) == MOVEMENT_INLIQUID   )
 			{
 				if (extremelyFastNumberFromZeroTo(a->fluidMovementChance) == 0)
 				{
@@ -2813,11 +2856,12 @@ unsigned int walkAnAnimal(unsigned int i)
 					{
 						currentPosition = neighbour; // say that this cell is the current position, and then break.
 						moved = true;
+						numberOfMoves++;
 					}
 				}
 			}
 
-			if (  (a->movementFlags & MOVEMENT_INAIR ) == MOVEMENT_INAIR   )
+			else if (  (a->movementFlags & MOVEMENT_INAIR ) == MOVEMENT_INAIR   )
 			{
 				if (extremelyFastNumberFromZeroTo(a->fluidMovementChance) == 0)
 				{
@@ -2825,11 +2869,12 @@ unsigned int walkAnAnimal(unsigned int i)
 					{
 						currentPosition = neighbour; // say that this cell is the current position, and then break.
 						moved = true;
+						numberOfMoves++;
 					}
 				}
 			}
 
-			if (  (a->movementFlags & MOVEMENT_ONSOLID ) == MOVEMENT_ONSOLID   )
+			else if (  (a->movementFlags & MOVEMENT_ONSOLID ) == MOVEMENT_ONSOLID   )
 			{
 				if (extremelyFastNumberFromZeroTo(a->landMovementChance) == 0)
 				{
@@ -2844,6 +2889,7 @@ unsigned int walkAnAnimal(unsigned int i)
 								{
 									currentPosition = neighbour; // say that this cell is the current position, and then break.
 									moved = true;
+									numberOfMoves++;
 								}
 							}
 						}
@@ -2857,7 +2903,19 @@ unsigned int walkAnAnimal(unsigned int i)
 		if (	moved )
 		{
 			swapSeedParticle(i, currentPosition);
-			incrementAnimalSegmentPositions( seedGrid[currentPosition].parentIdentity, currentPosition, false );
+			incrementAnimalSegmentPositions(animalIndex, currentPosition, false );
+
+
+			float fnumberOfMoves = numberOfMoves;
+			a->energy -= fnumberOfMoves ;
+
+
+			if (a->energy < 0.0f)
+			{
+				clearSeedParticle(currentPosition);
+				return currentPosition;
+			}
+
 		}
 		else
 		{
@@ -2868,7 +2926,7 @@ unsigned int walkAnAnimal(unsigned int i)
 				if (grid[currentPosition].phase == PHASE_VACUUM || grid[currentPosition].phase == PHASE_GAS )
 				{
 					swapSeedParticle(i, currentPosition);
-					incrementAnimalSegmentPositions( seedGrid[currentPosition].parentIdentity, currentPosition, true );
+					incrementAnimalSegmentPositions( animalIndex, currentPosition, true );
 				}
 			}
 		}
