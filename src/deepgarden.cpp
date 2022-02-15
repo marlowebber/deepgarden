@@ -11,6 +11,7 @@
 // #define THREAD_TIMING_READOUT 1
 // #define PLANT_DRAWING_READOUT 1
 #define ANIMAL_DRAWING_READOUT 1
+// #define ANIMAL_BEHAVIOR_READOUT 1
 #define DRAW_ANIMALS 1
 
 bool useGerminationMaterial = false;
@@ -128,7 +129,7 @@ float animalCursorSegmentAngle = 0.0f;
 unsigned int animalCursor = 0;
 Color animalCursorColor = Color(0.5f, 0.5f, 0.5f, 1.0f);
 unsigned int animalCursorSegmentNumber = 0;
-float animalCursorEnergyDebt = 0.0f;
+// float animalCursorEnergyDebt = 0.0f;
 unsigned int animalCursorEnergySource = ENERGYSOURCE_PLANT;
 float animalCursorLimbLowerAngle = 0.0f;
 float animalCursorLimbUpperAngle = 0.5 * 3.1415f;
@@ -137,10 +138,12 @@ unsigned int animalRecursionLevel = 0;
 std::list<vec_i2> working_polygon[numberOfFrames];
 std::list<ProposedLifeParticle> segment_particles[numberOfFrames];
 
-std::string exampleAnimal = std::string(" rzgzbz  pmomba pmmcmz pmomba pmmcmz");
+std::string exampleAnimal = std::string(" rzgzbz  pmmmba pmocmz pmmmba pmocmz");
 
 int defaultTemperature = 300;
 int radiantHeatIntensity = 50; // this is a physical constant that determines how much heat radiates from material, and how strongly material heat is coupled to the atmosphere.
+
+float combinedGasLawConstant = 0.001f;
 
 unsigned int sunlightDirection = 2;
 unsigned int sunlightEnergy = 10;
@@ -168,7 +171,7 @@ bool sprinkleErodingRain = false;
 
 float maximumDisplayEnergy = 1.0f;
 float maximumDisplayTemperature = 1000.0f;
-float maximumDisplayPressure = 1.0f;
+float maximumDisplayPressure = 1000.0f;
 
 unsigned int visualizer = VISUALIZE_MATERIAL;
 
@@ -181,15 +184,15 @@ unsigned int animationGlobalFrame = FRAME_A;
 
 struct Weather
 {
-	int temperature;
-	int pressure;
+	float temperature;
+	float pressure;
 	unsigned int direction;
 	Weather();
 };
 Weather::Weather()
 {
-	this->temperature = 100;
-	this->pressure = 100;
+	this->temperature = 0;
+	this->pressure = 0;
 	this->direction = 0;
 }
 
@@ -202,6 +205,8 @@ void thread_weather()
 #endif
 	if (doWeather)
 	{
+
+
 		for (unsigned int i = (sizeX + 1); i < (totalSize - (sizeX + 1)) ; ++i)
 		{
 			// air and weather simulation can be acheived simply by the use of the combined gas law
@@ -214,19 +219,23 @@ void thread_weather()
 			//  t1 = (p1 * t2 ) / ( p2 );
 			// rearranged to solve for p1,
 			// p1 = (p2  *t1 ) / (t2 )
+
+
 			unsigned int neighbour = i + neighbourOffsets[ extremelyFastNumberFromZeroTo(N_NEIGHBOURS - 1) ] ;
 
-			// compute your own temperature.
-			if (weatherGrid[neighbour].pressure   > 0)
-			{
-				weatherGrid[i].temperature = ( weatherGrid[i].pressure         * weatherGrid[neighbour].temperature ) / (weatherGrid[neighbour].pressure    );
-			}
+			float avgTemp = ( weatherGrid[i].temperature + weatherGrid[neighbour].temperature) / 2;
+			weatherGrid[i].temperature = avgTemp;
+			weatherGrid[neighbour].temperature = avgTemp;
+			float deltaTemp = weatherGrid[i].pressure * combinedGasLawConstant;
+			weatherGrid[i].temperature += deltaTemp;
 
-			// compute your own pressure.
-			if (weatherGrid[neighbour].temperature)
-			{
-				weatherGrid[i].pressure    = ( weatherGrid[neighbour].pressure * weatherGrid[i].temperature         ) / (weatherGrid[neighbour].temperature );
-			}
+
+			float avgPressure = ( weatherGrid[i].pressure + weatherGrid[neighbour].pressure) / 2;
+			weatherGrid[i].pressure = avgPressure;
+			weatherGrid[neighbour].pressure = avgPressure;
+			float deltaP = weatherGrid[i].temperature * combinedGasLawConstant;
+			weatherGrid[i].pressure += deltaP;
+
 		}
 	}
 
@@ -443,8 +452,6 @@ Animal::Animal()
 	// this->reach = 5;
 	// this->movementChance = 4;
 	this->segmentsUsed = 0;
-
-
 	this->landMovementChance = 4;
 	this->fluidMovementChance = 16;
 	this->potency = 4.0f;
@@ -1027,27 +1034,30 @@ void measureAnimalQualities(unsigned int animalIndex)
 	if (animalIndex >= animals.size())				{return;}
 
 	Animal * a = &(animals[animalIndex]);
+#ifdef ANIMAL_DRAWING_READOUT
+	printf( "measureAnimalQualities on animal %u \n" , animalIndex );
+#endif
 
-// Land movement chance  = surface area difference between A and B sprite, avg over all segments
-// fluid movement chance = total area differences between A and B sprite, avg over all segments
-// potency               = bright color, universal expense & quality modifier. Avg over all segments
-// Reach                 = distance from center of the furthest motion-involved pixel
-// Attack stat = diffs between B and C sprite, sum over all segments
-// Defence stat = coefficient of drawing circularity on the B sprite, avg over all segments
-// Maximum stored energy, reproduction cost, hit points = total area sum over all segments
 
-	// landMovementChance
+	// landMovementChance. The chance to move in a given turn if the animal is on solid, powder, or clinging to a plant.
+	// Land movement chance  = surface area difference between A and B sprite, avg over all segments
 	unsigned int avgSurfaceAreaDiff = 0;
 	for (unsigned int j = 0; j < a->segmentsUsed; ++j)
 	{
 		unsigned int diffsThisSegment = 0;
 		for (unsigned int k = 0; k < (sizeAnimalSprite * sizeAnimalSprite); ++k)
 		{
-			// check if the pixel is set in B.
 			unsigned int pixelIndexA = (sizeAnimalSprite * sizeAnimalSprite * FRAME_A) + k;
 			unsigned int pixelIndexB = (sizeAnimalSprite * sizeAnimalSprite * FRAME_B) + k;
+			unsigned int pixelIndexC = (sizeAnimalSprite * sizeAnimalSprite * FRAME_C) + k;
+			bool pixelStateA = false;
+			bool pixelStateB = false;
+			bool pixelStateC = false;
+			if (a->segments[j].frames[pixelIndexA].a > 0.0f ) {pixelStateA = true;}
+			if (a->segments[j].frames[pixelIndexB].a > 0.0f ) {pixelStateB = true;}
+			if (a->segments[j].frames[pixelIndexC].a > 0.0f ) {pixelStateC = true;}
 
-			if (a->segments[j].frames[pixelIndexB].a > 0.0f)
+			if (  (pixelStateA != pixelStateB) || (pixelStateB != pixelStateC) || (pixelStateA != pixelStateC)   )
 			{
 				// check that the pixel is SURFACE, which means it has an empty cardinal neighbour.
 				unsigned int surface = false;
@@ -1072,46 +1082,74 @@ void measureAnimalQualities(unsigned int animalIndex)
 				if (surface)
 				{
 					// check if the pixel is NOT set in A.
-					if (a->segments[j].frames[pixelIndexA].a == 0.0f)
-					{
-						diffsThisSegment ++;
-					}
+					// if (a->segments[j].frames[pixelIndexA].a == 0.0f)
+					// {
+					diffsThisSegment ++;
+					// }
 				}
 			}
 		}
 		avgSurfaceAreaDiff += diffsThisSegment;
 	}
 	avgSurfaceAreaDiff = (avgSurfaceAreaDiff / a->segmentsUsed);
-	a->landMovementChance = avgSurfaceAreaDiff;
+	// a->landMovementChance = avgSurfaceAreaDiff;
 
-	// fluidMovementChance
+	// the movement chance should range between 0 and about 30.
+	// similar to the wing equation, except half the values because edges are naturally smaller than areas.
+	if (avgSurfaceAreaDiff > 64) {a->landMovementChance = 0;}
+	else
+	{
+		a->landMovementChance = 32 - ( avgSurfaceAreaDiff / 2 );
+	}
+
+
+#ifdef ANIMAL_DRAWING_READOUT
+	printf( "landMovementChance %u , the avgSurfaceAreaDiff is %u\n" , a->landMovementChance, avgSurfaceAreaDiff );
+#endif
+
+	// fluidMovementChance. the chance to move in a given turn if the animal is underwater or flying.
+	// fluid movement chance = total area differences between A and B sprite, avg over all segments
 	unsigned int avgAreaDiff = 0;
 	for (unsigned int j = 0; j < a->segmentsUsed; ++j)
 	{
 		unsigned int diffsThisSegment = 0;
 		for (unsigned int k = 0; k < (sizeAnimalSprite * sizeAnimalSprite); ++k)
 		{
-			// check if the pixel is set in B.
 			unsigned int pixelIndexA = (sizeAnimalSprite * sizeAnimalSprite * FRAME_A) + k;
 			unsigned int pixelIndexB = (sizeAnimalSprite * sizeAnimalSprite * FRAME_B) + k;
-
-			if (a->segments[j].frames[pixelIndexB].a > 0.0f)
+			unsigned int pixelIndexC = (sizeAnimalSprite * sizeAnimalSprite * FRAME_C) + k;
+			bool pixelStateA = false;
+			bool pixelStateB = false;
+			bool pixelStateC = false;
+			if (a->segments[j].frames[pixelIndexA].a > 0.0f ) {pixelStateA = true;}
+			if (a->segments[j].frames[pixelIndexB].a > 0.0f ) {pixelStateB = true;}
+			if (a->segments[j].frames[pixelIndexC].a > 0.0f ) {pixelStateC = true;}
+			if (  (pixelStateA != pixelStateB) || (pixelStateB != pixelStateC) || (pixelStateA != pixelStateC)   )
 			{
-				// check if the pixel is NOT set in A.
-				if (a->segments[j].frames[pixelIndexA].a == 0.0f)
-				{
-					diffsThisSegment ++;
-				}
+				diffsThisSegment ++;
+				// }
 			}
 		}
 		avgAreaDiff += diffsThisSegment;
 	}
 	avgAreaDiff = (avgAreaDiff / a->segmentsUsed);
-	a->fluidMovementChance = avgAreaDiff;
 
+	// the movement chance should range between 0 and about 30.
+	// if the sprite is 16x16, it has 256 pixels.
+	// fair to say a wing the size of half the sprite should give maximum movement speed.
+	// so 0 pixels of wing should give a movement chance of 30 and 128 pixels of wing should give a movement chance of 0.
+	if (avgAreaDiff > 128) {a->fluidMovementChance = 0;}
+	else
+	{
+		a->fluidMovementChance = 32 - ( avgAreaDiff / 4 );
+	}
 
+#ifdef ANIMAL_DRAWING_READOUT
+	printf( "fluidMovementChance %u , the avgAreaDiff is %u \n" , a->fluidMovementChance, avgAreaDiff);
+#endif
 
-	// potency
+	// potency. a universal modifier that increases other qualities but makes the animal more energetically expensive.
+	// potency               = sum of color differences from the average color intensity.
 	float avgColorIntensity = 0;
 	for (unsigned int j = 0; j < a->segmentsUsed; ++j)
 	{
@@ -1129,11 +1167,9 @@ void measureAnimalQualities(unsigned int animalIndex)
 				float redDiff   = abs(a->segments[j].frames[pixelOffset].r - avgPixelColor);
 				float greenDiff = abs(a->segments[j].frames[pixelOffset].g - avgPixelColor);
 				float blueDiff  = abs(a->segments[j].frames[pixelOffset].b - avgPixelColor);
-
 				colorIntensityThisSegment += redDiff;
 				colorIntensityThisSegment += greenDiff;
 				colorIntensityThisSegment += blueDiff;
-
 				countThisSegment += 1.0f;
 			}
 		}
@@ -1142,58 +1178,66 @@ void measureAnimalQualities(unsigned int animalIndex)
 	}
 	avgColorIntensity = avgColorIntensity / a->segmentsUsed;
 	a->potency = avgColorIntensity;
+#ifdef ANIMAL_DRAWING_READOUT
+	printf( "potency %f\n" , a->potency );
+#endif
 
-
-	// reach
-	float largestReach = 0;
+	// reach. the number of squares an animal can move in one turn.
+	// Reach                 = distance from center of the furthest motion-involved pixel
+	int largestReach = 1;
 	for (unsigned int j = 0; j < a->segmentsUsed; ++j)
 	{
 		for (unsigned int k = 0; k < (sizeAnimalSprite * sizeAnimalSprite); ++k)
 		{
-			// check if the pixel is set in B.
+			// check if the pixel is set in any of the sprites, and not set in another.
 			unsigned int pixelIndexA = (sizeAnimalSprite * sizeAnimalSprite * FRAME_A) + k;
 			unsigned int pixelIndexB = (sizeAnimalSprite * sizeAnimalSprite * FRAME_B) + k;
-
-			if (a->segments[j].frames[pixelIndexB].a > 0.0f)
+			unsigned int pixelIndexC = (sizeAnimalSprite * sizeAnimalSprite * FRAME_C) + k;
+			bool pixelStateA = false;
+			bool pixelStateB = false;
+			bool pixelStateC = false;
+			if (a->segments[j].frames[pixelIndexA].a > 0.0f ) {pixelStateA = true;}
+			if (a->segments[j].frames[pixelIndexB].a > 0.0f ) {pixelStateB = true;}
+			if (a->segments[j].frames[pixelIndexC].a > 0.0f ) {pixelStateC = true;}
+			if (  (pixelStateA != pixelStateB) || (pixelStateB != pixelStateC) || (pixelStateA != pixelStateC)   )
 			{
-				// check if the pixel is NOT set in A.
-				if (a->segments[j].frames[pixelIndexA].a == 0.0f)
+
+				// printf("the pixel was set in one frame but not in another\n");
+				// find how far the pixel is from the center.
+				int pixelX = k % sizeAnimalSprite;
+				int pixelY = k / sizeAnimalSprite;
+				int centerX = (sizeAnimalSprite / 2);
+				int centerY = (sizeAnimalSprite / 2);
+				int diffX = pixelX - centerX;
+				int diffY = pixelY - centerY;
+				float pixelDistance = magnitude_int(diffX, diffY);
+				int ipixelDistance = pixelDistance;
+				if (pixelDistance > largestReach)
 				{
-
-					// find how far the pixel is from the center.
-					int pixelX = k % sizeAnimalSprite;
-					int pixelY = k / sizeAnimalSprite;
-					int centerX = (sizeAnimalSprite / 2);
-					int centerY = (sizeAnimalSprite / 2);
-					int diffX = pixelX - centerX;
-					int diffY = pixelY - centerY;
-					float pixelDistance = magnitude_int(diffX, diffY);
-
-					if (pixelDistance > largestReach)
-					{
-						largestReach = pixelDistance;
-					}
-
+					largestReach = pixelDistance;
 				}
 
 			}
 		}
 	}
-	a->reach = largestReach;
+	a->reach = largestReach / 2;
+#ifdef ANIMAL_DRAWING_READOUT
+	printf( "reach %u \n" , a->reach );
+#endif
 
-
-	// attack
-	unsigned int avgACAreaDiff = 0;
+	// attack. the potential damage that the animal can deal in one turn.
+	// Attack stat = diffs between B and C sprite, sum over all segments
+	unsigned int avgBCAreaDiff = 0;
 	for (unsigned int j = 0; j < a->segmentsUsed; ++j)
 	{
 		unsigned int diffsThisSegment = 0;
 		for (unsigned int k = 0; k < (sizeAnimalSprite * sizeAnimalSprite); ++k)
 		{
-			// check if the pixel is set in A.
-			unsigned int pixelIndexA = (sizeAnimalSprite * sizeAnimalSprite * FRAME_A) + k;
+			// check if the pixel is set in B.
+			unsigned int pixelIndexB = (sizeAnimalSprite * sizeAnimalSprite * FRAME_B) + k;
 			unsigned int pixelIndexC = (sizeAnimalSprite * sizeAnimalSprite * FRAME_C) + k;
 
-			if (a->segments[j].frames[pixelIndexA].a > 0.0f)
+			if (a->segments[j].frames[pixelIndexB].a > 0.0f)
 			{
 				// check if the pixel is NOT set in C.
 				if (a->segments[j].frames[pixelIndexC].a == 0.0f)
@@ -1202,24 +1246,26 @@ void measureAnimalQualities(unsigned int animalIndex)
 				}
 			}
 		}
-		avgACAreaDiff += diffsThisSegment;
+		avgBCAreaDiff += diffsThisSegment;
 	}
-	avgACAreaDiff = (avgACAreaDiff / a->segmentsUsed);
-	a->attack = avgACAreaDiff;
+	avgBCAreaDiff = (avgBCAreaDiff / a->segmentsUsed);
+	a->attack = avgBCAreaDiff;
+#ifdef ANIMAL_DRAWING_READOUT
+	printf( "attack %u \n" , a->attack );
+#endif
 
-
-
-	// defence
+	// defence. the potential damage an animal can resist in one turn.
+	// Defence stat = coefficient of drawing circularity on the B sprite, avg over all segments
 	float averageCircularity = 0.0f;
 	for (unsigned int j = 0; j < a->segmentsUsed; ++j)
 	{
 		float averageDistanceFromCenterThisSegment = 0.0f;
+		float circularityThisSegment = 0.0f;
 		float countThisSegment = 0.0f;
 		for (unsigned int k = 0; k < (sizeAnimalSprite * sizeAnimalSprite); ++k)
 		{
 			// check if the pixel is set in B.
 			unsigned int pixelIndexB = (sizeAnimalSprite * sizeAnimalSprite * FRAME_B) + k;
-
 			if (a->segments[j].frames[pixelIndexB].a > 0.0f)
 			{
 				// check that the pixel is SURFACE, which means it has an empty cardinal neighbour.
@@ -1244,7 +1290,6 @@ void measureAnimalQualities(unsigned int animalIndex)
 
 				if (surface)
 				{
-
 					// find how far the pixel is from the center.
 					int pixelX = k % sizeAnimalSprite;
 					int pixelY = k / sizeAnimalSprite;
@@ -1253,27 +1298,73 @@ void measureAnimalQualities(unsigned int animalIndex)
 					int diffX = pixelX - centerX;
 					int diffY = pixelY - centerY;
 					float pixelDistance = magnitude_int(diffX, diffY);
-
-
 					averageDistanceFromCenterThisSegment += pixelDistance;
 					countThisSegment += 1.0f;
-
 				}
 			}
 		}
 		averageDistanceFromCenterThisSegment = averageDistanceFromCenterThisSegment / countThisSegment;
-		averageCircularity += averageDistanceFromCenterThisSegment;
+
+
+		for (unsigned int k = 0; k < (sizeAnimalSprite * sizeAnimalSprite); ++k)
+		{
+			// check if the pixel is set in B.
+			unsigned int pixelIndexB = (sizeAnimalSprite * sizeAnimalSprite * FRAME_B) + k;
+			if (a->segments[j].frames[pixelIndexB].a > 0.0f)
+			{
+				// check that the pixel is SURFACE, which means it has an empty cardinal neighbour.
+				unsigned int surface = false;
+				unsigned int neighbours[] =
+				{
+					k - 1,
+					k + 1,
+					k - sizeAnimalSprite,
+					k + sizeAnimalSprite
+				};
+				for (unsigned int l = 0; l < 4; ++l)
+				{
+					unsigned int neighbourIndex = pixelIndexB + (neighbours[l] % (sizeAnimalSprite * sizeAnimalSprite));
+
+					if (a->segments[j].frames[ neighbourIndex].a == 0.0f)
+					{
+						surface = true;
+						break;
+					}
+				}
+
+				if (surface)
+				{
+					// find how far the pixel is from the average.
+					int pixelX = k % sizeAnimalSprite;
+					int pixelY = k / sizeAnimalSprite;
+					int centerX = (sizeAnimalSprite / 2);
+					int centerY = (sizeAnimalSprite / 2);
+					int diffX = pixelX - centerX;
+					int diffY = pixelY - centerY;
+
+					int diffFromAverageX = diffX - averageDistanceFromCenterThisSegment;
+					int diffFromAverageY = diffY - averageDistanceFromCenterThisSegment;
+
+					float pixelDistance = magnitude_int(diffFromAverageX, diffFromAverageY);
+					circularityThisSegment += pixelDistance;
+					// countThisSegment += 1.0f;
+				}
+			}
+		}
+		circularityThisSegment = circularityThisSegment / countThisSegment;
+		averageCircularity += circularityThisSegment;
 	}
 	averageCircularity = averageCircularity / a->segmentsUsed;
 	a->defence = averageCircularity;
+#ifdef ANIMAL_DRAWING_READOUT
+	printf( "defence %u \n" , a->defence );
+#endif
 
-
-
-
-	// maxStoredEnergy
-	// reproductionCost
-	// hitPoints
-	unsigned int totalArea = 0.0f;
+	// maxStoredEnergy. a freely useable pool of energy the animal can spend on reproduction and movement.
+	// reproductionCost. the amount of energy it takes to make an offspring of this animal.
+	// hitPoints. the amount of damage an animal can absorb before it dies.
+	// Maximum stored energy, reproduction cost, hit points = total area sum over all segments
+	unsigned int totalArea = 0;
 	for (unsigned int j = 0; j < a->segmentsUsed; ++j)
 	{
 		unsigned int diffsThisSegment = 0;
@@ -1291,11 +1382,10 @@ void measureAnimalQualities(unsigned int animalIndex)
 	a->maxStoredEnergy = totalArea;
 	a->reproductionCost = totalArea;
 	a->hitPoints = totalArea;
-
-
+#ifdef ANIMAL_DRAWING_READOUT
+	printf( "maxStoredEnergy, reproductionCost, hitPoints %u \n" , totalArea );
+#endif
 }
-
-
 
 // given an animal seed at position i (the method by which they are transported and reproduced), turn it into a complete animal
 void drawAnimalFromSeed(unsigned int i)
@@ -1308,7 +1398,7 @@ void drawAnimalFromSeed(unsigned int i)
 	animalCursor = 0;
 	animalCursorColor = Color(0.5f, 0.5f, 0.5f, 1.0f);
 	animalCursorSegmentNumber = 0;
-	animalCursorEnergyDebt = 100.0f;
+	// animalCursorEnergyDebt = 100.0f;
 
 	for (int frameIndex = 0; frameIndex < numberOfFrames; ++frameIndex)
 	{
@@ -1344,8 +1434,11 @@ void drawAnimalFromSeed(unsigned int i)
 			if (count > genome.length()) {break;}
 			count++;
 		}
-		animals[animalIndex].reproductionCost = animalCursorEnergyDebt;
+		// animals[animalIndex].reproductionCost = animalCursorEnergyDebt;
 		animals[animalIndex].energy = 0;
+
+		measureAnimalQualities(animalIndex);
+
 		// animals[animalIdentity] = a;
 		seedGrid[i].drawingInProgress = false;
 	}
@@ -1720,6 +1813,9 @@ void setParticle(unsigned int material, unsigned int i)
 	grid[i].phase = PHASE_POWDER;
 	unsigned int a_offset = (i * numberOfFieldsPerVertex);
 	memcpy( &colorGrid[ a_offset ], & (materials[material].color), 16 );
+
+	weatherGrid[i].temperature = defaultTemperature;
+	weatherGrid[i].pressure = 1.0f;
 }
 
 void clearParticle( unsigned int i)
@@ -2198,9 +2294,11 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 				if (doWeather)
 				{
 					// exchange heat with the weather grid.
-					int avgTemp = (((grid[currentPosition].temperature ) - (weatherGrid[thermoNeighbour].temperature)) ) ;
+					int wthertemp = weatherGrid[thermoNeighbour].temperature;
+					int avgTemp = (((grid[currentPosition].temperature ) - wthertemp) ) ;
 					avgTemp = avgTemp / materials[ grid[currentPosition].material ].insulativity;
-					weatherGrid[thermoNeighbour].temperature += avgTemp;
+					float favtemp = avgTemp;
+					weatherGrid[thermoNeighbour].temperature += favtemp;
 					grid[currentPosition].temperature -= avgTemp;
 				}
 				else
