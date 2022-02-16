@@ -10,7 +10,7 @@
 
 // #define THREAD_TIMING_READOUT 1
 // #define PLANT_DRAWING_READOUT 1
-// #define ANIMAL_DRAWING_READOUT 1
+#define ANIMAL_DRAWING_READOUT 1
 #define ANIMAL_BEHAVIOR_READOUT 1
 // #define MUTATION_READOUT 1
 #define DRAW_ANIMALS 1
@@ -139,7 +139,7 @@ unsigned int animalRecursionLevel = 0;
 std::list<vec_i2> working_polygon[numberOfFrames];
 std::list<ProposedLifeParticle> segment_particles[numberOfFrames];
 
-std::string exampleAnimal = std::string(" rmgmbm dd na pmmmba pmocmz pmmmba pmocmz");
+std::string exampleAnimal = std::string(" rmgmbmddna pmmmba ");
 
 int defaultTemperature = 300;
 int radiantHeatIntensity = 50; // this is a physical constant that determines how much heat radiates from material, and how strongly material heat is coupled to the atmosphere.
@@ -400,10 +400,11 @@ void retireIdentity (unsigned int identityToRetire)
 	{
 		if ( (*it) == identityToRetire )
 		{
-			break;
+			identities.erase( it );
+			return;
 		}
 	}
-	identities.erase( it );
+
 
 
 }
@@ -452,7 +453,7 @@ struct Animal
 	int defence;
 	float maxStoredEnergy;
 	// float energy;
-	float reproductionCost;
+	float reproductionEnergy;
 	int hitPoints;
 
 
@@ -477,7 +478,7 @@ Animal::Animal()
 	this->defence = 4;
 	this->maxStoredEnergy = 100.0f;
 	// this->energy = 50.0f;
-	this->reproductionCost = 100.0f;
+	this->reproductionEnergy = 100.0f;
 	this->hitPoints = 16;
 
 
@@ -1078,8 +1079,11 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 	return -1;
 }
 
-void measureAnimalQualities(unsigned int animalIndex)
+void measureAnimalQualities(unsigned int currentPosition)
 {
+
+	unsigned int animalIndex = seedGrid[currentPosition].parentIdentity;
+
 	if (animalIndex >= animals.size())				{return;}
 
 	Animal  a = animals[animalIndex];
@@ -1190,6 +1194,8 @@ void measureAnimalQualities(unsigned int animalIndex)
 		a.landMovementChance = 32 - ( avgSurfaceAreaDiff / 2 );
 	}
 
+	a.landMovementChance = 0; // TEMPORARILY DISABLING LAND MOVEMENT CHANCE
+
 #ifdef ANIMAL_DRAWING_READOUT
 	printf( "landMovementChance %u , the avgSurfaceAreaDiff is %u\n" , a.landMovementChance, avgSurfaceAreaDiff );
 #endif
@@ -1229,6 +1235,8 @@ void measureAnimalQualities(unsigned int animalIndex)
 	{
 		a.fluidMovementChance = 32 - ( avgAreaDiff / 4 );
 	}
+
+	a.fluidMovementChance = 0; // TEMPORARILY DISABLING FLUID MOVEMENT CHANCE
 
 #ifdef ANIMAL_DRAWING_READOUT
 	printf( "fluidMovementChance %u , the avgAreaDiff is %u \n" , a.fluidMovementChance, avgAreaDiff);
@@ -1421,7 +1429,7 @@ void measureAnimalQualities(unsigned int animalIndex)
 #endif
 
 
-	// reproductionCost. the amount of energy it takes to make an offspring of this animal.
+	// reproductionEnergy. the amount of energy it takes to make an offspring of this animal.
 	//  reproduction cost = total area sum over all segments
 	unsigned int totalArea = 0;
 	for (unsigned int j = 0; j < a.segmentsUsed; ++j)
@@ -1438,13 +1446,16 @@ void measureAnimalQualities(unsigned int animalIndex)
 			}
 		}
 	}
-	a.reproductionCost += (a.reproductionCost / 2); // this additional 50% supplies the baby with energy when it is born.
-	float freproductiveCost = a.reproductionCost;
+	a.reproductionEnergy = a.reproductionEnergy * 2; // the newborn and the mother retain 50% energy so they don't starve immediately. Double the reproduction level to accurately account for this.
+	float freproductiveCost = a.reproductionEnergy;
 	freproductiveCost += freproductiveCost * a.potency;
 
-	a.reproductionCost = freproductiveCost;
+	a.reproductionEnergy = freproductiveCost;
+
+	seedGrid[currentPosition].energy = a.reproductionEnergy / 2;
+
 #ifdef ANIMAL_DRAWING_READOUT
-	printf( "reproductionCost %f\n" , a.reproductionCost);
+	printf( "reproductionEnergy %f\n Starting animal with energy %f\n" , a.reproductionEnergy, seedGrid[currentPosition].energy );
 #endif
 
 	// maxStoredEnergy. a freely useable pool of energy the animal can spend on reproduction and movement.
@@ -1477,9 +1488,8 @@ void measureAnimalQualities(unsigned int animalIndex)
 	a.hitPoints = constantArea;
 
 #ifdef ANIMAL_DRAWING_READOUT
-	printf( "maxStoredEnergy %f, hitPoints %i\n" , a.reproductionCost, a.hitPoints);
+	printf( "maxStoredEnergy %f, hitPoints %i\n" , a.reproductionEnergy, a.hitPoints);
 #endif
-
 
 	animals[animalIndex] = a;
 
@@ -1581,13 +1591,13 @@ void drawAnimalFromSeed(unsigned int i)
 			if (count > genome.length()) {break;}
 			count++;
 		}
-		// animals[animalIndex].reproductionCost = animalCursorEnergyDebt;
+		// animals[animalIndex].reproductionEnergy = animalCursorEnergyDebt;
 		// animals[animalIndex].energy = 0;
 
 		if (animals[animalIndex].segmentsUsed > 0)
 		{
 
-			measureAnimalQualities(animalIndex);
+			measureAnimalQualities(i);
 		}
 		else
 		{
@@ -1595,7 +1605,7 @@ void drawAnimalFromSeed(unsigned int i)
 			printf( "the animal had 0 segments and was deleted\n" );
 #endif
 
-			clearAnimalDrawing(i);
+			// clearAnimalDrawing(i);
 			clearSeedParticle(i);
 		}
 
@@ -1759,7 +1769,7 @@ void setAnimal(unsigned int i, std::string genes)
 {
 	seedGrid[i].genes = genes;
 	seedGrid[i].stage = STAGE_ANIMAL;
-	seedGrid[i].energy = 0.0f;
+	// seedGrid[i].energy = 0.0f;
 
 	memcpy( (&seedColorGrid[i * numberOfFieldsPerVertex]) ,  &(animalCursorColor),  sizeof(Color) );
 	drawAnimalFromSeed(i);
@@ -1784,44 +1794,63 @@ void mutateSentence ( std::string * genes )
 	case 0:
 	{
 		// swap a letter
-		(*genes)[extremelyFastNumberFromZeroTo(genes->length() - 1)] = (char)('a' + rand() % 26);
+		if (genes->length() > 0)
+		{
+			(*genes)[extremelyFastNumberFromZeroTo(genes->length() - 1)] = (char)('a' + rand() % 26);
 
 #ifdef MUTATION_READOUT
-		printf("swap a letter               : ");
+			printf("swap a letter               : ");
 #endif
+		}
 		break;
 	}
 	case 1:
 	{
-		// add a letter
-		genes->push_back(  (char)('a' + rand() % 26)  );
+		if (genes->length() > 0)
+		{
+			// add a letter
+			genes->push_back(  (char)('a' + rand() % 26)  );
 
 #ifdef MUTATION_READOUT
-		printf("add a letter                : ");
+			printf("add a letter                : ");
 #endif
+		}
 		break;
 	}
 	case 2:
 	{
 		// remove a letter
-		genes->erase(extremelyFastNumberFromZeroTo(genes->length() - 1), 1);
+
+		if (genes->length() > 0)
+		{
+			genes->erase(extremelyFastNumberFromZeroTo(genes->length() - 1), 1);
 #ifdef MUTATION_READOUT
-		printf("remove a letter             : ");
+			printf("remove a letter             : ");
 #endif
+		}
+		else
+		{
+#ifdef MUTATION_READOUT
+			printf("remove a letter: len 0 abort: ");
+#endif
+		}
+
 		break;
 	}
 	case 3:
 	{
-		// swap a letter for punctuation
-		unsigned int randomPunctuation = extremelyFastNumberFromZeroTo(1);
+		if (genes->length() > 0)
+		{
+			// swap a letter for punctuation
+			unsigned int randomPunctuation = extremelyFastNumberFromZeroTo(1);
 
-		if      (randomPunctuation == 0) { (*genes)[extremelyFastNumberFromZeroTo(genes->length() - 1)] = ' ' ; }
-		else if (randomPunctuation == 1) { (*genes)[extremelyFastNumberFromZeroTo(genes->length() - 1)] = '.' ; }
+			if      (randomPunctuation == 0) { (*genes)[extremelyFastNumberFromZeroTo(genes->length() - 1)] = ' ' ; }
+			else if (randomPunctuation == 1) { (*genes)[extremelyFastNumberFromZeroTo(genes->length() - 1)] = '.' ; }
 
 #ifdef MUTATION_READOUT
-		printf("swap letter for punctuation : ");
+			printf("swap letter for punctuation : ");
 #endif
-
+		}
 		break;
 	}
 	}
@@ -1877,23 +1906,25 @@ void incrementAnimalSegmentPositions (unsigned int animalIndex, unsigned int i, 
 {
 	if (animalIndex < animals.size())
 	{
-		Animal * a = &(animals[animalIndex]);
-		if (seedGrid[i].energy > a->reproductionCost && animalReproductionEnabled)
+		// Animal * a = &(animals[animalIndex]);
+		// Animal a_safeReference = animals[animalIndex];
+		if (seedGrid[i].energy > animals[animalIndex].reproductionEnergy && animalReproductionEnabled)
 		{
 			unsigned int nSolidNeighbours = 0;
 			for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
 			{
-				unsigned int neighbour = neighbourOffsets[j] + i;
+				unsigned int neighbour = (neighbourOffsets[j] + i) % totalSize;
 				if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS || grid[neighbour].phase == PHASE_LIQUID)
 				{
+
+
+
 
 					setAnimal( neighbour , seedGrid[i].genes);
 
 
 
-#ifdef ANIMAL_BEHAVIOR_READOUT
-					printf("animal %u reproduced\n ", animalIndex );
-#endif
+
 
 
 #ifdef MUTATION_READOUT
@@ -1904,8 +1935,15 @@ void incrementAnimalSegmentPositions (unsigned int animalIndex, unsigned int i, 
 
 
 
-					seedGrid[i].energy = seedGrid[i].energy * 0.33f;
-					seedGrid[neighbour].energy = seedGrid[i].energy;
+					seedGrid[i].energy = animals[animalIndex].reproductionEnergy * 0.5f;
+					seedGrid[neighbour].energy = animals[animalIndex].reproductionEnergy * 0.5;
+
+
+
+#ifdef ANIMAL_BEHAVIOR_READOUT
+					printf("animal %u reproduced. Now has energy %f, child energy %f\n ", animalIndex , seedGrid[i].energy, seedGrid[neighbour].energy  );
+#endif
+
 					return;
 					break;
 				}
@@ -1916,14 +1954,14 @@ void incrementAnimalSegmentPositions (unsigned int animalIndex, unsigned int i, 
 
 
 		// Update animal segment positions. Only do this if the animal has actually moved (otherwise it will pile into one square).
-		if (a->segments[0].position != i)
+		if (animals[animalIndex].segments[0].position != i)
 		{
 
-			for (unsigned int j = 0; j < a->segmentsUsed; ++j)
+			for (unsigned int j = 0; j < animals[animalIndex].segmentsUsed; ++j)
 			{
 				for (unsigned int k = 0; k < (sizeAnimalSprite * sizeAnimalSprite); ++k)
 				{
-					clearAnimalSpritePixel( &(a->segments[j]), k);
+					clearAnimalSpritePixel( &(animals[animalIndex].segments[j]), k);
 				}
 			}
 
@@ -1931,7 +1969,7 @@ void incrementAnimalSegmentPositions (unsigned int animalIndex, unsigned int i, 
 			// set the position of the 0th segment to the new index, and everyone elses position is shifted forward by 1.
 			// bool segmentPhase = false;
 			// if (a->segments[0].animationFrame == FRAME_A) {segmentPhase = true;}
-			for (unsigned int j = 0; j < a->segmentsUsed; ++j)
+			for (unsigned int j = 0; j < animals[animalIndex].segmentsUsed; ++j)
 			{
 				// if ( j >= a.segmentsUsed)
 				// {
@@ -1939,13 +1977,13 @@ void incrementAnimalSegmentPositions (unsigned int animalIndex, unsigned int i, 
 				// }
 				if (falling)
 				{
-					a->segments[j].animationFrame = FRAME_C;
+					animals[animalIndex].segments[j].animationFrame = FRAME_C;
 				}
 				else
 				{
 
-					if (a->segments[j].animationFrame == FRAME_B) { a->segments[j].animationFrame = FRAME_A;}
-					else {a->segments[j].animationFrame = FRAME_B;}
+					if (animals[animalIndex].segments[j].animationFrame == FRAME_B) { animals[animalIndex].segments[j].animationFrame = FRAME_A;}
+					else {animals[animalIndex].segments[j].animationFrame = FRAME_B;}
 				}
 
 
@@ -1956,21 +1994,21 @@ void incrementAnimalSegmentPositions (unsigned int animalIndex, unsigned int i, 
 
 
 
-			for ( unsigned int j = (a->segmentsUsed - 1); j > 0; --j)
+			for ( unsigned int j = (animals[animalIndex].segmentsUsed - 1); j > 0; --j)
 			{
-				a->segments[j].position = a->segments[j - 1].position;
+				animals[animalIndex].segments[j].position = animals[animalIndex].segments[j - 1].position;
 
 
 			}
-			a->segments[0].position = i;
+			animals[animalIndex].segments[0].position = i;
 
 
 
-			for (unsigned int j = 0; j < a->segmentsUsed; ++j)
+			for (unsigned int j = 0; j < animals[animalIndex].segmentsUsed; ++j)
 			{
 				for (unsigned int k = 0; k < (sizeAnimalSprite * sizeAnimalSprite); ++k)
 				{
-					setAnimalSpritePixel( &(a->segments[j]), k);
+					setAnimalSpritePixel( &(animals[animalIndex].segments[j]), k);
 				}
 			}
 
@@ -3110,13 +3148,13 @@ unsigned int walkAnAnimal(unsigned int i)
 
 		for (unsigned int grab = 0; grab < a_safeReference.reach; grab++)
 		{
-			 neighbourDirection = ((a_safeReference.direction + (extremelyFastNumberFromZeroTo(2) - 1)) % N_NEIGHBOURS) ;
-			unsigned int neighbour  = (currentPosition + neighbourOffsets[neighbourDirection ] )% totalSize;
+			neighbourDirection = ((a_safeReference.direction + (extremelyFastNumberFromZeroTo(2) - 1)) % N_NEIGHBOURS) ;
+			unsigned int neighbour  = (currentPosition + neighbourOffsets[neighbourDirection ] ) % totalSize;
 			if (grab > 0 && !eaten)
 			{
 				int randomX = extremelyFastNumberFromZeroTo( a_safeReference.reach) - (a_safeReference.reach / 2) ;
 				int randomY = extremelyFastNumberFromZeroTo( a_safeReference.reach) - (a_safeReference.reach / 2) ;
-				 neighbour = ( currentPosition + randomX + (randomY * sizeX)	 )  % totalSize;
+				neighbour = ( currentPosition + randomX + (randomY * sizeX)	 )  % totalSize;
 			}
 
 
@@ -3131,7 +3169,7 @@ unsigned int walkAnAnimal(unsigned int i)
 // 					seedGrid[currentPosition].energy += seedGrid[neighbour].energy;
 
 // #ifdef ANIMAL_BEHAVIOR_READOUT
-// 					printf("animal %u absorbed %f of light. Has %f reproduces at %f.\n", animalIndex, seedGrid[neighbour].energy, seedGrid[currentPosition].energy , a_safeReference.reproductionCost );
+// 					printf("animal %u absorbed %f of light. Has %f reproduces at %f.\n", animalIndex, seedGrid[neighbour].energy, seedGrid[currentPosition].energy , a_safeReference.reproductionEnergy );
 // #endif
 // 					break;
 // 				}
@@ -3146,7 +3184,7 @@ unsigned int walkAnAnimal(unsigned int i)
 
 
 #ifdef ANIMAL_BEHAVIOR_READOUT
-					printf("animal %u ate a seed for %f. Has %f reproduces at %f.\n", animalIndex, seedEfficiency, seedGrid[currentPosition].energy , a_safeReference.reproductionCost );
+					printf("animal %u ate a seed for %f. Has %f reproduces at %f.\n", animalIndex, seedEfficiency, seedGrid[currentPosition].energy , a_safeReference.reproductionEnergy );
 #endif
 
 					clearSeedParticle(neighbour);
@@ -3166,7 +3204,7 @@ unsigned int walkAnAnimal(unsigned int i)
 
 					seedGrid[currentPosition].energy  += plantEfficiency;
 #ifdef ANIMAL_BEHAVIOR_READOUT
-					printf("animal %u ate a plant for %f. Has %f reproduces at %f.\n", animalIndex, plantEfficiency, seedGrid[currentPosition].energy , a_safeReference.reproductionCost );
+					printf("animal %u ate a plant for %f. Has %f reproduces at %f.\n", animalIndex, plantEfficiency, seedGrid[currentPosition].energy , a_safeReference.reproductionEnergy );
 #endif
 
 					// lifeGrid[neighbour].energy = 1.0f;// 0.0f;
@@ -3185,7 +3223,7 @@ unsigned int walkAnAnimal(unsigned int i)
 					seedGrid[currentPosition].energy  += mineralEfficiency;
 
 #ifdef ANIMAL_BEHAVIOR_READOUT
-					printf("animal %u ate a mineral for %f. Has %f reproduces at %f.\n" , animalIndex, mineralEfficiency, seedGrid[currentPosition].energy , a_safeReference.reproductionCost );
+					printf("animal %u ate a mineral for %f. Has %f reproduces at %f.\n" , animalIndex, mineralEfficiency, seedGrid[currentPosition].energy , a_safeReference.reproductionEnergy );
 #endif
 
 					clearParticle( neighbour);
@@ -3244,7 +3282,7 @@ unsigned int walkAnAnimal(unsigned int i)
 								clearSeedParticle(neighbour);
 
 #ifdef ANIMAL_BEHAVIOR_READOUT
-								printf("animal %u ate another animal for %f. Has %f reproduces at %f.\n", animalIndex, meatEfficiency + seedGrid[neighbour].energy, seedGrid[currentPosition].energy , a->reproductionCost );
+								printf("animal %u ate another animal for %f. Has %f reproduces at %f.\n", animalIndex, meatEfficiency + seedGrid[neighbour].energy, seedGrid[currentPosition].energy , a->reproductionEnergy );
 #endif
 							}
 						}
