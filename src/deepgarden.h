@@ -26,6 +26,9 @@ using namespace glm;
 #define maxLampBrightness 100
 #define sizeAnimalSprite 16
 #define maxAnimalSegments 8
+#define maxTimesReproduced 5
+
+#define numberOfFairTurnsPerSegment 4
 
 #define numberOfFrames     3         
 
@@ -70,10 +73,14 @@ extern const unsigned int MATERIAL_VACUUM ;
 #define ENERGYSOURCE_PLANT   8
 #define ENERGYSOURCE_ANIMAL  16
 
- // Frames are the sprites used to animate animals. A and B are used to animate movement while C is used for idleness.
-#define FRAME_A 0
-#define FRAME_B 1
-#define FRAME_C 2
+ // Frames are the sprites used to animate animals.
+#define FRAME_A 0 // the A frame captures the animal in the act of walking. When moving, it alternates between A and B.
+#define FRAME_B 1 // the B frame captures the animal idle. 
+#define FRAME_C 2 // the C frame captures the animal in the act of attacking.
+
+// #define FRAME_MOVEMENT_DIFFS 3 // this frame 
+// #define FRAME_ATTACK_DIFFS   4 // 
+
 // Movement controls where an animal is allowed to go. This is a hereditary, mutable quality.
 #define MOVEMENT_ONPOWDER  1
 #define MOVEMENT_INLIQUID   2
@@ -101,6 +108,13 @@ extern const unsigned int MATERIAL_VACUUM ;
 #define CONDITION_LEFTN            256
 #define CONDITION_NOTLEFTRIGHTN    512
 #define CONDITION_NOTLRNEIGHBOURS  1024
+
+// animal personalities make them respond to situations differently
+#define PERSONALITY_AGGRESSIVE 1
+#define PERSONALITY_COWARDLY   2
+#define PERSONALITY_FLOCKING   4
+#define PERSONALITY_FRIENDLY   8
+#define PERSONALITY_MIGRATORY  16
 
 float RNG();
 

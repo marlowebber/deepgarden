@@ -81,7 +81,7 @@ void thread_interface()
 				break;
 
 			case SDLK_r:
-				sendLifeToBackground();
+				// sendLifeToBackground();
 				break;
 
 			case SDLK_n:
@@ -113,7 +113,7 @@ void thread_interface()
 				break;
 
 			case SDLK_e:
-				toggleErodingRain();
+				// toggleErodingRain();
 				break;
 
 			case SDLK_x:
