@@ -24,11 +24,14 @@ using namespace glm;
 #define maxGenomeSize 64
 #define N_NEIGHBOURS 8                 // this is always 8 on a 2D square grid. 
 #define maxLampBrightness 100
+
 #define sizeAnimalSprite 16
+#define squareSizeAnimalSprite 256
+
 #define maxAnimalSegments 8
 #define maxTimesReproduced 5
 
-#define numberOfFairTurnsPerSegment 4
+#define numberOfFairTurnsPerSegment 1
 
 #define numberOfFrames     3         
 
@@ -109,12 +112,25 @@ extern const unsigned int MATERIAL_VACUUM ;
 #define CONDITION_NOTLEFTRIGHTN    512
 #define CONDITION_NOTLRNEIGHBOURS  1024
 
+#define NUMBER_OF_CONDITIONS 12
+
 // animal personalities make them respond to situations differently
 #define PERSONALITY_AGGRESSIVE 1
 #define PERSONALITY_COWARDLY   2
 #define PERSONALITY_FLOCKING   4
 #define PERSONALITY_FRIENDLY   8
 #define PERSONALITY_MIGRATORY  16
+
+// animal organs are polygons of different colors that provide different functionality.
+#define ORGAN_NOTHING 0 // empty
+#define ORGAN_EYE	 1	// used for the vision radius
+#define ORGAN_MUSCLE 2	// used for movement
+#define ORGAN_MOUTH  4  // used to eat and attack
+#define ORGAN_LIVER	 8  // used for hit points and energy storage
+#define ORGAN_BONE	 16	// used for defence and is left behind when the animal is killed
+#define ORGAN_VACUOLE 32 // an empty organ that is removed at the end of development to leave behind shaped voids.
+
+#define ORGAN_MARKER_A 64 // used for the polygon filling algorithm. Do not use in gene codes! must be different to all the other organ codes!
 
 float RNG();
 
