@@ -10,9 +10,9 @@
 
 // #define THREAD_TIMING_READOUT 1
 // #define PLANT_DRAWING_READOUT 1
-#define ANIMAL_DRAWING_READOUT 1
-#define ANIMAL_BEHAVIOR_READOUT 1
-// #define MUTATION_READOUT 1
+// #define ANIMAL_DRAWING_READOUT 1
+// #define ANIMAL_BEHAVIOR_READOUT 1
+#define MUTATION_READOUT 1
 #define DRAW_ANIMALS 1
 
 bool useGerminationMaterial = false;
@@ -410,12 +410,14 @@ struct Animal
 	unsigned int direction;
 	unsigned int energyFlags;
 
-	unsigned int landMovementChance;
-	unsigned int fluidMovementChance;
-	float potency;
-	unsigned int reach;
-	int attack;
-	float maxStoredEnergy;
+	// unsigned int landMovementChance;
+	// unsigned int fluidMovementChance;
+	// float potency;
+	// unsigned int reach;
+
+	unsigned int attack;
+	unsigned int defense;
+	unsigned int perception;
 	float reproductionEnergy;
 	int hitPoints;
 
@@ -434,12 +436,12 @@ Animal::Animal()
 	this->energyFlags = ENERGYSOURCE_PLANT;
 	this->direction = 4;
 	this->segmentsUsed = 0;
-	this->landMovementChance = 4;
-	this->fluidMovementChance = 16;
-	this->potency = 4.0f;
-	this->reach = 4;
+	// this->landMovementChance = 4;
+	// this->fluidMovementChance = 16;
+	// this->potency = 4.0f;
+	// this->reach = 4;
 	this->attack = 4;
-	this->maxStoredEnergy = 100.0f;
+	// this->maxStoredEnergy = 100.0f;
 	this->reproductionEnergy = 100.0f;
 	this->hitPoints = 16;
 	this->steady = false;
@@ -727,122 +729,89 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 #endif
 		animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
 		unsigned int numberModifier = alphanumeric( genes[animalCursorString] );
-		numberModifier = numberModifier % animals[animalIndex].segmentsUsed ;
 
-		unsigned int numberOfSegmentsToExtrude   = numberModifier;
-#ifdef ANIMAL_DRAWING_READOUT
-		printf("char %c, index %u. Extrude organ %u in the next %u segments on all frames\n", genes[animalCursorString] , animalCursorString, animalCursorOrgan, numberOfSegmentsToExtrude);
-#endif
-		unsigned int limit = animalCursorSegmentNumber + numberOfSegmentsToExtrude;
-		if (limit > maxAnimalSegments) {limit = maxAnimalSegments;}
-
-		for (unsigned int j = animalCursorSegmentNumber; j < limit; ++j)
+		if (animals[animalIndex].segmentsUsed > 0)
 		{
-			for (unsigned int frame = 0; frame < numberOfFrames; ++frame)
+
+			numberModifier = numberModifier % animals[animalIndex].segmentsUsed ;
+
+			unsigned int numberOfSegmentsToExtrude   = numberModifier;
+#ifdef ANIMAL_DRAWING_READOUT
+			printf("char %c, index %u. Extrude organ %u in the next %u segments on all frames\n", genes[animalCursorString] , animalCursorString, animalCursorOrgan, numberOfSegmentsToExtrude);
+#endif
+			unsigned int limit = animalCursorSegmentNumber + numberOfSegmentsToExtrude;
+			if (limit > maxAnimalSegments) {limit = maxAnimalSegments;}
+
+			for (unsigned int j = animalCursorSegmentNumber; j < limit; ++j)
 			{
-				// first just mark the area you want to grow into.
-				for (unsigned int k = 0; k < squareSizeAnimalSprite; ++k)
+				for (unsigned int frame = 0; frame < numberOfFrames; ++frame)
 				{
-					// if ( animals[animalIndex].segments[j].frames[ (squareSizeAnimalSprite * frame ) + k ] == animalCursorOrgan )
-					// {
-					unsigned int neighbours[] =
+					// first just mark the area you want to grow into.
+					for (unsigned int k = 0; k < squareSizeAnimalSprite; ++k)
 					{
-						k - 1,
-						k + 1,
-						k - sizeAnimalSprite,
-						k + sizeAnimalSprite
-					};
-					unsigned int nSameOrganNeighours = 0;
-					unsigned int nDifferentOrganNeighbours = 0;
-					unsigned int nEmptyNeighbours = 0;
-
-					// then, traverse the cell neighbours and tally up the important stats.
-					for (unsigned int l = 0; l < 4; ++l)
-					{
-						unsigned int neighbour = neighbours[l] % squareSizeAnimalSprite;
-
-
-
-						// printf(" %u\n", animals[animalIndex].segments[j].frames[ (squareSizeAnimalSprite * frame ) + neighbour ]);
-
-
-						if (animals[animalIndex].segments[j].frames[ (squareSizeAnimalSprite * frame ) + neighbour ] == animalCursorOrgan)
+						unsigned int neighbours[] =
 						{
-							nSameOrganNeighours ++;
-						}
-						else if (animals[animalIndex].segments[j].frames[ (squareSizeAnimalSprite * frame ) + neighbour ] == ORGAN_NOTHING)
+							k - 1,
+							k + 1,
+							k - sizeAnimalSprite,
+							k + sizeAnimalSprite
+						};
+						unsigned int nSameOrganNeighours = 0;
+						unsigned int nDifferentOrganNeighbours = 0;
+						unsigned int nEmptyNeighbours = 0;
+
+						// then, traverse the cell neighbours and tally up the important stats.
+						for (unsigned int l = 0; l < 4; ++l)
 						{
-							nEmptyNeighbours ++;
-						}
-						else
-						{
-							nDifferentOrganNeighbours++;
-						}
-					}
-
-
-					// printf("extruding;\n");
-
-					// if (nSameOrganNeighours > 0)
-					// {
-
-					// 	printf("found at least one neighbour;\n");
-					// }
-
-					// now you can apply crystallization rules.
-					if ( nSameOrganNeighours > 0) // the crystal must at least be touching another crystal to grow. No spontaneous nucleation.
-					{
-						if (animalCursorExtrusionCondition == CONDITION_GREATERTHAN)
-						{
-							if ( nSameOrganNeighours > animalCursorExtrusionN)
+							unsigned int neighbour = neighbours[l] % squareSizeAnimalSprite;
+							if (animals[animalIndex].segments[j].frames[ (squareSizeAnimalSprite * frame ) + neighbour ] == animalCursorOrgan)
 							{
-
-								// printf("marked a cell to fill;\n");
-								animals[animalIndex].segments[j].frames[ (squareSizeAnimalSprite * frame ) + k ] = ORGAN_MARKER_A;
+								nSameOrganNeighours ++;
+							}
+							else if (animals[animalIndex].segments[j].frames[ (squareSizeAnimalSprite * frame ) + neighbour ] == ORGAN_NOTHING)
+							{
+								nEmptyNeighbours ++;
+							}
+							else
+							{
+								nDifferentOrganNeighbours++;
 							}
 						}
-						else if (animalCursorExtrusionCondition == CONDITION_EQUAL)
-						{
-							if ( nSameOrganNeighours == animalCursorExtrusionN)
-							{
 
-								// printf("marked a cell to fill;\n");
-								animals[animalIndex].segments[j].frames[ (squareSizeAnimalSprite * frame ) + k ] = ORGAN_MARKER_A;
+						// now you can apply crystallization rules.
+						if ( nSameOrganNeighours > 0) // the crystal must at least be touching another crystal to grow. No spontaneous nucleation.
+						{
+							if (animalCursorExtrusionCondition == CONDITION_GREATERTHAN)
+							{
+								if ( nSameOrganNeighours > animalCursorExtrusionN)
+								{
+									animals[animalIndex].segments[j].frames[ (squareSizeAnimalSprite * frame ) + k ] = ORGAN_MARKER_A;
+								}
 							}
-						}
-						else if (animalCursorExtrusionCondition == CONDITION_LESSTHAN)
-						{
-							if ( nSameOrganNeighours < animalCursorExtrusionN)
+							else if (animalCursorExtrusionCondition == CONDITION_EQUAL)
 							{
-
-								// printf("marked a cell to fill;\n");
-								animals[animalIndex].segments[j].frames[ (squareSizeAnimalSprite * frame ) + k ] = ORGAN_MARKER_A;
+								if ( nSameOrganNeighours == animalCursorExtrusionN)
+								{
+									animals[animalIndex].segments[j].frames[ (squareSizeAnimalSprite * frame ) + k ] = ORGAN_MARKER_A;
+								}
+							}
+							else if (animalCursorExtrusionCondition == CONDITION_LESSTHAN)
+							{
+								if ( nSameOrganNeighours < animalCursorExtrusionN)
+								{
+									animals[animalIndex].segments[j].frames[ (squareSizeAnimalSprite * frame ) + k ] = ORGAN_MARKER_A;
+								}
 							}
 						}
 					}
 
-					// else // if there aren't any neighbours, don't apply a rule- the genes say to extrude, so do it!
-					// {
-
-					// 	for (unsigned int l = 0; l < 4; ++l)
-					// 	{
-					// 		unsigned int neighbour = neighbours[l] % squareSizeAnimalSprite;
-					// 		animals[animalIndex].segments[j].frames[ (squareSizeAnimalSprite * frame ) + k ]
-
-
-					// 	}
-					// }
-					// }
-				}
-
-				// then fill the marked areas, it's neater this way.
-				for (unsigned int k = 0; k < squareSizeAnimalSprite; ++k)
-				{
-					if (animals[animalIndex].segments[j].frames[ (squareSizeAnimalSprite * frame ) + k ] == ORGAN_MARKER_A)
+					// then fill the marked areas, it's neater this way.
+					for (unsigned int k = 0; k < squareSizeAnimalSprite; ++k)
 					{
-
-						// printf("filled a marked cell;\n");
-						animals[animalIndex].segments[j].frames[ (squareSizeAnimalSprite * frame ) + k ] = animalCursorOrgan;
+						if (animals[animalIndex].segments[j].frames[ (squareSizeAnimalSprite * frame ) + k ] == ORGAN_MARKER_A)
+						{
+							animals[animalIndex].segments[j].frames[ (squareSizeAnimalSprite * frame ) + k ] = animalCursorOrgan;
+						}
 					}
 				}
 			}
@@ -1218,11 +1187,105 @@ void measureAnimalQualities(unsigned int currentPosition)
 {
 	unsigned int animalIndex = seedGrid[currentPosition].parentIdentity;
 	if (animalIndex >= animals.size())				{return;}
-	Animal  a = animals[animalIndex];
 
 #ifdef ANIMAL_DRAWING_READOUT
 	printf( "measureAnimalQualities on animal %u \n" , animalIndex );
 #endif
+
+
+
+	// unsigned int totalArea = 0; // for reproductive cost
+	// unsigned int mouthArea = 0; // for attack
+	// unsigned int boneArea  = 0; // for defense
+	// unsigned int eyeArea   = 0; // for perceptive ability
+	// unsigned int liverArea = 0; // for hit points
+
+
+	animals[animalIndex].attack = 1;
+	animals[animalIndex].defense = 1;
+	animals[animalIndex].perception = 1;
+	animals[animalIndex].hitPoints = 1;
+	animals[animalIndex].reproductionEnergy = 1;
+
+
+	// unsigned int bestEyeStreak = 0; // horizontal width of the largest eye found on the animal.
+	unsigned int eyeStreak = 0;
+	unsigned int prevOrgan = ORGAN_NOTHING;
+
+	for (unsigned int j = 0; j < animals[animalIndex].segmentsUsed; ++j)
+	{
+		for (unsigned int frame = 0; frame < numberOfFrames; ++frame)
+		{
+			for (unsigned int k = 0; k < squareSizeAnimalSprite; ++k)
+			{
+
+				unsigned int organ = animals[animalIndex].segments[ j].frames[ (squareSizeAnimalSprite * frame ) + k ];
+
+				if (organ != ORGAN_EYE && prevOrgan == ORGAN_EYE)
+				{
+					if (eyeStreak > animals[animalIndex].perception)
+					{
+						animals[animalIndex].perception = eyeStreak;
+					}
+				}
+
+				if (organ != ORGAN_NOTHING )
+				{
+
+					if (organ == ORGAN_MUSCLE )
+					{
+						animals[animalIndex].reproductionEnergy += 0.1f;
+					}
+					else if (organ == ORGAN_MOUTH )
+					{
+						animals[animalIndex].attack++;
+						animals[animalIndex].reproductionEnergy += 0.5f;
+					}
+					else if (organ == ORGAN_BONE )
+					{
+						animals[animalIndex].defense++;
+						animals[animalIndex].reproductionEnergy += 0.1f;
+					}
+					else if (organ == ORGAN_LIVER )
+					{
+						animals[animalIndex].reproductionEnergy += 0.5f;
+						animals[animalIndex].hitPoints++;
+					}
+					else if (organ == ORGAN_EYE )
+					{
+						animals[animalIndex].reproductionEnergy += 0.5f;
+						if (prevOrgan != ORGAN_EYE)
+						{
+							eyeStreak = 0;
+						}
+						eyeStreak ++;
+					}
+
+
+				}
+
+
+				prevOrgan = animals[animalIndex].segments[ j].frames[ (squareSizeAnimalSprite * frame ) + k ];
+
+			}
+		}
+	}
+
+#ifdef ANIMAL_DRAWING_READOUT
+	printf( "attack %u \n" , animals[animalIndex].attack );
+	printf( "defense %u \n" , animals[animalIndex].defense );
+	printf( "perception %u \n" , animals[animalIndex].perception );
+	printf( "hitPoints %u \n" , animals[animalIndex].hitPoints );
+	printf( "reproductionEnergy %f \n" , animals[animalIndex].reproductionEnergy );
+#endif
+
+
+	// animals[animalIndex].attack = 1;
+	// animals[animalIndex].defense = 1;
+	// animals[animalIndex].perception = 1;
+	// animals[animalIndex].hp = 1;
+	// animals[animalIndex].reproductionEnergy = 1;
+
 
 }
 
@@ -1465,6 +1528,11 @@ void photate( unsigned int i )
 
 void setAnimalSpritePixel ( unsigned int animalIndex, unsigned int segmentIndex, unsigned int pixelIndex )
 {
+
+	// if (pixelIndex > squareSizeAnimalSprite ) {return;}
+	// if (segmentIndex > maxAnimalSegments) {return;}
+	// if 
+
 	// find the x, y offset of the pixel from the origin in sprite coordinates.
 	int pixelX = (pixelIndex % sizeAnimalSprite) - (sizeAnimalSprite / 2);
 	int pixelY = (pixelIndex / sizeAnimalSprite) - (sizeAnimalSprite / 2);
@@ -2626,22 +2694,25 @@ bool animalCanMove(unsigned int i, unsigned int neighbour)
 		}
 		if (  (animals[animalIndex].movementFlags & MOVEMENT_ONPOWDER ) == MOVEMENT_ONPOWDER   )
 		{
-			for (int l = 0; l < N_NEIGHBOURS; ++l) // and it has a neighbour of a type and phase the animal can walk on
+			if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS || grid[neighbour].phase == PHASE_LIQUID ) // if one of the neighbouring cells is a material type and phase that the animal can exist within
 			{
-				int neighboursNeighbour = (neighbour + neighbourOffsets[l]);
-				if (neighboursNeighbour != i )
+				for (int l = 0; l < N_NEIGHBOURS; ++l) // and it has a neighbour of a type and phase the animal can walk on
 				{
-					if (  grid[ neighboursNeighbour ] .phase == PHASE_POWDER )
+					int neighboursNeighbour = (neighbour + neighbourOffsets[l]);
+					if (neighboursNeighbour != i )
 					{
-						animals[animalIndex].steady  = true;
-						return true;
+						if (  grid[ neighboursNeighbour ] .phase == PHASE_POWDER )
+						{
+							animals[animalIndex].steady  = true;
+							return true;
+						}
 					}
 				}
 			}
 		}
 		if (  (animals[animalIndex].movementFlags & MOVEMENT_ONSOLID ) == MOVEMENT_ONSOLID   )
 		{
-			if (grid[neighbour].phase == PHASE_VACUUM) // if one of the neighbouring cells is a material type and phase that the animal can exist within
+			if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS || grid[neighbour].phase == PHASE_LIQUID ) // if one of the neighbouring cells is a material type and phase that the animal can exist within
 			{
 				for (int l = 0; l < N_NEIGHBOURS; ++l) // and it has a neighbour of a type and phase the animal can walk on
 				{
@@ -2694,7 +2765,7 @@ void animalTurn(unsigned int i)
 				    // (animals[animalIndex].segments[segmentIndex].frames[pixelIndexA] == ORGAN_MUSCLE  ) &&
 				    // (animals[animalIndex].segments[segmentIndex].frames[pixelIndexB] == ORGAN_NOTHING )
 
-				      (animals[animalIndex].segments[segmentIndex].frames[pixelIndexA] == ORGAN_MUSCLE  ) ||
+				    (animals[animalIndex].segments[segmentIndex].frames[pixelIndexA] == ORGAN_MUSCLE  ) ||
 				    (animals[animalIndex].segments[segmentIndex].frames[pixelIndexB] == ORGAN_MUSCLE )
 
 				    && (!(animals[animalIndex].moved))
@@ -2724,7 +2795,10 @@ void animalTurn(unsigned int i)
 			unsigned int pixelIndexB = (squareSizeAnimalSprite * FRAME_B) + j;
 			unsigned int pixelIndexC = (squareSizeAnimalSprite * FRAME_C) + j;
 			if (
-			    (animals[animalIndex].segments[segmentIndex].frames[pixelIndexB] == ORGAN_NOTHING  ) &&
+			    // (animals[animalIndex].segments[segmentIndex].frames[pixelIndexB] == ORGAN_NOTHING  ) &&
+			    // (animals[animalIndex].segments[segmentIndex].frames[pixelIndexC] == ORGAN_MOUTH    )
+
+			    (animals[animalIndex].segments[segmentIndex].frames[pixelIndexB] == ORGAN_MOUTH  ) ||
 			    (animals[animalIndex].segments[segmentIndex].frames[pixelIndexC] == ORGAN_MOUTH    )
 
 			    && (!eaten)
@@ -4044,9 +4118,9 @@ void save ()
 	out3.write(reinterpret_cast<char*>(& (lifeColorGrid[0]) ), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
 	out3.close();
 
-	std::ofstream out4(std::string("save/animationGrid").c_str());
-	out4.write(reinterpret_cast<char*>(& (animationGrid[0]) ), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
-	out4.close();
+	// std::ofstream out4(std::string("save/animationGrid").c_str());
+	// out4.write(reinterpret_cast<char*>(& (animationGrid[0]) ), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
+	// out4.close();
 
 	std::ofstream out41(std::string("save/seedColorGrid").c_str());
 	out41.write(reinterpret_cast<char*>(& (seedColorGrid[0]) ), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
@@ -4117,9 +4191,9 @@ void load_colorgrids()
 	in33.read( (char *)( &(lifeColorGrid[0])  ), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
 	in33.close();
 
-	std::ifstream in4(std::string("save/animationGrid").c_str());
-	in4.read( (char *)( &(animationGrid[0])), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
-	in4.close();
+	// std::ifstream in4(std::string("save/animationGrid").c_str());
+	// in4.read( (char *)( &(animationGrid[0])), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
+	// in4.close();
 
 	std::ifstream in41(std::string("save/seedColorGrid").c_str());
 	in41.read( (char *)( &(seedColorGrid[0])), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
@@ -4258,8 +4332,14 @@ void eraseAllLife()
 {
 	for (int i = 0; i < totalSize; ++i)
 	{
-		if (seedGrid[i].stage == STAGE_BUD || seedGrid[i].stage == STAGE_FRUIT || seedGrid[i].stage == STAGE_SPROUT)
+		if (seedGrid[i].stage == STAGE_BUD || seedGrid[i].stage == STAGE_FRUIT || seedGrid[i].stage == STAGE_SPROUT )
 		{
+			clearSeedParticle(i);
+		}
+
+		if (seedGrid[i].stage == STAGE_ANIMAL )
+		{
+			clearAnimalDrawing(i);
 			clearSeedParticle(i);
 		}
 

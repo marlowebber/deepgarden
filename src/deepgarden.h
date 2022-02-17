@@ -31,7 +31,7 @@ using namespace glm;
 #define maxAnimalSegments 26
 #define maxTimesReproduced 5
 
-#define numberOfFairTurnsPerSegment 1
+#define numberOfFairTurnsPerSegment 8
 
 #define numberOfFrames     3         
 
