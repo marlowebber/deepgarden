@@ -1488,10 +1488,10 @@ void setAnimalSpritePixel ( unsigned int animalIndex, unsigned int segmentIndex,
 
 		Color organColor = organColorLookup(  pixelOrgan     );
 
-		if (segmentIndex == 0) { organColor = color_yellow; }
-		if (segmentIndex == 1) { organColor = color_darkred; }
-		if (segmentIndex == 2) { organColor = color_lightblue; }
-		if (segmentIndex == 3) { organColor = color_purple; }
+		// if (segmentIndex == 0) { organColor = color_yellow; }
+		// if (segmentIndex == 1) { organColor = color_darkred; }
+		// if (segmentIndex == 2) { organColor = color_lightblue; }
+		// if (segmentIndex == 3) { organColor = color_purple; }
 
 
 		memcpy( &animationGrid[ j__color_offset], &(	organColor )  , 	sizeof(Color) );
@@ -2691,8 +2691,11 @@ void animalTurn(unsigned int i)
 				unsigned int pixelIndexA = (squareSizeAnimalSprite * FRAME_A) + spriteRandomI;
 				unsigned int pixelIndexB = (squareSizeAnimalSprite * FRAME_B) + spriteRandomI;
 				if (
-				    (animals[animalIndex].segments[segmentIndex].frames[pixelIndexA] == ORGAN_MUSCLE  ) &&
-				    (animals[animalIndex].segments[segmentIndex].frames[pixelIndexB] == ORGAN_NOTHING )
+				    // (animals[animalIndex].segments[segmentIndex].frames[pixelIndexA] == ORGAN_MUSCLE  ) &&
+				    // (animals[animalIndex].segments[segmentIndex].frames[pixelIndexB] == ORGAN_NOTHING )
+
+				      (animals[animalIndex].segments[segmentIndex].frames[pixelIndexA] == ORGAN_MUSCLE  ) ||
+				    (animals[animalIndex].segments[segmentIndex].frames[pixelIndexB] == ORGAN_MUSCLE )
 
 				    && (!(animals[animalIndex].moved))
 				)
