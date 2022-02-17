@@ -28,7 +28,7 @@ using namespace glm;
 #define sizeAnimalSprite 16
 #define squareSizeAnimalSprite 256
 
-#define maxAnimalSegments 8
+#define maxAnimalSegments 26
 #define maxTimesReproduced 5
 
 #define numberOfFairTurnsPerSegment 1
@@ -123,11 +123,11 @@ extern const unsigned int MATERIAL_VACUUM ;
 
 // animal organs are polygons of different colors that provide different functionality.
 #define ORGAN_NOTHING 0 // empty
-#define ORGAN_EYE	 1	// used for the vision radius
-#define ORGAN_MUSCLE 2	// used for movement
-#define ORGAN_MOUTH  4  // used to eat and attack
-#define ORGAN_LIVER	 8  // used for hit points and energy storage
-#define ORGAN_BONE	 16	// used for defence and is left behind when the animal is killed
+#define ORGAN_EYE	  1	// used for the vision radius
+#define ORGAN_MUSCLE  2	// used for movement
+#define ORGAN_MOUTH   4  // used to eat and attack
+#define ORGAN_LIVER	  8  // used for hit points and energy storage
+#define ORGAN_BONE	  16	// used for defence and is left behind when the animal is killed
 #define ORGAN_VACUOLE 32 // an empty organ that is removed at the end of development to leave behind shaped voids.
 
 #define ORGAN_MARKER_A 64 // used for the polygon filling algorithm. Do not use in gene codes! must be different to all the other organ codes!
