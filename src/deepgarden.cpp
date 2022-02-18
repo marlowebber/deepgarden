@@ -148,7 +148,7 @@ unsigned int animalRecursionLevel = 0;
 
 unsigned int animalCursorOrgan = ORGAN_MUSCLE;
 
-std::string exampleAnimal = std::string(" uaiajbcbebebebyzjccbebeb ");
+std::string exampleAnimal = std::string(" uaiajbcbebebebyajccbebeb ");
 
 int defaultTemperature = 300;
 int radiantHeatIntensity = 50; // this is a physical constant that determines how much heat radiates from material, and how strongly material heat is coupled to the atmosphere.
@@ -171,7 +171,7 @@ unsigned int lightEfficiency   = 10000;
 float movementEfficiency = 2000.0f;
 
 // except for these, where the value is what you get from eating a square.
-float meatEfficiency    = 1500.0f;
+float meatEfficiency    = 1.0f;
 float bloodEfficiency = 1.0f;
 float seedEfficiency    = 150.0f;
 float mineralEfficiency = 10.0f;
@@ -424,6 +424,7 @@ struct Animal
 	int perception;
 	float reproductionEnergy;
 	int hitPoints;
+	int maxHitPoints;
 
 	float maxStoredEnergy;
 
@@ -431,6 +432,8 @@ struct Animal
 
 	bool steady;
 	bool moved;
+
+	bool retired;
 
 	Animal();
 };
@@ -451,8 +454,10 @@ Animal::Animal()
 	this->maxStoredEnergy = 0.0f;
 	this->reproductionEnergy = 0.0f;
 	this->hitPoints = 16;
+	this->maxHitPoints = this->hitPoints;
 	this->steady = false;
 	this->timesReproduced = 0;
+	this->retired = false;
 
 	for (int i = 0; i < maxAnimalSegments; ++i)
 	{
@@ -770,7 +775,7 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 			{
 
 
-							// printf("similangneos\n");
+				// printf("similangneos\n");
 				// for (unsigned int frame = 0; frame < NUMBER_OF_FRAMES; ++frame)
 				// {
 				// first just mark the area you want to grow into.
@@ -782,7 +787,7 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 					unsigned int nEmptyNeighbours = 0;
 
 
-							// printf("milnes\n");
+					// printf("milnes\n");
 
 					// make sure you traverse the nearby layers too so it works in 3D!
 					for (unsigned int scanningLayer = 0; scanningLayer < 3; ++scanningLayer)
@@ -797,37 +802,37 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 						};
 
 						unsigned int layerIndex = j;// + scanningLayer - 1;
-						if (layerIndex >= (scanningLayer-1))
+						if (layerIndex >= (scanningLayer - 1))
 						{
-							layerIndex -= (scanningLayer-1);
+							layerIndex -= (scanningLayer - 1);
 						}
 
 
-							// printf("penfersarts  %i \n");
+						// printf("penfersarts  %i \n");
 						// if ( layerIndex > 0 && layerIndex < animals[animalIndex].segmentsUsed)
 						// {
-							// printf("scunnwatty\n");
-							//traverse the cell neighbours and tally up the important stats.
-							for (unsigned int l = 0; l < 4; ++l)
-							{
-								unsigned int neighbour = neighbours[l] % squareSizeAnimalSprite;
+						// printf("scunnwatty\n");
+						//traverse the cell neighbours and tally up the important stats.
+						for (unsigned int l = 0; l < 4; ++l)
+						{
+							unsigned int neighbour = neighbours[l] % squareSizeAnimalSprite;
 
-								if (animals[animalIndex].segments[layerIndex].frames[ (squareSizeAnimalSprite * FRAME_BODY ) + neighbour ] == animalCursorOrgan)
-								{
-									// printf("buhulakhara\n");
-									nSameOrganNeighours ++;
-								}
-								else if (animals[animalIndex].segments[layerIndex].frames[ (squareSizeAnimalSprite * FRAME_BODY ) + neighbour ] == ORGAN_NOTHING)
-								{
-									// printf("buhulakhara\n");
-									nEmptyNeighbours ++;
-								}
-								else
-								{
-									// printf("eezypeezy\n");
-									nDifferentOrganNeighbours++;
-								}
+							if (animals[animalIndex].segments[layerIndex].frames[ (squareSizeAnimalSprite * FRAME_BODY ) + neighbour ] == animalCursorOrgan)
+							{
+								// printf("buhulakhara\n");
+								nSameOrganNeighours ++;
 							}
+							else if (animals[animalIndex].segments[layerIndex].frames[ (squareSizeAnimalSprite * FRAME_BODY ) + neighbour ] == ORGAN_NOTHING)
+							{
+								// printf("buhulakhara\n");
+								nEmptyNeighbours ++;
+							}
+							else
+							{
+								// printf("eezypeezy\n");
+								nDifferentOrganNeighbours++;
+							}
+						}
 						// }
 					}
 
@@ -1212,6 +1217,7 @@ void measureAnimalQualities(unsigned int currentPosition)
 	animals[animalIndex].defense = 1;
 	animals[animalIndex].perception = 1;
 	animals[animalIndex].hitPoints = 1;
+	animals[animalIndex].maxHitPoints = 1;
 	animals[animalIndex].reproductionEnergy = 1.0f;
 
 
@@ -1272,11 +1278,17 @@ void measureAnimalQualities(unsigned int currentPosition)
 			}
 
 
+
 			prevOrgan = animals[animalIndex].segments[ j].frames[ (squareSizeAnimalSprite * FRAME_BODY ) + k ];
 
 		}
 		// }
 	}
+
+
+	animals[animalIndex].maxHitPoints = animals[animalIndex].hitPoints;
+
+	seedGrid[currentPosition].energy = animals[animalIndex].reproductionEnergy / 2;
 
 #ifdef ANIMAL_DRAWING_READOUT
 	printf( "attack %i \n" , animals[animalIndex].attack );
@@ -1458,15 +1470,54 @@ void drawAnimalFromSeed(unsigned int i)
 	animalCursorSegmentNumber = 0;
 	animalCursorOrgan = ORGAN_MUSCLE;
 
-	Animal newAnimal = Animal();
-	animals.push_back(newAnimal);
+	// Animal newAnimal = Animal();
+	// animals.push_back(newAnimal);
 
-	unsigned int animalIndex = animals.size() - 1;
-	seedGrid[i].parentIdentity = animalIndex;
+	unsigned int animalIndex = 0; //= animals.size() - 1;
+
+	bool foundAnID = false;
+
+	for (unsigned int animal = 0; animal < animals.size(); ++animal)
+	{
+		if (animals[animal].retired)
+		{
+			foundAnID = true;
+			animalIndex = animal;
+			animals[animalIndex] = Animal();
 
 #ifdef ANIMAL_DRAWING_READOUT
-	printf("New animal with ID %u \n", animalIndex);
+			printf("Recycle animal ID %u\n", animalIndex);
 #endif
+			break;
+		}
+	}
+
+	if (!foundAnID) // if there was no slot available, make a new one
+	{
+		Animal newAnimal = Animal();
+
+
+		std::vector<Animal>::iterator it;
+		it = animals.end();
+		animals.insert(it, newAnimal);
+		animalIndex = animals.size() - 1;
+
+		// animals.push_back(newAnimal);
+
+		// instead of push_back, use an iterator to insert
+		// https://stackoverflow.com/questions/60393716/segmentation-fault-when-using-vector-push-back-inside-of-certain-loops
+		// it still bugs out with insert if you are adding huge amounts of animals quickly
+
+
+
+#ifdef ANIMAL_DRAWING_READOUT
+		printf("New animal with ID %u \n", animalIndex);
+#endif
+	}
+
+	seedGrid[i].parentIdentity = animalIndex;
+
+
 
 	if (animalIndex < animals.size() && seedGrid[i].stage == STAGE_ANIMAL)
 	{
@@ -1750,20 +1801,25 @@ void killAnAnimal(unsigned int i)
 				int iworldRandomI = ((neighbourY * sizeX) + neighbourX ) ;
 				if (iworldRandomI > 0)
 				{
-					unsigned int worldRandomI = iworldRandomI;
+					unsigned int worldRandomI = iworldRandomI % totalSize;
+
+					if (grid[i].phase == PHASE_VACUUM)
+					{
 
 
-					if (animals[animalIndex].segments[j].frames[pixelIndex] == ORGAN_BONE)
-					{
-						setParticle(MATERIAL_BONE, worldRandomI);
-						grid[worldRandomI].phase = PHASE_SOLID;
-						grid[worldRandomI].temperature = 310;
-					}
-					else
-					{
-						setParticle(MATERIAL_BLOOD, worldRandomI);
-						grid[worldRandomI].phase = PHASE_LIQUID;
-						grid[worldRandomI].temperature = 310;
+						if (animals[animalIndex].segments[j].frames[pixelIndex] == ORGAN_BONE)
+						{
+							setParticle(MATERIAL_BONE, worldRandomI);
+							grid[worldRandomI].phase = PHASE_SOLID;
+							grid[worldRandomI].temperature = 310;
+						}
+						else
+						{
+							setParticle(MATERIAL_BLOOD, worldRandomI);
+							grid[worldRandomI].phase = PHASE_LIQUID;
+							grid[worldRandomI].temperature = 310;
+						}
+
 					}
 
 				}
@@ -1772,7 +1828,7 @@ void killAnAnimal(unsigned int i)
 		}
 	}
 
-
+	animals[animalIndex].retired = true;
 	clearAnimalDrawing(i);
 	clearSeedParticle(i);
 
@@ -2893,45 +2949,53 @@ bool animalEat(unsigned int currentPosition , unsigned int neighbour )
 #endif
 
 
-			int damageInflicted = animals[animalIndex].attack - animals[animalIndexB].defense;
-			if (damageInflicted > 0) // feed on the pain and misery; grow stronger
+			int damageInflictedB = animals[animalIndex].attack - animals[animalIndexB].defense;
+			if (damageInflictedB < 0) // feed on the pain and misery; grow stronger
 			{
-#ifdef ANIMAL_BEHAVIOR_READOUT
-				printf(" Animal %u dealt %i damange to animal %u\n" , animalIndex ,  damageInflicted, animalIndexB );
-#endif
-				seedGrid[currentPosition].energy  += damageInflicted;
-				animals[animalIndexB].hitPoints -= damageInflicted;
-				eaten = true;
-				if (animals[animalIndexB].hitPoints < 0) // the adversary is vanquished mortally
-				{
-
-					if (  (animals[animalIndex].energyFlags & ENERGYSOURCE_ANIMAL ) == ENERGYSOURCE_ANIMAL || carnageMode  ) // always attack other animals in carnage mode.. you don't have to eat them if you dont want to.
-					{
-
-						// if you are a carnivore, kill and eat the opponent
-						seedGrid[currentPosition].energy  += meatEfficiency + seedGrid[neighbour].energy ;
-#ifdef ANIMAL_BEHAVIOR_READOUT
-						printf("animal %u killed and ate another animal for %f. Has %f reproduces at %f.\n", animalIndex, meatEfficiency + seedGrid[neighbour].energy, seedGrid[currentPosition].energy , animals[animalIndex].reproductionEnergy );
-#endif
-						killAnAnimal(neighbour);
-
-					}
-
-					else
-					{
-
-						// if you are not a carnivore, force the opponent to bear your offspring
-#ifdef ANIMAL_BEHAVIOR_READOUT
-						printf("animal %u conquered %u and impregnated it!\n", animalIndex, animalIndexB );
-#endif
-						animals[animalIndexB] .hitPoints = 1;
-						seedGrid[neighbour].genes = seedGrid[currentPosition].genes;
-
-
-					}
-
-				}
+				damageInflictedB = 0;
 			}
+
+
+#ifdef ANIMAL_BEHAVIOR_READOUT
+			printf(" Animal %u dealt %i damange to animal %u\n" , animalIndex ,  damageInflictedB, animalIndexB );
+#endif
+			// seedGrid[currentPosition].energy  += damageInflictedB;
+			animals[animalIndexB].hitPoints -= damageInflictedB;
+			eaten = true;
+			if (animals[animalIndexB].hitPoints < 0) // the adversary is vanquished mortally
+			{
+				// if you are a carnivore, kill and eat the opponent
+				// it will explode into blood particles that you can then consume;
+#ifdef ANIMAL_BEHAVIOR_READOUT
+				printf("animal %u killed animal %u\n", animalIndex, animalIndexB);
+#endif
+				killAnAnimal(neighbour);
+			}
+			else if (animals[animalIndexB].hitPoints < (animals[animalIndexB].maxHitPoints / 3))
+			{
+
+
+				// force the opponent to bear your offspring
+#ifdef ANIMAL_BEHAVIOR_READOUT
+				printf("animal %u conquered %u and impregnated it!\n", animalIndex, animalIndexB );
+#endif
+				animals[animalIndexB] .hitPoints = 1;
+				seedGrid[neighbour].genes = seedGrid[currentPosition].genes;
+
+
+			}
+
+
+
+
+
+
+
+
+
+
+
+			// }
 			else
 			{
 #ifdef ANIMAL_BEHAVIOR_READOUT
@@ -3031,231 +3095,106 @@ void animalTurn(unsigned int i)
 	animals[animalIndex].age++;
 
 	bool moved = false;
-	bool eaten = false;
-	// bool smelled = false;
 	animals[animalIndex].steady = false;
 	unsigned int recommendedMovePosition = i;
 
-	bool foundFoodPosition = false;
-	// bool successfullyMovedToFood = false;
-	unsigned int foodPosition = false;
 
 	for (unsigned int segmentIndex = 0; segmentIndex < animals[animalIndex].segmentsUsed; ++segmentIndex)
 	{
 		for (unsigned int turn = 0; turn < numberOfFairTurnsPerSegment; ++turn)
 		{
-
-
 			unsigned int spriteRandomX = extremelyFastNumberFromZeroTo(sizeAnimalSprite - 1);
 			unsigned int spriteRandomY = extremelyFastNumberFromZeroTo(sizeAnimalSprite - 1);
 			unsigned int spriteRandomI = (((spriteRandomY * sizeAnimalSprite) + spriteRandomX));// % squareSizeAnimalSprite;
 			unsigned int pixelIndex = (squareSizeAnimalSprite * FRAME_BODY) + spriteRandomI;
 
-			if (
-			    (animals[animalIndex].segments[segmentIndex].frames[pixelIndex] == ORGAN_MOUTH  )
-
-			)
+			if ( (animals[animalIndex].segments[segmentIndex].frames[pixelIndex] == ORGAN_MOUTH  ))
 			{
 				int worldSegmentX = animals[animalIndex].segments[segmentIndex].position % sizeX;
 				int worldSegmentY = animals[animalIndex].segments[segmentIndex].position / sizeX;
-
 				int neighbourX = worldSegmentX + (spriteRandomX - halfSizeAnimalSprite); // the -halfSizeAnimalSprite means it is centered on the animal instead of appearing on the lower left corner.
 				int neighbourY = worldSegmentY + (spriteRandomY - halfSizeAnimalSprite); //
 				int iworldRandomI = ((neighbourY * sizeX) + neighbourX ) ;
 				if (iworldRandomI > 0)
 				{
 					unsigned int worldRandomI = iworldRandomI % (totalSize);
-					if (animalEat(i, worldRandomI))
-					{
-						foundFoodPosition = true;
-						foodPosition = worldRandomI;
-
-						eaten = true;
-						break;
-					}
-
+					animalEat(i, worldRandomI);
 				}
 			}
 
-
-
-			// you can move into sensors when they pick something up.
-// 			if (
-// 			    (animals[animalIndex].segments[segmentIndex].frames[pixelIndex] == ORGAN_CHEMOSENSOR )
-// 			)
-// 			{
-// 				int worldSegmentX = animals[animalIndex].segments[segmentIndex].position % sizeX;
-// 				int worldSegmentY = animals[animalIndex].segments[segmentIndex].position / sizeX;
-
-// 				int neighbourX = worldSegmentX + spriteRandomX - halfSizeAnimalSprite;
-// 				int neighbourY = worldSegmentY + spriteRandomY - halfSizeAnimalSprite;
-// 				int iworldRandomI = ((neighbourY * sizeX) + neighbourX ) ;
-
-// 				unsigned int worldRandomI = iworldRandomI % (totalSize);
-
-
-// 				if ( animalCanEat( i , worldRandomI ))
-// 				{
-// 					if (animalCanMove(i, worldRandomI))
-// 					{
-// 						moved = true;
-// 						recommendedMovePosition = worldRandomI;
-// 						break;
-// 					}
-// 				}
-
-
-
-// 				// only follow smells if not hungry. otherwise leads to death spiral
-
-// 				if (seedGrid[i].energy > (animals[animalIndex].reproductionEnergy/2))
-// 				{
-
-// 					if (
-// 					    seedGrid[worldRandomI].stage == STAGE_NULL &&
-// 					    seedGrid[worldRandomI].parentIdentity > 0x00 &&
-// 					    seedGrid[worldRandomI].parentIdentity != animalIndex
-// 					)
-// 					{
-
-
-// 						if (seedGrid[worldRandomI].parentIdentity == animals[animalIndex].followingSmell)
-// 						{
-
-
-// 							smelled = true;
-
-
-// 							if (animalCanMove(i, worldRandomI))
-// 							{
-// 								recommendedMovePosition = worldRandomI;
-// 								moved = true;
-// 								break;
-// 							}
-// 						}
-// 						else
-// 						{
-// 							if (!smelled && animals[animalIndex].followingSmell == 0x00)
-// 							{
-
-// #ifdef ANIMAL_BEHAVIOR_READOUT
-// 								printf("animal %u started following a new smell %u \n ", animalIndex , seedGrid[worldRandomI].parentIdentity  );
-// #endif
-
-
-// 								animals[animalIndex].followingSmell = seedGrid[worldRandomI].parentIdentity;
-
-// 								smelled = true;
-
-
-// 								if (animalCanMove(i, worldRandomI))
-// 								{
-// 									recommendedMovePosition = worldRandomI;
-// 									moved = true;
-// 									break;
-// 								}
-// 							}
-// 						}
-// 					}
-// 				}
-// 			}
-
-
-
-		}
-
-		if (eaten)
-		{
-			break;
-		}
-	}
-
-	moved = false;
-
-	if (foundFoodPosition)
-	{
-		// try to move to the position you last ate something at. logically, it's closest to the next thing to eat. and you had to be there to eat it.
-		if (animalCanMove(i, foodPosition))
-		{
-			recommendedMovePosition = foodPosition;
-			moved = true;
-			// successfullyMovedToFood = true;
-		}
-
-	}
-
-	if ( !moved)
-	{
-		// try to move a few times per segment
-		for (unsigned int segmentIndex = 0; segmentIndex < animals[animalIndex].segmentsUsed; ++segmentIndex)
-		{
-			for (unsigned int turn = 0; turn < numberOfFairTurnsPerSegment; ++turn)
+			// the liver can heal back some health points.
+			if ( (animals[animalIndex].segments[segmentIndex].frames[pixelIndex] == ORGAN_LIVER  ))
 			{
-
-				// start from the 0th pixel and work your way down, this is from the animals 'head' toward the 'tail' so it moves from the front end generally.
-				// test some pixels in the sprite.
-				// if they are oppsite state in A and B, you can move there if appropriate.
-				// if they are opposite state in B and C, you can attack and eat there if appropriate.
-				// if the animal has greater area satisfying these conditions, it can do these actions more frequently.. makes sense!
-
-				unsigned int spriteRandomX = extremelyFastNumberFromZeroTo(sizeAnimalSprite - 1);
-				unsigned int spriteRandomY = extremelyFastNumberFromZeroTo(sizeAnimalSprite - 1);
-				unsigned int spriteRandomI = (((spriteRandomY * sizeAnimalSprite) + spriteRandomX));// % squareSizeAnimalSprite;
-				unsigned int pixelIndexA = (squareSizeAnimalSprite * FRAME_BODY) + spriteRandomI;
-
-
-
-
-
-
-				// you can move into muscle spaces always.
-				if (
-				    (animals[animalIndex].segments[segmentIndex].frames[pixelIndexA] == ORGAN_MUSCLE   )
-				)
+				if (seedGrid[i].energy > (animals[animalIndex].reproductionEnergy / 2))
 				{
-					int segmentX = animals[animalIndex].segments[segmentIndex].position % sizeX;
-					int segmentY = animals[animalIndex].segments[segmentIndex].position / sizeX;
-					int neighbourX = segmentX + spriteRandomX - (sizeAnimalSprite / 2);
-					int neighbourY = segmentY + spriteRandomY - (sizeAnimalSprite / 2);
-					int iworldRandomI = ((neighbourY * sizeX) + neighbourX ) ;
+					if (animals[animalIndex].hitPoints < animals[animalIndex].maxHitPoints)
+					{
+						animals[animalIndex].hitPoints ++;
+						seedGrid[i].energy -= 1.0f;
+					}
+				}
+			}
 
+			// you can move into muscle spaces always.
+			if ((animals[animalIndex].segments[segmentIndex].frames[pixelIndex] == ORGAN_MUSCLE   ) )
+			{
+				int worldSegmentX = animals[animalIndex].segments[segmentIndex].position % sizeX;
+				int worldSegmentY = animals[animalIndex].segments[segmentIndex].position / sizeX;
+				int neighbourX = worldSegmentX + (spriteRandomX - halfSizeAnimalSprite); // the -halfSizeAnimalSprite means it is centered on the animal instead of appearing on the lower left corner.
+				int neighbourY = worldSegmentY + (spriteRandomY - halfSizeAnimalSprite); //
+				int iworldRandomI = ((neighbourY * sizeX) + neighbourX ) ;
+				if (iworldRandomI > 0)
+				{
 					unsigned int worldRandomI = iworldRandomI % (totalSize);
-
 					if (animalCanMove(i, worldRandomI))
 					{
-						recommendedMovePosition = worldRandomI;
-						moved = true;
-						break;
+						if (animalCanEat(i, worldRandomI)) // if there's food in the square, override any previous move decision made this turn.
+						{
+							recommendedMovePosition = worldRandomI;
+							moved = true;
+						}
+
+						else if (!moved)
+						{
+							recommendedMovePosition = worldRandomI;
+							moved = true;
+						}
 					}
-
 				}
-
-
-
-
-
-				// }
-			}
-
-			if (moved)
-			{
-				break;
 			}
 		}
-
 	}
 
 
-	// if (!smelled)
-	// {
-	// 	animals[animalIndex].followingSmell = 0x00;
-	// }
+	// running this sets steady if the animal pixel itself is sitting in a supportive environment
+	animalCanMove(i, i);
+
+	if (!(animals[animalIndex].steady))
+	{
+
+
+		unsigned int fallSquare = ((i - sizeX) + (extremelyFastNumberFromZeroTo(2) - 1 )) % totalSize;
+
+
+		if (grid[fallSquare].phase == PHASE_VACUUM || grid[fallSquare].phase == PHASE_GAS || grid[fallSquare].phase == PHASE_LIQUID)
+		{
+			if (fallSquare > sizeX) // don't clip through the bottom
+			{
+			recommendedMovePosition = fallSquare;
+			moved = true;	
+			}
+			
+		}
+		// 	swapSeedParticle(i, recommendedMovePosition);
+		// 	incrementAnimalSegmentPositions( animalIndex, recommendedMovePosition, true );
+		// }
+	}
+
+
 
 
 	if (moved)
 	{
-
-
 		seedGrid[i].energy -= ((animals[animalIndex].reproductionEnergy) / movementEfficiency); // every move costs energy proportional to the creature size
 
 		if (seedGrid[i].energy < 0.0f)
@@ -3267,28 +3206,30 @@ void animalTurn(unsigned int i)
 
 			killAnAnimal(i);
 			return;
-
 		}
-
 
 		swapSeedParticle(i, recommendedMovePosition);
 		incrementAnimalSegmentPositions(animalIndex, recommendedMovePosition, false );
-
-
 	}
-	else
-	{
-		if (!(animals[animalIndex].steady))
-		{
-			recommendedMovePosition = ((i - sizeX) + (extremelyFastNumberFromZeroTo(2) - 1 )) % totalSize;
+	// else
+	// {
+	// 	// if (!(animals[animalIndex].steady))
+	// 	// {
 
-			if (grid[recommendedMovePosition].phase == PHASE_VACUUM || grid[recommendedMovePosition].phase == PHASE_GAS || grid[recommendedMovePosition].phase == PHASE_LIQUID)
-			{
-				swapSeedParticle(i, recommendedMovePosition);
-				incrementAnimalSegmentPositions( animalIndex, recommendedMovePosition, true );
-			}
-		}
-	}
+
+
+
+	// 	// 	recommendedMovePosition = ((i - sizeX) + (extremelyFastNumberFromZeroTo(2) - 1 )) % totalSize;
+
+	// 	// 	// if (grid[recommendedMovePosition].phase == PHASE_VACUUM || grid[recommendedMovePosition].phase == PHASE_GAS || grid[recommendedMovePosition].phase == PHASE_LIQUID)
+	// 	// 	// {
+	// 	// 	// 	swapSeedParticle(i, recommendedMovePosition);
+	// 	// 	// 	incrementAnimalSegmentPositions( animalIndex, recommendedMovePosition, true );
+	// 	// 	// }
+	// 	// }
+
+
+	// }
 }
 
 
@@ -4305,13 +4246,12 @@ void thread_seeds()
 					continue;
 				}
 			}
+
 			unsigned int j = extremelyFastNumberFromZeroTo(4);
-			unsigned int neighbour;
-			if (		j == 0)		{ neighbour = i - sizeX - 1 ;	}
-			else if (	j == 1)		{ neighbour = i - sizeX	 	;	}
-			else if (	j == 2)		{ neighbour = i - sizeX + 1 ;	}
-			else if (	j == 3)		{ neighbour = i + 1 		;	}
-			else if (	j == 4)		{ neighbour = i - 1  		;	}
+			unsigned int neighbour = i + neighbourOffsets[j];
+
+
+
 
 			if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS  )
 			{
@@ -4332,16 +4272,18 @@ void thread_seeds()
 		else if (seedGrid[i].stage == STAGE_BUD)
 		{
 			unsigned int j = extremelyFastNumberFromZeroTo(7);
-			unsigned int neighbour;
+			unsigned int neighbour = i + neighbourOffsets[j];
 
-			if (		j == 0)		{ neighbour = i - sizeX - 1 ;	}
-			else if (	j == 1)		{ neighbour = i - sizeX	 	;	}
-			else if (	j == 2)		{ neighbour = i - sizeX + 1 ;	}
-			else if (	j == 3)		{ neighbour = i + 1	    	;	}
-			else if (	j == 4)		{ neighbour = i - 1 		;	}
-			else if (	j == 5)		{ neighbour = i + sizeX - 1 ;	}
-			else if (	j == 6)		{ neighbour = i + sizeX		;	}
-			else if (	j == 7)		{ neighbour = i + sizeX + 1 ;	}
+
+
+			// if (		j == 0)		{ neighbour = i - sizeX - 1 ;	}
+			// else if (	j == 1)		{ neighbour = i - sizeX	 	;	}
+			// else if (	j == 2)		{ neighbour = i - sizeX + 1 ;	}
+			// else if (	j == 3)		{ neighbour = i + 1	    	;	}
+			// else if (	j == 4)		{ neighbour = i - 1 		;	}
+			// else if (	j == 5)		{ neighbour = i + sizeX - 1 ;	}
+			// else if (	j == 6)		{ neighbour = i + sizeX		;	}
+			// else if (	j == 7)		{ neighbour = i + sizeX + 1 ;	}
 
 			if (lifeGrid[neighbour].identity == seedGrid[i].parentIdentity)
 			{
@@ -4397,7 +4339,7 @@ void insertRandomSeed()
 		{
 			std::string exampleSentence = std::string("");
 
-			unsigned int randomPlantIndex = 7;
+			unsigned int randomPlantIndex = extremelyFastNumberFromZeroTo(7);
 
 			switch (randomPlantIndex)
 			{
