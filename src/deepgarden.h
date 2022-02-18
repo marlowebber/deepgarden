@@ -26,14 +26,15 @@ using namespace glm;
 #define maxLampBrightness 100
 
 #define sizeAnimalSprite 16
-#define squareSizeAnimalSprite 256
+#define squareSizeAnimalSprite 256     // these are here to make lookup fast. so you don't have to calculate them.
+#define halfSizeAnimalSprite 8
 
 #define maxAnimalSegments 26
 #define maxTimesReproduced 5
 
 #define numberOfFairTurnsPerSegment 8
 
-#define numberOfFrames     3         
+#define NUMBER_OF_FRAMES     1        
 
 struct Color
 {
@@ -48,6 +49,9 @@ struct Color
 
 // Material is what flavor a square can be. It controls color, melting temperature, and phase change rules
 extern const unsigned int MATERIAL_VACUUM ;
+#define MATERIAL_BUMDIRT 1
+#define MATERIAL_BLOOD 2
+#define MATERIAL_BONE 3
 
 // Phase is what set of physical rules are applied to each square each turn, and is used by the program to determine how to treat the square in many other situations.
 #define PHASE_NULL			 0
@@ -77,16 +81,13 @@ extern const unsigned int MATERIAL_VACUUM ;
 #define ENERGYSOURCE_ANIMAL  16
 
  // Frames are the sprites used to animate animals.
-#define FRAME_A 0 // the A frame captures the animal in the act of walking. When moving, it alternates between A and B.
-#define FRAME_B 1 // the B frame captures the animal idle. 
-#define FRAME_C 2 // the C frame captures the animal in the act of attacking.
+#define FRAME_BODY 0 // the 0th frame is the animal's body and the arrangement of its internal organs.
 
-// #define FRAME_MOVEMENT_DIFFS 3 // this frame 
-// #define FRAME_ATTACK_DIFFS   4 // 
+
 
 // Movement controls where an animal is allowed to go. This is a hereditary, mutable quality.
 #define MOVEMENT_ONPOWDER  1
-#define MOVEMENT_INLIQUID   2
+#define MOVEMENT_INLIQUID  2
 #define MOVEMENT_INPLANTS  4
 #define MOVEMENT_INAIR     8
 #define MOVEMENT_ONSOLID   16
@@ -100,17 +101,17 @@ extern const unsigned int MATERIAL_VACUUM ;
 #define NUMBER_OF_VISUALIZERS 5 // i use a ++ to scroll through the list of visualizers. Please keep the declarations in numeric order and update this if you add more.
 
 // logical conditions used for crystallisation.
-#define CONDITION_GREATERTHAN      1
-#define CONDITION_EQUAL            2
-#define CONDITION_LESSTHAN         4
-#define CONDITION_EVENNUMBER       8
-#define CONDITION_ODDNUMBER        16
-#define CONDITION_CORNER           32
-#define CONDITION_EDGE             64
-#define CONDITION_ROW              128
-#define CONDITION_LEFTN            256
-#define CONDITION_NOTLEFTRIGHTN    512
-#define CONDITION_NOTLRNEIGHBOURS  1024
+#define CONDITION_GREATERTHAN      0
+#define CONDITION_EQUAL            1
+#define CONDITION_LESSTHAN         2
+#define CONDITION_EVENNUMBER       3
+#define CONDITION_ODDNUMBER        4
+#define CONDITION_CORNER           5
+#define CONDITION_EDGE             6
+#define CONDITION_ROW              7
+#define CONDITION_LEFTN            8
+#define CONDITION_NOTLEFTRIGHTN    9
+#define CONDITION_NOTLRNEIGHBOURS  10
 
 #define NUMBER_OF_CONDITIONS 12
 
@@ -129,8 +130,9 @@ extern const unsigned int MATERIAL_VACUUM ;
 #define ORGAN_LIVER	  8  // used for hit points and energy storage
 #define ORGAN_BONE	  16	// used for defence and is left behind when the animal is killed
 #define ORGAN_VACUOLE 32 // an empty organ that is removed at the end of development to leave behind shaped voids.
+// #define ORGAN_CHEMOSENSOR 64 // an organ that can detect smells
 
-#define ORGAN_MARKER_A 64 // used for the polygon filling algorithm. Do not use in gene codes! must be different to all the other organ codes!
+#define ORGAN_MARKER_A 128 // used for the polygon filling algorithm. Do not use in gene codes! must be different to all the other organ codes!
 
 float RNG();
 
