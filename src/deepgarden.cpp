@@ -148,7 +148,7 @@ unsigned int animalRecursionLevel = 0;
 
 unsigned int animalCursorOrgan = ORGAN_MUSCLE;
 
-std::string exampleAnimal = std::string(" uaiajbcbebebebyajccbebeb ");
+std::string exampleAnimal = std::string(" uaiajbcmemjccded ");
 
 int defaultTemperature = 300;
 int radiantHeatIntensity = 50; // this is a physical constant that determines how much heat radiates from material, and how strongly material heat is coupled to the atmosphere.
@@ -168,13 +168,13 @@ unsigned int lampBrightness = 10;
 
 // raw energy values are DIVIDED by these numbers to get the result. So more means less.
 unsigned int lightEfficiency   = 10000;
-float movementEfficiency = 2000.0f;
+float movementEfficiency = 5000.0f;
 
 // except for these, where the value is what you get from eating a square.
 float meatEfficiency    = 1.0f;
-float bloodEfficiency = 1.0f;
-float seedEfficiency    = 150.0f;
-float mineralEfficiency = 10.0f;
+float bloodEfficiency   = 1.0f;
+float seedEfficiency    = 1.0f;
+float mineralEfficiency = 1.0f;
 float plantEfficiency   = 1.0f;
 
 vec_u2 playerCursor = vec_u2(0, 0);
@@ -410,6 +410,7 @@ struct Animal
 	unsigned int movementFlags;
 	unsigned int direction;
 	unsigned int energyFlags;
+	unsigned int personalityFlags;
 
 	// unsigned int landMovementChance;
 	// unsigned int fluidMovementChance;
@@ -435,6 +436,10 @@ struct Animal
 
 	bool retired;
 
+	std::string * partnerGenes;
+	float partnerReproductiveCost;
+	bool mated;
+
 	Animal();
 };
 
@@ -458,6 +463,8 @@ Animal::Animal()
 	this->steady = false;
 	this->timesReproduced = 0;
 	this->retired = false;
+
+	this->partnerGenes = nullptr;
 
 	for (int i = 0; i < maxAnimalSegments; ++i)
 	{
@@ -1098,7 +1105,7 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 #endif
 		animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
 		unsigned int numberModifier = alphanumeric( genes[animalCursorString] );
-		numberModifier = numberModifier % 4;
+		numberModifier = numberModifier % 5;
 
 		// ^= operator toggles the bit. this means the animal can have more than one movement type. It is important the ENERGYSOURCE_ defines are powers of 2 only.
 		if        (numberModifier == 0) { a->energyFlags  ^= ENERGYSOURCE_LIGHT; }
@@ -1120,7 +1127,7 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 #endif
 		animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
 		unsigned int numberModifier = alphanumeric( genes[animalCursorString] );
-		numberModifier = numberModifier % 4;
+		numberModifier = numberModifier % 5;
 
 		// ^= operator toggles the bit. this means the animal can have more than one movement type. It is important the MOVEMENT_ defines are powers of 2 only.
 		if        (numberModifier == 0) { a->movementFlags  ^= MOVEMENT_ONPOWDER; }
@@ -1131,6 +1138,27 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 
 #ifdef ANIMAL_DRAWING_READOUT
 		printf("char %c, index %u. Set movement type to %u\n", genes[animalCursorString] , animalCursorString, a->movementFlags );
+#endif
+		return 0;
+	}
+
+	case 'v':
+	{
+#ifdef ANIMAL_DRAWING_READOUT
+		printf("char %c, index %u. Change personality type\n", genes[animalCursorString] , animalCursorString );
+#endif
+		animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
+		unsigned int numberModifier = alphanumeric( genes[animalCursorString] );
+		numberModifier = numberModifier % 4;
+
+		// ^= operator toggles the bit. this means the animal can have more than one personality type. It is important the PERSONALITY_ defines are powers of 2 only.
+		if        (numberModifier == 0) { a->personalityFlags  ^= PERSONALITY_AGGRESSIVE; }
+		else if   (numberModifier == 1) { a->personalityFlags  ^= PERSONALITY_COWARDLY; }
+		else if   (numberModifier == 2) { a->personalityFlags  ^= PERSONALITY_FLOCKING; }
+		else if   (numberModifier == 3) { a->personalityFlags  ^= PERSONALITY_FRIENDLY;    }
+
+#ifdef ANIMAL_DRAWING_READOUT
+		printf("char %c, index %u. Set personality type to %u\n", genes[animalCursorString] , animalCursorString, a->personalityFlags );
 #endif
 		return 0;
 	}
@@ -1245,19 +1273,22 @@ void measureAnimalQualities(unsigned int currentPosition)
 			if (organ != ORGAN_NOTHING )
 			{
 
-				if (organ == ORGAN_MUSCLE )
+
+				animals[animalIndex].reproductionEnergy += 1.0f;
+
+				if (organ == ORGAN_BONE )
 				{
-					animals[animalIndex].reproductionEnergy += 0.1f;
+					animals[animalIndex].defense++;
+					animals[animalIndex].reproductionEnergy += 0.0f;
+				}
+				else if (organ == ORGAN_MUSCLE )
+				{
+					animals[animalIndex].reproductionEnergy += 0.25f;
 				}
 				else if (organ == ORGAN_MOUTH )
 				{
 					animals[animalIndex].attack++;
 					animals[animalIndex].reproductionEnergy += 0.5f;
-				}
-				else if (organ == ORGAN_BONE )
-				{
-					animals[animalIndex].defense++;
-					animals[animalIndex].reproductionEnergy += 0.1f;
 				}
 				else if (organ == ORGAN_LIVER )
 				{
@@ -1672,6 +1703,11 @@ void setAnimal(unsigned int i, std::string genes)
 
 void mutateSentence ( std::string * genes )
 {
+
+
+	// a 50% chance not to mutate at all. this is to encourage a stable population if a design is good, and to buffer against genetic drift.
+	if (extremelyFastNumberFromZeroTo(1) == 0) {return;}
+
 	// make a single point mutation in the animal.
 	unsigned int randomThingToChange = extremelyFastNumberFromZeroTo(3);
 
@@ -1846,45 +1882,7 @@ void incrementAnimalSegmentPositions (unsigned int animalIndex, unsigned int i, 
 
 
 
-			if (seedGrid[i].energy > animals[animalIndex].reproductionEnergy && animals[animalIndex].age > (animals[animalIndex].reproductionEnergy + 100)  && animalReproductionEnabled)
-			{
-				unsigned int nSolidNeighbours = 0;
-				for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
-				{
-					unsigned int neighbour = (neighbourOffsets[j] + i) % totalSize;
-					if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS || grid[neighbour].phase == PHASE_LIQUID)
-					{
-						setAnimal( neighbour , seedGrid[i].genes);
 
-#ifdef MUTATION_READOUT
-						printf("animal : ");
-#endif
-
-						mutateSentence(  &(seedGrid[neighbour].genes) );
-						seedGrid[i].energy = animals[animalIndex].reproductionEnergy * 0.5f;
-						seedGrid[neighbour].energy = animals[animalIndex].reproductionEnergy * 0.5;
-
-#ifdef ANIMAL_BEHAVIOR_READOUT
-						printf("animal %u reproduced. Now has energy %f, child energy %f\n ", animalIndex , seedGrid[i].energy, seedGrid[neighbour].energy  );
-#endif
-
-						animals[animalIndex].timesReproduced++;
-						if (animals[animalIndex].timesReproduced > maxTimesReproduced) // if it hit the limit, kill the animal. this is basically to keep the game moving.
-						{
-
-#ifdef ANIMAL_BEHAVIOR_READOUT
-							printf("animal %u reproduced too many times and was sentenced to death.\n ", animalIndex  );
-#endif
-
-							killAnAnimal(i);
-							// clearAnimalDrawing(i);
-							// clearSeedParticle(i);
-						}
-						return;
-						break;
-					}
-				}
-			}
 
 			// Update animal segment positions. Only do this if the animal has actually moved (otherwise it will pile into one square).
 			if (animals[animalIndex].segments[0].position != i)
@@ -2287,6 +2285,198 @@ void createRandomWorld()
 	}
 }
 
+// given two world vertices, find the direction from a to b, as expressed by what entry in neighbourOffsets is the closest.
+unsigned int getRelativeDirection (unsigned int a, unsigned int b)
+{
+
+
+
+	// printf("a %u\n", a);
+	// printf("b %u\n", b);
+
+
+
+	unsigned int result = 0;
+
+
+	int ia = a;
+	int ib = b;
+
+	int aX =  ia % sizeX;
+	int aY =  ia / sizeX;
+	int bX =  ib % sizeX;
+	int bY =  ib / sizeX;
+
+	int diffX = bX - aX;
+	int diffY = bY - aY;
+
+
+
+	// printf("diffX %i\n", diffX);
+	// printf("diffY %i\n", diffY);
+
+
+	float fdiffX = diffX;
+	float fdiffY = diffY;
+
+	float angle = atan2(fdiffY, fdiffX);
+
+	angle += ( 3.1415f);
+
+	angle = angle / (2 * 3.1415f);
+
+	angle *= 8.0f;
+
+	result = angle;
+
+	if (result == 8) {result = 0;}
+
+	// printf("angle %f\n", angle);
+
+
+
+	// int biggestDiff = diffX;
+	// if (diffY > diffX) { biggestDiff = diffY; }
+	// biggestDiff = abs(biggestDiff);
+
+	// diffX = diffX / biggestDiff;
+	// diffY = diffY / biggestDiff;
+
+	// printf("diffX %i\n", diffX);
+	// printf("diffY %i\n", diffY);
+
+
+
+
+// 	int neighbourOffsets[] =
+// {
+// 	- 1,
+// 	- sizeX - 1,
+// 	- sizeX ,
+// 	- sizeX  + 1,
+// 	+ 1,
+// 	+sizeX + 1,
+// 	+sizeX,
+// 	+sizeX - 1
+// };
+
+
+
+
+
+
+
+	return result;
+
+
+
+
+
+
+}
+
+// given two world vertices, find the direction from a to b, as expressed by what entry in neighbourOffsets is the closest.
+void getRelativeDirectionTest ()
+{
+
+
+	// the target should be directly above, neighbour 6
+	unsigned int testaX = 100;
+	unsigned int testaY = 100;
+	unsigned int testbX = 000;
+	unsigned int testbY = 100;
+	unsigned int testaI = (testaY * sizeX ) + testaX;
+	unsigned int testbI = (testbY * sizeX ) + testbX;
+	unsigned int testresult = getRelativeDirection (testaI, testbI);
+	unsigned int testExpectation = 0;
+	printf("getRelativeDirection test expected %u got %u\n", testExpectation, testresult);
+
+
+	testaX = 100;
+	testaY = 100;
+	testbX = 000;
+	testbY = 000;
+	testaI = (testaY * sizeX ) + testaX;
+	testbI = (testbY * sizeX ) + testbX;
+	testresult = getRelativeDirection (testaI, testbI);
+	testExpectation = 1;
+	printf("getRelativeDirection test expected %u got %u\n", testExpectation, testresult);
+
+
+	testaX = 100;
+	testaY = 100;
+	testbX = 100;
+	testbY = 000;
+	testaI = (testaY * sizeX ) + testaX;
+	testbI = (testbY * sizeX ) + testbX;
+	testresult = getRelativeDirection (testaI, testbI);
+	testExpectation = 2;
+	printf("getRelativeDirection test expected %u got %u\n", testExpectation, testresult);
+
+
+	testaX = 100;
+	testaY = 100;
+	testbX = 200;
+	testbY = 000;
+	testaI = (testaY * sizeX ) + testaX;
+	testbI = (testbY * sizeX ) + testbX;
+	testresult = getRelativeDirection (testaI, testbI);
+	testExpectation = 3;
+	printf("getRelativeDirection test expected %u got %u\n", testExpectation, testresult);
+
+
+	testaX = 100;
+	testaY = 100;
+	testbX = 200;
+	testbY = 100;
+	testaI = (testaY * sizeX ) + testaX;
+	testbI = (testbY * sizeX ) + testbX;
+	testresult = getRelativeDirection (testaI, testbI);
+	testExpectation = 4;
+	printf("getRelativeDirection test expected %u got %u\n", testExpectation, testresult);
+
+
+	testaX = 100;
+	testaY = 100;
+	testbX = 200;
+	testbY = 200;
+	testaI = (testaY * sizeX ) + testaX;
+	testbI = (testbY * sizeX ) + testbX;
+	testresult = getRelativeDirection (testaI, testbI);
+	testExpectation = 5;
+	printf("getRelativeDirection test expected %u got %u\n", testExpectation, testresult);
+
+
+
+	testaX = 100;
+	testaY = 100;
+	testbX = 100;
+	testbY = 200;
+	testaI = (testaY * sizeX ) + testaX;
+	testbI = (testbY * sizeX ) + testbX;
+	testresult = getRelativeDirection (testaI, testbI);
+	testExpectation = 6;
+	printf("getRelativeDirection test expected %u got %u\n", testExpectation, testresult);
+
+
+
+	testaX = 100;
+	testaY = 100;
+	testbX = 000;
+	testbY = 200;
+	testaI = (testaY * sizeX ) + testaX;
+	testbI = (testbY * sizeX ) + testbX;
+	testresult = getRelativeDirection (testaI, testbI);
+	testExpectation = 7;
+	printf("getRelativeDirection test expected %u got %u\n", testExpectation, testresult);
+
+
+
+
+
+}
+
+
 void initialize ()
 {
 	// https://stackoverflow.com/questions/9459035/why-does-rand-yield-the-same-sequence-of-numbers-on-every-run
@@ -2294,6 +2484,8 @@ void initialize ()
 	cursor_seedColor = color_yellow;
 	clearGrids();
 	resetMaterials();
+
+	getRelativeDirectionTest ();
 }
 
 void setEverythingHot()
@@ -2979,23 +3171,16 @@ bool animalEat(unsigned int currentPosition , unsigned int neighbour )
 #ifdef ANIMAL_BEHAVIOR_READOUT
 				printf("animal %u conquered %u and impregnated it!\n", animalIndex, animalIndexB );
 #endif
-				animals[animalIndexB] .hitPoints = 1;
-				seedGrid[neighbour].genes = seedGrid[currentPosition].genes;
-
+				animals[animalIndexB].hitPoints = 1;
+				animals[animalIndexB].partnerGenes = &(seedGrid[neighbour].genes);
+				animals[animalIndexB].partnerReproductiveCost = animals[animalIndex].reproductionEnergy;
+				animals[animalIndexB].mated = true;
 
 			}
 
 
 
 
-
-
-
-
-
-
-
-			// }
 			else
 			{
 #ifdef ANIMAL_BEHAVIOR_READOUT
@@ -3087,6 +3272,76 @@ bool animalCanMove(unsigned int i, unsigned int neighbour)
 
 
 
+
+
+// return the neighbourOffset of the most ideal direction to move in
+unsigned int animalDirectionFinding (unsigned int i)
+{
+
+	unsigned int animalIndex = seedGrid[i].parentIdentity;
+
+	bool decided = false;
+
+	if (animalIndex < animals.size())
+	{
+
+		// scan the environment using the animal's perception.
+		for (int i = 0; i < animals[animalIndex].perception; ++i)
+		{
+
+			unsigned int worldRandomX = extremelyFastNumberFromZeroTo(animals[animalIndex].perception);
+			unsigned int worldRandomY = extremelyFastNumberFromZeroTo(animals[animalIndex].perception);
+			unsigned int worldRandomI = (((worldRandomY * sizeX) + worldRandomX));
+
+			// the animal personality types determine how it will react.
+
+			if (  (animals[animalIndex].personalityFlags & PERSONALITY_AGGRESSIVE ) == PERSONALITY_AGGRESSIVE   )
+			{
+				if (seedGrid[worldRandomI].stage == STAGE_ANIMAL)
+				{
+					if (seedGrid[i].energy > (animals[animalIndex].reproductionEnergy / 2)) // if the animal is not hungry
+					{
+
+					}
+				}
+			}
+
+			if (  (animals[animalIndex].personalityFlags & PERSONALITY_COWARDLY ) == PERSONALITY_COWARDLY   )
+			{
+
+			}
+
+			if (  (animals[animalIndex].personalityFlags & PERSONALITY_FLOCKING ) == PERSONALITY_FLOCKING   )
+			{
+
+			}
+
+			if (  (animals[animalIndex].personalityFlags & PERSONALITY_FRIENDLY ) == PERSONALITY_FRIENDLY   )
+			{
+
+			}
+
+			// by default, an animal should:
+			// move toward food
+
+			if (  animalCanEat(i, worldRandomI)  )
+			{
+
+			}
+
+
+
+
+		}
+
+
+
+	}
+	return 0;
+}
+
+
+
 void animalTurn(unsigned int i)
 {
 	unsigned int animalIndex = seedGrid[i].parentIdentity;
@@ -3099,95 +3354,173 @@ void animalTurn(unsigned int i)
 	unsigned int recommendedMovePosition = i;
 
 
-	for (unsigned int segmentIndex = 0; segmentIndex < animals[animalIndex].segmentsUsed; ++segmentIndex)
+	// for (unsigned int segmentIndex = 0; segmentIndex < animals[animalIndex].segmentsUsed; ++segmentIndex)
+	// {
+	// 	for (unsigned int turn = 0; turn < numberOfFairTurnsPerSegment; ++turn)
+	// 	{
+	// 		unsigned int spriteRandomX = extremelyFastNumberFromZeroTo(sizeAnimalSprite - 1);
+	// 		unsigned int spriteRandomY = extremelyFastNumberFromZeroTo(sizeAnimalSprite - 1);
+	// 		unsigned int spriteRandomI = (((spriteRandomY * sizeAnimalSprite) + spriteRandomX));// % squareSizeAnimalSprite;
+	// 		unsigned int pixelIndex = (squareSizeAnimalSprite * FRAME_BODY) + spriteRandomI;
+
+	// 		if ( (animals[animalIndex].segments[segmentIndex].frames[pixelIndex] == ORGAN_MOUTH  ))
+	// 		{
+	// 			int worldSegmentX = animals[animalIndex].segments[segmentIndex].position % sizeX;
+	// 			int worldSegmentY = animals[animalIndex].segments[segmentIndex].position / sizeX;
+	// 			int neighbourX = worldSegmentX + (spriteRandomX - halfSizeAnimalSprite); // the -halfSizeAnimalSprite means it is centered on the animal instead of appearing on the lower left corner.
+	// 			int neighbourY = worldSegmentY + (spriteRandomY - halfSizeAnimalSprite); //
+	// 			int iworldRandomI = ((neighbourY * sizeX) + neighbourX ) ;
+	// 			if (iworldRandomI > 0)
+	// 			{
+	// 				unsigned int worldRandomI = iworldRandomI % (totalSize);
+	// 				animalEat(i, worldRandomI);
+	// 			}
+	// 		}
+
+	// 		// the liver can heal back some health points.
+	// 		if ( (animals[animalIndex].segments[segmentIndex].frames[pixelIndex] == ORGAN_LIVER  ))
+	// 		{
+	// 			if (seedGrid[i].energy > (animals[animalIndex].reproductionEnergy / 2))
+	// 			{
+	// 				if (animals[animalIndex].hitPoints < animals[animalIndex].maxHitPoints)
+	// 				{
+	// 					animals[animalIndex].hitPoints ++;
+	// 					seedGrid[i].energy -= 1.0f;
+	// 				}
+	// 			}
+	// 		}
+
+	// 		// you can move into muscle spaces always.
+	// 		if ((animals[animalIndex].segments[segmentIndex].frames[pixelIndex] == ORGAN_MUSCLE   ) )
+	// 		{
+	// 			int worldSegmentX = animals[animalIndex].segments[segmentIndex].position % sizeX;
+	// 			int worldSegmentY = animals[animalIndex].segments[segmentIndex].position / sizeX;
+	// 			int neighbourX = worldSegmentX + (spriteRandomX - halfSizeAnimalSprite); // the -halfSizeAnimalSprite means it is centered on the animal instead of appearing on the lower left corner.
+	// 			int neighbourY = worldSegmentY + (spriteRandomY - halfSizeAnimalSprite); //
+	// 			int iworldRandomI = ((neighbourY * sizeX) + neighbourX ) ;
+	// 			if (iworldRandomI > 0)
+	// 			{
+	// 				unsigned int worldRandomI = iworldRandomI % (totalSize);
+	// 				if (animalCanMove(i, worldRandomI))
+	// 				{
+	// 					if (animalCanEat(i, worldRandomI)) // if there's food in the square, override any previous move decision made this turn.
+	// 					{
+	// 						recommendedMovePosition = worldRandomI;
+	// 						moved = true;
+	// 					}
+
+	// 					else if (!moved)
+	// 					{
+	// 						recommendedMovePosition = worldRandomI;
+	// 						moved = true;
+	// 					}
+	// 				}
+	// 			}
+	// 		}
+	// 	}
+	// }
+
+
+
+
+	// use the perception to scan the local environment
+	unsigned int suggestedDirection = animalDirectionFinding(animalIndex);
+
+
+
+	// figure out the direction to head in
+
+	// get the walkable square that is most in that direction
+
+
+
+
+
+
+
+
+	// have children if you can afford it
+	// bear your partners children if he has forced that burden onto you
+	// float reproductionLevel = animals[animalIndex].reproductionEnergy;
+	// if (animals[animalIndex].mated) {reproductionLevel = animals[animalIndex].partnerReproductiveCost;}
+
+	if (seedGrid[i].energy > animals[animalIndex].reproductionEnergy && animals[animalIndex].age > (animals[animalIndex].reproductionEnergy + 100)  && animalReproductionEnabled)
 	{
-		for (unsigned int turn = 0; turn < numberOfFairTurnsPerSegment; ++turn)
+		unsigned int nSolidNeighbours = 0;
+		for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
 		{
-			unsigned int spriteRandomX = extremelyFastNumberFromZeroTo(sizeAnimalSprite - 1);
-			unsigned int spriteRandomY = extremelyFastNumberFromZeroTo(sizeAnimalSprite - 1);
-			unsigned int spriteRandomI = (((spriteRandomY * sizeAnimalSprite) + spriteRandomX));// % squareSizeAnimalSprite;
-			unsigned int pixelIndex = (squareSizeAnimalSprite * FRAME_BODY) + spriteRandomI;
-
-			if ( (animals[animalIndex].segments[segmentIndex].frames[pixelIndex] == ORGAN_MOUTH  ))
+			unsigned int neighbour = (neighbourOffsets[j] + i) % totalSize;
+			if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS || grid[neighbour].phase == PHASE_LIQUID)
 			{
-				int worldSegmentX = animals[animalIndex].segments[segmentIndex].position % sizeX;
-				int worldSegmentY = animals[animalIndex].segments[segmentIndex].position / sizeX;
-				int neighbourX = worldSegmentX + (spriteRandomX - halfSizeAnimalSprite); // the -halfSizeAnimalSprite means it is centered on the animal instead of appearing on the lower left corner.
-				int neighbourY = worldSegmentY + (spriteRandomY - halfSizeAnimalSprite); //
-				int iworldRandomI = ((neighbourY * sizeX) + neighbourX ) ;
-				if (iworldRandomI > 0)
-				{
-					unsigned int worldRandomI = iworldRandomI % (totalSize);
-					animalEat(i, worldRandomI);
-				}
-			}
 
-			// the liver can heal back some health points.
-			if ( (animals[animalIndex].segments[segmentIndex].frames[pixelIndex] == ORGAN_LIVER  ))
-			{
-				if (seedGrid[i].energy > (animals[animalIndex].reproductionEnergy / 2))
+				if (animals[animalIndex].mated)
 				{
-					if (animals[animalIndex].hitPoints < animals[animalIndex].maxHitPoints)
+
+
+					if (animals[animalIndex].partnerGenes != nullptr)
 					{
-						animals[animalIndex].hitPoints ++;
-						seedGrid[i].energy -= 1.0f;
+						setAnimal( neighbour , *(animals[animalIndex].partnerGenes ));
+						animals[animalIndex].mated = false;
+						animals[animalIndex].partnerGenes = nullptr;
 					}
-				}
-			}
 
-			// you can move into muscle spaces always.
-			if ((animals[animalIndex].segments[segmentIndex].frames[pixelIndex] == ORGAN_MUSCLE   ) )
-			{
-				int worldSegmentX = animals[animalIndex].segments[segmentIndex].position % sizeX;
-				int worldSegmentY = animals[animalIndex].segments[segmentIndex].position / sizeX;
-				int neighbourX = worldSegmentX + (spriteRandomX - halfSizeAnimalSprite); // the -halfSizeAnimalSprite means it is centered on the animal instead of appearing on the lower left corner.
-				int neighbourY = worldSegmentY + (spriteRandomY - halfSizeAnimalSprite); //
-				int iworldRandomI = ((neighbourY * sizeX) + neighbourX ) ;
-				if (iworldRandomI > 0)
+				}
+				else
 				{
-					unsigned int worldRandomI = iworldRandomI % (totalSize);
-					if (animalCanMove(i, worldRandomI))
-					{
-						if (animalCanEat(i, worldRandomI)) // if there's food in the square, override any previous move decision made this turn.
-						{
-							recommendedMovePosition = worldRandomI;
-							moved = true;
-						}
 
-						else if (!moved)
-						{
-							recommendedMovePosition = worldRandomI;
-							moved = true;
-						}
-					}
+					setAnimal( neighbour , seedGrid[i].genes);
 				}
+
+#ifdef MUTATION_READOUT
+				printf("animal : ");
+#endif
+
+				mutateSentence(  &(seedGrid[neighbour].genes) );
+				seedGrid[i].energy = animals[animalIndex].reproductionEnergy * 0.5f;
+				seedGrid[neighbour].energy = animals[animalIndex].reproductionEnergy * 0.5;
+
+#ifdef ANIMAL_BEHAVIOR_READOUT
+				printf("animal %u reproduced. Now has energy %f, child energy %f\n ", animalIndex , seedGrid[i].energy, seedGrid[neighbour].energy  );
+#endif
+
+				animals[animalIndex].timesReproduced++;
+				if (animals[animalIndex].timesReproduced > maxTimesReproduced) // if it hit the limit, kill the animal. this is basically to keep the game moving.
+				{
+
+#ifdef ANIMAL_BEHAVIOR_READOUT
+					printf("animal %u reproduced too many times and was sentenced to death.\n ", animalIndex  );
+#endif
+
+					killAnAnimal(i);
+				}
+				return;
+				break;
 			}
 		}
 	}
 
 
+
+
+
+
 	// running this sets steady if the animal pixel itself is sitting in a supportive environment
 	animalCanMove(i, i);
 
-	if (!(animals[animalIndex].steady))
+	if (!(animals[animalIndex].steady) || extremelyFastNumberFromZeroTo(1000) == 0 ) // small chance to loose footing and slip
 	{
 
-
 		unsigned int fallSquare = ((i - sizeX) + (extremelyFastNumberFromZeroTo(2) - 1 )) % totalSize;
-
 
 		if (grid[fallSquare].phase == PHASE_VACUUM || grid[fallSquare].phase == PHASE_GAS || grid[fallSquare].phase == PHASE_LIQUID)
 		{
 			if (fallSquare > sizeX) // don't clip through the bottom
 			{
-			recommendedMovePosition = fallSquare;
-			moved = true;	
+				recommendedMovePosition = fallSquare;
+				moved = true;
 			}
-			
+
 		}
-		// 	swapSeedParticle(i, recommendedMovePosition);
-		// 	incrementAnimalSegmentPositions( animalIndex, recommendedMovePosition, true );
-		// }
 	}
 
 

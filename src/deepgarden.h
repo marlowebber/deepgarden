@@ -116,11 +116,10 @@ extern const unsigned int MATERIAL_VACUUM ;
 #define NUMBER_OF_CONDITIONS 12
 
 // animal personalities make them respond to situations differently
-#define PERSONALITY_AGGRESSIVE 1
-#define PERSONALITY_COWARDLY   2
-#define PERSONALITY_FLOCKING   4
-#define PERSONALITY_FRIENDLY   8
-#define PERSONALITY_MIGRATORY  16
+#define PERSONALITY_AGGRESSIVE 1  // always attack other animals.
+#define PERSONALITY_COWARDLY   2  // run away from other animals all the time.
+#define PERSONALITY_FLOCKING   4  // copy direction from nearby animals.
+#define PERSONALITY_FRIENDLY   8  // run toward nearby animals when not hungry.
 
 // animal organs are polygons of different colors that provide different functionality.
 #define ORGAN_NOTHING 0 // empty
