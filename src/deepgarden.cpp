@@ -429,6 +429,7 @@ struct Animal
 	int hitPoints;
 	int maxHitPoints;
 	int muscleMass;
+	int biggestMuscle;
 	int biggestEye;
 	float maxStoredEnergy;
 	int timesReproduced;
@@ -450,6 +451,7 @@ Animal::Animal()
 	this->direction = 4;
 	this->segmentsUsed = 0;
 	this->muscleMass = 0;
+	this->biggestMuscle = 0;
 	this->biggestEye = 0;
 	this->attack = 0;
 	this->maxStoredEnergy = 0.0f;
@@ -821,8 +823,12 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 						}
 					}
 				}
+			}
 
-				// then fill the marked areas, it's neater this way.
+
+			for (unsigned int j = animalCursorSegmentNumber; j < limit; ++j)
+			{
+                // then fill the marked areas, it's neater this way.
 				for (unsigned int k = 0; k < squareSizeAnimalSprite; ++k)
 				{
 					if (animals[animalIndex].segments[j].frames[ (squareSizeAnimalSprite * FRAME_BODY ) + k ] == ORGAN_MARKER_A)
@@ -830,7 +836,6 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 						animals[animalIndex].segments[j].frames[ (squareSizeAnimalSprite * FRAME_BODY ) + k ] = animalCursorOrgan;
 					}
 				}
-				// }
 			}
 		}
 		return 0;
@@ -1147,6 +1152,7 @@ void measureAnimalQualities(unsigned int currentPosition)
 	animals[animalIndex].reproductionEnergy = 1.0f;
 
 	unsigned int eyeStreak = 0;// horizontal width of the largest eye found on the animal.
+	unsigned int muscleStreak = 0;// horizontal width of the largest muscle found on the animal.
 	unsigned int prevOrgan = ORGAN_NOTHING;
 
 	for (unsigned int j = 0; j < animals[animalIndex].segmentsUsed; ++j)
@@ -1161,6 +1167,14 @@ void measureAnimalQualities(unsigned int currentPosition)
 				eyeStreak = 0;
 			}
 
+			if (organ != ORGAN_MUSCLE && prevOrgan == ORGAN_MUSCLE)
+			{
+				muscleStreak = 0;
+			}
+
+			if (k % sizeAnimalSprite == 0) { eyeStreak = 0; muscleStreak = 0; }
+
+
 			if (organ != ORGAN_NOTHING )
 			{
 				animals[animalIndex].reproductionEnergy += 1.0f;
@@ -1168,21 +1182,31 @@ void measureAnimalQualities(unsigned int currentPosition)
 				if (organ == ORGAN_BONE )
 				{
 					animals[animalIndex].defense++;
-					animals[animalIndex].reproductionEnergy += 0.0f;
+					// animals[animalIndex].reproductionEnergy += 0.0f;
 				}
 				else if (organ == ORGAN_MUSCLE )
 				{
 					animals[animalIndex].muscleMass++;
-					animals[animalIndex].reproductionEnergy += 0.25f;
-				}
-				else if (organ == ORGAN_MOUTH )
-				{
+
 					animals[animalIndex].attack++;
-					animals[animalIndex].reproductionEnergy += 0.5f;
+					// animals[animalIndex].reproductionEnergy += 0.25f;
+
+					if (muscleStreak > animals[animalIndex].biggestMuscle)
+					{
+						animals[animalIndex].biggestMuscle = muscleStreak;
+					}
+					muscleStreak ++;
+
+
 				}
+				// else if (organ == ORGAN_MOUTH )
+				// {
+				// 	// animals[animalIndex].attack++;
+				// 	// animals[animalIndex].reproductionEnergy += 0.5f;
+				// }
 				else if (organ == ORGAN_LIVER )
 				{
-					animals[animalIndex].reproductionEnergy += 0.5f;
+					// animals[animalIndex].reproductionEnergy += 0.5f;
 					animals[animalIndex].hitPoints++;
 				}
 				else if (organ == ORGAN_EYE )
@@ -1191,7 +1215,7 @@ void measureAnimalQualities(unsigned int currentPosition)
 					{
 						animals[animalIndex].biggestEye = eyeStreak;
 					}
-					animals[animalIndex].reproductionEnergy += 0.5f;
+					// animals[animalIndex].reproductionEnergy += 0.5f;
 					animals[animalIndex].perception++;
 					eyeStreak ++;
 				}
@@ -1209,6 +1233,7 @@ void measureAnimalQualities(unsigned int currentPosition)
 	printf( "hitPoints %i \n" , animals[animalIndex].hitPoints );
 	printf( "reproductionEnergy %f \n" , animals[animalIndex].reproductionEnergy );
 	printf( "biggestEye %u \n" , animals[animalIndex].biggestEye );
+	printf( "biggestMuscle %u \n" , animals[animalIndex].biggestMuscle );
 #endif
 
 
@@ -2252,6 +2277,7 @@ bool animalCanMove(unsigned int i, unsigned int neighbour)
 
 /*
 * find a direction of travel that is possible for the animal seed to move, as close to the direction of steering as possible.
+* returns the direction as a neighbourOffset.
 */
 unsigned int getClosestWalkableDirection(unsigned int i, unsigned int animalIndex, unsigned int direction)
 {
@@ -2277,11 +2303,12 @@ unsigned int getClosestWalkableDirection(unsigned int i, unsigned int animalInde
 /*
 * find a direction of travel that is possible for the animal seed to move, as close to the direction of steering as possible.
 * it doesn't have to be muscle tissue, but it will only ever be 1 point away from the seed.
+* returns the index of the square to move to.
 */
-unsigned int getDMostWalkableSquare(unsigned int i, unsigned int animalIndex, unsigned int direction)
+unsigned int getDMostWalkableSquare(unsigned int i, unsigned int animalIndex, unsigned int direction, unsigned int startPosition)
 {
 
-	unsigned int neighbour = i + neighbourOffsets[ direction ];
+	unsigned int neighbour = startPosition + neighbourOffsets[ direction ];
 	if (animalIndex < animals.size() && direction < N_NEIGHBOURS )
 	{
 		int sign = 1;                                                               // sign is inverted after each go, makes the search neighbour flip between left and right.
@@ -2289,7 +2316,7 @@ unsigned int getDMostWalkableSquare(unsigned int i, unsigned int animalIndex, un
 		{
 			int noise = (extremelyFastNumberFromZeroTo(2) - 1);                     // without noise or other small disturbances, animals move very robotically and get stuck all the time.
 			unsigned int walkableNeighbourDirection =  (j * sign);
-			neighbour = i + neighbourOffsets[ ((walkableNeighbourDirection + noise) % N_NEIGHBOURS) ];
+			neighbour = startPosition + neighbourOffsets[ ((walkableNeighbourDirection + noise) % N_NEIGHBOURS) ];
 			if (animalCanMove(i, neighbour))
 			{
 				// printf("getDMostWalkableSquare, animal @ %u, direction %u, result %u\n", i, direction, neighbour);
@@ -2298,13 +2325,20 @@ unsigned int getDMostWalkableSquare(unsigned int i, unsigned int animalIndex, un
 			sign = sign * -1;
 		}
 	}
-	// printf("getDMostWalkableSquare, did not find a walkable square\n");
-	return i;
-
+	return startPosition;
 }
 
 
+// unsigned int getRandomWalkableNeighbour(unsigned int i, unsigned int animalIndex, unsigned int direction, unsigned int startPosition)
+// {
 
+// 	unsigned int randomN = extremelyFastNumberFromZeroTo(N_NEIGHBOURS);
+// 	for (int j = 0; j < N_NEIGHBOURS; ++j)
+// 	{
+
+// 	}
+
+// }
 
 bool animalEat(unsigned int currentPosition , unsigned int neighbour )
 {
@@ -2365,11 +2399,9 @@ bool animalEat(unsigned int currentPosition , unsigned int neighbour )
 
 
 		if (
-		    (animals[animalIndex].personalityFlags & PERSONALITY_AGGRESSIVE ) == PERSONALITY_AGGRESSIVE  ||    // if the animal is aggressive, or
-		    (animals[animalIndex].energyFlags & ENERGYSOURCE_ANIMAL ) == ENERGYSOURCE_ANIMAL ||                // if it eats other animals, or
-		    carnageMode  )                                                                                     // if it's a free-for-all combat
+		    (animals[animalIndex].energyFlags & ENERGYSOURCE_ANIMAL ) == ENERGYSOURCE_ANIMAL         // if it eats other animals,
+		)
 		{
-			// or, if there is meat laying around you can eat.
 			if (grid[neighbour].material == MATERIAL_BLOOD)
 			{
 
@@ -2392,64 +2424,72 @@ bool animalEat(unsigned int currentPosition , unsigned int neighbour )
 
 	if (seedGrid[neighbour].stage == STAGE_ANIMAL )
 	{
-		// attack the other animal and either try to kill it or take conquest of it.
-		if (seedGrid[neighbour].parentIdentity < animals.size())
+		if (
+
+		    (animals[animalIndex].personalityFlags & PERSONALITY_AGGRESSIVE ) == PERSONALITY_AGGRESSIVE  ||    // if the animal is aggressive, or
+		    (animals[animalIndex].energyFlags & ENERGYSOURCE_ANIMAL ) == ENERGYSOURCE_ANIMAL ||                // if it eats other animals, or
+		    carnageMode
+		)
 		{
-			unsigned int animalIndexB = seedGrid[neighbour].parentIdentity ;
-#ifdef ANIMAL_BEHAVIOR_READOUT
-			printf("There was a fight! Animal %u fought animal %u\n" , animalIndex, animalIndexB );
-#endif
-
-
-			int damageInflictedB = animals[animalIndex].attack - animals[animalIndexB].defense;
-			if (damageInflictedB < 0) // feed on the pain and misery; grow stronger
+			// attack the other animal and either try to kill it or take conquest of it.
+			if (seedGrid[neighbour].parentIdentity < animals.size())
 			{
-				damageInflictedB = 0;
-			}
+				unsigned int animalIndexB = seedGrid[neighbour].parentIdentity ;
+#ifdef ANIMAL_BEHAVIOR_READOUT
+				printf("There was a fight! Animal %u fought animal %u\n" , animalIndex, animalIndexB );
+#endif
+
+
+				int damageInflictedB = animals[animalIndex].attack - animals[animalIndexB].defense;
+				if (damageInflictedB < 0) // feed on the pain and misery; grow stronger
+				{
+					damageInflictedB = 0;
+				}
 
 
 #ifdef ANIMAL_BEHAVIOR_READOUT
-			printf(" Animal %u dealt %i damange to animal %u\n" , animalIndex ,  damageInflictedB, animalIndexB );
+				printf(" Animal %u dealt %i damange to animal %u\n" , animalIndex ,  damageInflictedB, animalIndexB );
 #endif
-			// seedGrid[currentPosition].energy  += damageInflictedB;
-			animals[animalIndexB].hitPoints -= damageInflictedB;
-			eaten = true;
-			if (animals[animalIndexB].hitPoints < 0) // the adversary is vanquished mortally
-			{
-				// if you are a carnivore, kill and eat the opponent
-				// it will explode into blood particles that you can then consume;
+				// seedGrid[currentPosition].energy  += damageInflictedB;
+				animals[animalIndexB].hitPoints -= damageInflictedB;
+				eaten = true;
+				if (animals[animalIndexB].hitPoints < 0) // the adversary is vanquished mortally
+				{
+					// if you are a carnivore, kill and eat the opponent
+					// it will explode into blood particles that you can then consume;
 #ifdef ANIMAL_BEHAVIOR_READOUT
-				printf("animal %u killed animal %u\n", animalIndex, animalIndexB);
+					printf("animal %u killed animal %u\n", animalIndex, animalIndexB);
 #endif
-				killAnAnimal(neighbour);
-			}
-			else if (animals[animalIndexB].hitPoints < (animals[animalIndexB].maxHitPoints / 3))
-			{
+					killAnAnimal(neighbour);
+				}
+				else if (animals[animalIndexB].hitPoints < (animals[animalIndexB].maxHitPoints / 3))
+				{
 
 
-				// force the opponent to bear your offspring
+					// force the opponent to bear your offspring
 #ifdef ANIMAL_BEHAVIOR_READOUT
-				printf("animal %u conquered %u and impregnated it!\n", animalIndex, animalIndexB );
+					printf("animal %u conquered %u and impregnated it!\n", animalIndex, animalIndexB );
 #endif
-				animals[animalIndexB].hitPoints = 1;
-				animals[animalIndexB].partnerGenes = &(seedGrid[neighbour].genes);
-				animals[animalIndexB].partnerReproductiveCost = animals[animalIndex].reproductionEnergy;
-				animals[animalIndexB].mated = true;
+					animals[animalIndexB].hitPoints = 1;
+					animals[animalIndexB].partnerGenes = &(seedGrid[neighbour].genes);
+					animals[animalIndexB].partnerReproductiveCost = animals[animalIndex].reproductionEnergy;
+					animals[animalIndexB].mated = true;
 
-			}
-
-
+				}
 
 
-			else
-			{
+
+
+				else
+				{
 #ifdef ANIMAL_BEHAVIOR_READOUT
-				printf("animal %u parried the blow!\n", animalIndexB );
+					printf("animal %u parried the blow!\n", animalIndexB );
 #endif
+				}
 			}
+			// clearSeedParticle(neighbour);
+			// break;
 		}
-		// clearSeedParticle(neighbour);
-		// break;
 	}
 
 
@@ -2459,131 +2499,197 @@ bool animalEat(unsigned int currentPosition , unsigned int neighbour )
 }
 
 
-
-
-
-// for a given animal and desired direction, find the square furthest most in that direction, within its muscle area, that an animal may move
-// at the moment this is exhaustively iterative, may as well use it for other iterative tasks such as feeding
-unsigned int getDMostWalkableMuscleSquare( unsigned int i, unsigned int animalIndex, unsigned int direction)
+void animalFeed(unsigned int i)
 {
 
-	// printf("getDMostWalkableMuscleSquare direction %u\n", direction);
-	// for the given direction, find the point in the sprite that is closest to it.
-	unsigned int spriteDMostPointX = 0;
-	unsigned int spriteDMostPointY = 0;
-
-	if (direction == 0)
-	{
-		spriteDMostPointX = 0;
-		spriteDMostPointY = halfSizeAnimalSprite;
-	}
-
-	if (direction == 1)
-	{
-		spriteDMostPointX = 0;
-		spriteDMostPointY = 0;
-	}
-
-	if (direction == 2)
-	{
-		spriteDMostPointX = halfSizeAnimalSprite;
-		spriteDMostPointY = 0;
-	}
-
-	if (direction == 3)
-	{
-		spriteDMostPointX = sizeAnimalSprite;
-		spriteDMostPointY = 0;
-	}
-
-	if (direction == 4)
-	{
-		spriteDMostPointX = sizeAnimalSprite;
-		spriteDMostPointY = halfSizeAnimalSprite;
-	}
-
-	if (direction == 5)
-	{
-		spriteDMostPointX = sizeAnimalSprite;
-		spriteDMostPointY = sizeAnimalSprite;
-	}
-
-	if (direction == 6)
-	{
-		spriteDMostPointX = halfSizeAnimalSprite;
-		spriteDMostPointY = sizeAnimalSprite;
-	}
-
-	if (direction == 7)
-	{
-		spriteDMostPointX = 0;
-		spriteDMostPointY = sizeAnimalSprite;
-	}
-
-
-	unsigned int closestWalkableMuscle = i;
-	unsigned int closestSum = sizeAnimalSprite + sizeAnimalSprite;
-
-	// bool foundValidCloseSquareThisSegment = false;
-	// bool lookForMoveSquares = true;
-
-	for (unsigned int segmentIndex = 0; segmentIndex < animals[animalIndex].segmentsUsed; ++segmentIndex)
+	unsigned int animalIndex = seedGrid[i].parentIdentity;
+	if (animalIndex < animals.size())
 	{
 
-		unsigned int segmentX = animals[animalIndex].segments[segmentIndex].position % sizeX;
-		unsigned int segmentY = animals[animalIndex].segments[segmentIndex].position / sizeX;
-		for (unsigned int spriteI = 0; spriteI < squareSizeAnimalSprite; ++spriteI)
+		for (unsigned int segmentIndex = 0; segmentIndex < animals[animalIndex].segmentsUsed; ++segmentIndex)
 		{
 
-			unsigned int spriteX = spriteI % sizeAnimalSprite;
-			unsigned int spriteY = spriteI / sizeAnimalSprite;
-			unsigned int pixelIndex = (squareSizeAnimalSprite * FRAME_BODY) + spriteI;
+			unsigned int segmentX = animals[animalIndex].segments[segmentIndex].position % sizeX;
+			unsigned int segmentY = animals[animalIndex].segments[segmentIndex].position / sizeX;
+			for (unsigned int spriteI = 0; spriteI < squareSizeAnimalSprite; ++spriteI)
+			{
 
-			// if (lookForMoveSquares)
-			// {
-				if ((animals[animalIndex].segments[segmentIndex].frames[pixelIndex] == ORGAN_MUSCLE   ) )
+				unsigned int spriteX = spriteI % sizeAnimalSprite;
+				unsigned int spriteY = spriteI / sizeAnimalSprite;
+				unsigned int pixelIndex = (squareSizeAnimalSprite * FRAME_BODY) + spriteI;
+
+				// if (lookForMoveSquares)
+				// {
+				// if ((animals[animalIndex].segments[segmentIndex].frames[pixelIndex] == ORGAN_MUSCLE   ) )
+				// {
+
+				// 	unsigned int worldX = segmentX + spriteX - halfSizeAnimalSprite;
+				// 	unsigned int worldY = segmentY + spriteY - halfSizeAnimalSprite;
+				// 	unsigned int worldI = ((worldY * sizeX) + worldX ) % totalSize;
+				// 	if (worldI != i)
+				// 	{
+				// 		if ( animalCanMove(i, worldI) )
+				// 		{
+				// 			int diffX = spriteDMostPointX - spriteX;                          // you found one! compare the different to the best so far.
+				// 			int diffY = spriteDMostPointY - spriteY;                         // but don't tell anyone I do math like this.
+				// 			int diffSum = abs(diffX) + abs(diffY);
+				// 			if (diffSum < closestSum  )
+				// 			{
+				// 				closestWalkableMuscle = worldI;
+				// 				closestSum = diffSum;
+				// 			}
+				// 			// foundValidCloseSquareThisSegment = true;
+				// 		}
+				// 	}
+				// }
+				// }
+
+				// // feed while you're here
+				// else
+				if ((animals[animalIndex].segments[segmentIndex].frames[pixelIndex] == ORGAN_MOUTH   ) )
 				{
-
 					unsigned int worldX = segmentX + spriteX - halfSizeAnimalSprite;
 					unsigned int worldY = segmentY + spriteY - halfSizeAnimalSprite;
 					unsigned int worldI = ((worldY * sizeX) + worldX ) % totalSize;
 					if (worldI != i)
 					{
-						if ( animalCanMove(i, worldI) )
-						{
-							int diffX = spriteDMostPointX - spriteX;                          // you found one! compare the different to the best so far.
-							int diffY = spriteDMostPointY - spriteY;                         // but don't tell anyone I do math like this.
-							int diffSum = abs(diffX) + abs(diffY);
-							if (diffSum < closestSum  )
-							{
-								closestWalkableMuscle = worldI;
-								closestSum = diffSum;
-							}
-							// foundValidCloseSquareThisSegment = true;
-						}
+						animalEat(i, worldI);
 					}
 				}
-			// }
+			}
 
-			// // feed while you're here
-			// else if ((animals[animalIndex].segments[segmentIndex].frames[pixelIndex] == ORGAN_MOUTH   ) )
-			// {
-			// 	unsigned int worldX = segmentX + spriteX - halfSizeAnimalSprite;
-			// 	unsigned int worldY = segmentY + spriteY - halfSizeAnimalSprite;
-			// 	unsigned int worldI = ((worldY * sizeX) + worldX ) % totalSize;
-			// 	if (worldI != i)
-			// 	{
-			// 		animalEat(i, worldI);
-			// 	}
-			// }
+			// if (foundValidCloseSquareThisSegment) { lookForMoveSquares = false;}
 		}
-
-		// if (foundValidCloseSquareThisSegment) { lookForMoveSquares = false;}
 	}
 
-	// printf("the D most square is. %u i is %u\n", closestWalkableMuscle, i);
-	return closestWalkableMuscle;
+
 }
+
+
+
+
+// // for a given animal and desired direction, find the square furthest most in that direction, within its muscle area, that an animal may move
+// // at the moment this is exhaustively iterative, may as well use it for other iterative tasks such as feeding
+// unsigned int getDMostWalkableMuscleSquare( unsigned int i, unsigned int animalIndex, unsigned int direction)
+// {
+
+// 	// printf("getDMostWalkableMuscleSquare direction %u\n", direction);
+// 	// for the given direction, find the point in the sprite that is closest to it.
+// 	unsigned int spriteDMostPointX = 0;
+// 	unsigned int spriteDMostPointY = 0;
+
+// 	if (direction == 0)
+// 	{
+// 		spriteDMostPointX = 0;
+// 		spriteDMostPointY = halfSizeAnimalSprite;
+// 	}
+
+// 	if (direction == 1)
+// 	{
+// 		spriteDMostPointX = 0;
+// 		spriteDMostPointY = 0;
+// 	}
+
+// 	if (direction == 2)
+// 	{
+// 		spriteDMostPointX = halfSizeAnimalSprite;
+// 		spriteDMostPointY = 0;
+// 	}
+
+// 	if (direction == 3)
+// 	{
+// 		spriteDMostPointX = sizeAnimalSprite;
+// 		spriteDMostPointY = 0;
+// 	}
+
+// 	if (direction == 4)
+// 	{
+// 		spriteDMostPointX = sizeAnimalSprite;
+// 		spriteDMostPointY = halfSizeAnimalSprite;
+// 	}
+
+// 	if (direction == 5)
+// 	{
+// 		spriteDMostPointX = sizeAnimalSprite;
+// 		spriteDMostPointY = sizeAnimalSprite;
+// 	}
+
+// 	if (direction == 6)
+// 	{
+// 		spriteDMostPointX = halfSizeAnimalSprite;
+// 		spriteDMostPointY = sizeAnimalSprite;
+// 	}
+
+// 	if (direction == 7)
+// 	{
+// 		spriteDMostPointX = 0;
+// 		spriteDMostPointY = sizeAnimalSprite;
+// 	}
+
+
+// 	unsigned int closestWalkableMuscle = i;
+// 	unsigned int closestSum = sizeAnimalSprite + sizeAnimalSprite;
+
+// 	// bool foundValidCloseSquareThisSegment = false;
+// 	// bool lookForMoveSquares = true;
+
+// 	for (unsigned int segmentIndex = 0; segmentIndex < animals[animalIndex].segmentsUsed; ++segmentIndex)
+// 	{
+
+// 		unsigned int segmentX = animals[animalIndex].segments[segmentIndex].position % sizeX;
+// 		unsigned int segmentY = animals[animalIndex].segments[segmentIndex].position / sizeX;
+// 		for (unsigned int spriteI = 0; spriteI < squareSizeAnimalSprite; ++spriteI)
+// 		{
+
+// 			unsigned int spriteX = spriteI % sizeAnimalSprite;
+// 			unsigned int spriteY = spriteI / sizeAnimalSprite;
+// 			unsigned int pixelIndex = (squareSizeAnimalSprite * FRAME_BODY) + spriteI;
+
+// 			// if (lookForMoveSquares)
+// 			// {
+// 			if ((animals[animalIndex].segments[segmentIndex].frames[pixelIndex] == ORGAN_MUSCLE   ) )
+// 			{
+
+// 				unsigned int worldX = segmentX + spriteX - halfSizeAnimalSprite;
+// 				unsigned int worldY = segmentY + spriteY - halfSizeAnimalSprite;
+// 				unsigned int worldI = ((worldY * sizeX) + worldX ) % totalSize;
+// 				if (worldI != i)
+// 				{
+// 					if ( animalCanMove(i, worldI) )
+// 					{
+// 						int diffX = spriteDMostPointX - spriteX;                          // you found one! compare the different to the best so far.
+// 						int diffY = spriteDMostPointY - spriteY;                         // but don't tell anyone I do math like this.
+// 						int diffSum = abs(diffX) + abs(diffY);
+// 						if (diffSum < closestSum  )
+// 						{
+// 							closestWalkableMuscle = worldI;
+// 							closestSum = diffSum;
+// 						}
+// 						// foundValidCloseSquareThisSegment = true;
+// 					}
+// 				}
+// 			}
+// 			// }
+
+// 			// // feed while you're here
+// 			// else if ((animals[animalIndex].segments[segmentIndex].frames[pixelIndex] == ORGAN_MOUTH   ) )
+// 			// {
+// 			// 	unsigned int worldX = segmentX + spriteX - halfSizeAnimalSprite;
+// 			// 	unsigned int worldY = segmentY + spriteY - halfSizeAnimalSprite;
+// 			// 	unsigned int worldI = ((worldY * sizeX) + worldX ) % totalSize;
+// 			// 	if (worldI != i)
+// 			// 	{
+// 			// 		animalEat(i, worldI);
+// 			// 	}
+// 			// }
+// 		}
+
+// 		// if (foundValidCloseSquareThisSegment) { lookForMoveSquares = false;}
+// 	}
+
+// 	// printf("the D most square is. %u i is %u\n", closestWalkableMuscle, i);
+// 	return closestWalkableMuscle;
+// }
 
 void initialize ()
 {
@@ -3288,11 +3394,21 @@ unsigned int animalDirectionFinding (unsigned int i)
 
 		// if (animals[animalIndex].muscleMass > 0 )
 		// {
-		return getDMostWalkableMuscleSquare( i, animalIndex, animals[animalIndex]. direction);
+		// return getDMostWalkableMuscleSquare( i, animalIndex, animals[animalIndex]. direction);
 		// }
 		// else
 		// {
-		// 	return getDMostWalkableSquare( i, animalIndex, animals[animalIndex]. direction);
+
+		// unsigned int nextMove = i;
+		// for (unsigned int step = 0; step < animals[animalIndex]. biggestMuscle; ++step)
+		// {
+		// nextMove =
+
+		// }
+		return getDMostWalkableSquare( i, animalIndex, animals[animalIndex]. direction, i);
+		;
+
+
 		// }
 
 
@@ -3384,10 +3500,15 @@ void animalTurn(unsigned int i)
 	// eat everything you possibly can
 	// animalEat(i);
 
+	animalFeed(i);
 	// use the perception to scan the local environment
 
 
 	unsigned int directionResult = animalDirectionFinding(i);
+
+	// running this sets steady if the animal seed itself is sitting in a supportive environment. however, use steady to knock the animal if it gets stuck.
+	animalCanMove(i, i);
+
 
 	if ( directionResult != i )
 	{
@@ -3397,7 +3518,7 @@ void animalTurn(unsigned int i)
 	}
 	else
 	{
-
+		animals[animalIndex].steady = false;
 		// printf("directionfinding produced no clear result\n");
 	}
 
@@ -3419,8 +3540,6 @@ void animalTurn(unsigned int i)
 		return;
 	}
 
-	// running this sets steady if the animal seed itself is sitting in a supportive environment
-	animalCanMove(i, i);
 
 	if (!(animals[animalIndex].steady) || extremelyFastNumberFromZeroTo(1000) == 0 ) // small chance to loose footing and slip
 	{
@@ -3443,7 +3562,7 @@ void animalTurn(unsigned int i)
 	}
 	else
 	{
-		animalAllSegmentsFall(i);
+		// animalAllSegmentsFall(i);
 
 	}
 }
