@@ -2193,7 +2193,7 @@ bool animalCanMove(unsigned int i, unsigned int neighbour)
 
 	printf("animalCanMove\n");
 	unsigned int animalIndex = seedGrid[i].parentIdentity;
-	if (animalIndex < animals.size())
+	if (animalIndex < animals.size() && neighbour < totalSize)
 	{
 		if (  (animals[animalIndex].movementFlags & MOVEMENT_INAIR ) == MOVEMENT_INAIR   )
 		{
@@ -2287,7 +2287,7 @@ unsigned int getClosestWalkableDirection(unsigned int i, unsigned int animalInde
 }
 
 // starting from the center of an animal sprite, iterate through the pixels in a spiral until you reach the edge. return the first muscle cell in a walkable area that you find.
-// on failure, just returns the center of the spiral (no change).
+// on failure, returns the index of the animal seed.
 // all segments should be checked simultaneously
 unsigned int spiralFindWalkableMuscle(unsigned int i, unsigned int startPoint, unsigned int animalIndex)
 {
@@ -2299,35 +2299,44 @@ unsigned int spiralFindWalkableMuscle(unsigned int i, unsigned int startPoint, u
 	int yCursor = startPoint / sizeAnimalSprite ;
 	int xScrollAmount = 0;                                                          // to create the spiral shape, these values are flipped back and forth between positive and negative, and become larger every time around.
 	int yScrollAmount = 0;                                                          //
+
+	unsigned int count = 0;
+
 	while (true)
 	{
 
 		for (unsigned int x = 0; x < xScrollAmount; ++x)                            // scroll in X then Y direction.
 		{
+			// printf(".");
 			xCursor = xCursor + (x * signX);
 			if (xCursor >= sizeAnimalSprite) {xCursor = sizeAnimalSprite - 1;}		// only scroll within the sprite.. do not wrap the edges because that would defeat the direction-finding purpose.
 			if (xCursor < 0) { xCursor = 0;}
 			for (unsigned int segmentIndex = 0; segmentIndex < animals[animalIndex].segmentsUsed; ++segmentIndex)
 			{
 				unsigned int pixelIndex = ( squareSizeAnimalSprite * FRAME_BODY ) + ( (yCursor * sizeAnimalSprite) +  xCursor);
-				if ((animals[animalIndex].segments[segmentIndex].frames[pixelIndex] == ORGAN_MUSCLE   ) )
+				if (pixelIndex < squareSizeAnimalSprite)
 				{
-					unsigned int segmentX = animals[animalIndex].segments[segmentIndex].position % sizeX;
-					unsigned int segmentY = animals[animalIndex].segments[segmentIndex].position / sizeX;
-					unsigned int worldX = segmentX + xCursor - halfSizeAnimalSprite;
-					unsigned int worldY = segmentY + yCursor - halfSizeAnimalSprite;
-					unsigned int worldI = ((worldY * sizeX) + worldX ) % totalSize;
-					if ( animalCanMove(i, worldI) )
+					if ((animals[animalIndex].segments[segmentIndex].frames[pixelIndex] == ORGAN_MUSCLE   ) )
 					{
-						return worldI;
+						unsigned int segmentX = animals[animalIndex].segments[segmentIndex].position % sizeX;
+						unsigned int segmentY = animals[animalIndex].segments[segmentIndex].position / sizeX;
+						unsigned int worldX = segmentX + xCursor - halfSizeAnimalSprite;
+						unsigned int worldY = segmentY + yCursor - halfSizeAnimalSprite;
+						unsigned int worldI = ((worldY * sizeX) + worldX ) % totalSize;
+						if ( animalCanMove(i, worldI) )
+						{
+							return worldI;
+						}
 					}
 				}
 			}
+			count++; // count once per pixel, once you've covered area equivalent to the sprite area, give up
 		}
 		xScrollAmount++;
 
-		for (unsigned int y = 0; i < yScrollAmount; ++y)		                     // this is the same motif as the X part, just for Y. Now scrolling one of the vertical edges of the square
+		for (unsigned int y = 0; y < yScrollAmount; ++y)		                     // this is the same motif as the X part, just for Y. Now scrolling one of the vertical edges of the square
 		{
+			// printf("yScrollAmount %u, yCursor %u\n", yScrollAmount, yCursor);
 			yCursor = yCursor + (y * signY);
 			if (yCursor >= sizeAnimalSprite) {yCursor = sizeAnimalSprite - 1;}		 // only scroll within the sprite.. do not wrap the edges because that would defeat the direction-finding purpose.
 			if (yCursor < 0) { yCursor = 0;}
@@ -2335,24 +2344,30 @@ unsigned int spiralFindWalkableMuscle(unsigned int i, unsigned int startPoint, u
 			for (unsigned int segmentIndex = 0; segmentIndex < animals[animalIndex].segmentsUsed; ++segmentIndex)
 			{
 				unsigned int pixelIndex = ( squareSizeAnimalSprite * FRAME_BODY ) + ( (yCursor * sizeAnimalSprite) +  xCursor);
-				if ((animals[animalIndex].segments[segmentIndex].frames[pixelIndex] == ORGAN_MUSCLE   ) )
+				if (pixelIndex < squareSizeAnimalSprite)
 				{
-					unsigned int segmentX = animals[animalIndex].segments[segmentIndex].position % sizeX;
-					unsigned int segmentY = animals[animalIndex].segments[segmentIndex].position / sizeX;
-					unsigned int worldX = segmentX + xCursor - halfSizeAnimalSprite;
-					unsigned int worldY = segmentY + yCursor - halfSizeAnimalSprite;
-					unsigned int worldI = ((worldY * sizeX) + worldX ) % totalSize;
-					if ( animalCanMove(i, worldI) )
+					if ((animals[animalIndex].segments[segmentIndex].frames[pixelIndex] == ORGAN_MUSCLE   ) )
 					{
-						return worldI;
+						unsigned int segmentX = animals[animalIndex].segments[segmentIndex].position % sizeX;
+						unsigned int segmentY = animals[animalIndex].segments[segmentIndex].position / sizeX;
+						unsigned int worldX = segmentX + xCursor - halfSizeAnimalSprite;
+						unsigned int worldY = segmentY + yCursor - halfSizeAnimalSprite;
+						unsigned int worldI = ((worldY * sizeX) + worldX ) % totalSize;
+						if ( animalCanMove(i, worldI) )
+						{
+							return worldI;
+						}
 					}
 				}
 			}
+			count++;
 
 		}
 		yScrollAmount++;
 		signX *= -1;                                                         		// Then invert the signs and repeat.
 		signY *= -1;
+
+		if (count > squareSizeAnimalSprite) { break;}
 	}
 	return i;
 }
@@ -2363,31 +2378,33 @@ unsigned int spiralFindWalkableMuscle(unsigned int i, unsigned int startPoint, u
 unsigned int getDMostWalkableSquare(unsigned int i, unsigned int animalIndex, unsigned int direction)
 {
 
-	printf("getDMostWalkableSquare\n");
-	unsigned int walkableNeighbourCursor = i + neighbourOffsets[ direction ];
+	unsigned int neighbour = i + neighbourOffsets[ direction ];
 	if (animalIndex < animals.size() && direction < N_NEIGHBOURS )
 	{
 		int sign = 1;                                                               // sign is inverted after each go, makes the search neighbour flip between left and right.
 		for (int j = 0; j < N_NEIGHBOURS; ++j)                                      // test neighbours in order of least to most angle difference
 		{
 			int noise = (extremelyFastNumberFromZeroTo(2) - 1);                     // without noise or other small disturbances, animals move very robotically and get stuck all the time.
-			walkableNeighbourCursor = (walkableNeighbourCursor + (  neighbourOffsets [ j + noise ] * sign)) % N_NEIGHBOURS ;
-			unsigned int neighbour = i + neighbourOffsets[ walkableNeighbourCursor ];
+			unsigned int walkableNeighbourDirection =  (j * sign);
+			neighbour = i + neighbourOffsets[ ((walkableNeighbourDirection + noise) % N_NEIGHBOURS) ];
 			if (animalCanMove(i, neighbour))
 			{
-				break;
+				printf("getDMostWalkableSquare, animal @ %u, direction %u, result %u\n", i, direction, neighbour);
+				return neighbour;
 			}
 			sign = sign * -1;
 		}
 	}
-	return walkableNeighbourCursor;
+	printf("getDMostWalkableSquare, did not find a walkable square\n");
+	return i;
+
 }
 
 // for a given animal and desired direction, find the square furthest most in that direction, within its muscle area, that an animal may move
 unsigned int getDMostWalkableMuscleSquare( unsigned int i, unsigned int animalIndex, unsigned int direction)
 {
 
-	printf("getDMostWalkableMuscleSquare\n");
+	printf("getDMostWalkableMuscleSquare direction %u\n", direction);
 	// for the given direction, find the point in the sprite that is closest to it.
 	unsigned int spriteDMostPointX = 0;
 	unsigned int spriteDMostPointY = 0;
@@ -3178,7 +3195,6 @@ bool animalEat(unsigned int currentPosition , unsigned int neighbour )
 unsigned int animalDirectionFinding (unsigned int i)
 {
 
-	printf("animalDirectionFinding\n");
 	unsigned int animalIndex = seedGrid[i].parentIdentity;
 
 	unsigned int decidedLocation;
@@ -3248,12 +3264,6 @@ unsigned int animalDirectionFinding (unsigned int i)
 
 
 
-			if (decided)
-			{
-				// break;
-				decidedLocation = worldRandomI;
-				decided = true;
-			}
 
 		}
 
@@ -3261,6 +3271,7 @@ unsigned int animalDirectionFinding (unsigned int i)
 
 		if (decided)
 		{
+			printf("decided %u\n", decidedLocation);
 			animals[animalIndex].direction = getRelativeDirection (i, decidedLocation);
 
 			if (runAway)
@@ -3271,13 +3282,14 @@ unsigned int animalDirectionFinding (unsigned int i)
 		}
 		else
 		{
+			printf("did not decide\n");
 			if (extremelyFastNumberFromZeroTo(100) == 0)
 			{
 				animals[animalIndex].direction = extremelyFastNumberFromZeroTo(N_NEIGHBOURS);
 			}
 		}
 
-		if (animals[animalIndex].muscleMass > 0)
+		if (animals[animalIndex].muscleMass > 0 && false)
 		{
 			return getDMostWalkableMuscleSquare( i, animalIndex, animals[animalIndex]. direction);
 		}
@@ -3355,7 +3367,16 @@ void animalTurn(unsigned int i)
 	unsigned int recommendedMovePosition = i;
 
 	// use the perception to scan the local environment
-	unsigned int suggestedDirection = animalDirectionFinding(animalIndex);
+
+
+	unsigned int directionResult = animalDirectionFinding(i);
+
+	if ( directionResult != i )
+	{
+		recommendedMovePosition = directionResult;
+		moved = true;
+	}
+
 
 	// reproduce
 	if (seedGrid[i].energy > animals[animalIndex].reproductionEnergy && animals[animalIndex].age > (animals[animalIndex].reproductionEnergy + 100)  && animalReproductionEnabled)
