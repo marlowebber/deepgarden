@@ -436,6 +436,7 @@ struct Animal
 	float reproductionEnergy;
 	int hitPoints;
 	int maxHitPoints;
+	int muscleMass;
 
 	float maxStoredEnergy;
 
@@ -465,6 +466,7 @@ Animal::Animal()
 	// this->fluidMovementChance = 16;
 	// this->potency = 4.0f;
 	// this->reach = 4;
+	this->muscleMass = 0;
 	this->attack = 4;
 	this->maxStoredEnergy = 0.0f;
 	this->reproductionEnergy = 0.0f;
@@ -1293,6 +1295,7 @@ void measureAnimalQualities(unsigned int currentPosition)
 				}
 				else if (organ == ORGAN_MUSCLE )
 				{
+					animals[animalIndex].muscleMass++;
 					animals[animalIndex].reproductionEnergy += 0.25f;
 				}
 				else if (organ == ORGAN_MOUTH )
@@ -2319,356 +2322,254 @@ unsigned int getRelativeDirection (unsigned int a, unsigned int b)
 	return result;
 }
 
-// // given two world vertices, find the direction from a to b, as expressed by what entry in neighbourOffsets is the closest.
-// void getRelativeDirectionTest ()
-// {
-// 	// the target should be directly above, neighbour 6
-// 	unsigned int testaX = 100;
-// 	unsigned int testaY = 100;
-// 	unsigned int testbX = 000;
-// 	unsigned int testbY = 100;
-// 	unsigned int testaI = (testaY * sizeX ) + testaX;
-// 	unsigned int testbI = (testbY * sizeX ) + testbX;
-// 	unsigned int testresult = getRelativeDirection (testaI, testbI);
-// 	unsigned int testExpectation = 0;
-// 	printf("getRelativeDirection test expected %u got %u\n", testExpectation, testresult);
+// should the animal move into that position?
+bool animalCanMove(unsigned int i, unsigned int neighbour)
+{
+	unsigned int animalIndex = seedGrid[i].parentIdentity;
+	if (animalIndex < animals.size())
+	{
+		if (  (animals[animalIndex].movementFlags & MOVEMENT_INAIR ) == MOVEMENT_INAIR   )
+		{
+			animals[animalIndex].steady  = true;
+			if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS)        // if one of the neighbouring cells is a material type and phase that the animal can exist within
+			{
+				return true;
+			}
+		}
+		if (  (animals[animalIndex].movementFlags & MOVEMENT_INPLANTS ) == MOVEMENT_INPLANTS   )
+		{
+			if (lifeGrid[neighbour].identity > 0x00)
+			{
+				animals[animalIndex].steady  = true;
+				return true;
+			}
+		}
+		if (  (animals[animalIndex].movementFlags & MOVEMENT_INLIQUID ) == MOVEMENT_INLIQUID   )
+		{
+			if (grid[neighbour].phase == PHASE_LIQUID)                                              // if one of the neighbouring cells is a material type and phase that the animal can exist within
+			{
+				animals[animalIndex].steady  = true;
+				return true;
+			}
+		}
+		if (  (animals[animalIndex].movementFlags & MOVEMENT_ONPOWDER ) == MOVEMENT_ONPOWDER   )
+		{
+			if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS || grid[neighbour].phase == PHASE_LIQUID ) // if one of the neighbouring cells is a material type and phase that the animal can exist within
+			{
+				for (int l = 0; l < N_NEIGHBOURS; ++l)                                              // and it has a neighbour of a type and phase the animal can walk on
+				{
+					int neighboursNeighbour = (neighbour + neighbourOffsets[l]);
+					if (neighboursNeighbour != i )
+					{
+						if (  grid[ neighboursNeighbour ] .phase == PHASE_POWDER )
+						{
+							animals[animalIndex].steady  = true;
+							return true;
+						}
+					}
+				}
+			}
+		}
+		if (  (animals[animalIndex].movementFlags & MOVEMENT_ONSOLID ) == MOVEMENT_ONSOLID   )
+		{
+			if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS || grid[neighbour].phase == PHASE_LIQUID ) // if one of the neighbouring cells is a material type and phase that the animal can exist within
+			{
+				for (int l = 0; l < N_NEIGHBOURS; ++l)                                              // and it has a neighbour of a type and phase the animal can walk on
+				{
+					int neighboursNeighbour = (neighbour + neighbourOffsets[l]);
+					if (neighboursNeighbour != i)
+					{
+						if (  grid[ neighboursNeighbour ] .phase == PHASE_SOLID )
+						{
+							animals[animalIndex].steady = true;
+							return true;
+						}
+					}
+				}
+			}
+		}
+	}
 
-// 	testaX = 100;
-// 	testaY = 100;
-// 	testbX = 000;
-// 	testbY = 000;
-// 	testaI = (testaY * sizeX ) + testaX;
-// 	testbI = (testbY * sizeX ) + testbX;
-// 	testresult = getRelativeDirection (testaI, testbI);
-// 	testExpectation = 1;
-// 	printf("getRelativeDirection test expected %u got %u\n", testExpectation, testresult);
-
-// 	testaX = 100;
-// 	testaY = 100;
-// 	testbX = 100;
-// 	testbY = 000;
-// 	testaI = (testaY * sizeX ) + testaX;
-// 	testbI = (testbY * sizeX ) + testbX;
-// 	testresult = getRelativeDirection (testaI, testbI);
-// 	testExpectation = 2;
-// 	printf("getRelativeDirection test expected %u got %u\n", testExpectation, testresult);
-
-
-// 	testaX = 100;
-// 	testaY = 100;
-// 	testbX = 200;
-// 	testbY = 000;
-// 	testaI = (testaY * sizeX ) + testaX;
-// 	testbI = (testbY * sizeX ) + testbX;
-// 	testresult = getRelativeDirection (testaI, testbI);
-// 	testExpectation = 3;
-// 	printf("getRelativeDirection test expected %u got %u\n", testExpectation, testresult);
-
-
-// 	testaX = 100;
-// 	testaY = 100;
-// 	testbX = 200;
-// 	testbY = 100;
-// 	testaI = (testaY * sizeX ) + testaX;
-// 	testbI = (testbY * sizeX ) + testbX;
-// 	testresult = getRelativeDirection (testaI, testbI);
-// 	testExpectation = 4;
-// 	printf("getRelativeDirection test expected %u got %u\n", testExpectation, testresult);
-
-
-// 	testaX = 100;
-// 	testaY = 100;
-// 	testbX = 200;
-// 	testbY = 200;
-// 	testaI = (testaY * sizeX ) + testaX;
-// 	testbI = (testbY * sizeX ) + testbX;
-// 	testresult = getRelativeDirection (testaI, testbI);
-// 	testExpectation = 5;
-// 	printf("getRelativeDirection test expected %u got %u\n", testExpectation, testresult);
-
-
-
-// 	testaX = 100;
-// 	testaY = 100;
-// 	testbX = 100;
-// 	testbY = 200;
-// 	testaI = (testaY * sizeX ) + testaX;
-// 	testbI = (testbY * sizeX ) + testbX;
-// 	testresult = getRelativeDirection (testaI, testbI);
-// 	testExpectation = 6;
-// 	printf("getRelativeDirection test expected %u got %u\n", testExpectation, testresult);
-
-
-
-// 	testaX = 100;
-// 	testaY = 100;
-// 	testbX = 000;
-// 	testbY = 200;
-// 	testaI = (testaY * sizeX ) + testaX;
-// 	testbI = (testbY * sizeX ) + testbX;
-// 	testresult = getRelativeDirection (testaI, testbI);
-// 	testExpectation = 7;
-// 	printf("getRelativeDirection test expected %u got %u\n", testExpectation, testresult);
-
-
-// }
-
+	return false;  // this is taken as a signal not to move
+}
 
 /*
 * find a direction of travel that is possible for the animal seed to move, as close to the direction of steering as possible.
 */
 unsigned int getClosestWalkableDirection(unsigned int i, unsigned int animalIndex, unsigned int direction)
 {
-
 	unsigned int walkableNeighbourCursor = i + neighbourOffsets[ direction ];
 	if (animalIndex < animals.size() && direction < N_NEIGHBOURS )
 	{
-
 		int sign = 1;                                                               // sign is inverted after each go, makes the search neighbour flip between left and right.
 		for (int j = 0; j < N_NEIGHBOURS; ++j)                                      // test neighbours in order of least to most angle difference
 		{
-
 			int noise = (extremelyFastNumberFromZeroTo(2) - 1);                     // without noise or other small disturbances, animals move very robotically and get stuck all the time.
-
-			walkableNeighbourCursor = (walkableNeighbourCursor + (  neighbours [ j + noise ] * sign)) % N_NEIGHBOURS ;
+			walkableNeighbourCursor = (walkableNeighbourCursor + (  neighbourOffsets [ j + noise ] * sign)) % N_NEIGHBOURS ;
 			unsigned int neighbour = i + neighbourOffsets[ walkableNeighbourCursor ];
-
 			if (animalCanMove(i, neighbour))
 			{
 				break;
 			}
-
-			sign = sign * -1;
-
-
-		}
-
-
-	}
-
-	return walkableNeighbourCursor;
-
-}
-
-
-
-
-
-
-
-/*
-* find a direction of travel that is possible for the animal seed to move, as close to the direction of steering as possible.
-* in this case, it must be a muscle cell in a traversable square, and the operation will only return squares whose neighbourOffsets are no greater or less than 1 different to the direction.
-* it is used for finding appropriate muscle cells, rather than traversing the environment. It does not add movement noise.
-* if an appropriate square is not found, return the i you started with.
-*/
-unsigned int getDMostWalkableMuscleCell(unsigned int i, unsigned int animalIndex, unsigned int segmentIndex, unsigned int direction)
-{
-
-	unsigned int walkableNeighbourCursor = i ;//+ neighbourOffsets[ direction ];
-	if (animalIndex < animals.size() && direction < N_NEIGHBOURS )
-	{
-
-		int sign = 1;                                                               // sign is inverted after each go, makes the search neighbour flip between left and right.
-		for (unsigned int j = 0; j < 3; ++j)                                      // test neighbours in order of least to most angle difference. 3 means it will check the direction then the squares left and right. Any larger and it will probably bounce back and forth forever.
-		{
-			// int noise = (extremelyFastNumberFromZeroTo(2) - 1);                     // without noise or other small disturbances, animals move very robotically and get stuck all the time.
-			walkableNeighbourCursor = (walkableNeighbourCursor + (  neighbours [ j ] * sign)) % N_NEIGHBOURS ;
-			unsigned int neighbour = i + neighbourOffsets[ walkableNeighbourCursor ];
-
-			if ((animals[animalIndex].segments[segmentIndex].frames[ (squareSizeAnimalSprite * FRAME_BODY) +  ] == ORGAN_MUSCLE   ) )
-			{
-				if (animalCanMove(i, neighbour))
-				{
-					return walkableNeighbourCursor;
-				}
-			}
-
 			sign = sign * -1;
 		}
-
-
 	}
-
 	return walkableNeighbourCursor;
-
 }
-
 
 // starting from the center of an animal sprite, iterate through the pixels in a spiral until you reach the edge. return the first muscle cell in a walkable area that you find.
 // on failure, just returns the center of the spiral (no change).
-unsigned int spiralFindWalkableMuscle(unsigned int i, unsigned int animalIndex, unsigned int segmentIndex)
+// all segments should be checked simultaneously
+unsigned int spiralFindWalkableMuscle(unsigned int i, unsigned int startPoint, unsigned int animalIndex)
 {
-
-
-	// bool chosen = false;
-	// unsigned int result = i;
-
-
-	// it's just like your getClosestWalkableDirection algorithm, except in 2d instead of scrolling around a neighbours array.
-
-	int signX = 1;
+	int signX = 1;                                                                  // it's just like your getClosestWalkableDirection algorithm, except in 2d instead of scrolling around a neighbours array.
 	int signY = 1;
-
-	int xCursor = halfSizeAnimalSprite;
-	int yCursor = halfSizeAnimalSprite;
-
-
-
-	// for (unsigned int segmentIndex = 0; segmentIndex < animals[animalIndex].segmentsUsed; ++segmentIndex)
-	// {
-
-
-	int xScrollAmount = 0;
-	int yScrollAmount = 0;
-
-
+	int xCursor = startPoint % sizeAnimalSprite ;
+	int yCursor = startPoint / sizeAnimalSprite ;
+	int xScrollAmount = 0;                                                          // to create the spiral shape, these values are flipped back and forth between positive and negative, and become larger every time around.
+	int yScrollAmount = 0;                                                          //
 	while (true)
 	{
 
-		// scroll in X then Y direction. The invert the signs and repeat.
-		for (unsigned int x = 0; x < xScrollAmount; ++x)
+		for (unsigned int x = 0; x < xScrollAmount; ++x)                            // scroll in X then Y direction.
 		{
 			xCursor = xCursor + (x * signX);
-			unsigned int spriteI = ((yCursor * sizeAnimalSprite) + xCursor) % squareSizeAnimalSprite;
-			unsigned int pixelIndex = ( squareSizeAnimalSprite * FRAME_BODY ) + spriteI;
-			if ((animals[animalIndex].segments[segmentIndex].frames[pixelIndex] == ORGAN_MUSCLE   ) )
+			if (xCursor >= sizeAnimalSprite) {xCursor = sizeAnimalSprite - 1;}		// only scroll within the sprite.. do not wrap the edges because that would defeat the direction-finding purpose.
+			if (xCursor < 0) { xCursor = 0;}
+			for (unsigned int segmentIndex = 0; segmentIndex < animals[animalIndex].segmentsUsed; ++segmentIndex)
 			{
-				unsigned int segmentX = animals[animalIndex].segments[segmentIndex].position % sizeX;
-				unsigned int segmentY = animals[animalIndex].segments[segmentIndex].position / sizeX;
-				unsigned int worldX = segmentX + spriteX - halfSizeAnimalSprite;
-				unsigned int worldY = segmentY + spriteY - halfSizeAnimalSprite;
-				unsigned int worldI = ((worldY * sizeX) + worldX ) % totalSize;
-
-				if ( animalCanMove(i, worldI) )
+				unsigned int pixelIndex = ( squareSizeAnimalSprite * FRAME_BODY ) + ( (yCursor * sizeAnimalSprite) +  xCursor);
+				if ((animals[animalIndex].segments[segmentIndex].frames[pixelIndex] == ORGAN_MUSCLE   ) )
 				{
-					// result = worldI;
-					// chosen = true;
-					// break;
-					return worldI;
+					unsigned int segmentX = animals[animalIndex].segments[segmentIndex].position % sizeX;
+					unsigned int segmentY = animals[animalIndex].segments[segmentIndex].position / sizeX;
+					unsigned int worldX = segmentX + xCursor - halfSizeAnimalSprite;
+					unsigned int worldY = segmentY + yCursor - halfSizeAnimalSprite;
+					unsigned int worldI = ((worldY * sizeX) + worldX ) % totalSize;
+					if ( animalCanMove(i, worldI) )
+					{
+						return worldI;
+					}
 				}
 			}
 		}
 		xScrollAmount++;
-		if (xScrollAmount >= sizeAnimalSprite) { break; }
 
-
-
-		// this is the same motif as the X part, just for Y.
-		for (unsigned int y = 0; i < yScrollAmount; ++y)
+		for (unsigned int y = 0; i < yScrollAmount; ++y)		                     // this is the same motif as the X part, just for Y. Now scrolling one of the vertical edges of the square
 		{
 			yCursor = yCursor + (y * signY);
+			if (yCursor >= sizeAnimalSprite) {yCursor = sizeAnimalSprite - 1;}		 // only scroll within the sprite.. do not wrap the edges because that would defeat the direction-finding purpose.
+			if (yCursor < 0) { yCursor = 0;}
 
-			unsigned int spriteI = ((yCursor * sizeAnimalSprite) + xCursor) % squareSizeAnimalSprite;
-			unsigned int pixelIndex = ( squareSizeAnimalSprite * FRAME_BODY ) + spriteI;
-			if ((animals[animalIndex].segments[segmentIndex].frames[pixelIndex] == ORGAN_MUSCLE   ) )
+			for (unsigned int segmentIndex = 0; segmentIndex < animals[animalIndex].segmentsUsed; ++segmentIndex)
 			{
-				unsigned int segmentX = animals[animalIndex].segments[segmentIndex].position % sizeX;
-				unsigned int segmentY = animals[animalIndex].segments[segmentIndex].position / sizeX;
-				unsigned int worldX = segmentX + spriteX - halfSizeAnimalSprite;
-				unsigned int worldY = segmentY + spriteY - halfSizeAnimalSprite;
-				unsigned int worldI = ((worldY * sizeX) + worldX ) % totalSize;
-
-				if ( animalCanMove(i, worldI) )
+				unsigned int pixelIndex = ( squareSizeAnimalSprite * FRAME_BODY ) + ( (yCursor * sizeAnimalSprite) +  xCursor);
+				if ((animals[animalIndex].segments[segmentIndex].frames[pixelIndex] == ORGAN_MUSCLE   ) )
 				{
-					// result = worldI;
-					// chosen = true;
-					// break;
-
-					return worldI;
+					unsigned int segmentX = animals[animalIndex].segments[segmentIndex].position % sizeX;
+					unsigned int segmentY = animals[animalIndex].segments[segmentIndex].position / sizeX;
+					unsigned int worldX = segmentX + xCursor - halfSizeAnimalSprite;
+					unsigned int worldY = segmentY + yCursor - halfSizeAnimalSprite;
+					unsigned int worldI = ((worldY * sizeX) + worldX ) % totalSize;
+					if ( animalCanMove(i, worldI) )
+					{
+						return worldI;
+					}
 				}
 			}
 
 		}
 		yScrollAmount++;
-		if (yScrollAmount >= sizeAnimalSprite) { break; }
-
-
-		signX *= -1;
+		signX *= -1;                                                         		// Then invert the signs and repeat.
 		signY *= -1;
-
-
 	}
-
-
-	// }
-
+	return i;
 }
 
+/*
+* find a direction of travel that is possible for the animal seed to move, as close to the direction of steering as possible.
+*/
+unsigned int getDMostWalkableSquare(unsigned int i, unsigned int animalIndex, unsigned int direction)
+{
+	unsigned int walkableNeighbourCursor = i + neighbourOffsets[ direction ];
+	if (animalIndex < animals.size() && direction < N_NEIGHBOURS )
+	{
+		int sign = 1;                                                               // sign is inverted after each go, makes the search neighbour flip between left and right.
+		for (int j = 0; j < N_NEIGHBOURS; ++j)                                      // test neighbours in order of least to most angle difference
+		{
+			int noise = (extremelyFastNumberFromZeroTo(2) - 1);                     // without noise or other small disturbances, animals move very robotically and get stuck all the time.
+			walkableNeighbourCursor = (walkableNeighbourCursor + (  neighbours [ j + noise ] * sign)) % N_NEIGHBOURS ;
+			unsigned int neighbour = i + neighbourOffsets[ walkableNeighbourCursor ];
+			if (animalCanMove(i, neighbour))
+			{
+				break;
+			}
+			sign = sign * -1;
+		}
+	}
+	return walkableNeighbourCursor;
+}
 
 // for a given animal and desired direction, find the square furthest most in that direction, within its muscle area, that an animal may move
-unsigned int getDMostWalkableSquare( unsigned int i, unsigned int animalIndex, unsigned int direction)
+unsigned int getDMostWalkableMuscleSquare( unsigned int i, unsigned int animalIndex, unsigned int direction)
 {
+	// for the given direction, find the point in the sprite that is closest to it.
+	unsigned int spriteDMostPointX = 0;
+	unsigned int spriteDMostPointY = 0;
 
-	if (animalIndex < animals.size())
+	if (direction == 0) 
 	{
-
-
-
-		// start in the center of the 0th segment sprite.
-		// find any walkable muscle cell.
-		// search walkable neighbours in the d direction until you come to the limit of the muscle area;
-		// return the location of the muscle cell that was furthest in the d direction.
-
-	// 	unsigned int dMostWalkable = 0;
-	// 	bool chosen = false;
-
-
-
-	// 	for (unsigned int segmentIndex = 0; segmentIndex < animals[animalIndex].segmentsUsed; ++segmentIndex)
-	// 	{
-
-
-	// 		unsigned int currentSquare = spiralFindWalkableMuscle( i, animalIndex, segmentIndex);
-
-			
-	// 			while (true)
-	// 			{
-
-
-	// 				// unsigned int spriteX = (pixelIndex % sizeAnimalSprite);
-	// 				// unsigned int spriteY = (pixelIndex / sizeAnimalSprite);
-	// 				// unsigned int spriteI = ((spriteY * sizeAnimalSprite) + spriteX) % squareSizeAnimalSprite;
-	// 				// unsigned int segmentX = animals[animalIndex].segments[segmentIndex].position % sizeX;
-	// 				// unsigned int segmentY = animals[animalIndex].segments[segmentIndex].position / sizeX;
-	// 				// unsigned int worldX = segmentX + spriteX - halfSizeAnimalSprite;
-	// 				// unsigned int worldY = segmentY + spriteY - halfSizeAnimalSprite;
-	// 				// unsigned int worldI = ((worldY * sizeX) + worldX ) % totalSize;
-
-
-	// 				unsigned int nextSquare = getDMostWalkableMuscleCell(unsigned int i, unsigned int animalIndex, unsigned int segmentIndex, unsigned int direction)
-
-	// 				if (nextSquare = currentSquare)
-	// 				{
-	// 					break;
-	// 				}
-	// 				else 
-	// 				{
-	// 					currentSquare = nextSquare;
-	// 				}
-
-
-
-	// 			}
-			
-
-
-
-
-	// 	}
-
-
-
-
-
-
+		spriteDMostPointX = 0;
+		spriteDMostPointY = halfSizeAnimalSprite;
 	}
 
+	if (direction == 1) 
+	{
+		spriteDMostPointX = 0;
+		spriteDMostPointY = 0;
+	}
+
+	if (direction == 2) 
+	{
+		spriteDMostPointX = halfSizeAnimalSprite;
+		spriteDMostPointY = 0;
+	}
+
+	if (direction == 3) 
+	{
+		spriteDMostPointX = sizeAnimalSprite;
+		spriteDMostPointY = 0;
+	}
+
+	if (direction == 4) 
+	{
+		spriteDMostPointX = sizeAnimalSprite;
+		spriteDMostPointY = halfSizeAnimalSprite;
+	}
+
+	if (direction == 5) 
+	{
+		spriteDMostPointX = sizeAnimalSprite;
+		spriteDMostPointY = sizeAnimalSprite;
+	}
+
+	if (direction == 6) 
+	{
+		spriteDMostPointX = halfSizeAnimalSprite;
+		spriteDMostPointY = sizeAnimalSprite;
+	}
+
+	if (direction == 7) 
+	{
+		spriteDMostPointX = 0;
+		spriteDMostPointY = sizeAnimalSprite;
+	}
+
+	unsigned int spriteI = (spriteDMostPointY * sizeX) + spriteDMostPointX;
+
+	// starting from that point, spiral-find the D most walkable muscle square.
+	return spiralFindWalkableMuscle(i, spriteI, animalIndex);
 }
-
-
-
-
 
 void initialize ()
 {
@@ -2677,8 +2578,7 @@ void initialize ()
 	cursor_seedColor = color_yellow;
 	clearGrids();
 	resetMaterials();
-
-	getRelativeDirectionTest ();
+	
 }
 
 void setEverythingHot()
@@ -3396,83 +3296,10 @@ bool animalEat(unsigned int currentPosition , unsigned int neighbour )
 
 }
 
-// should the animal move into that position?
-bool animalCanMove(unsigned int i, unsigned int neighbour)
-{
-	unsigned int animalIndex = seedGrid[i].parentIdentity;
-
-	if (animalIndex < animals.size())
-	{
-		if (  (animals[animalIndex].movementFlags & MOVEMENT_INAIR ) == MOVEMENT_INAIR   )
-		{
-			animals[animalIndex].steady  = true;
-			if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS) // if one of the neighbouring cells is a material type and phase that the animal can exist within
-			{
-				return true;
-			}
-		}
-		if (  (animals[animalIndex].movementFlags & MOVEMENT_INPLANTS ) == MOVEMENT_INPLANTS   )
-		{
-			if (lifeGrid[neighbour].identity > 0x00)
-			{
-				animals[animalIndex].steady  = true;
-				return true;
-			}
-		}
-		if (  (animals[animalIndex].movementFlags & MOVEMENT_INLIQUID ) == MOVEMENT_INLIQUID   )
-		{
-			if (grid[neighbour].phase == PHASE_LIQUID) // if one of the neighbouring cells is a material type and phase that the animal can exist within
-			{
-				animals[animalIndex].steady  = true;
-				return true;
-			}
-		}
-		if (  (animals[animalIndex].movementFlags & MOVEMENT_ONPOWDER ) == MOVEMENT_ONPOWDER   )
-		{
-			if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS || grid[neighbour].phase == PHASE_LIQUID ) // if one of the neighbouring cells is a material type and phase that the animal can exist within
-			{
-				for (int l = 0; l < N_NEIGHBOURS; ++l) // and it has a neighbour of a type and phase the animal can walk on
-				{
-					int neighboursNeighbour = (neighbour + neighbourOffsets[l]);
-					if (neighboursNeighbour != i )
-					{
-						if (  grid[ neighboursNeighbour ] .phase == PHASE_POWDER )
-						{
-							animals[animalIndex].steady  = true;
-							return true;
-						}
-					}
-				}
-			}
-		}
-		if (  (animals[animalIndex].movementFlags & MOVEMENT_ONSOLID ) == MOVEMENT_ONSOLID   )
-		{
-			if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS || grid[neighbour].phase == PHASE_LIQUID ) // if one of the neighbouring cells is a material type and phase that the animal can exist within
-			{
-				for (int l = 0; l < N_NEIGHBOURS; ++l) // and it has a neighbour of a type and phase the animal can walk on
-				{
-					int neighboursNeighbour = (neighbour + neighbourOffsets[l]);
-					if (neighboursNeighbour != i)
-					{
-						if (  grid[ neighboursNeighbour ] .phase == PHASE_SOLID )
-						{
-							animals[animalIndex].steady = true;
-							return true;
-						}
-					}
-				}
-			}
-		}
-	}
-
-	return false;  // this is taken as a signal not to move
-}
 
 
 
-
-
-// return the neighbourOffset of the most ideal direction to move in
+// returns the world pixel that is the most ideal legal move
 unsigned int animalDirectionFinding (unsigned int i)
 {
 
@@ -3482,7 +3309,7 @@ unsigned int animalDirectionFinding (unsigned int i)
 	bool decided = false;
 
 	bool hungry = false;
-	if seedGrid[i].energy > (animals[animalIndex].reproductionEnergy / 2)
+	if (seedGrid[i].energy > (animals[animalIndex].reproductionEnergy / 2))
 	{
 		hungry = true;
 	}
@@ -3534,12 +3361,6 @@ unsigned int animalDirectionFinding (unsigned int i)
 
 			}
 
-			// by default, an animal should:
-			// move toward food
-			if (  animalCanEat(i, worldRandomI)  )
-			{
-
-			}
 
 
 			if (decided)
@@ -3555,8 +3376,28 @@ unsigned int animalDirectionFinding (unsigned int i)
 
 		if (decided)
 		{
-			getRelativeDirection (unsigned int a, unsigned int b)
+			animals[animalIndex].direction = getRelativeDirection (i, decidedLocation);
+
 		}
+		else
+		{
+			if (extremelyFastNumberFromZeroTo(100) == 0)
+			{
+				animals[animalIndex].direction = extremelyFastNumberFromZeroTo(N_NEIGHBOURS);
+			}
+		}
+
+		if (animals[animalIndex].muscleMass > 0)
+		{
+ 			return getDMostWalkableMuscleSquare( i, animalIndex, animals[animalIndex]. direction);
+		}
+		else
+		{
+
+			return getDMostWalkableSquare( i, animalIndex, animals[animalIndex]. direction);
+
+		}
+
 
 
 
