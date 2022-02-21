@@ -19,6 +19,8 @@ using namespace glm;
 
 #include "deepgarden_utilities.h"
 
+extern  const unsigned int totalSize;
+
 #define sizeX 4096
 #define sizeY 256
 #define maxGenomeSize 64
@@ -34,7 +36,7 @@ using namespace glm;
 
 #define numberOfFairTurnsPerSegment 8
 
-#define NUMBER_OF_FRAMES     1        
+#define NUMBER_OF_FRAMES     1
 
 struct Color
 {
@@ -43,8 +45,8 @@ struct Color
 	float b;
 	float a;
 
-	Color(float r=0.0f, float g=0.0f, float b=0.0f, float a=0.0f);
-}__attribute__((packed));
+	Color(float r = 0.0f, float g = 0.0f, float b = 0.0f, float a = 0.0f);
+} __attribute__((packed));
 
 
 // Material is what flavor a square can be. It controls color, melting temperature, and phase change rules
@@ -61,7 +63,7 @@ extern const unsigned int MATERIAL_VACUUM ;
 #define PHASE_LIQUID 		 8
 #define PHASE_GAS    		 16
 #define PHASE_LIGHT  		 32
-		 
+
 // Stage is like material, but applies to the seed grid instead, which is used for objects that can fall or move in front of the other grids.
 #define STAGE_NULL   		 0
 #define STAGE_BUD    		 1
@@ -80,7 +82,7 @@ extern const unsigned int MATERIAL_VACUUM ;
 #define ENERGYSOURCE_PLANT   8
 #define ENERGYSOURCE_ANIMAL  16
 
- // Frames are the sprites used to animate animals.
+// Frames are the sprites used to animate animals.
 #define FRAME_BODY 0 // the 0th frame is the animal's body and the arrangement of its internal organs.
 
 
@@ -128,10 +130,12 @@ extern const unsigned int MATERIAL_VACUUM ;
 #define ORGAN_MOUTH   4  // used to eat and attack
 #define ORGAN_LIVER	  8  // used for hit points and energy storage
 #define ORGAN_BONE	  16	// used for defence and is left behind when the animal is killed
-#define ORGAN_VACUOLE 32 // an empty organ that is removed at the end of development to leave behind shaped voids.
+#define ORGAN_VACUOLE 32 // an empty organ that is removed to leave behind shaped voids.
 // #define ORGAN_CHEMOSENSOR 64 // an organ that can detect smells
+#define ORGAN_HEART   64 // allows the animal to move more often
+#define ORGAN_WEAPON   128 // allows the animal to move more often
 
-#define ORGAN_MARKER_A 128 // used for the polygon filling algorithm. Do not use in gene codes! must be different to all the other organ codes!
+#define ORGAN_MARKER_A 1024 // used for the polygon filling algorithm. Do not use in gene codes! must be different to all the other organ codes!
 
 float RNG();
 
@@ -156,7 +160,7 @@ void thread_temperature2 ();
 void thread_life();
 void thread_seeds();
 
-void setExtremeTempPoint (unsigned int x ,unsigned  int y);
+void setExtremeTempPoint (unsigned int x , unsigned  int y);
 void sendLifeToBackground ();
 
 void insertRandomSeed();
@@ -195,5 +199,9 @@ void clearLiquids();
 void dropAllSeeds();
 
 void eraseAllLife();
+
+
+void animalCrudOps(unsigned int i);
+bool isAnimal(unsigned int i);
 
 #endif

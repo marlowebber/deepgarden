@@ -228,6 +228,14 @@ int main( int argc, char * argv[] )
 		}
 
 		// these operations can't be done while threading is happening. wait for the turn to finish, then use them.
+		for (unsigned int i = 0; i < totalSize; ++i)
+		{
+			if (isAnimal(i))
+			{
+				animalCrudOps(i);
+			}
+		}
+
 		if (flagSave)
 		{
 			crudOps = true;

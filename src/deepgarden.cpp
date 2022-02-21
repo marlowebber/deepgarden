@@ -10,13 +10,13 @@
 
 // #define THREAD_TIMING_READOUT 1
 // #define PLANT_DRAWING_READOUT 1
-#define ANIMAL_DRAWING_READOUT 1
-#define ANIMAL_BEHAVIOR_READOUT 1
+// #define ANIMAL_DRAWING_READOUT 1
+// #define ANIMAL_BEHAVIOR_READOUT 1
 // #define MUTATION_READOUT 1
 
 bool useGerminationMaterial = false;
 bool animalReproductionEnabled = true;
-bool doWeather = false;
+bool doWeather = true;
 bool carnageMode = false;
 
 #define RENDERING_THREADS 4
@@ -190,8 +190,8 @@ float plantEfficiency   = 1.0f;
 vec_u2 playerCursor = vec_u2(0, 0);
 
 float maximumDisplayEnergy = 1.0f;
-float maximumDisplayTemperature = 1000.0f;
-float maximumDisplayPressure = 1000.0f;
+float maximumDisplayTemperature = 2000.0f;
+float maximumDisplayPressure = 2000.0f;
 
 unsigned int visualizer = VISUALIZE_MATERIAL;
 
@@ -206,63 +206,30 @@ unsigned int animationGlobalFrame = FRAME_BODY;
 
 struct Weather
 {
+	// int temperature;
+	// // float pressure;
+	// int pressure;
+	// int direction;
+
 	float temperature;
 	float pressure;
+	float velocityX;
+	float velocityY;
 	unsigned int direction;
+
 	Weather();
 };
 Weather::Weather()
 {
-	this->temperature = 0;
-	this->pressure = 0;
+	this->temperature = 300.0f;
+	this->pressure = 1.0f;
 	this->direction = 0;
+	this->velocityX = 0.0f;
+	this->velocityY = 0.0f;
 }
 
 Weather weatherGrid[totalSize];
 
-void thread_weather()
-{
-#ifdef THREAD_TIMING_READOUT
-	auto start = std::chrono::steady_clock::now();
-#endif
-	if (doWeather)
-	{
-		for (unsigned int i = (sizeX + 1); i < (totalSize - (sizeX + 1)) ; ++i)
-		{
-			// air and weather simulation can be acheived simply by the use of the combined gas law
-			// PV / t = k
-			// P = pressure, V =  volume, t = temperature, k = a constant.
-			// when comparing the same substance under two different sets of conditions, the equation can be written as:
-			// ((p1 * v1) / t1   ) = ( (p2 * v2) / t2  )
-			// this is used to propagate the simulation state between neighbours.
-			// rearranged to solve for t1, with volume parts removed (they are all just 1):
-			//  t1 = (p1 * t2 ) / ( p2 );
-			// rearranged to solve for p1,
-			// p1 = (p2  *t1 ) / (t2 )
-
-			unsigned int neighbour = i + neighbourOffsets[ extremelyFastNumberFromZeroTo(N_NEIGHBOURS - 1) ] ;
-
-			float avgTemp = ( weatherGrid[i].temperature + weatherGrid[neighbour].temperature) / 2;
-			weatherGrid[i].temperature = avgTemp;
-			weatherGrid[neighbour].temperature = avgTemp;
-			float deltaTemp = weatherGrid[i].pressure * combinedGasLawConstant;
-			weatherGrid[i].temperature += deltaTemp;
-
-			float avgPressure = ( weatherGrid[i].pressure + weatherGrid[neighbour].pressure) / 2;
-			weatherGrid[i].pressure = avgPressure;
-			weatherGrid[neighbour].pressure = avgPressure;
-			float deltaP = weatherGrid[i].temperature * combinedGasLawConstant;
-			weatherGrid[i].pressure += deltaP;
-		}
-	}
-
-#ifdef THREAD_TIMING_READOUT
-	auto end = std::chrono::steady_clock::now();
-	auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-	std::cout << "thread_weather " << elapsed.count() << " microseconds." << std::endl;
-#endif
-
-}
 
 struct Material
 {
@@ -391,6 +358,136 @@ SeedParticle * seedGrid = new SeedParticle[totalSize];
 std::list<ProposedLifeParticle> v;
 std::list<ProposedLifeParticle> v_extrudedParticles;
 
+void thread_weather()
+{
+#ifdef THREAD_TIMING_READOUT
+	auto start = std::chrono::steady_clock::now();
+#endif
+	if (doWeather)
+	{
+
+		float airTimestep = 0.5f;
+		maximumDisplayPressure = 0.0f;
+
+		for (unsigned int i = (sizeX + 1); i < (totalSize - (sizeX + 1)) ; ++i)
+		{
+
+
+
+			float dp = 0.0f;
+			float dx = 0.0f;
+			float dy = 0.0f;
+
+
+			float ploss = 0.99f;
+			float vloss = 0.99f;
+
+			// pressure adjustments from velocity
+
+
+			dp += (weatherGrid[ i + neighbourOffsets[0] ].velocityX   - weatherGrid[i].velocityX   );
+			dp += (weatherGrid[ i + neighbourOffsets[2] ].velocityY   - weatherGrid[i].velocityY   );
+
+			weatherGrid[i].pressure *= ploss;
+			weatherGrid[i].pressure += dp * airTimestep;
+
+
+			// velocity adjustments from pressure
+
+
+
+			dx += weatherGrid[i].pressure - weatherGrid[ i + neighbourOffsets[4] ].pressure;
+			dy += weatherGrid[i].pressure - weatherGrid[ i + neighbourOffsets[6] ].pressure;
+			// float vloss = 0.0f;
+			weatherGrid[i].velocityX *= vloss;
+			weatherGrid[i].velocityY *= vloss;
+			weatherGrid[i].velocityX += dx * airTimestep;
+			weatherGrid[i].velocityY += dy * airTimestep;
+
+			// dx *= 0.5f;
+			// dy *= 0.5f;
+
+			// // smoothing kernel
+			// float ap  = 0.0f;//weatherGrid[i].pressure ;
+			// float avx = 0.0f;//weatherGrid[i].velocityX;
+			// float avy = 0.0f;//weatherGrid[i].velocityY ;
+
+			float f = 0.9f;
+
+			int kernelSize = 3;
+			int count = 0;
+
+			dp = 0.0f;
+			dx = 0.0f;
+			dy = 0.0f;
+
+			for (int n = 0; n < N_NEIGHBOURS; ++n)
+			{
+				// for (int ky = 0; ky < kernelSize; ++ky)
+				// {
+
+				unsigned int neighbour = i + neighbourOffsets[n]  ;//extremelyFastNumberFromZeroTo(N_NEIGHBOURS);
+				dp  +=  weatherGrid[ neighbour ].pressure ;
+				dx +=  weatherGrid[ neighbour ].velocityX * f;
+				dy +=  weatherGrid[ neighbour ].velocityY * f;
+				count++;
+				// }
+			}
+
+			// ap  = ap  / count ;
+			// avx = avx / count ;
+			// avy = avy / count ;
+			dx = dx / count;
+			dy = dy/count;
+			dp = dp/count;
+
+			// dp += ap;
+			// dx += avx;
+			// dy += avy;
+
+
+			// dp *= 0.5;
+			// dx *= 0.5;
+			// dy *= 0.5;
+
+
+
+			// apply limits
+			// float max = 1000.0f;
+			// if (dp > max) { dp = max; }
+			// if (dx > max) { dx = max; }
+			// if (dy > max) { dy = max; }
+			// if (dp < max * -1) { dp = max * -1; }
+			// if (dx < max * -1) { dx = max * -1; }
+			// if (dy < max * -1) { dy = max * -1; }
+
+
+
+
+
+
+			weatherGrid[i].pressure  = dp;
+			weatherGrid[i].velocityX = dx;
+			weatherGrid[i].velocityY = dy;
+
+			if (weatherGrid[i].pressure > maximumDisplayPressure)
+			{
+				maximumDisplayPressure = weatherGrid[i].pressure;
+			}
+
+
+		}
+	}
+
+#ifdef THREAD_TIMING_READOUT
+	auto end = std::chrono::steady_clock::now();
+	auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+	std::cout << "thread_weather " << elapsed.count() << " microseconds." << std::endl;
+#endif
+
+}
+
+
 struct AnimalSegment
 {
 	unsigned int position;
@@ -421,14 +518,17 @@ struct Animal
 	unsigned int direction;
 	unsigned int energyFlags;
 	unsigned int personalityFlags;
+	unsigned int directionChangeFrequency;
 	unsigned int age;
+
 	int attack;
 	int defense;
 	int perception;
 	float reproductionEnergy;
 	int hitPoints;
 	int maxHitPoints;
-	int muscleMass;
+	int fitness;
+	int mobility;
 	int biggestMuscle;
 	int biggestEye;
 	float maxStoredEnergy;
@@ -439,6 +539,19 @@ struct Animal
 	bool retired;
 	std::string * partnerGenes;
 	float partnerReproductiveCost;
+
+
+	unsigned int totalArea ;
+	unsigned int totalMuscle ;
+	unsigned int totalLiver  ;
+	unsigned int totalHeart  ;
+	unsigned int totalEye    ;
+	unsigned int totalBone   ;
+	unsigned int totalMouth  ;
+	unsigned int totalWeapon ;
+	unsigned int totalVacuole;
+
+
 	Animal();
 };
 
@@ -450,7 +563,7 @@ Animal::Animal()
 	this->energyFlags = ENERGYSOURCE_PLANT;
 	this->direction = 4;
 	this->segmentsUsed = 0;
-	this->muscleMass = 0;
+	// this->muscleMass = 0;
 	this->biggestMuscle = 0;
 	this->biggestEye = 0;
 	this->attack = 0;
@@ -462,6 +575,17 @@ Animal::Animal()
 	this->timesReproduced = 0;
 	this->retired = false;
 	this->partnerGenes = nullptr;
+	this->mated = false;
+	this->totalArea    = 0;
+	this->totalMuscle  = 0;
+	this->totalLiver   = 0;
+	this->totalHeart   = 0;
+	this->totalEye     = 0;
+	this->totalBone    = 0;
+	this->totalMouth   = 0;
+	this->totalWeapon  = 0;
+	this->totalVacuole = 0;
+
 	for (int i = 0; i < maxAnimalSegments; ++i)
 	{
 		this->segments[i] = AnimalSegment();
@@ -828,7 +952,7 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 
 			for (unsigned int j = animalCursorSegmentNumber; j < limit; ++j)
 			{
-                // then fill the marked areas, it's neater this way.
+				// then fill the marked areas, it's neater this way.
 				for (unsigned int k = 0; k < squareSizeAnimalSprite; ++k)
 				{
 					if (animals[animalIndex].segments[j].frames[ (squareSizeAnimalSprite * FRAME_BODY ) + k ] == ORGAN_MARKER_A)
@@ -1126,8 +1250,88 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 	default:
 	{
 #ifdef ANIMAL_DRAWING_READOUT
-		printf("Skip.\n");
+		printf("Junk DNA was used to move the animal cursors.\n");
 #endif
+
+		animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
+		int numberModifier = alphanumeric( genes[animalCursorString] );
+		// numberModifier = numberModifier / 26;
+
+		if (numberModifier < 13)
+		{
+
+			animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
+			int numberModifier = alphanumeric( genes[animalCursorString] );
+			numberModifier = (numberModifier - 13);
+
+			int diffX = (animalCursorX + numberModifier ) ;
+			int sign = 1; if (diffX < 0) {sign = -1;}
+			diffX = abs(diffX);
+
+			// the drawing cursor must be guided to the destination, so that it does not go off the edge of the allowed drawing area.
+			for (unsigned int j = 0; j < diffX; ++j)
+			{
+				unsigned int testI = (animalCursorY * sizeAnimalSprite) + animalCursorX;
+				if (animals[animalIndex].segments[ animalCursorSegmentNumber].frames[ (squareSizeAnimalSprite * animalCursorFrame ) + testI ] == ORGAN_NOTHING)
+				{
+					break;
+				}
+				else
+				{
+					if (sign > 0)
+					{
+						animalCursorX ++;
+					}
+					else
+					{
+						animalCursorX --;
+					}
+				}
+			}
+
+#ifdef ANIMAL_DRAWING_READOUT
+			printf("char %c, index %u. Set drawing cursor X to %u\n", genes[animalCursorString] , animalCursorString, animalCursorY);
+#endif
+
+		}
+		else
+		{
+
+			animalCursorString++; if (animalCursorString > genes.length()) { return -1; }
+			int numberModifier = alphanumeric( genes[animalCursorString] );
+			numberModifier = (numberModifier - 13);
+
+			int diffY = (animalCursorY + numberModifier ) ;
+			int sign = 1; if (diffY < 0) {sign = -1;}
+			diffY = abs(diffY);
+
+			// the drawing cursor must be guided to the destination, so that it does not go off the edge of the allowed drawing area.
+			for (unsigned int j = 0; j < diffY; ++j)
+			{
+				unsigned int testI = (animalCursorY * sizeAnimalSprite) + animalCursorX;
+				if (animals[animalIndex].segments[ animalCursorSegmentNumber].frames[ (squareSizeAnimalSprite * animalCursorFrame ) + testI ] == ORGAN_NOTHING)
+				{
+					break;
+				}
+				else
+				{
+					if (sign > 0)
+					{
+						animalCursorY ++;
+					}
+					else
+					{
+						animalCursorY --;
+					}
+				}
+			}
+
+#ifdef ANIMAL_DRAWING_READOUT
+			printf("char %c, index %u. Set drawing cursor Y to %u\n", genes[animalCursorString] , animalCursorString, animalCursorY);
+#endif
+
+		}
+
 		return 0;
 	}
 
@@ -1150,10 +1354,21 @@ void measureAnimalQualities(unsigned int currentPosition)
 	animals[animalIndex].hitPoints = 1;
 	animals[animalIndex].maxHitPoints = 1;
 	animals[animalIndex].reproductionEnergy = 1.0f;
+	animals[animalIndex].fitness = 1;
 
-	unsigned int eyeStreak = 0;// horizontal width of the largest eye found on the animal.
-	unsigned int muscleStreak = 0;// horizontal width of the largest muscle found on the animal.
+	unsigned int eyeStreak = 0;     // horizontal width of the largest eye found on the animal.
+	unsigned int muscleStreak = 0;  // horizontal width of the largest muscle found on the animal.
 	unsigned int prevOrgan = ORGAN_NOTHING;
+
+	animals[animalIndex].totalArea = 0;
+	animals[animalIndex].totalMuscle = 0;
+	animals[animalIndex].totalLiver = 0;
+	animals[animalIndex].totalHeart = 0;
+	animals[animalIndex].totalEye = 0;
+	animals[animalIndex].totalBone = 0;
+	animals[animalIndex].totalMouth = 0;
+	animals[animalIndex].totalWeapon = 0;
+	animals[animalIndex].totalVacuole = 0;
 
 	for (unsigned int j = 0; j < animals[animalIndex].segmentsUsed; ++j)
 	{
@@ -1162,10 +1377,7 @@ void measureAnimalQualities(unsigned int currentPosition)
 
 			unsigned int organ = animals[animalIndex].segments[ j].frames[ (squareSizeAnimalSprite * FRAME_BODY ) + k ];
 
-			if (organ != ORGAN_EYE && prevOrgan == ORGAN_EYE)
-			{
-				eyeStreak = 0;
-			}
+
 
 			if (organ != ORGAN_MUSCLE && prevOrgan == ORGAN_MUSCLE)
 			{
@@ -1178,51 +1390,85 @@ void measureAnimalQualities(unsigned int currentPosition)
 			if (organ != ORGAN_NOTHING )
 			{
 				animals[animalIndex].reproductionEnergy += 1.0f;
+				animals[animalIndex].totalArea ++;
 
 				if (organ == ORGAN_BONE )
 				{
-					animals[animalIndex].defense++;
-					// animals[animalIndex].reproductionEnergy += 0.0f;
+
+					animals[animalIndex].totalBone ++;
+					// animals[animalIndex].defense++;
 				}
 				else if (organ == ORGAN_MUSCLE )
 				{
-					animals[animalIndex].muscleMass++;
+					muscleStreak ++;
 
-					animals[animalIndex].attack++;
-					// animals[animalIndex].reproductionEnergy += 0.25f;
-
+					animals[animalIndex].totalMuscle++;
 					if (muscleStreak > animals[animalIndex].biggestMuscle)
 					{
 						animals[animalIndex].biggestMuscle = muscleStreak;
 					}
-					muscleStreak ++;
-
-
 				}
-				// else if (organ == ORGAN_MOUTH )
-				// {
-				// 	// animals[animalIndex].attack++;
-				// 	// animals[animalIndex].reproductionEnergy += 0.5f;
-				// }
 				else if (organ == ORGAN_LIVER )
 				{
-					// animals[animalIndex].reproductionEnergy += 0.5f;
-					animals[animalIndex].hitPoints++;
+
+					animals[animalIndex].totalLiver ++;
+					// animals[animalIndex].hitPoints++;
 				}
 				else if (organ == ORGAN_EYE )
 				{
+
+					animals[animalIndex].totalEye ++;
+					// animals[animalIndex].perception++;
+					eyeStreak ++;
 					if (eyeStreak > animals[animalIndex].biggestEye)
 					{
 						animals[animalIndex].biggestEye = eyeStreak;
 					}
-					// animals[animalIndex].reproductionEnergy += 0.5f;
-					animals[animalIndex].perception++;
-					eyeStreak ++;
 				}
+				else if (organ == ORGAN_HEART )
+				{
+
+					animals[animalIndex].totalHeart ++;
+					// animals[animalIndex].fitness++;
+				}
+				else if (organ == ORGAN_WEAPON )
+				{
+
+					animals[animalIndex].totalWeapon ++;
+					// animals[animalIndex].attack++;
+				}
+				else if (organ == ORGAN_MOUTH )
+				{
+
+					animals[animalIndex].totalMouth ++;
+					// animals[animalIndex].attack++;
+
+
+					animals[animalIndex].reproductionEnergy += 10.0f; // these have to be like crazy more expensive than everything else
+				}
+
+			}
+			if (organ != ORGAN_EYE && prevOrgan == ORGAN_EYE)
+			{
+				eyeStreak = 0;
 			}
 			prevOrgan = animals[animalIndex].segments[ j].frames[ (squareSizeAnimalSprite * FRAME_BODY ) + k ];
 		}
 	}
+
+
+
+	// some attributes depend on the ratio between body parts, and some are absolute.
+	animals[animalIndex].attack = animals[animalIndex].totalWeapon ;
+	animals[animalIndex].defense = animals[animalIndex].totalBone;
+	animals[animalIndex].perception = animals[animalIndex].totalEye ;
+	animals[animalIndex].hitPoints = animals[animalIndex].totalLiver;
+	animals[animalIndex].reproductionEnergy = animals[animalIndex].totalArea;
+	animals[animalIndex].fitness = animals[animalIndex].totalHeart;
+
+	float mobilityRatio = (animals[animalIndex].totalMuscle / animals[animalIndex].totalArea);
+	animals[animalIndex].mobility = 1 + (mobilityRatio * 2) ; // being about 50% muscle grants you an extra move square
+
 	animals[animalIndex].maxHitPoints = animals[animalIndex].hitPoints;
 	seedGrid[currentPosition].energy = animals[animalIndex].reproductionEnergy / 2;
 
@@ -1279,11 +1525,23 @@ Color organColorLookup (unsigned int organ)
 	}
 	case ORGAN_BONE:
 	{
-		return color_white_clear;
+		return color_offwhite;
 		break;
+	}
+	case ORGAN_WEAPON:
+	{
+		return color_purple;
 	}
 	}
 	return color_clear;
+}
+
+// check if a square is animal. created so you can do this from main without exposing the seed grid.
+bool isAnimal(unsigned int i)
+{
+	if (seedGrid[i].stage == STAGE_ANIMAL)
+	{return true;}
+	else { return false;}
 }
 
 void clearAnimalSpritePixel ( unsigned int animalIndex, unsigned int segmentIndex, unsigned int pixelIndex )
@@ -1693,8 +1951,8 @@ void setParticle(unsigned int material, unsigned int i)
 	unsigned int a_offset = (i * numberOfFieldsPerVertex);
 	memcpy( &colorGrid[ a_offset ], & (materials[material].color), 16 );
 
-	weatherGrid[i].temperature = defaultTemperature;
-	weatherGrid[i].pressure = 1.0f;
+	// weatherGrid[i].temperature = defaultTemperature;
+	// weatherGrid[i].pressure = 1000;
 }
 
 
@@ -2047,6 +2305,7 @@ void clearGrids()
 		grid[i] = Particle();
 		seedGrid[i] = SeedParticle();
 		lifeGrid[i] = LifeParticle();
+		weatherGrid[i] = Weather();
 
 		clearParticle(i);
 		clearSeedParticle(i);
@@ -2275,30 +2534,6 @@ bool animalCanMove(unsigned int i, unsigned int neighbour)
 	return false;  // this is taken as a signal not to move
 }
 
-/*
-* find a direction of travel that is possible for the animal seed to move, as close to the direction of steering as possible.
-* returns the direction as a neighbourOffset.
-*/
-unsigned int getClosestWalkableDirection(unsigned int i, unsigned int animalIndex, unsigned int direction)
-{
-	unsigned int walkableNeighbourCursor = i + neighbourOffsets[ direction ];
-	if (animalIndex < animals.size() && direction < N_NEIGHBOURS )
-	{
-		int sign = 1;                                                               // sign is inverted after each go, makes the search neighbour flip between left and right.
-		for (int j = 0; j < N_NEIGHBOURS; ++j)                                      // test neighbours in order of least to most angle difference
-		{
-			int noise = (extremelyFastNumberFromZeroTo(2) - 1);                     // without noise or other small disturbances, animals move very robotically and get stuck all the time.
-			walkableNeighbourCursor = (walkableNeighbourCursor + (  neighbourOffsets [ j + noise ] * sign)) % N_NEIGHBOURS ;
-			unsigned int neighbour = i + neighbourOffsets[ walkableNeighbourCursor ];
-			if (animalCanMove(i, neighbour))
-			{
-				break;
-			}
-			sign = sign * -1;
-		}
-	}
-	return walkableNeighbourCursor;
-}
 
 /*
 * find a direction of travel that is possible for the animal seed to move, as close to the direction of steering as possible.
@@ -2308,15 +2543,17 @@ unsigned int getClosestWalkableDirection(unsigned int i, unsigned int animalInde
 unsigned int getDMostWalkableSquare(unsigned int i, unsigned int animalIndex, unsigned int direction, unsigned int startPosition)
 {
 
+
 	unsigned int neighbour = startPosition + neighbourOffsets[ direction ];
 	if (animalIndex < animals.size() && direction < N_NEIGHBOURS )
 	{
-		int sign = 1;                                                               // sign is inverted after each go, makes the search neighbour flip between left and right.
+		int sign = 1;                                // sign is inverted after each go, makes the search neighbour flip between left and right.
+		if (extremelyFastNumberFromZeroTo(1) == 0) {sign = -1;}
 		for (int j = 0; j < N_NEIGHBOURS; ++j)                                      // test neighbours in order of least to most angle difference
 		{
 			int noise = (extremelyFastNumberFromZeroTo(2) - 1);                     // without noise or other small disturbances, animals move very robotically and get stuck all the time.
-			unsigned int walkableNeighbourDirection =  (j * sign);
-			neighbour = startPosition + neighbourOffsets[ ((walkableNeighbourDirection + noise) % N_NEIGHBOURS) ];
+			unsigned int walkableNeighbourDirection = (direction +  (j * sign) + noise) % N_NEIGHBOURS;
+			neighbour = startPosition + neighbourOffsets[ walkableNeighbourDirection ];
 			if (animalCanMove(i, neighbour))
 			{
 				// printf("getDMostWalkableSquare, animal @ %u, direction %u, result %u\n", i, direction, neighbour);
@@ -2325,6 +2562,9 @@ unsigned int getDMostWalkableSquare(unsigned int i, unsigned int animalIndex, un
 			sign = sign * -1;
 		}
 	}
+
+
+
 	return startPosition;
 }
 
@@ -2448,7 +2688,7 @@ bool animalEat(unsigned int currentPosition , unsigned int neighbour )
 
 
 #ifdef ANIMAL_BEHAVIOR_READOUT
-				printf(" Animal %u dealt %i damange to animal %u\n" , animalIndex ,  damageInflictedB, animalIndexB );
+				printf(" Animal %u dealt %i damage to animal %u\n" , animalIndex ,  damageInflictedB, animalIndexB );
 #endif
 				// seedGrid[currentPosition].energy  += damageInflictedB;
 				animals[animalIndexB].hitPoints -= damageInflictedB;
@@ -2782,7 +3022,10 @@ void setNeutralTemp ()
 void setExtremeTempPoint (unsigned int x , unsigned  int y)
 {
 	unsigned int i = ((y * sizeX) + x) % totalSize;
-	grid[i].temperature = 10000000;
+	weatherGrid[i].temperature = 10000000.0f;
+	weatherGrid[i].pressure = 10000000.0f;
+
+	weatherGrid[i].velocityY = 10000000.0f;
 }
 
 // updates a location on the color grid with a material's new color information, based on phase and temperature.
@@ -2837,13 +3080,12 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 			{
 				if (doWeather)
 				{
-					// exchange heat with the weather grid.
-					int wthertemp = weatherGrid[thermoNeighbour].temperature;
-					int avgTemp = (((grid[currentPosition].temperature ) - wthertemp) ) ;
-					avgTemp = avgTemp / materials[ grid[currentPosition].material ].insulativity;
-					float favtemp = avgTemp;
-					weatherGrid[thermoNeighbour].temperature += favtemp;
-					grid[currentPosition].temperature -= avgTemp;
+
+					// float fgridtemp = grid[currentPosition].temperature;
+					//  float favgTemp = (fgridtemp  + weatherGrid[thermoNeighbour].temperature)/2 ;
+
+					// weatherGrid[thermoNeighbour].temperature = avgTemp;
+					// grid[currentPosition].temperature = avgTemp;
 				}
 				else
 				{
@@ -3273,6 +3515,7 @@ bool animalCanEat(unsigned int currentPosition , unsigned int neighbour )
 unsigned int animalDirectionFinding (unsigned int i)
 {
 	unsigned int animalIndex = seedGrid[i].parentIdentity;
+	if (animalIndex > animals.size()) { return i;}
 	unsigned int decidedLocation;
 	bool decided = false;
 	bool runAway = false;
@@ -3285,44 +3528,31 @@ unsigned int animalDirectionFinding (unsigned int i)
 	if (animalIndex < animals.size())
 	{
 
+
 		// scan the environment using the animal's perception.
+		// more perception means the coverage of the area will be more complete (more rolls= less missed stuff)
+		// but bigger eyes means the coverage is over a wider area
 		for (unsigned int j = 0; j < animals[animalIndex].perception; ++j)
 		{
 
 			unsigned int animalX =  i % sizeX;
 			unsigned int animalY =  i / sizeX;
-			unsigned int worldRandomX = animalX + (extremelyFastNumberFromZeroTo(animals[animalIndex].perception)) - animals[animalIndex].perception;
-			unsigned int worldRandomY = animalY + (extremelyFastNumberFromZeroTo(animals[animalIndex].perception)) - animals[animalIndex].perception;
+			unsigned int worldRandomX = animalX + (extremelyFastNumberFromZeroTo(animals[animalIndex].biggestEye)) - animals[animalIndex].biggestEye;
+			unsigned int worldRandomY = animalY + (extremelyFastNumberFromZeroTo(animals[animalIndex].biggestEye)) - animals[animalIndex].biggestEye;
 			unsigned int worldRandomI = (((worldRandomY * sizeX) + worldRandomX)) % totalSize;
 
 			// the animal personality types determine how it will react.
-
+			if (worldRandomI == i) {continue;} // do not observe the self, it leads to madness
 
 			if (  (animals[animalIndex].personalityFlags & PERSONALITY_COWARDLY ) == PERSONALITY_COWARDLY   )
 			{
-
 				if (seedGrid[worldRandomI].stage == STAGE_ANIMAL)
 				{
 					runAway = true;
 					decidedLocation = worldRandomI;
 					decided = true;
-
 				}
-
 			}
-
-			// if (  (animals[animalIndex].personalityFlags & PERSONALITY_FLOCKING ) == PERSONALITY_FLOCKING   )
-			// {
-
-			// 	if (seedGrid[worldRandomI].stage == STAGE_ANIMAL)
-			// 	{
-			// 		runAway = true;
-			// 		decidedLocation = worldRandomI;
-			// 		decided = true;
-
-			// 	}
-
-			// }
 
 			if (  (animals[animalIndex].personalityFlags & PERSONALITY_FRIENDLY ) == PERSONALITY_FRIENDLY   )
 			{
@@ -3340,18 +3570,17 @@ unsigned int animalDirectionFinding (unsigned int i)
 
 			if (animalCanEat(i, worldRandomI))
 			{
-				if (hungry) // if the animal is hungry, go eat
+				if (hungry)
 				{
 					decidedLocation = worldRandomI;
 					decided = true;
 				}
-
 			}
 
-
-
-
 		}
+
+
+
 
 
 
@@ -3372,6 +3601,7 @@ unsigned int animalDirectionFinding (unsigned int i)
 		{
 
 
+			// printf("not decided\n");
 
 			// check immediate cell neighbours for food
 			for (int j = 0; j < N_NEIGHBOURS; ++j)
@@ -3404,8 +3634,20 @@ unsigned int animalDirectionFinding (unsigned int i)
 		// {
 		// nextMove =
 
+		// printf("DIRECTIONFINDING DIRECTION %u\n", animals[animalIndex].direction );
+
+
 		// }
-		return getDMostWalkableSquare( i, animalIndex, animals[animalIndex]. direction, i);
+
+		unsigned int currentPosition = i;
+
+		for (unsigned int move = 0; move < animals[animalIndex].mobility; ++move)
+		{
+			currentPosition = getDMostWalkableSquare( i, animalIndex, animals[animalIndex]. direction, currentPosition);
+		}
+
+		return currentPosition;
+		// return getDMostWalkableSquare( i, animalIndex, animals[animalIndex]. direction, i);
 		;
 
 
@@ -3486,41 +3728,11 @@ void animalAllSegmentsFall(unsigned int i)
 	}
 }
 
-void animalTurn(unsigned int i)
+void animalCrudOps(unsigned int i)
 {
+
 	unsigned int animalIndex = seedGrid[i].parentIdentity;
-	if (animalIndex > animals.size()) {return;}
-
-	animals[animalIndex].age++;
-
-	bool moved = false;
-	animals[animalIndex].steady = false;
-	unsigned int recommendedMovePosition = i;
-
-	// eat everything you possibly can
-	// animalEat(i);
-
-	animalFeed(i);
-	// use the perception to scan the local environment
-
-
-	unsigned int directionResult = animalDirectionFinding(i);
-
-	// running this sets steady if the animal seed itself is sitting in a supportive environment. however, use steady to knock the animal if it gets stuck.
-	animalCanMove(i, i);
-
-
-	if ( directionResult != i )
-	{
-		// printf("move from %u into square %u\n", i , directionResult);
-		recommendedMovePosition = directionResult;
-		moved = true;
-	}
-	else
-	{
-		animals[animalIndex].steady = false;
-		// printf("directionfinding produced no clear result\n");
-	}
+	if (animalIndex > animals.size() ) {return;}
 
 
 	// reproduce
@@ -3532,16 +3744,82 @@ void animalTurn(unsigned int i)
 	// die
 	if (seedGrid[i].energy < 0.0f)
 	{
-
 #ifdef ANIMAL_BEHAVIOR_READOUT
 		printf("animal %u ran out of energy and died.\n ", animalIndex  );
 #endif
 		killAnAnimal(i);
 		return;
 	}
+}
+
+void animalTurn(unsigned int i)
+{
+	unsigned int animalIndex = seedGrid[i].parentIdentity;
+	if (animalIndex > animals.size()) {return;}
+
+	animals[animalIndex].age++;
+
+	bool moved = false;
+	animals[animalIndex].steady = false;
+	unsigned int recommendedMovePosition = i;
 
 
-	if (!(animals[animalIndex].steady) || extremelyFastNumberFromZeroTo(1000) == 0 ) // small chance to loose footing and slip
+	// for (unsigned int pulse = 0; pulse < animals[animalIndex].fitness; ++pulse)
+	// {
+
+	// 	unsigned int randomOrgan = extremelyFastNumberFromZeroTo(animals[animalIndex].totalArea);
+
+	// 	unsigned int organRegionA = 0;
+	// 	unsigned int organRegionB =
+
+	// 	    if ( randomOrgan > organRegion && randomOrgan < organRegion)
+
+
+	// 	}
+
+
+
+	animalFeed(i);
+	unsigned int directionResult = i;
+	directionResult = animalDirectionFinding(i);
+
+
+
+
+
+
+
+
+	animalCanMove(i, i); // running this sets steady if the animal seed itself is sitting in a supportive environment. however, use steady to knock the animal if it gets stuck.
+	if ( directionResult != i )
+	{
+		recommendedMovePosition = directionResult;
+		moved = true;
+	}
+	else
+	{
+		animals[animalIndex].steady = false;
+	}
+
+// 	// reproduce
+// 	if (seedGrid[i].energy > animals[animalIndex].reproductionEnergy && animals[animalIndex].age > (animals[animalIndex].reproductionEnergy + 100)  && animalReproductionEnabled)
+// 	{
+// 		animalReproduce(i);
+// 	}
+
+// 	// die
+// 	if (seedGrid[i].energy < 0.0f)
+// 	{
+// #ifdef ANIMAL_BEHAVIOR_READOUT
+// 		printf("animal %u ran out of energy and died.\n ", animalIndex  );
+// #endif
+// 		killAnAnimal(i);
+// 		return;
+// 	}
+
+
+	// fall if the animal is unsupported
+	if (!(animals[animalIndex].steady) || extremelyFastNumberFromZeroTo(100) == 0 ) // small chance to loose footing and slip
 	{
 		unsigned int fallSquare = ((i - sizeX) + (extremelyFastNumberFromZeroTo(2) - 1 )) % totalSize;
 		if (grid[fallSquare].phase == PHASE_VACUUM || grid[fallSquare].phase == PHASE_GAS || grid[fallSquare].phase == PHASE_LIQUID)
@@ -3554,16 +3832,12 @@ void animalTurn(unsigned int i)
 		}
 	}
 
+	// exchange the seed to the new location, if any, and update the drawing
 	if (moved)
 	{
 		seedGrid[i].energy -= ((animals[animalIndex].reproductionEnergy) / movementEfficiency); // every move costs energy proportional to the creature size
 		swapSeedParticle(i, recommendedMovePosition);
 		incrementAnimalSegmentPositions(animalIndex, recommendedMovePosition, false );
-	}
-	else
-	{
-		// animalAllSegmentsFall(i);
-
 	}
 }
 
