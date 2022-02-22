@@ -370,7 +370,7 @@ void thread_weather()
 	if (doWeather)
 	{
 
-		float airTimestep = 0.5f;
+		float airTimestep = 0.3f;
 		maximumDisplayPressure = 0.0f;
 		maximumDisplayVelocity = 0.0f;
 
@@ -427,7 +427,11 @@ void thread_weather()
 
 
 				dp += (weatherGrid[ neighbourLeft ].velocityX    - weatherGrid[i].velocityX   );
+				dp += (weatherGrid[i].velocityX - weatherGrid[ neighbourRight ].velocityX    );
+
+
 				dp += (weatherGrid[ neighbourBelow].velocityY    - weatherGrid[i].velocityY   );
+				dp += (weatherGrid[i].velocityY   - weatherGrid[ neighbourAbove].velocityY    );
 		
 				weatherGrid[i].pressure *= ploss;
 				weatherGrid[i].pressure += dp * airTimestep;
@@ -440,6 +444,11 @@ void thread_weather()
 			
 				dx += weatherGrid[i].pressure - weatherGrid[ neighbourRight ].pressure;
 				dy += weatherGrid[i].pressure - weatherGrid[ neighbourAbove ].pressure;
+
+
+				dx +=  weatherGrid[neighbourLeft].pressure -  weatherGrid[i].pressure ;
+				dy +=  weatherGrid[neighbourBelow].pressure -  weatherGrid[i].pressure ;
+
 
 
 				weatherGrid[i].velocityX *= vloss;
