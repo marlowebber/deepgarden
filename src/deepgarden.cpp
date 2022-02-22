@@ -192,6 +192,7 @@ vec_u2 playerCursor = vec_u2(0, 0);
 float maximumDisplayEnergy = 1.0f;
 float maximumDisplayTemperature = 2000.0f;
 float maximumDisplayPressure = 2000.0f;
+float maximumDisplayVelocity = 1.0f;
 
 unsigned int visualizer = VISUALIZE_MATERIAL;
 
@@ -368,114 +369,108 @@ void thread_weather()
 
 		float airTimestep = 0.5f;
 		maximumDisplayPressure = 0.0f;
+		maximumDisplayVelocity = 0.0f;
 
-		for (unsigned int i = (sizeX + 1); i < (totalSize - (sizeX + 1)) ; ++i)
+		for (unsigned int x = 1; x < sizeX-1 ; ++x)
 		{
 
-
-
-			float dp = 0.0f;
-			float dx = 0.0f;
-			float dy = 0.0f;
-
-
-			float ploss = 0.99f;
-			float vloss = 0.99f;
-
-			// pressure adjustments from velocity
-
-
-			dp += (weatherGrid[ i + neighbourOffsets[0] ].velocityX   - weatherGrid[i].velocityX   );
-			dp += (weatherGrid[ i + neighbourOffsets[2] ].velocityY   - weatherGrid[i].velocityY   );
-
-			weatherGrid[i].pressure *= ploss;
-			weatherGrid[i].pressure += dp * airTimestep;
-
-
-			// velocity adjustments from pressure
-
-
-
-			dx += weatherGrid[i].pressure - weatherGrid[ i + neighbourOffsets[4] ].pressure;
-			dy += weatherGrid[i].pressure - weatherGrid[ i + neighbourOffsets[6] ].pressure;
-			// float vloss = 0.0f;
-			weatherGrid[i].velocityX *= vloss;
-			weatherGrid[i].velocityY *= vloss;
-			weatherGrid[i].velocityX += dx * airTimestep;
-			weatherGrid[i].velocityY += dy * airTimestep;
-
-			// dx *= 0.5f;
-			// dy *= 0.5f;
-
-			// // smoothing kernel
-			// float ap  = 0.0f;//weatherGrid[i].pressure ;
-			// float avx = 0.0f;//weatherGrid[i].velocityX;
-			// float avy = 0.0f;//weatherGrid[i].velocityY ;
-
-			float f = 0.9f;
-
-			int kernelSize = 3;
-			int count = 0;
-
-			dp = 0.0f;
-			dx = 0.0f;
-			dy = 0.0f;
-
-			for (int n = 0; n < N_NEIGHBOURS; ++n)
+			for (unsigned int y = 1; y < sizeY -1; ++y)
 			{
-				// for (int ky = 0; ky < kernelSize; ++ky)
-				// {
 
-				unsigned int neighbour = i + neighbourOffsets[n]  ;//extremelyFastNumberFromZeroTo(N_NEIGHBOURS);
-				dp  +=  weatherGrid[ neighbour ].pressure ;
-				dx +=  weatherGrid[ neighbour ].velocityX * f;
-				dy +=  weatherGrid[ neighbour ].velocityY * f;
-				count++;
-				// }
+				unsigned int i = (y * sizeX) + x;
+
+				float dp = 0.0f;
+				float dx = 0.0f;
+				float dy = 0.0f;
+
+
+				float ploss = 0.99f;
+				float vloss = 0.99f;
+
+				float advDistanceMult = 1.0f;
+
+				// pressure adjustments from velocity
+				dp += (weatherGrid[ i + neighbourOffsets[0] ].velocityX   - weatherGrid[i].velocityX   );
+				dp += (weatherGrid[ i + neighbourOffsets[2] ].velocityY   - weatherGrid[i].velocityY   );
+				weatherGrid[i].pressure *= ploss;
+				weatherGrid[i].pressure += dp * airTimestep;
+
+
+				// velocity adjustments from pressure
+				dx += weatherGrid[i].pressure - weatherGrid[ i + neighbourOffsets[4] ].pressure;
+				dy += weatherGrid[i].pressure - weatherGrid[ i + neighbourOffsets[6] ].pressure;
+				// float vloss = 0.0f;
+				weatherGrid[i].velocityX *= vloss;
+				weatherGrid[i].velocityY *= vloss;
+				weatherGrid[i].velocityX += dx * airTimestep;
+				weatherGrid[i].velocityY += dy * airTimestep;
+
+				// // smoothing 
+				// float f = 0.9f;
+				int kernelSize = 3;
+				int count = 0;
+				dp = 0.0f;
+				dx = 0.0f;
+				dy = 0.0f;
+				for (int n = 0; n < N_NEIGHBOURS; ++n)
+				{
+					unsigned int neighbour = (i + neighbourOffsets[n])  ;//extremelyFastNumberFromZeroTo(N_NEIGHBOURS);
+					dp  +=  weatherGrid[ neighbour ].pressure ;
+					dx  +=  weatherGrid[ neighbour ].velocityX; // * f;
+					dy  +=  weatherGrid[ neighbour ].velocityY; // * f;
+					// float pdiff =
+					count++;
+				}
+				dx = dx / count;
+				dy = dy / count;
+				dp = dp / count;
+				weatherGrid[i].pressure  += (dp - weatherGrid[i].pressure)  * 0.5f;
+				weatherGrid[i].velocityX += (dx - weatherGrid[i].velocityX) * 0.5f;
+				weatherGrid[i].velocityY += (dy - weatherGrid[i].velocityY) * 0.5f;
+
+
+
+
+				// take velocity from far away
+				dp = 0.0f;
+				dx = 0.0f;
+				dy = 0.0f;
+
+				int vxf = weatherGrid[i].velocityX  ;
+				int vyf = weatherGrid[i].velocityY ;
+				int takeX = x + vxf  ;// - (dx * advDistanceMult));
+				int takeY = y + vyf  ;// - (dy * advDistanceMult));
+
+				unsigned int takeI = ((takeY * sizeX) + takeX ) % totalSize;
+
+				dx += weatherGrid[takeI].velocityX;
+				dy += weatherGrid[takeI].velocityY;
+
+
+
+				weatherGrid[i].velocityX += (dx - weatherGrid[i].velocityX) * 0.5f;
+				weatherGrid[i].velocityY += (dy - weatherGrid[i].velocityY) * 0.5f;
+
+
+
+
+
+
+				if (weatherGrid[i].pressure > maximumDisplayPressure)
+				{
+					maximumDisplayPressure = weatherGrid[i].pressure;
+				}
+				if (weatherGrid[i].velocityX > maximumDisplayVelocity)
+				{
+					maximumDisplayVelocity = weatherGrid[i].velocityX;
+				}
+				if (weatherGrid[i].velocityY > maximumDisplayVelocity)
+				{
+					maximumDisplayVelocity = weatherGrid[i].velocityY;
+				}
+
+
 			}
-
-			// ap  = ap  / count ;
-			// avx = avx / count ;
-			// avy = avy / count ;
-			dx = dx / count;
-			dy = dy/count;
-			dp = dp/count;
-
-			// dp += ap;
-			// dx += avx;
-			// dy += avy;
-
-
-			// dp *= 0.5;
-			// dx *= 0.5;
-			// dy *= 0.5;
-
-
-
-			// apply limits
-			// float max = 1000.0f;
-			// if (dp > max) { dp = max; }
-			// if (dx > max) { dx = max; }
-			// if (dy > max) { dy = max; }
-			// if (dp < max * -1) { dp = max * -1; }
-			// if (dx < max * -1) { dx = max * -1; }
-			// if (dy < max * -1) { dy = max * -1; }
-
-
-
-
-
-
-			weatherGrid[i].pressure  = dp;
-			weatherGrid[i].velocityX = dx;
-			weatherGrid[i].velocityY = dy;
-
-			if (weatherGrid[i].pressure > maximumDisplayPressure)
-			{
-				maximumDisplayPressure = weatherGrid[i].pressure;
-			}
-
-
 		}
 	}
 
@@ -3025,7 +3020,7 @@ void setExtremeTempPoint (unsigned int x , unsigned  int y)
 	weatherGrid[i].temperature = 10000000.0f;
 	weatherGrid[i].pressure = 10000000.0f;
 
-	weatherGrid[i].velocityY = 10000000.0f;
+	// weatherGrid[i].velocityY = 10000000.0f;
 }
 
 // updates a location on the color grid with a material's new color information, based on phase and temperature.
@@ -3980,9 +3975,9 @@ void thread_graphics()
 			if (!x) { y = i / sizeX; }
 			float fx = x;
 			float fy = y;
-			energyColorGrid[ (i * numberOfFieldsPerVertex) + 0 ] = weatherGrid[i].pressure / maximumDisplayPressure;
-			energyColorGrid[ (i * numberOfFieldsPerVertex) + 1 ] = weatherGrid[i].pressure / maximumDisplayPressure;
-			energyColorGrid[ (i * numberOfFieldsPerVertex) + 2 ] = weatherGrid[i].pressure / maximumDisplayPressure;
+			energyColorGrid[ (i * numberOfFieldsPerVertex) + 0 ] = (weatherGrid[i].velocityX / maximumDisplayVelocity ) + 0.5f ; //weatherGrid[i].pressure / maximumDisplayPressure;
+			energyColorGrid[ (i * numberOfFieldsPerVertex) + 1 ] = (weatherGrid[i].velocityY / maximumDisplayVelocity ) + 0.5f ; //weatherGrid[i].pressure / maximumDisplayPressure;
+			energyColorGrid[ (i * numberOfFieldsPerVertex) + 2 ] = (weatherGrid[i].pressure / maximumDisplayPressure  )  ;
 			energyColorGrid[ (i * numberOfFieldsPerVertex) + 3 ] = 1.0f;
 			energyColorGrid[ (i * numberOfFieldsPerVertex) + 4 ] = fx;
 			energyColorGrid[ (i * numberOfFieldsPerVertex) + 5 ] = fy;
