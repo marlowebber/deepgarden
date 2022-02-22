@@ -395,85 +395,37 @@ void thread_weather()
 		{
 			for (unsigned int x = 0; x < weatherGridX; ++x)
 			{
-
-
-
 				unsigned int weatherGridI = (y * weatherGridX) + x;
-				unsigned int i = ((weatherGridY*weatherGridScale) * sizeX) + (weatherGridX * weatherGridScale);
+				unsigned int i = ((weatherGridY * weatherGridScale) * sizeX) + (weatherGridX * weatherGridScale);
 
-				// unsigned int i = (y * sizeX) + x;
-
-				if (grid[i].phase == PHASE_SOLID || grid[i].phase == PHASE_POWDER) {continue;}
-
-				if (
-				    x == 0 || x == weatherGridX - 1
-				    // weatherGridI == 0
-				)
-				{
-					weatherGrid[weatherGridI].pressure = defaultPressure;
-					// weatherGrid[weatherGridI].temperature = defaultTemperature;
-					// weatherGrid[weatherGridI].velocityX = 0;
-					// weatherGrid[weatherGridI].velocityY = 0;
-					continue;
-				}
-				else if ( y == weatherGridY - 1)
-				{
-					weatherGrid[weatherGridI].pressure = defaultPressure;
-					// weatherGrid[weatherGridI].temperature = defaultTemperature;
-					// weatherGrid[weatherGridI].velocityX = 0;
-					// weatherGrid[weatherGridI].velocityY = 0;
-					continue;
-				}
-
-
-
-				// weatherGrid[weatherGridI].pressure += (defaultPressure - weatherGrid[weatherGridI].pressure) >> 4;
-				// weatherGrid[weatherGridI].velocityX += (0 - weatherGrid[weatherGridI].velocityX) >> 8;
-				// weatherGrid[weatherGridI].pressure += (defaultPressure - weatherGrid[weatherGridI].pressure) >> 8;
-
-
-
-
-				// if (grid[i].phase == PHASE_GAS || grid[i].phase == PHASE_LIQUID || grid[i].phase == PHASE_VACUUM )
-				// {
 				int dp = 0;
 				int dx = 0;
 				int dy = 0;
 
-				// pressure adjustments from velocity
-				int neighbourLeft  = weatherGridI + weatherGridOffsets[0] ;
-				int neighbourBelow = weatherGridI + weatherGridOffsets[2] ;
-				int neighbourRight = weatherGridI + weatherGridOffsets[4] ;
-				int neighbourAbove = weatherGridI + weatherGridOffsets[6] ;
-
-				// if (neighbourLeft  < 0 || neighbourLeft  > weatherGridSize ) {neighbourLeft  = weatherGridI; }
-				// if (neighbourBelow < 0 || neighbourBelow > weatherGridSize ) {neighbourBelow = weatherGridI; }
-				// if (neighbourRight < 0 || neighbourRight > weatherGridSize ) {neighbourRight = weatherGridI; }
-				// if (neighbourAbove < 0 || neighbourAbove > weatherGridSize ) {neighbourAbove = weatherGridI; }
-
-
-				if (neighbourLeft  >= 0 && neighbourLeft  < weatherGridSize )
+	            // adjust pressure and velocity
+				for (unsigned int n = 0; n < N_NEIGHBOURS; n += 2)
 				{
-					dp += (weatherGrid[ neighbourLeft  ].velocityX    - weatherGrid[ weatherGridI   ].velocityX   );
-					dx +=  weatherGrid[neighbourLeft].pressure  -  weatherGrid[weatherGridI].pressure ;
+					unsigned int neighbour = weatherGridI + weatherGridOffsets[n];
+					if (   neighbour  >= 0 && neighbour < weatherGridSize  )
+					{
+						case 0:
+							dp +=  weatherGrid[ neighbour ].velocityX - weatherGrid[ weatherGridI   ].velocityX;
+							dx +=  weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI   ].pressure     ;
+							break;
+						case 2:
+							dp +=  weatherGrid[ neighbour ].velocityY - weatherGrid[ weatherGridI   ].velocityY ;
+							dy +=  weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI   ].pressure ;
+							break;
+						case 4:
+							dp -= weatherGrid[ neighbour ].velocityX  - weatherGrid[ weatherGridI   ].velocityX  ;
+							dx -= weatherGrid[ neighbour ].pressure   - weatherGrid[ weatherGridI   ].pressure ;
+							break;
+						case 6:
+							dp -= weatherGrid[ neighbour ].velocityY  - weatherGrid[ weatherGridI   ].velocityY ;
+							dy -= weatherGrid[ neighbour ].pressure   - weatherGrid[ weatherGridI   ].pressure;
+							break;
+					}
 				}
-				if (neighbourRight >= 0 && neighbourRight < weatherGridSize )
-				{
-					dp += (weatherGrid[ weatherGridI   ].velocityX    - weatherGrid[ neighbourRight ].velocityX   );
-					dx += weatherGrid[weatherGridI].pressure - weatherGrid[ neighbourRight ].pressure;
-				}
-
-				if (neighbourBelow >= 0 && neighbourBelow < weatherGridSize )
-				{
-					dp += (weatherGrid[ neighbourBelow ].velocityY    - weatherGrid[ weatherGridI   ].velocityY   );
-					dy +=  weatherGrid[neighbourBelow].pressure -  weatherGrid[weatherGridI].pressure ;
-				}
-				if (neighbourAbove >= 0 && neighbourAbove < weatherGridSize )
-				{
-					dp += (weatherGrid[ weatherGridI   ].velocityY    - weatherGrid[ neighbourAbove ].velocityY   );
-					dy += weatherGrid[weatherGridI].pressure - weatherGrid[ neighbourAbove ].pressure;
-				}
-
 
 				weatherGrid[weatherGridI].pressure  += dp  >> 2;
 				weatherGrid[weatherGridI].velocityX += dx  >> 2;
@@ -484,25 +436,11 @@ void thread_weather()
 				dy = 0;
 				for (unsigned int n = 0; n < N_NEIGHBOURS; ++n)
 				{
-					unsigned int weatherGridNeighbour = weatherGridI + weatherGridOffsets[n] ;//% totalSize;
-					// unsigned int gridNeighbour = i + neighbourOffsets[n];
-
-
+					unsigned int weatherGridNeighbour = weatherGridI + weatherGridOffsets[n] ;
 					if (weatherGridNeighbour >= weatherGridSize) {weatherGridNeighbour = weatherGridI;}
-					// if (gridNeighbour > totalSize) gridNeighbour = i;
-
-					// if (grid[gridNeighbour].phase == PHASE_GAS || grid[gridNeighbour].phase == PHASE_LIQUID || grid[gridNeighbour].phase == PHASE_VACUUM )
-					// {
 					dp  +=  weatherGrid[ weatherGridNeighbour ].pressure ;
 					dx  +=  weatherGrid[ weatherGridNeighbour ].velocityX;
 					dy  +=  weatherGrid[ weatherGridNeighbour ].velocityY;
-					// }
-					// else
-					// {
-					// 	avgp  +=  weatherGrid[ weatherGridI ].pressure ;
-					// 	avgx  +=  weatherGrid[ weatherGridI ].velocityX;
-					// 	avgy  +=  weatherGrid[ weatherGridI ].velocityY;
-					// }
 				}
 				dx = dx / N_NEIGHBOURS;
 				dy = dy / N_NEIGHBOURS;
@@ -518,28 +456,14 @@ void thread_weather()
 					dx = 0;
 					dy = 0;
 
-
-
 					int takeX = x - (weatherGrid[weatherGridI].velocityX >> 8)  ;
 					int takeY = y - (weatherGrid[weatherGridI].velocityY >> 8)  ;
-
-					// if (takeX >= weatherGridX) { takeX = weatherGridX - 1; }
-					// if (takeX < 0) { takeX = 0; }
-					// if (takeY >= weatherGridY) { takeY = weatherGridY - 1; }
-					// if (takeY < 0) { takeY = 0; }
-
 					int takeI = ((takeY * weatherGridX) + takeX );// % weatherGridSize;
 					if (takeI >= weatherGridSize) {takeI = weatherGridSize - 1;}
 					if (takeI <= 0) {takeI = 0;}
 
 					dx = weatherGrid[takeI].velocityX;
 					dy = weatherGrid[takeI].velocityY;
-
-					// int limit = 100000;
-					// if (dx > limit) { dx = limit; }
-					// else if (dx < -limit) { dx = -limit; }
-					// if (dy > limit) { dy = limit; }
-					// else if (dy < -limit) { dy = -limit; }
 
 					weatherGrid[weatherGridI].velocityX += (( dx - weatherGrid[weatherGridI].velocityX) >> 2); /// 2 ; //* 0.5f;
 					weatherGrid[weatherGridI].velocityY += (( dy - weatherGrid[weatherGridI].velocityY) >> 2); /// 2 ; //* 0.5f;
@@ -566,8 +490,6 @@ void thread_weather()
 					}
 					else
 					{
-						// unsigned int absX = abs(weatherGrid[i].velocityX );
-						// unsigned int absY = abs(weatherGrid[i].velocityY );
 						if (absX > absY )
 						{
 							angle--;
@@ -594,8 +516,6 @@ void thread_weather()
 					}
 					else
 					{
-						// unsigned int absX = abs(weatherGrid[i].velocityX );
-						// unsigned int absY = abs(weatherGrid[i].velocityY );
 						if (absX > absY )
 						{
 							angle--;
@@ -608,11 +528,6 @@ void thread_weather()
 				}
 				weatherGrid[weatherGridI].direction = angle;
 			}
-
-
-
-			// }
-			// }
 		}
 	}
 
@@ -3479,7 +3394,7 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 				// alternate between wind movement and random scatter movement, to look more natural.
 				// if (extremelyFastNumberFromZeroTo(1) == 0)
 				// {
-					// neighbour = neighbourOffsets[ weatherGrid[currentPosition/weatherGridScale].direction ] + currentPosition;
+				// neighbour = neighbourOffsets[ weatherGrid[currentPosition/weatherGridScale].direction ] + currentPosition;
 				// }
 				if (grid[neighbour].phase  == PHASE_VACUUM || (grid[neighbour].phase == PHASE_GAS) )
 				{
