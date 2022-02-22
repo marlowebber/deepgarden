@@ -161,7 +161,7 @@ unsigned int animalCursorOrgan = ORGAN_MUSCLE;
 std::string exampleAnimal = std::string(" uaiajbcmemjccded ");
 
 int defaultTemperature = 300;
-int defaultPressure = 0.0f;
+float defaultPressure = 1000.0f;
 int radiantHeatIntensity = 50; // this is a physical constant that determines how much heat radiates from material, and how strongly material heat is coupled to the atmosphere.
 
 float combinedGasLawConstant = 0.001f;
@@ -223,8 +223,8 @@ struct Weather
 };
 Weather::Weather()
 {
-	this->temperature = 300.0f;
-	this->pressure = 100.0f;
+	this->temperature = defaultTemperature;
+	this->pressure = defaultPressure;
 	this->direction = 0;
 	this->velocityX = 0.0f;
 	this->velocityY = 0.0f;
@@ -370,9 +370,9 @@ void thread_weather()
 	if (doWeather)
 	{
 
-		float airTimestep = 0.3f;
-		maximumDisplayPressure = 0.0f;
-		maximumDisplayVelocity = 0.0f;
+		// float airTimestep = 1.0f;
+		maximumDisplayPressure = 100.0f;
+		maximumDisplayVelocity = 100.0f;
 
 		float ploss = 0.90f;
 		float vloss = 0.90f;
@@ -428,13 +428,11 @@ void thread_weather()
 
 				dp += (weatherGrid[ neighbourLeft ].velocityX    - weatherGrid[i].velocityX   );
 				dp += (weatherGrid[i].velocityX - weatherGrid[ neighbourRight ].velocityX    );
-
-
 				dp += (weatherGrid[ neighbourBelow].velocityY    - weatherGrid[i].velocityY   );
 				dp += (weatherGrid[i].velocityY   - weatherGrid[ neighbourAbove].velocityY    );
 		
-				weatherGrid[i].pressure *= ploss;
-				weatherGrid[i].pressure += dp * airTimestep;
+				// weatherGrid[i].pressure *= ploss;
+				weatherGrid[i].pressure += dp  * 0.5f * 0.8f;
 
 
 
@@ -451,10 +449,10 @@ void thread_weather()
 
 
 
-				weatherGrid[i].velocityX *= vloss;
+				// weatherGrid[i].velocityX *= vloss;
 				weatherGrid[i].velocityY *= vloss;
-				weatherGrid[i].velocityX += dx * airTimestep;
-				weatherGrid[i].velocityY += dy * airTimestep;
+				weatherGrid[i].velocityX += dx * 0.5f * 0.8f;
+				weatherGrid[i].velocityY += dy * 0.5f * 0.8f;
 
 
 
@@ -475,22 +473,24 @@ void thread_weather()
 				avgx = avgx / count;
 				avgy = avgy / count;
 				avgp = avgp / count;
-				weatherGrid[i].pressure  += (avgp - weatherGrid[i].pressure)  * 0.2f;
-				weatherGrid[i].velocityX += (avgx - weatherGrid[i].velocityX) * 0.2f;
-				weatherGrid[i].velocityY += (avgy - weatherGrid[i].velocityY) * 0.2f;
+				weatherGrid[i].pressure  += (avgp - weatherGrid[i].pressure)  * 0.1f;
+				weatherGrid[i].velocityX += (avgx - weatherGrid[i].velocityX) * 0.1f;
+				weatherGrid[i].velocityY += (avgy - weatherGrid[i].velocityY) * 0.1f;
 
 
+if ( false)
+{
 				// take velocity from far away
 				dp = 0.0f;
 				dx = 0.0f;
 				dy = 0.0f;
 
-				float takeScale = 10.0f;
+				float takeScale = 1.0f;
 
 
 
-				int vxf = (weatherGrid[i].velocityX )  ;
-				int vyf = (weatherGrid[i].velocityY ) ;
+				int vxf = (weatherGrid[i].velocityX * takeScale)  ;
+				int vyf = (weatherGrid[i].velocityY * takeScale) ;
 
 				int takeX = x + vxf  ;
 				int takeY = y + vyf  ;
@@ -509,9 +509,9 @@ void thread_weather()
 
 
 
-				weatherGrid[i].velocityX += (dx - weatherGrid[i].velocityX) * 0.1f;
-				weatherGrid[i].velocityY += (dy - weatherGrid[i].velocityY) * 0.1f;
-
+				weatherGrid[i].velocityX += (dx - weatherGrid[i].velocityX) * 0.5f;
+				weatherGrid[i].velocityY += (dy - weatherGrid[i].velocityY) * 0.5f;
+}
 
 
 
@@ -531,13 +531,13 @@ void thread_weather()
 
 
 
-				float angle = atan2(weatherGrid[i].velocityY, weatherGrid[i].velocityX);
+				// float angle = atan2(weatherGrid[i].velocityY, weatherGrid[i].velocityX);
 
-				angle += ( 3.1415f);
-				angle = angle / (2 * 3.1415f);
-				angle *= 8.0f;
-				unsigned int uangle =angle;
-				weatherGrid[i].direction = uangle;
+				// angle += ( 3.1415f);
+				// angle = angle / (2 * 3.1415f);
+				// angle *= 8.0f;
+				// unsigned int uangle =angle;
+				// weatherGrid[i].direction = uangle;
 
 
 			}
@@ -3093,7 +3093,7 @@ void setExtremeTempPoint (unsigned int x , unsigned  int y)
 {
 	unsigned int i = ((y * sizeX) + x) % totalSize;
 	weatherGrid[i].temperature = 10000000.0f;
-	weatherGrid[i].pressure += 1000.0f;
+	weatherGrid[i].pressure += 1000000.0f;
 
 	// weatherGrid[i].velocityY = 10000000.0f;
 }
