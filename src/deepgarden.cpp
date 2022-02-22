@@ -448,8 +448,8 @@ void thread_weather()
 
 
 
-				weatherGrid[i].velocityX += (dx - weatherGrid[i].velocityX) * 0.5f;
-				weatherGrid[i].velocityY += (dy - weatherGrid[i].velocityY) * 0.5f;
+				weatherGrid[i].velocityX += (dx - weatherGrid[i].velocityX) * 0.9f;
+				weatherGrid[i].velocityY += (dy - weatherGrid[i].velocityY) * 0.9f;
 
 
 
@@ -3018,7 +3018,7 @@ void setExtremeTempPoint (unsigned int x , unsigned  int y)
 {
 	unsigned int i = ((y * sizeX) + x) % totalSize;
 	weatherGrid[i].temperature = 10000000.0f;
-	weatherGrid[i].pressure = 10000000.0f;
+	weatherGrid[i].pressure += 1000.0f;
 
 	// weatherGrid[i].velocityY = 10000000.0f;
 }
