@@ -413,16 +413,71 @@ void thread_weather()
 				int dy = 0;
 				int dt = 0;
 				bool edge = false;
-				// bool empty = true;
+				bool empty = true;
 
 				if (x == 0 || y == 0 || x == weatherGridX - 1 || y == weatherGridY - 1)
 				{
 					edge = true;
 
-					dp += ( defaultPressure - weatherGrid[weatherGridI].pressure ) >> 4;
+					weatherGrid[weatherGridI].pressure += ( defaultPressure - weatherGrid[weatherGridI].pressure ) >> 4;
 				}
-				// if (grid[i].phase == PHASE_SOLID || grid[i].phase == PHASE_POWDER )  { empty = false; } //empty = false; }
 
+
+				if (grid[i].phase == PHASE_SOLID || grid[i].phase == PHASE_POWDER )
+				{
+					empty = false;
+
+
+					// grid[i].temperature
+
+
+
+				} //empty = false; }
+
+
+				if (weatherGrid[weatherGridI].temperature  < 0) {weatherGrid[weatherGridI].temperature = 0;}
+			
+
+				// couple the material grid temp to the weather grid temp
+				int combinedTemp = 0;
+				combinedTemp += weatherGrid[weatherGridI].temperature;
+				combinedTemp += grid[i].temperature;
+				combinedTemp = combinedTemp / 2;
+				weatherGrid[weatherGridI].temperature = combinedTemp;
+				unsigned int uboem = abs(combinedTemp);
+				grid[i].temperature = uboem;
+
+
+				
+				// return to default temperature
+				dt = 0;
+				dt = (defaultTemperature - weatherGrid[weatherGridI].temperature) ;
+				weatherGrid[weatherGridI].temperature += dt >> 8;
+
+
+
+
+
+				// dp = dt;
+
+				// weatherGrid[weatherGridI].pressure += ( dt )  >> 12;
+
+
+
+				// printf("grid[i].temperature %i \n", grid[i].temperature);
+				 // grid[i].temperature +=  (   weatherGrid[weatherGridI].temperature - grid[i].temperature) >> 16 ;
+
+// 				unsigned int ugridTemp = abs(miami);
+
+
+// if (miami > 0)
+// {
+// 		grid[i].temperature 		+= ugridTemp;
+
+// 	}
+// 	else {
+// 		grid[i].temperature 		-= ugridTemp;
+// 	}
 
 
 				// for each cell, rotate around the four cardinal neighbours.
@@ -443,7 +498,7 @@ void thread_weather()
 
 							// // weatherGrid[ neighbour ].temperature    += (dp*dx) >> 4;
 							// int tempamount = (dp*dx )>>6;
-							// weatherGrid[ weatherGridI ].temperature += tempamount;
+							// weatherGrid[ weatherGridI ].temperature +=( weatherGrid[ neighbour ].temperature * dx ) >> 12;
 							// weatherGrid[ neighbour ].temperature -= tempamount;
 						}
 
@@ -455,6 +510,9 @@ void thread_weather()
 
 							// weatherGrid[ neighbour ].temperature += (dp*dy) >> 4;
 							// weatherGrid[ neighbour ].temperature -= (dp*dy) >> 4;
+
+
+							// weatherGrid[ weatherGridI ].temperature +=( weatherGrid[ neighbour ].temperature * dy ) >> 12;
 
 							// int tempamount = (dp*dy    )>> 6;
 							// weatherGrid[ weatherGridI ].temperature -= tempamount;
@@ -485,6 +543,7 @@ void thread_weather()
 				// dt = weatherGrid[takeI].temperature;
 				weatherGrid[weatherGridI].velocityX += (( dx - weatherGrid[weatherGridI].velocityX) >> 2);                  // mix in the velocity contribution from far-away.
 				weatherGrid[weatherGridI].velocityY += (( dy - weatherGrid[weatherGridI].velocityY) >> 2);                  // adding more looks cool, but makes the fluid explode on touch like nitroglycerin!
+				
 				// weatherGrid[weatherGridI].temperature += (( dt - weatherGrid[weatherGridI].temperature) >> 2);
 
 
@@ -507,7 +566,9 @@ void thread_weather()
 
 				weatherGrid[weatherGridI].temperature += (( dt - weatherGrid[weatherGridI].temperature) >> 2);
 
-				weatherGrid[weatherGridI].temperature += (( defaultTemperature - weatherGrid[weatherGridI].temperature) >> 4);
+
+
+				// weatherGrid[weatherGridI].temperature += (( defaultTemperature - weatherGrid[weatherGridI].temperature) >> 4);
 
 
 
@@ -550,7 +611,12 @@ void thread_weather()
 				weatherGrid[weatherGridI].pressure  += (dp - weatherGrid[weatherGridI].pressure)  >> 5; // this number is how strong the smoothing effect should be.
 				weatherGrid[weatherGridI].velocityX += (dx - weatherGrid[weatherGridI].velocityX) >> 5; // Less smoothing gives rise to nice fluid effects, but too little and the simulation will be unstable.
 				weatherGrid[weatherGridI].velocityY += (dy - weatherGrid[weatherGridI].velocityY) >> 5; // Too much makes it boring and no details emerge.
-				weatherGrid[weatherGridI].temperature += (dt - weatherGrid[weatherGridI].temperature) >> 5;
+				weatherGrid[weatherGridI].temperature += (dt - weatherGrid[weatherGridI].temperature) >> 2;
+
+
+					// grid[i].temperature += ((   grid[i].temperature -  weatherGrid[weatherGridI].temperature ) )  >> 16;
+
+
 
 
 				// the game simplifies angle in some cases to a number in the range 0 to 7, which points to one of the 8 neighbours.
