@@ -382,7 +382,7 @@ Weather weatherGrid[weatherGridSize];
 
 
 
-bool reverseWeatherState = false;
+// bool reverseWeatherState = false;
 
 void thread_weather()
 {
@@ -394,15 +394,15 @@ void thread_weather()
 		// if you update from x0 y0 to xn yn every time, information will propagate unevenly toward the highest numbered corner, making round waves egg shaped. Fix this by alternating directions each turn. Adds kind of a fast wobble to the fluid.
 		// reverseWeatherState = !reverseWeatherState;
 
-		for (unsigned int wy = 0; wy < weatherGridY ; ++wy)
+		for (unsigned int y = 0; y < weatherGridY ; ++y)
 		{
-			for (unsigned int wx = 0; wx < weatherGridX; ++wx)
+			for (unsigned int x = 0; x < weatherGridX; ++x)
 			{
-				unsigned int x = wx;
-				unsigned int y = wy;
+				// unsigned int x = wx;
+				// unsigned int y = wy;
 
-				if (reverseWeatherState) {x = weatherGridX - (wx + 1); }
-				if (reverseWeatherState) {y = weatherGridY - (wy + 1); }
+				// if (reverseWeatherState) {x = weatherGridX - (wx + 1); }
+				// if (reverseWeatherState) {y = weatherGridY - (wy + 1); }
 
 				unsigned int weatherGridI = (y * weatherGridX) + x;
 				unsigned int i = ((y * weatherGridScale) * sizeX) + (x * weatherGridScale);
