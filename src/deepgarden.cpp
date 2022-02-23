@@ -381,6 +381,9 @@ std::list<ProposedLifeParticle> v_extrudedParticles;
 
 bool reverseWeatherState = false;
 
+// bool reverseX = false;
+// bool reverseY = false;
+
 void thread_weather()
 {
 #ifdef THREAD_TIMING_READOUT
@@ -388,48 +391,96 @@ void thread_weather()
 #endif
 	if (doWeather)
 	{
-		for (unsigned int y = 0; y < weatherGridY ; ++y)
+
+
+
+
+		reverseWeatherState = !reverseWeatherState;
+
+		for (unsigned int wy = 0; wy < weatherGridY ; ++wy)
 		{
-			for (unsigned int x = 0; x < weatherGridX; ++x)
+			for (unsigned int wx = 0; wx < weatherGridX; ++wx)
 			{
+				unsigned int x = wx;
+				unsigned int y = wy;
+				if (reverseWeatherState) {x = weatherGridX - (wx + 1); }
+				if (reverseWeatherState) {y = weatherGridY - (wy + 1); }
+
 				unsigned int weatherGridI = (y * weatherGridX) + x;
 				unsigned int i = ((weatherGridY * weatherGridScale) * sizeX) + (weatherGridX * weatherGridScale);
 
-				// for each cell, interplay pressure and velocity with the 4 corner neighbours.
-				// rotate around the neighbours. A difference in pressure creates velocity. A difference in velocity creates pressure.
 				int dp = 0;
 				int dx = 0;
 				int dy = 0;
 				int dt = 0;
-				for (unsigned int n = 0; n < N_NEIGHBOURS; ++n)
-				{
-					unsigned int neighbour = weatherGridI + weatherGridOffsets[n];
-					if (neighbour < weatherGridSize)
-					{
-						int sign = 1; if (n > 3) { sign = -1; }
 
-						if (n == 0 || n == 4 )
+				// slowly return to the default pressure. Because the simulation is not zero-sum like in real life, it needs help to return to equilibrium.
+				dp += ( defaultPressure - weatherGrid[weatherGridI].pressure ) >> 7;
+
+				if (x == 0 || y == 0 || x == weatherGridX - 1 || y == weatherGridY - 1)
+				{
+
+
+					for (unsigned int n = 0; n < N_NEIGHBOURS; ++n)
+					{
+						unsigned int neighbour = weatherGridI + weatherGridOffsets[n];
+						if (neighbour < weatherGridSize)
 						{
-							dp += sign * (weatherGrid[ neighbour ].velocityX - weatherGrid[ weatherGridI ].velocityX )   ;
-							dx += sign * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )   ;
-						}
-					
-						if (n == 2 || n == 6)
-						{
-							dp += sign * (weatherGrid[ neighbour ].velocityY    - weatherGrid[ weatherGridI   ].velocityY )  ;
-							dy += sign * (weatherGrid[ neighbour ].pressure - weatherGrid[weatherGridI].pressure       )  ;
+
+							// adding and halving two things makes them equal sized. so this is like extra powerful smoothing for just the edges.
+							weatherGrid[neighbour].pressure  = ( weatherGrid[ weatherGridI ].pressure  + weatherGrid[ neighbour ].pressure)  >> 1 ;
+							weatherGrid[neighbour].velocityX = ( weatherGrid[ weatherGridI ].velocityX + weatherGrid[ neighbour ].velocityX) >> 1 ;
+							weatherGrid[neighbour].velocityY = ( weatherGrid[ weatherGridI ].velocityY + weatherGrid[ neighbour ].velocityY) >> 1 ;
+
+
+
 						}
 					}
+
+					// strongly return the edges to normal values.
+					// weatherGrid[weatherGridI].pressure   += ( defaultPressure - weatherGrid[weatherGridI].pressure  ) >> 4;
+					weatherGrid[weatherGridI].velocityX  -= weatherGrid[weatherGridI].velocityX                       >> 4;
+					weatherGrid[weatherGridI].velocityY  -= weatherGrid[weatherGridI].velocityY                       >> 4;
+
+
+				}
+				else
+				{
+					// for each cell, rotate around the four cardinal neighbours.
+					for (unsigned int n = 0; n < N_NEIGHBOURS; ++n)
+					{
+						unsigned int neighbour = weatherGridI + weatherGridOffsets[n];
+						if (neighbour < weatherGridSize)
+						{
+							int sign = 1; if (n > 3) { sign = -1; } // the sign of the difference between two things depends on the order you compare them. Add when facing down, subtract when facing up.
+
+							if (n == 0 || n == 4 ) // on the X axes, exchange horizontal pressure and wind.
+							{
+								dp += sign * (weatherGrid[ neighbour ].velocityX - weatherGrid[ weatherGridI ].velocityX )   ; // A difference in speed creates pressure.
+								dx += sign * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )   ; // A difference in pressure creates movement.
+							}
+
+							if (n == 2 || n == 6) // on the Y axes, exchange vertical pressure and wind.
+							{
+								dp += sign * (weatherGrid[ neighbour ].velocityY - weatherGrid[ weatherGridI ].velocityY )  ;
+								dy += sign * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )  ;
+							}
+						}
+					}
+
+
+
+					// mix in the pressure and velocity contributions for this turn. Reducing them as little as possible allows beautiful ripples and detail.
+					weatherGrid[weatherGridI].velocityX += dx  >> 1;
+					weatherGrid[weatherGridI].pressure  += dp  >> 1;
+					weatherGrid[weatherGridI].velocityY += dy  >> 1;
+
 				}
 
 
-				// also, slowly return to the default pressure. Because the simulation is not zero-sum like in real life, it needs help to return to equilibrium.
-				dp += ( defaultPressure - weatherGrid[weatherGridI].pressure ) >> 8;
 
-				// mix in the pressure and velocity contributions for this turn. Reducing them as little as possible allows beautiful ripples and detail.
-				weatherGrid[weatherGridI].velocityX += dx  >> 1;
-				weatherGrid[weatherGridI].pressure  += dp  >> 1;
-				weatherGrid[weatherGridI].velocityY += dy  >> 1;
+
+
 
 				// smooth the simulation by mixing each cell with the average of its neighbours.
 				dp = 0;
@@ -439,7 +490,7 @@ void thread_weather()
 				for (unsigned int n = 0; n < N_NEIGHBOURS; ++n)
 				{
 					unsigned int weatherGridNeighbour = weatherGridI + weatherGridOffsets[n] ;
-					if (weatherGridNeighbour >= weatherGridSize) {weatherGridNeighbour = weatherGridI;}
+					if (weatherGridNeighbour >= weatherGridSize) {weatherGridNeighbour = weatherGridI;} // you must add 8 numbers here or later math will break down. if a neighbour is not valid, add your own values instead.
 					dp += weatherGrid[ weatherGridNeighbour ].pressure ;
 					dx += weatherGrid[ weatherGridNeighbour ].velocityX;
 					dy += weatherGrid[ weatherGridNeighbour ].velocityY;
@@ -449,10 +500,10 @@ void thread_weather()
 				dy = dy >> 3 ;
 				dp = dp >> 3 ;
 				dt = dt >> 3 ;
-				weatherGrid[weatherGridI].pressure  += (dp - weatherGrid[weatherGridI].pressure)  >> 4; // this number is how strong the smoothing effect should be.
-				weatherGrid[weatherGridI].velocityX += (dx - weatherGrid[weatherGridI].velocityX) >> 4; // Less smoothing gives rise to nice fluid effects, but too little and the simulation will be unstable.
-				weatherGrid[weatherGridI].velocityY += (dy - weatherGrid[weatherGridI].velocityY) >> 4; // Too much makes it boring and no details emerge.
-				weatherGrid[weatherGridI].velocityY += (dy - weatherGrid[weatherGridI].velocityY) >> 4;
+				weatherGrid[weatherGridI].pressure  += (dp - weatherGrid[weatherGridI].pressure)  >> 5; // this number is how strong the smoothing effect should be.
+				weatherGrid[weatherGridI].velocityX += (dx - weatherGrid[weatherGridI].velocityX) >> 5; // Less smoothing gives rise to nice fluid effects, but too little and the simulation will be unstable.
+				weatherGrid[weatherGridI].velocityY += (dy - weatherGrid[weatherGridI].velocityY) >> 5; // Too much makes it boring and no details emerge.
+				weatherGrid[weatherGridI].velocityY += (dy - weatherGrid[weatherGridI].velocityY) >> 5;
 
 				// mix velocity from far away. This is a key component of turbulent behavior in the sim, and produces a billowing effect that looks very realistic. It is prone to great instability.
 				if ( true )
@@ -475,7 +526,7 @@ void thread_weather()
 
 
 				// limit the numbers to safe regimes.
-				int limit = 1000000;
+				const int limit = 1000000;
 				if (weatherGrid[weatherGridI].pressure > limit)    { weatherGrid[weatherGridI].pressure = limit;   }
 				else if (weatherGrid[weatherGridI].pressure < limit * -1) { weatherGrid[weatherGridI].pressure = limit * -1;}
 
