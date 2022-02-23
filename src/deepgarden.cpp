@@ -415,13 +415,12 @@ void thread_weather()
 				int dt = 0;
 				bool edge = false;
 
-				// slowly return to the default pressure. this is done throughout the volume as well as the edge.
-				dp += ( defaultPressure - weatherGrid[weatherGridI].pressure ) >> 7;
 
 				if (x == 0 || y == 0 || x == weatherGridX - 1 || y == weatherGridY - 1)
 				{
 					edge = true;
 
+					dp += ( defaultPressure - weatherGrid[weatherGridI].pressure ) >> 4;
 
 					// for (unsigned int n = 0; n < N_NEIGHBOURS; ++n)
 					// {
@@ -559,20 +558,20 @@ void thread_weather()
 				weatherGrid[weatherGridI].pressure  += (dp - weatherGrid[weatherGridI].pressure)  >> 5; // this number is how strong the smoothing effect should be.
 				weatherGrid[weatherGridI].velocityX += (dx - weatherGrid[weatherGridI].velocityX) >> 5; // Less smoothing gives rise to nice fluid effects, but too little and the simulation will be unstable.
 				weatherGrid[weatherGridI].velocityY += (dy - weatherGrid[weatherGridI].velocityY) >> 5; // Too much makes it boring and no details emerge.
-				weatherGrid[weatherGridI].temperature += (dt - weatherGrid[weatherGridI].temperature) >> 5;
+				// weatherGrid[weatherGridI].temperature += (dt - weatherGrid[weatherGridI].temperature) >> 5;
 
 
 
 				// limit the numbers to safe regimes.
-				const int limit = 1000000;
-				if (weatherGrid[weatherGridI].pressure > limit)    { weatherGrid[weatherGridI].pressure = limit;   }
-				else if (weatherGrid[weatherGridI].pressure < limit * -1) { weatherGrid[weatherGridI].pressure = limit * -1;}
+				// const int limit = 1000000;
+				// if (weatherGrid[weatherGridI].pressure > limit)    { weatherGrid[weatherGridI].pressure = limit;   }
+				// else if (weatherGrid[weatherGridI].pressure < limit * -1) { weatherGrid[weatherGridI].pressure = limit * -1;}
 
-				if (weatherGrid[weatherGridI].velocityX > limit)   { weatherGrid[weatherGridI].velocityX = limit;   }
-				else if (weatherGrid[weatherGridI].velocityX < limit * -1) { weatherGrid[weatherGridI].velocityX = limit * -1;}
+				// if (weatherGrid[weatherGridI].velocityX > limit)   { weatherGrid[weatherGridI].velocityX = limit;   }
+				// else if (weatherGrid[weatherGridI].velocityX < limit * -1) { weatherGrid[weatherGridI].velocityX = limit * -1;}
 
-				if (weatherGrid[weatherGridI].velocityY > limit)   { weatherGrid[weatherGridI].velocityY = limit;   }
-				else if (weatherGrid[weatherGridI].velocityY < limit * -1) { weatherGrid[weatherGridI].velocityY = limit * -1;}
+				// if (weatherGrid[weatherGridI].velocityY > limit)   { weatherGrid[weatherGridI].velocityY = limit;   }
+				// else if (weatherGrid[weatherGridI].velocityY < limit * -1) { weatherGrid[weatherGridI].velocityY = limit * -1;}
 
 				// the game simplifies angle in some cases to a number in the range 0 to 7, which points to one of the 8 neighbours.
 				// this algorithm efficiently calculates it from a float angle. It uses integer comparisons to steer the direction around from a starting angle.
