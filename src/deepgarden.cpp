@@ -396,24 +396,25 @@ void thread_weather()
 				unsigned int i = ((weatherGridY * weatherGridScale) * sizeX) + (weatherGridX * weatherGridScale);
 
 
-				if (grid[i].phase == PHASE_SOLID || grid[i].phase == PHASE_POWDER) {continue;}
+				// if (grid[i].phase == PHASE_SOLID || grid[i].phase == PHASE_POWDER) {continue;}
 
-				if (
-				    x == 0 || x == weatherGridX - 1
-				)
-				{
-					weatherGrid[weatherGridI].pressure = defaultPressure;
-					continue;
-				}
-				else if ( y == weatherGridY - 1)
-				{
-					weatherGrid[weatherGridI].pressure = defaultPressure;
-					continue;
-				}
+				// if (
+				//     x == 0 || x == weatherGridX - 1
+				// )
+				// {
+				// 	weatherGrid[weatherGridI].pressure = defaultPressure;
+				// 	continue;
+				// }
+				// else if ( y == weatherGridY - 1)
+				// {
+				// 	weatherGrid[weatherGridI].pressure = defaultPressure;
+				// 	continue;
+				// }
 
 				int dp = 0;
 				int dx = 0;
 				int dy = 0;
+				int dt = 0;
 
 				// pressure adjustments from velocity
 				int neighbourLeft  = weatherGridI + weatherGridOffsets[0] ;
@@ -444,17 +445,20 @@ void thread_weather()
 				}
 
 
-				// also, slowly return to the default pressure.
-				dp += ( defaultPressure - weatherGrid[weatherGridI].pressure ) >> 4;
+				// also, slowly return to the default pressure. 
+				dp += ( defaultPressure - weatherGrid[weatherGridI].pressure ) >> 8;
 
 
 				weatherGrid[weatherGridI].velocityX += dx  >> 1;
 				weatherGrid[weatherGridI].pressure  += dp  >> 1;
 				weatherGrid[weatherGridI].velocityY += dy  >> 1;
 
+
+				// smooth the simulation by mixing each cell with the average of its neighbours.
 				dp = 0;
 				dx = 0;
 				dy = 0;
+				dt = 0;
 				for (unsigned int n = 0; n < N_NEIGHBOURS; ++n)
 				{
 					unsigned int weatherGridNeighbour = weatherGridI + weatherGridOffsets[n] ;
@@ -463,17 +467,21 @@ void thread_weather()
 					dp  +=  weatherGrid[ weatherGridNeighbour ].pressure ;
 					dx  +=  weatherGrid[ weatherGridNeighbour ].velocityX;
 					dy  +=  weatherGrid[ weatherGridNeighbour ].velocityY;
+					dt  +=  weatherGrid[weatherGridNeighbour].temperature;
 				}
-				dx = dx / N_NEIGHBOURS;
-				dy = dy / N_NEIGHBOURS;
-				dp = dp / N_NEIGHBOURS;
-				weatherGrid[weatherGridI].pressure  += (dp - weatherGrid[weatherGridI].pressure)  >> 4;
+				dx =    dx >> 3 ;  // N_NEIGHBOURS is 8, so you can do the division part of the average by using a bit shift.
+				dy =    dy >> 3 ;
+				dp =    dp >> 3 ;
+				dt =    dt >> 3 ;
+				weatherGrid[weatherGridI].pressure  += (dp - weatherGrid[weatherGridI].pressure)  >> 4; // this number is how strong the smoothing effect should be. Less smoothing gives rise to nice fluid effects, but too little and the simulation will be unstable.
 				weatherGrid[weatherGridI].velocityX += (dx - weatherGrid[weatherGridI].velocityX) >> 4;
 				weatherGrid[weatherGridI].velocityY += (dy - weatherGrid[weatherGridI].velocityY) >> 4;
+				weatherGrid[weatherGridI].velocityY += (dy - weatherGrid[weatherGridI].velocityY) >> 4;
 
+				// mix velocity from far away
 				if ( true )
 				{
-					// take velocity from far away
+					
 					dp = 0;
 					dx = 0;
 					dy = 0;
@@ -503,7 +511,7 @@ void thread_weather()
 				if (weatherGrid[weatherGridI].velocityX > 0)
 				{
 					// angle = 6;
-					angle += (N_NEIGHBOURS/2);
+					angle += (N_NEIGHBOURS / 2);
 
 					if (weatherGrid[weatherGridI].velocityX > 0)
 					{
@@ -3527,7 +3535,7 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 				}
 			}
 
-			else if 
+			else if
 			// movement instructions for SOLIDS
 			(grid[currentPosition].phase  == PHASE_SOLID)
 			{
