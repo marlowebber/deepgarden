@@ -21,19 +21,19 @@ bool carnageMode = false;
 
 #define RENDERING_THREADS 4
 
-const Color color_lightblue 		= Color( 0.1f, 0.3f, 0.65f, 1.0f );
-const Color color_yellow    		= Color( 1.0f, 1.0f, 0.0f, 1.0f );
-const Color color_lightgrey 		= Color( 0.75f, 0.75f, 0.75f, 1.0f );
-const Color color_grey      		= Color( 0.50f, 0.50f, 0.50f, 1.0f );
-const Color color_darkgrey  		= Color( 0.25f, 0.25f, 0.25f, 1.0f );
-const Color color_black     		= Color( 0.0f, 0.0f, 0.0f, 1.0f );
-const Color color_white_clear     	= Color( 1.0f, 1.0f, 1.0f, 0.25f );
-const Color color_purple     		= Color( 0.8f, 0.0f, 0.8f, 1.0f );
-const Color color_orange			= Color( 1.0f, 0.8f, 0.0f, 1.0f);
-const Color color_clear     		= Color( 0.0f, 0.0f, 0.0f, 0.0f );
-const Color color_shadow 	    	= Color( 0.0f, 0.0f, 0.0f, 0.5f);
+const Color color_lightblue         = Color( 0.1f, 0.3f, 0.65f, 1.0f );
+const Color color_yellow            = Color( 1.0f, 1.0f, 0.0f, 1.0f );
+const Color color_lightgrey         = Color( 0.75f, 0.75f, 0.75f, 1.0f );
+const Color color_grey              = Color( 0.50f, 0.50f, 0.50f, 1.0f );
+const Color color_darkgrey          = Color( 0.25f, 0.25f, 0.25f, 1.0f );
+const Color color_black             = Color( 0.0f, 0.0f, 0.0f, 1.0f );
+const Color color_white_clear         = Color( 1.0f, 1.0f, 1.0f, 0.25f );
+const Color color_purple             = Color( 0.8f, 0.0f, 0.8f, 1.0f );
+const Color color_orange            = Color( 1.0f, 0.8f, 0.0f, 1.0f);
+const Color color_clear             = Color( 0.0f, 0.0f, 0.0f, 0.0f );
+const Color color_shadow             = Color( 0.0f, 0.0f, 0.0f, 0.5f);
 const Color color_defaultSeedColor  = Color( 0.75f, 0.35f, 0.1f, 1.0f );
-const Color color_defaultColor     	= Color( 0.35f, 0.35f, 0.35f, 1.0f );
+const Color color_defaultColor         = Color( 0.35f, 0.35f, 0.35f, 1.0f );
 
 const Color tingeShadow = Color( -1.0f, -1.0f, -1.0f, 0.1f );
 const Color phaseTingeSolid =  Color( 1.0f, 1.0f, 1.0f, 0.2f );
@@ -41,8 +41,8 @@ const Color phaseTingeLiquid = Color( -1.0f, -1.0f, -1.0f, 0.2f );
 const Color phaseTingeGas =    Color( -1.0f, -1.0f, -1.0f, 0.4f );
 
 const Color color_offwhite          = Color( 0.9f, 1.0f, 0.8f, 1.0f );
-const Color color_brightred			= Color( 0.9f, 0.1f, 0.0f, 1.0f);
-const Color color_darkred			= Color( 0.5f, 0.05f, 0.0f, 1.0f);
+const Color color_brightred            = Color( 0.9f, 0.1f, 0.0f, 1.0f);
+const Color color_darkred            = Color( 0.5f, 0.05f, 0.0f, 1.0f);
 const Color color_brown             = Color(  0.25f, 0.1f, 0.0f, 1.0f );
 
 int neighbourOffsets[] =
@@ -74,12 +74,12 @@ int spriteNeighbourOffsets[] =
 const unsigned int totalSize = sizeX * sizeY;
 const unsigned int numberOfFieldsPerVertex = 6; /*  R, G, B, A, X, Y  */
 
-float * colorGrid = new float[totalSize * numberOfFieldsPerVertex ];		// the colorgrid is like a painting of the game world which can be drawn to the screen easily, and updated as the game is played. it concerns the physical material.
-float * lifeColorGrid  	= new float[totalSize * numberOfFieldsPerVertex ];  // the same but concerning growing plants. Because plant color information is not easily stored anywhere else, this grid must be preserved in save and load operations.
-float * animationGrid 	= new float[totalSize * numberOfFieldsPerVertex ];	// the same, but for the sprites of animals. This is updated every turn, and animals carry their own copy of their sprites, so this does not need to be preserved.
-float * seedColorGrid  	= new float[totalSize * numberOfFieldsPerVertex];   // the same, but for the colors of seeds and falling photons.
-float * ppGrid       	= new float[totalSize * numberOfFieldsPerVertex];
-float * backgroundSky  	= new float[totalSize * numberOfFieldsPerVertex];
+float * colorGrid = new float[totalSize * numberOfFieldsPerVertex ];        // the colorgrid is like a painting of the game world which can be drawn to the screen easily, and updated as the game is played. it concerns the physical material.
+float * lifeColorGrid      = new float[totalSize * numberOfFieldsPerVertex ];  // the same but concerning growing plants. Because plant color information is not easily stored anywhere else, this grid must be preserved in save and load operations.
+float * animationGrid     = new float[totalSize * numberOfFieldsPerVertex ];    // the same, but for the sprites of animals. This is updated every turn, and animals carry their own copy of their sprites, so this does not need to be preserved.
+float * seedColorGrid      = new float[totalSize * numberOfFieldsPerVertex];   // the same, but for the colors of seeds and falling photons.
+float * ppGrid           = new float[totalSize * numberOfFieldsPerVertex];
+float * backgroundSky      = new float[totalSize * numberOfFieldsPerVertex];
 
 // PLANT DRAWING
 unsigned int recursion_level = 0;
@@ -210,47 +210,6 @@ std::list<vec_u2> v_seeds;
 unsigned int animationChangeCount = 0;
 unsigned int animationGlobalFrame = FRAME_BODY;
 
-struct Weather
-{
-	int temperature;
-	int pressure;
-	int velocityX;
-	int velocityY;
-	unsigned int direction;
-
-	Weather();
-};
-Weather::Weather()
-{
-	this->temperature = defaultTemperature;
-	this->pressure = defaultPressure;
-	this->direction = 0;
-	this->velocityX = defaultVelocity;
-	this->velocityY = defaultVelocity;
-}
-
-
-#define weatherGridScale 2
-
-const int weatherGridX = sizeX / weatherGridScale;
-const int weatherGridY = sizeY / weatherGridScale;
-const int weatherGridSize = weatherGridX * weatherGridY;//totalSize / weatherGridScale;
-
-int weatherGridOffsets[] =
-{
-	- 1,
-	- weatherGridX - 1,
-	- weatherGridX ,
-	- weatherGridX  + 1,
-	+ 1,
-	+weatherGridX + 1,
-	+weatherGridX,
-	+weatherGridX - 1
-};
-
-
-Weather weatherGrid[weatherGridSize];
-
 
 struct Material
 {
@@ -379,10 +338,51 @@ SeedParticle * seedGrid = new SeedParticle[totalSize];
 std::list<ProposedLifeParticle> v;
 std::list<ProposedLifeParticle> v_extrudedParticles;
 
-bool reverseWeatherState = false;
 
-// bool reverseX = false;
-// bool reverseY = false;
+struct Weather
+{
+	int temperature;
+	int pressure;
+	int velocityX;
+	int velocityY;
+	unsigned int direction;
+
+	Weather();
+};
+Weather::Weather()
+{
+	this->temperature = defaultTemperature;
+	this->pressure = defaultPressure;
+	this->direction = 0;
+	this->velocityX = defaultVelocity;
+	this->velocityY = defaultVelocity;
+}
+
+
+#define weatherGridScale 2
+
+const int weatherGridX = sizeX / weatherGridScale;
+const int weatherGridY = sizeY / weatherGridScale;
+const int weatherGridSize = weatherGridX * weatherGridY;//totalSize / weatherGridScale;
+
+int weatherGridOffsets[] =
+{
+	- 1,
+	- weatherGridX - 1,
+	- weatherGridX ,
+	- weatherGridX  + 1,
+	+ 1,
+	+weatherGridX + 1,
+	+weatherGridX,
+	+weatherGridX - 1
+};
+
+
+Weather weatherGrid[weatherGridSize];
+
+
+
+bool reverseWeatherState = false;
 
 void thread_weather()
 {
@@ -391,11 +391,8 @@ void thread_weather()
 #endif
 	if (doWeather)
 	{
-
-
-
-
-		reverseWeatherState = !reverseWeatherState;
+		// if you update from x0 y0 to xn yn every time, information will propagate unevenly toward the highest numbered corner, making round waves egg shaped. Fix this by alternating directions each turn. Adds kind of a fast wobble to the fluid.
+		// reverseWeatherState = !reverseWeatherState;
 
 		for (unsigned int wy = 0; wy < weatherGridY ; ++wy)
 		{
@@ -403,137 +400,93 @@ void thread_weather()
 			{
 				unsigned int x = wx;
 				unsigned int y = wy;
+
 				if (reverseWeatherState) {x = weatherGridX - (wx + 1); }
 				if (reverseWeatherState) {y = weatherGridY - (wy + 1); }
 
 				unsigned int weatherGridI = (y * weatherGridX) + x;
-				unsigned int i = ((wy * weatherGridScale) * sizeX) + (wx * weatherGridScale);
+				unsigned int i = ((y * weatherGridScale) * sizeX) + (x * weatherGridScale);
+				if (i > totalSize) { i = totalSize;}
 
 				int dp = 0;
 				int dx = 0;
 				int dy = 0;
 				int dt = 0;
 				bool edge = false;
-
+				// bool empty = true;
 
 				if (x == 0 || y == 0 || x == weatherGridX - 1 || y == weatherGridY - 1)
 				{
 					edge = true;
 
 					dp += ( defaultPressure - weatherGrid[weatherGridI].pressure ) >> 4;
-
-					// for (unsigned int n = 0; n < N_NEIGHBOURS; ++n)
-					// {
-					// 	unsigned int neighbour = weatherGridI + weatherGridOffsets[n];
-					// 	if (neighbour < weatherGridSize)
-					// 	{
-
-					// 		// adding and halving two things makes them equal sized. so this is like extra powerful smoothing for just the edges.
-					// 		weatherGrid[neighbour].pressure  = ( weatherGrid[ weatherGridI ].pressure  + weatherGrid[ neighbour ].pressure)  >> 1 ;
-					// 		weatherGrid[neighbour].velocityX = ( weatherGrid[ weatherGridI ].velocityX + weatherGrid[ neighbour ].velocityX) >> 1 ;
-					// 		weatherGrid[neighbour].velocityY = ( weatherGrid[ weatherGridI ].velocityY + weatherGrid[ neighbour ].velocityY) >> 1 ;
-
-
-
-					// 	}
-					// }
-
-					// strongly return the edges to normal values.
-					// weatherGrid[weatherGridI].velocityX  -= weatherGrid[weatherGridI].velocityX                       >> 4;
-					// weatherGrid[weatherGridI].velocityY  -= weatherGrid[weatherGridI].velocityY                       >> 4;
-
-
 				}
-				// else
-				// {
+				// if (grid[i].phase == PHASE_SOLID || grid[i].phase == PHASE_POWDER )  { empty = false; } //empty = false; }
 
 
 
+				// for each cell, rotate around the four cardinal neighbours.
+					for (unsigned int n = 0; n < N_NEIGHBOURS; ++n)
+					{
+						unsigned int neighbour = weatherGridI + weatherGridOffsets[n];
+						if (edge)    {neighbour = weatherGridI;}                                                                // if you do not control this, cells on the left and right edge will be able to exchange with the far edge, even though neighbour is less than weatherGridSize. Leading to absolute chaos.
+
+						if (neighbour < weatherGridSize)
+						{
+							int sign = 1; if (n > 3) { sign = -1; }                                                            // the sign of the difference between two things depends on the order you compare them. Add when facing down, subtract when facing up.
+
+							if (n == 0 || n == 4 )                                                                             // on the X axes, exchange horizontal pressure and wind.
+							{
+								dp += sign * (weatherGrid[ neighbour ].velocityX - weatherGrid[ weatherGridI ].velocityX )   ; // A difference in speed creates pressure.
+								dx += sign * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )   ; // A difference in pressure creates movement.
+								// dt += sign * dx * weatherGrid[neighbour].temperature;
+							}
+
+							if (n == 2 || n == 6)                                                                              // on the Y axes, exchange vertical pressure and wind.
+							{
+								dp += sign * (weatherGrid[ neighbour ].velocityY - weatherGrid[ weatherGridI ].velocityY )  ;
+								dy += sign * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )  ;
+								// dt += sign * dy * weatherGrid[neighbour].temperature;
+							}
+						}
+					}
+
+					weatherGrid[weatherGridI].velocityX += dx  >> 1;                                                           // mix in the pressure and velocity contributions for this turn. Reducing them as little as possible allows beautiful ripples and detail.
+					weatherGrid[weatherGridI].pressure  += dp  >> 1;
+					weatherGrid[weatherGridI].velocityY += dy  >> 1;
+
+					weatherGrid[weatherGridI].temperature += dt  >> 1;
 
 
 
-
-
-
-
-
-
-
+					// mix velocity from far away. This is a key component of turbulent behavior in the sim, and produces a billowing effect that looks very realistic. It is prone to great instability.
+					dp = 0;
+					dx = 0;
+					dy = 0;
+					// dt = 0;
+					int takeX = x - (weatherGrid[weatherGridI].velocityX >> 8)  ;                                               // the velocity itself is used to find the grid location to take from.
+					int takeY = y - (weatherGrid[weatherGridI].velocityY >> 8)  ;                                               // velocity numbers range greatly and can be very high, use this number to scale them to an appropriate take distance.
+					int takeI = ((takeY * weatherGridX) + takeX );
+					if (takeI >= weatherGridSize) {takeI = weatherGridSize - 1;}
+					if (takeI <= 0) {takeI = 0;}
+					dx = weatherGrid[takeI].velocityX;
+					dy = weatherGrid[takeI].velocityY;
+					// dt = weatherGrid[takeI].temperature;
+					weatherGrid[weatherGridI].velocityX += (( dx - weatherGrid[weatherGridI].velocityX) >> 2);                  // mix in the velocity contribution from far-away.
+					weatherGrid[weatherGridI].velocityY += (( dy - weatherGrid[weatherGridI].velocityY) >> 2);                  // adding more looks cool, but makes the fluid explode on touch like nitroglycerin!
+					// weatherGrid[weatherGridI].temperature += (( dt - weatherGrid[weatherGridI].temperature) >> 2);
 
 
 
 
 				// }
+				// else
+				// {
+				// 	weatherGrid[weatherGridI].temperature += (grid[i].temperature - weatherGrid[weatherGridI].temperature) >> 2;
 
-
-				// for each cell, rotate around the four cardinal neighbours.
-				for (unsigned int n = 0; n < N_NEIGHBOURS; ++n)
-				{
-					unsigned int neighbour = weatherGridI + weatherGridOffsets[n];
-
-					if (edge)	{neighbour = weatherGridI;} // if you do not control this, cells on the left and right edge will be able to exchange with the far edge, even though neighbour is less than weatherGridSize. Leading to absolute chaos.
-
-					if (neighbour < weatherGridSize)
-					{
-						int sign = 1; if (n > 3) { sign = -1; } // the sign of the difference between two things depends on the order you compare them. Add when facing down, subtract when facing up.
-
-						if (n == 0 || n == 4 ) // on the X axes, exchange horizontal pressure and wind.
-						{
-							dp += sign * (weatherGrid[ neighbour ].velocityX - weatherGrid[ weatherGridI ].velocityX )   ; // A difference in speed creates pressure.
-							dx += sign * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )   ; // A difference in pressure creates movement.
-						}
-
-						if (n == 2 || n == 6) // on the Y axes, exchange vertical pressure and wind.
-						{
-							dp += sign * (weatherGrid[ neighbour ].velocityY - weatherGrid[ weatherGridI ].velocityY )  ;
-							dy += sign * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )  ;
-						}
-					}
-				}
-
-
-
-				// mix in the pressure and velocity contributions for this turn. Reducing them as little as possible allows beautiful ripples and detail.
-				weatherGrid[weatherGridI].velocityX += dx  >> 1;
-				weatherGrid[weatherGridI].pressure  += dp  >> 1;
-				weatherGrid[weatherGridI].velocityY += dy  >> 1;
-
-
-
-
-
-
-
-				// mix velocity from far away. This is a key component of turbulent behavior in the sim, and produces a billowing effect that looks very realistic. It is prone to great instability.
-				if ( true )
-				{
-					dp = 0;
-					dx = 0;
-					dy = 0;
-					dt = 0;
-
-					int takeX = x - (weatherGrid[weatherGridI].velocityX >> 8)  ; // the velocity itself is used to find the grid location to take from.
-					int takeY = y - (weatherGrid[weatherGridI].velocityY >> 8)  ; // velocity numbers range greatly and can be very high, use this number to scale them to an appropriate take distance.
-					int takeI = ((takeY * weatherGridX) + takeX );
-					if (takeI >= weatherGridSize) {takeI = weatherGridSize - 1;}
-					if (takeI <= 0) {takeI = 0;}
-
-					dx = weatherGrid[takeI].velocityX;
-					dy = weatherGrid[takeI].velocityY;
-					dt = weatherGrid[takeI].temperature;
-					// dp = weatherGrid[takeI].pressure;
-
-					weatherGrid[weatherGridI].velocityX += (( dx - weatherGrid[weatherGridI].velocityX) >> 2); // mix in the velocity contribution from far-away.
-					weatherGrid[weatherGridI].velocityY += (( dy - weatherGrid[weatherGridI].velocityY) >> 2); // adding more looks cool, but makes the fluid explode on touch like nitroglycerin!
-					weatherGrid[weatherGridI].temperature += (( dt - weatherGrid[weatherGridI].temperature) >> 2);
-					// weatherGrid[weatherGridI].temperature += (( dt - weatherGrid[weatherGridI].temperature) >> 2);
-				}
-
-
-
-
-
-
+				// 	weatherGrid[weatherGridI].velocityX -= (( weatherGrid[weatherGridI].velocityX) >> 2);                  // mix in the velocity contribution from far-away.
+				// 	weatherGrid[weatherGridI].velocityY -= (( weatherGrid[weatherGridI].velocityY) >> 2);  
+				// }
 
 
 
@@ -541,37 +494,27 @@ void thread_weather()
 				dp = 0;
 				dx = 0;
 				dy = 0;
-				dt = 0;
+				// dt = 0;
 				for (unsigned int n = 0; n < N_NEIGHBOURS; ++n)
 				{
+					// if (empty) {weatherGridNeighbour = weatherGridI;}
+
 					unsigned int weatherGridNeighbour = weatherGridI + weatherGridOffsets[n] ;
-					if (weatherGridNeighbour >= weatherGridSize) {weatherGridNeighbour = weatherGridI;} // you must add 8 numbers here or later math will break down. if a neighbour is not valid, add your own values instead.
+					if (weatherGridNeighbour >= weatherGridSize ) {weatherGridNeighbour = weatherGridI;}                     // you must add 8 numbers here or later math will break down. if a neighbour is not valid, add your own values instead.
 					dp += weatherGrid[ weatherGridNeighbour ].pressure ;
 					dx += weatherGrid[ weatherGridNeighbour ].velocityX;
 					dy += weatherGrid[ weatherGridNeighbour ].velocityY;
 					dt += weatherGrid[weatherGridNeighbour].temperature;
 				}
-				dx = dx >> 3 ;  // N_NEIGHBOURS is 8, so you can do the division part of the average by using a bit shift.
+				dx = dx >> 3 ;                                                                                              // N_NEIGHBOURS is 8, so you can do the division part of the average by using a bit shift.
 				dy = dy >> 3 ;
 				dp = dp >> 3 ;
-				dt = dt >> 3 ;
+				// dt = dt >> 3 ;
 				weatherGrid[weatherGridI].pressure  += (dp - weatherGrid[weatherGridI].pressure)  >> 5; // this number is how strong the smoothing effect should be.
 				weatherGrid[weatherGridI].velocityX += (dx - weatherGrid[weatherGridI].velocityX) >> 5; // Less smoothing gives rise to nice fluid effects, but too little and the simulation will be unstable.
 				weatherGrid[weatherGridI].velocityY += (dy - weatherGrid[weatherGridI].velocityY) >> 5; // Too much makes it boring and no details emerge.
 				// weatherGrid[weatherGridI].temperature += (dt - weatherGrid[weatherGridI].temperature) >> 5;
 
-
-
-				// limit the numbers to safe regimes.
-				// const int limit = 1000000;
-				// if (weatherGrid[weatherGridI].pressure > limit)    { weatherGrid[weatherGridI].pressure = limit;   }
-				// else if (weatherGrid[weatherGridI].pressure < limit * -1) { weatherGrid[weatherGridI].pressure = limit * -1;}
-
-				// if (weatherGrid[weatherGridI].velocityX > limit)   { weatherGrid[weatherGridI].velocityX = limit;   }
-				// else if (weatherGrid[weatherGridI].velocityX < limit * -1) { weatherGrid[weatherGridI].velocityX = limit * -1;}
-
-				// if (weatherGrid[weatherGridI].velocityY > limit)   { weatherGrid[weatherGridI].velocityY = limit;   }
-				// else if (weatherGrid[weatherGridI].velocityY < limit * -1) { weatherGrid[weatherGridI].velocityY = limit * -1;}
 
 				// the game simplifies angle in some cases to a number in the range 0 to 7, which points to one of the 8 neighbours.
 				// this algorithm efficiently calculates it from a float angle. It uses integer comparisons to steer the direction around from a starting angle.
@@ -905,17 +848,17 @@ void fillAPolygon(unsigned int animalIndex, unsigned int usegmentNumber, unsigne
 	{
 		if (
 		    (
-		        i < sizeAnimalSprite  										||  // if i is on the bottom edge of the sprite, or
-		        i > ((sizeAnimalSprite - 1)*sizeAnimalSprite)              	||  // if i is on the top edge of the sprite, or
-		        i % sizeAnimalSprite == 0                               	||  // if i is on one side of the sprite, or
-		        i % sizeAnimalSprite == (sizeAnimalSprite - 1)            	  // if i is on the other edge of the sprite
+		        i < sizeAnimalSprite                                          ||  // if i is on the bottom edge of the sprite, or
+		        i > ((sizeAnimalSprite - 1)*sizeAnimalSprite)                  ||  // if i is on the top edge of the sprite, or
+		        i % sizeAnimalSprite == 0                                   ||  // if i is on one side of the sprite, or
+		        i % sizeAnimalSprite == (sizeAnimalSprite - 1)                  // if i is on the other edge of the sprite
 		    ) &&
 		    (
-		        a->segments[segmentNumber].frames[ frameOffset + i] == ORGAN_NOTHING					// and the pixel is not already drawn.
+		        a->segments[segmentNumber].frames[ frameOffset + i] == ORGAN_NOTHING                    // and the pixel is not already drawn.
 		    )
 		)
 		{
-			a->segments[segmentNumber].frames[frameOffset + i] = ORGAN_MARKER_A;						// set the alpha to -1.0f, which does not occur in our drawings normally, and so can be used to mark a pixel with connection to the edge.
+			a->segments[segmentNumber].frames[frameOffset + i] = ORGAN_MARKER_A;                        // set the alpha to -1.0f, which does not occur in our drawings normally, and so can be used to mark a pixel with connection to the edge.
 		}
 	}
 
@@ -924,7 +867,7 @@ void fillAPolygon(unsigned int animalIndex, unsigned int usegmentNumber, unsigne
 		for (unsigned int i = 0; i < (squareSizeAnimalSprite); ++i)
 		{
 			if ( a->segments[segmentNumber].frames[ frameOffset + i ] != ORGAN_NOTHING) {continue;}
-			unsigned int spriteNeighbours[] =												            // calculate the addresses of the four cardinal neighbours.
+			unsigned int spriteNeighbours[] =                                                            // calculate the addresses of the four cardinal neighbours.
 			{
 				i - 1,
 				i + 1,
@@ -973,7 +916,7 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 {
 	if (animalCursorString >= genes.length())           {return -1;}
 	if (animalCursorSegmentNumber >= maxAnimalSegments) {return -1;}
-	if (animalIndex >= animals.size())				{return -1;}
+	if (animalIndex >= animals.size())                {return -1;}
 
 	Animal * a = &(animals[animalIndex]);
 
@@ -1502,7 +1445,7 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 void measureAnimalQualities(unsigned int currentPosition)
 {
 	unsigned int animalIndex = seedGrid[currentPosition].parentIdentity;
-	if (animalIndex >= animals.size())				{return;}
+	if (animalIndex >= animals.size())                {return;}
 
 #ifdef ANIMAL_DRAWING_READOUT
 	printf( "measureAnimalQualities on animal %u \n" , animalIndex );
@@ -1709,10 +1652,10 @@ void clearAnimalSpritePixel ( unsigned int animalIndex, unsigned int segmentInde
 
 	// if (animalIndex < animals.size() )
 	// {
-	// 	if (segmentIndex < animals[animalIndex].segmentsUsed)
-	// 	{
-	// 		if (pixelIndex < squareSizeAnimalSprite)
-	// 		{
+	//     if (segmentIndex < animals[animalIndex].segmentsUsed)
+	//     {
+	//         if (pixelIndex < squareSizeAnimalSprite)
+	//         {
 	// find the x, y offset of the pixel from the origin in sprite coordinates.
 	int pixelX = (pixelIndex % sizeAnimalSprite) - halfSizeAnimalSprite;
 	int pixelY = (pixelIndex / sizeAnimalSprite) - halfSizeAnimalSprite;
@@ -1725,10 +1668,10 @@ void clearAnimalSpritePixel ( unsigned int animalIndex, unsigned int segmentInde
 
 	if ( (animals[animalIndex].segments[segmentIndex].frames[(squareSizeAnimalSprite * animals[animalIndex].segments[segmentIndex].animationFrame) + pixelIndex]) != ORGAN_NOTHING  ) // only clear the pixel if it is not empty in the original image. This prevents disturbing other sprites.
 	{
-		memcpy( &animationGrid[ j__color_offset], 	&color_clear , 	sizeof(Color) );
+		memcpy( &animationGrid[ j__color_offset],     &color_clear ,     sizeof(Color) );
 	}
-	// 		}
-	// 	}
+	//         }
+	//     }
 
 	// }
 
@@ -1739,10 +1682,10 @@ void setAnimalSpritePixel ( unsigned int animalIndex, unsigned int segmentIndex,
 {
 	// if (animalIndex < animals.size() )
 	// {
-	// 	if (segmentIndex < animals[animalIndex].segmentsUsed)
-	// 	{
-	// 		if (pixelIndex < squareSizeAnimalSprite)
-	// 		{
+	//     if (segmentIndex < animals[animalIndex].segmentsUsed)
+	//     {
+	//         if (pixelIndex < squareSizeAnimalSprite)
+	//         {
 	// find the x, y offset of the pixel from the origin in sprite coordinates.
 	int pixelX = (pixelIndex % sizeAnimalSprite) - halfSizeAnimalSprite;
 	int pixelY = (pixelIndex / sizeAnimalSprite) - halfSizeAnimalSprite;
@@ -1772,7 +1715,7 @@ void setAnimalSpritePixel ( unsigned int animalIndex, unsigned int segmentIndex,
 		// if (segmentIndex == 3) { organColor = color_purple; }
 
 
-		memcpy( &animationGrid[ j__color_offset], &(	organColor )  , 	sizeof(Color) );
+		memcpy( &animationGrid[ j__color_offset], &(    organColor )  ,     sizeof(Color) );
 
 
 
@@ -1784,8 +1727,8 @@ void setAnimalSpritePixel ( unsigned int animalIndex, unsigned int segmentIndex,
 		}
 
 	}
-	// 		}
-	// 	}
+	//         }
+	//     }
 
 	// }
 }
@@ -1796,7 +1739,7 @@ void clearAnimalDrawing(unsigned int i)
 	{
 		unsigned int animalIndex = seedGrid[i].parentIdentity;
 
-		for (	unsigned int j = 0; j < animals[animalIndex].segmentsUsed; j++ )
+		for (    unsigned int j = 0; j < animals[animalIndex].segmentsUsed; j++ )
 		{
 			for (unsigned int k = 0; k < (squareSizeAnimalSprite); ++k)
 			{
@@ -1953,9 +1896,9 @@ void swapSeedParticle(unsigned int a, unsigned int b)
 	float temp_color[4];
 	unsigned int a_offset = (a * numberOfFieldsPerVertex) ;
 	unsigned int b_offset = (b * numberOfFieldsPerVertex) ;
-	memcpy( temp_color, 				&seedColorGrid[ b_offset ] , 	sizeof(Color) ); // 4x floats of 4 bytes each
-	memcpy( &seedColorGrid[ b_offset], 	&seedColorGrid[ a_offset] , 	sizeof(Color) );
-	memcpy( &seedColorGrid[ a_offset ], temp_color, 					sizeof(Color) );
+	memcpy( temp_color,                 &seedColorGrid[ b_offset ] ,     sizeof(Color) ); // 4x floats of 4 bytes each
+	memcpy( &seedColorGrid[ b_offset],     &seedColorGrid[ a_offset] ,     sizeof(Color) );
+	memcpy( &seedColorGrid[ a_offset ], temp_color,                     sizeof(Color) );
 }
 
 // travel from the indicated square in the light direction, marking cells as illuminated or dark along your way.
@@ -1983,14 +1926,14 @@ void photate( unsigned int i )
 		if (!blocked)
 		{
 			seedGrid[currentPosition].energy = lampBrightness;
-			memcpy( &seedColorGrid[ b_offset], 	&color_clear , 	sizeof(Color) );
+			memcpy( &seedColorGrid[ b_offset],     &color_clear ,     sizeof(Color) );
 		}
 		else
 		{
 			if (seedGrid[currentPosition].stage == STAGE_NULL)
 			{
 				seedGrid[currentPosition].energy = lampBrightness  / blocked;
-				memcpy( &seedColorGrid[ b_offset], 	&color_shadow , 	sizeof(Color) );
+				memcpy( &seedColorGrid[ b_offset],     &color_shadow ,     sizeof(Color) );
 				unsigned int a_offset = (b_offset) + 3;
 				seedColorGrid[a_offset] = 1 / (seedGrid[currentPosition].energy ) ;
 
@@ -2128,7 +2071,7 @@ void killAnAnimal(unsigned int i)
 
 	unsigned int animalIndex = seedGrid[i].parentIdentity;
 
-	for (	 int j = animals[animalIndex].segmentsUsed - 1; j >= 0 ; j-- )
+	for (     int j = animals[animalIndex].segmentsUsed - 1; j >= 0 ; j-- )
 	{
 		for ( int k = 0; k < squareSizeAnimalSprite; ++k)
 		{
@@ -2214,15 +2157,15 @@ void incrementAnimalSegmentPositions (unsigned int animalIndex, unsigned int i, 
 				// if (a->segments[0].animationFrame == FRAME_BODY) {segmentPhase = true;}
 				// for (unsigned int j = 0; j < animals[animalIndex].segmentsUsed; ++j)
 				// {
-				// 	if (falling)
-				// 	{
-				// 		animals[animalIndex].segments[j].animationFrame = FRAME_C;
-				// 	}
-				// 	else
-				// 	{
-				// 		if (animals[animalIndex].segments[j].animationFrame == FRAME_B) { animals[animalIndex].segments[j].animationFrame = FRAME_BODY;}
-				// 		else {animals[animalIndex].segments[j].animationFrame = FRAME_B;}
-				// 	}
+				//     if (falling)
+				//     {
+				//         animals[animalIndex].segments[j].animationFrame = FRAME_C;
+				//     }
+				//     else
+				//     {
+				//         if (animals[animalIndex].segments[j].animationFrame == FRAME_B) { animals[animalIndex].segments[j].animationFrame = FRAME_BODY;}
+				//         else {animals[animalIndex].segments[j].animationFrame = FRAME_B;}
+				//     }
 				// }
 
 
@@ -2379,9 +2322,9 @@ void setLifeParticle( std::string genes, unsigned int identity, unsigned int i, 
 void swapLifeParticle(unsigned int a, unsigned int b)
 {
 	LifeParticle tempLife;
-	memcpy( &tempLife,  &(lifeGrid[a]), 	 sizeof(LifeParticle) );
+	memcpy( &tempLife,  &(lifeGrid[a]),      sizeof(LifeParticle) );
 	memcpy( &(lifeGrid[a]),  &(lifeGrid[b]), sizeof(LifeParticle) );
-	memcpy( &(lifeGrid[b]),  &tempLife, 	 sizeof(LifeParticle) );
+	memcpy( &(lifeGrid[b]),  &tempLife,      sizeof(LifeParticle) );
 	float temp_color[4];
 	unsigned int a_offset = (a * numberOfFieldsPerVertex)  ;
 	unsigned int b_offset = (b * numberOfFieldsPerVertex)  ;
@@ -2406,36 +2349,36 @@ void clearColorGrids(unsigned int i)
 	float fx = x;
 	float fy = y;
 	unsigned int    a_offset      = (i * numberOfFieldsPerVertex) ;
-	backgroundSky[ 	a_offset + 0] = 0.0f;
-	backgroundSky[ 	a_offset + 1] = 0.0f;
-	backgroundSky[ 	a_offset + 2] = 0.0f;
-	backgroundSky[ 	a_offset + 3] = 0.0f;
-	backgroundSky[ 	a_offset + 4] = fx;
-	backgroundSky[ 	a_offset + 5] = fy;
-	colorGrid[ 		a_offset + 0] = 0.0f;
-	colorGrid[ 		a_offset + 1] = 0.0f;
-	colorGrid[ 		a_offset + 2] = 0.0f;
-	colorGrid[ 		a_offset + 3] = 0.0f;
-	colorGrid[ 		a_offset + 4] = fx;
-	colorGrid[ 		a_offset + 5] = fy;
-	lifeColorGrid[ 	a_offset + 0] = 0.0f;
-	lifeColorGrid[ 	a_offset + 1] = 0.0f;
-	lifeColorGrid[ 	a_offset + 2] = 0.0f;
-	lifeColorGrid[ 	a_offset + 3] = 0.0f;
-	lifeColorGrid[ 	a_offset + 4] = fx;
-	lifeColorGrid[ 	a_offset + 5] = fy;
+	backgroundSky[     a_offset + 0] = 0.0f;
+	backgroundSky[     a_offset + 1] = 0.0f;
+	backgroundSky[     a_offset + 2] = 0.0f;
+	backgroundSky[     a_offset + 3] = 0.0f;
+	backgroundSky[     a_offset + 4] = fx;
+	backgroundSky[     a_offset + 5] = fy;
+	colorGrid[         a_offset + 0] = 0.0f;
+	colorGrid[         a_offset + 1] = 0.0f;
+	colorGrid[         a_offset + 2] = 0.0f;
+	colorGrid[         a_offset + 3] = 0.0f;
+	colorGrid[         a_offset + 4] = fx;
+	colorGrid[         a_offset + 5] = fy;
+	lifeColorGrid[     a_offset + 0] = 0.0f;
+	lifeColorGrid[     a_offset + 1] = 0.0f;
+	lifeColorGrid[     a_offset + 2] = 0.0f;
+	lifeColorGrid[     a_offset + 3] = 0.0f;
+	lifeColorGrid[     a_offset + 4] = fx;
+	lifeColorGrid[     a_offset + 5] = fy;
 	animationGrid[  a_offset + 0] = 0.0f;
 	animationGrid[  a_offset + 1] = 0.0f;
 	animationGrid[  a_offset + 2] = 0.0f;
 	animationGrid[  a_offset + 3] = 0.0f;
 	animationGrid[  a_offset + 4] = fx;
 	animationGrid[  a_offset + 5] = fy;
-	seedColorGrid[ 	a_offset + 0] = 0.0f;
-	seedColorGrid[ 	a_offset + 1] = 0.0f;
-	seedColorGrid[ 	a_offset + 2] = 0.0f;
-	seedColorGrid[ 	a_offset + 3] = 0.5f;
-	seedColorGrid[ 	a_offset + 4] = fx;
-	seedColorGrid[ 	a_offset + 5] = fy;
+	seedColorGrid[     a_offset + 0] = 0.0f;
+	seedColorGrid[     a_offset + 1] = 0.0f;
+	seedColorGrid[     a_offset + 2] = 0.0f;
+	seedColorGrid[     a_offset + 3] = 0.5f;
+	seedColorGrid[     a_offset + 4] = fx;
+	seedColorGrid[     a_offset + 5] = fy;
 }
 
 void clearAnimationGrid()
@@ -2591,7 +2534,7 @@ void createRandomWorld()
 	for (unsigned int i = 0; i < totalSize; ++i)
 	{
 		unsigned int a_offset  = i * numberOfFieldsPerVertex;
-		memcpy( &(backgroundSky[ a_offset ]), &color_black, 					sizeof(Color) );
+		memcpy( &(backgroundSky[ a_offset ]), &color_black,                     sizeof(Color) );
 		if (extremelyFastNumberFromZeroTo(100) ==  0)
 		{
 			// create a background star with random blackbody color and alpha
@@ -2601,7 +2544,7 @@ void createRandomWorld()
 			randomStarAlpha = randomStarAlpha * randomStarAlpha * randomStarAlpha * randomStarAlpha * randomStarAlpha * randomStarAlpha * randomStarAlpha; // cubing the value or more shifts the distribution lower while preserving the range.
 			randomStarAlpha = randomStarAlpha / 2;
 			randomStarColor.a = randomStarAlpha;
-			memcpy( &(backgroundSky[ a_offset ]), &randomStarColor, 					sizeof(Color) );
+			memcpy( &(backgroundSky[ a_offset ]), &randomStarColor,                     sizeof(Color) );
 		}
 	}
 }
@@ -2738,11 +2681,11 @@ unsigned int getDMostWalkableSquare(unsigned int i, unsigned int animalIndex, un
 // unsigned int getRandomWalkableNeighbour(unsigned int i, unsigned int animalIndex, unsigned int direction, unsigned int startPosition)
 // {
 
-// 	unsigned int randomN = extremelyFastNumberFromZeroTo(N_NEIGHBOURS);
-// 	for (int j = 0; j < N_NEIGHBOURS; ++j)
-// 	{
+//     unsigned int randomN = extremelyFastNumberFromZeroTo(N_NEIGHBOURS);
+//     for (int j = 0; j < N_NEIGHBOURS; ++j)
+//     {
 
-// 	}
+//     }
 
 // }
 
@@ -2929,24 +2872,24 @@ void animalFeed(unsigned int i)
 				// if ((animals[animalIndex].segments[segmentIndex].frames[pixelIndex] == ORGAN_MUSCLE   ) )
 				// {
 
-				// 	unsigned int worldX = segmentX + spriteX - halfSizeAnimalSprite;
-				// 	unsigned int worldY = segmentY + spriteY - halfSizeAnimalSprite;
-				// 	unsigned int worldI = ((worldY * sizeX) + worldX ) % totalSize;
-				// 	if (worldI != i)
-				// 	{
-				// 		if ( animalCanMove(i, worldI) )
-				// 		{
-				// 			int diffX = spriteDMostPointX - spriteX;                          // you found one! compare the different to the best so far.
-				// 			int diffY = spriteDMostPointY - spriteY;                         // but don't tell anyone I do math like this.
-				// 			int diffSum = abs(diffX) + abs(diffY);
-				// 			if (diffSum < closestSum  )
-				// 			{
-				// 				closestWalkableMuscle = worldI;
-				// 				closestSum = diffSum;
-				// 			}
-				// 			// foundValidCloseSquareThisSegment = true;
-				// 		}
-				// 	}
+				//     unsigned int worldX = segmentX + spriteX - halfSizeAnimalSprite;
+				//     unsigned int worldY = segmentY + spriteY - halfSizeAnimalSprite;
+				//     unsigned int worldI = ((worldY * sizeX) + worldX ) % totalSize;
+				//     if (worldI != i)
+				//     {
+				//         if ( animalCanMove(i, worldI) )
+				//         {
+				//             int diffX = spriteDMostPointX - spriteX;                          // you found one! compare the different to the best so far.
+				//             int diffY = spriteDMostPointY - spriteY;                         // but don't tell anyone I do math like this.
+				//             int diffSum = abs(diffX) + abs(diffY);
+				//             if (diffSum < closestSum  )
+				//             {
+				//                 closestWalkableMuscle = worldI;
+				//                 closestSum = diffSum;
+				//             }
+				//             // foundValidCloseSquareThisSegment = true;
+				//         }
+				//     }
 				// }
 				// }
 
@@ -2979,122 +2922,122 @@ void animalFeed(unsigned int i)
 // unsigned int getDMostWalkableMuscleSquare( unsigned int i, unsigned int animalIndex, unsigned int direction)
 // {
 
-// 	// printf("getDMostWalkableMuscleSquare direction %u\n", direction);
-// 	// for the given direction, find the point in the sprite that is closest to it.
-// 	unsigned int spriteDMostPointX = 0;
-// 	unsigned int spriteDMostPointY = 0;
+//     // printf("getDMostWalkableMuscleSquare direction %u\n", direction);
+//     // for the given direction, find the point in the sprite that is closest to it.
+//     unsigned int spriteDMostPointX = 0;
+//     unsigned int spriteDMostPointY = 0;
 
-// 	if (direction == 0)
-// 	{
-// 		spriteDMostPointX = 0;
-// 		spriteDMostPointY = halfSizeAnimalSprite;
-// 	}
+//     if (direction == 0)
+//     {
+//         spriteDMostPointX = 0;
+//         spriteDMostPointY = halfSizeAnimalSprite;
+//     }
 
-// 	if (direction == 1)
-// 	{
-// 		spriteDMostPointX = 0;
-// 		spriteDMostPointY = 0;
-// 	}
+//     if (direction == 1)
+//     {
+//         spriteDMostPointX = 0;
+//         spriteDMostPointY = 0;
+//     }
 
-// 	if (direction == 2)
-// 	{
-// 		spriteDMostPointX = halfSizeAnimalSprite;
-// 		spriteDMostPointY = 0;
-// 	}
+//     if (direction == 2)
+//     {
+//         spriteDMostPointX = halfSizeAnimalSprite;
+//         spriteDMostPointY = 0;
+//     }
 
-// 	if (direction == 3)
-// 	{
-// 		spriteDMostPointX = sizeAnimalSprite;
-// 		spriteDMostPointY = 0;
-// 	}
+//     if (direction == 3)
+//     {
+//         spriteDMostPointX = sizeAnimalSprite;
+//         spriteDMostPointY = 0;
+//     }
 
-// 	if (direction == 4)
-// 	{
-// 		spriteDMostPointX = sizeAnimalSprite;
-// 		spriteDMostPointY = halfSizeAnimalSprite;
-// 	}
+//     if (direction == 4)
+//     {
+//         spriteDMostPointX = sizeAnimalSprite;
+//         spriteDMostPointY = halfSizeAnimalSprite;
+//     }
 
-// 	if (direction == 5)
-// 	{
-// 		spriteDMostPointX = sizeAnimalSprite;
-// 		spriteDMostPointY = sizeAnimalSprite;
-// 	}
+//     if (direction == 5)
+//     {
+//         spriteDMostPointX = sizeAnimalSprite;
+//         spriteDMostPointY = sizeAnimalSprite;
+//     }
 
-// 	if (direction == 6)
-// 	{
-// 		spriteDMostPointX = halfSizeAnimalSprite;
-// 		spriteDMostPointY = sizeAnimalSprite;
-// 	}
+//     if (direction == 6)
+//     {
+//         spriteDMostPointX = halfSizeAnimalSprite;
+//         spriteDMostPointY = sizeAnimalSprite;
+//     }
 
-// 	if (direction == 7)
-// 	{
-// 		spriteDMostPointX = 0;
-// 		spriteDMostPointY = sizeAnimalSprite;
-// 	}
+//     if (direction == 7)
+//     {
+//         spriteDMostPointX = 0;
+//         spriteDMostPointY = sizeAnimalSprite;
+//     }
 
 
-// 	unsigned int closestWalkableMuscle = i;
-// 	unsigned int closestSum = sizeAnimalSprite + sizeAnimalSprite;
+//     unsigned int closestWalkableMuscle = i;
+//     unsigned int closestSum = sizeAnimalSprite + sizeAnimalSprite;
 
-// 	// bool foundValidCloseSquareThisSegment = false;
-// 	// bool lookForMoveSquares = true;
+//     // bool foundValidCloseSquareThisSegment = false;
+//     // bool lookForMoveSquares = true;
 
-// 	for (unsigned int segmentIndex = 0; segmentIndex < animals[animalIndex].segmentsUsed; ++segmentIndex)
-// 	{
+//     for (unsigned int segmentIndex = 0; segmentIndex < animals[animalIndex].segmentsUsed; ++segmentIndex)
+//     {
 
-// 		unsigned int segmentX = animals[animalIndex].segments[segmentIndex].position % sizeX;
-// 		unsigned int segmentY = animals[animalIndex].segments[segmentIndex].position / sizeX;
-// 		for (unsigned int spriteI = 0; spriteI < squareSizeAnimalSprite; ++spriteI)
-// 		{
+//         unsigned int segmentX = animals[animalIndex].segments[segmentIndex].position % sizeX;
+//         unsigned int segmentY = animals[animalIndex].segments[segmentIndex].position / sizeX;
+//         for (unsigned int spriteI = 0; spriteI < squareSizeAnimalSprite; ++spriteI)
+//         {
 
-// 			unsigned int spriteX = spriteI % sizeAnimalSprite;
-// 			unsigned int spriteY = spriteI / sizeAnimalSprite;
-// 			unsigned int pixelIndex = (squareSizeAnimalSprite * FRAME_BODY) + spriteI;
+//             unsigned int spriteX = spriteI % sizeAnimalSprite;
+//             unsigned int spriteY = spriteI / sizeAnimalSprite;
+//             unsigned int pixelIndex = (squareSizeAnimalSprite * FRAME_BODY) + spriteI;
 
-// 			// if (lookForMoveSquares)
-// 			// {
-// 			if ((animals[animalIndex].segments[segmentIndex].frames[pixelIndex] == ORGAN_MUSCLE   ) )
-// 			{
+//             // if (lookForMoveSquares)
+//             // {
+//             if ((animals[animalIndex].segments[segmentIndex].frames[pixelIndex] == ORGAN_MUSCLE   ) )
+//             {
 
-// 				unsigned int worldX = segmentX + spriteX - halfSizeAnimalSprite;
-// 				unsigned int worldY = segmentY + spriteY - halfSizeAnimalSprite;
-// 				unsigned int worldI = ((worldY * sizeX) + worldX ) % totalSize;
-// 				if (worldI != i)
-// 				{
-// 					if ( animalCanMove(i, worldI) )
-// 					{
-// 						int diffX = spriteDMostPointX - spriteX;                          // you found one! compare the different to the best so far.
-// 						int diffY = spriteDMostPointY - spriteY;                         // but don't tell anyone I do math like this.
-// 						int diffSum = abs(diffX) + abs(diffY);
-// 						if (diffSum < closestSum  )
-// 						{
-// 							closestWalkableMuscle = worldI;
-// 							closestSum = diffSum;
-// 						}
-// 						// foundValidCloseSquareThisSegment = true;
-// 					}
-// 				}
-// 			}
-// 			// }
+//                 unsigned int worldX = segmentX + spriteX - halfSizeAnimalSprite;
+//                 unsigned int worldY = segmentY + spriteY - halfSizeAnimalSprite;
+//                 unsigned int worldI = ((worldY * sizeX) + worldX ) % totalSize;
+//                 if (worldI != i)
+//                 {
+//                     if ( animalCanMove(i, worldI) )
+//                     {
+//                         int diffX = spriteDMostPointX - spriteX;                          // you found one! compare the different to the best so far.
+//                         int diffY = spriteDMostPointY - spriteY;                         // but don't tell anyone I do math like this.
+//                         int diffSum = abs(diffX) + abs(diffY);
+//                         if (diffSum < closestSum  )
+//                         {
+//                             closestWalkableMuscle = worldI;
+//                             closestSum = diffSum;
+//                         }
+//                         // foundValidCloseSquareThisSegment = true;
+//                     }
+//                 }
+//             }
+//             // }
 
-// 			// // feed while you're here
-// 			// else if ((animals[animalIndex].segments[segmentIndex].frames[pixelIndex] == ORGAN_MOUTH   ) )
-// 			// {
-// 			// 	unsigned int worldX = segmentX + spriteX - halfSizeAnimalSprite;
-// 			// 	unsigned int worldY = segmentY + spriteY - halfSizeAnimalSprite;
-// 			// 	unsigned int worldI = ((worldY * sizeX) + worldX ) % totalSize;
-// 			// 	if (worldI != i)
-// 			// 	{
-// 			// 		animalEat(i, worldI);
-// 			// 	}
-// 			// }
-// 		}
+//             // // feed while you're here
+//             // else if ((animals[animalIndex].segments[segmentIndex].frames[pixelIndex] == ORGAN_MOUTH   ) )
+//             // {
+//             //     unsigned int worldX = segmentX + spriteX - halfSizeAnimalSprite;
+//             //     unsigned int worldY = segmentY + spriteY - halfSizeAnimalSprite;
+//             //     unsigned int worldI = ((worldY * sizeX) + worldX ) % totalSize;
+//             //     if (worldI != i)
+//             //     {
+//             //         animalEat(i, worldI);
+//             //     }
+//             // }
+//         }
 
-// 		// if (foundValidCloseSquareThisSegment) { lookForMoveSquares = false;}
-// 	}
+//         // if (foundValidCloseSquareThisSegment) { lookForMoveSquares = false;}
+//     }
 
-// 	// printf("the D most square is. %u i is %u\n", closestWalkableMuscle, i);
-// 	return closestWalkableMuscle;
+//     // printf("the D most square is. %u i is %u\n", closestWalkableMuscle, i);
+//     return closestWalkableMuscle;
 // }
 
 void initialize ()
@@ -3274,25 +3217,25 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 			}
 			// else
 			// {
-			// 	if (doWeather)
-			// 	{
+			//     if (doWeather)
+			//     {
 
-			// 		// float fgridtemp = grid[currentPosition].temperature;
-			// 		//  float favgTemp = (fgridtemp  + weatherGrid[thermoNeighbour].temperature)/2 ;
+			//         // float fgridtemp = grid[currentPosition].temperature;
+			//         //  float favgTemp = (fgridtemp  + weatherGrid[thermoNeighbour].temperature)/2 ;
 
-			// 		// weatherGrid[thermoNeighbour].temperature = avgTemp;
-			// 		// grid[currentPosition].temperature = avgTemp;
-			// 	}
-			// 	else
-			// 	{
-			// 		// if neighbour is a vacuum, radiate heat away into space. more so if it is hotter.
-			// 		int crntmp = grid[currentPosition].temperature;
-			// 		int dftmp = defaultTemperature;
-			// 		int radiantHeat = (crntmp - dftmp) / radiantHeatIntensity;
-			// 		grid[currentPosition].temperature -= radiantHeat;
-			// 		float fradiantHeat = radiantHeat;
-			// 		weatherGrid[currentPosition].temperature += fradiantHeat;
-			// 	}
+			//         // weatherGrid[thermoNeighbour].temperature = avgTemp;
+			//         // grid[currentPosition].temperature = avgTemp;
+			//     }
+			//     else
+			//     {
+			//         // if neighbour is a vacuum, radiate heat away into space. more so if it is hotter.
+			//         int crntmp = grid[currentPosition].temperature;
+			//         int dftmp = defaultTemperature;
+			//         int radiantHeat = (crntmp - dftmp) / radiantHeatIntensity;
+			//         grid[currentPosition].temperature -= radiantHeat;
+			//         float fradiantHeat = radiantHeat;
+			//         weatherGrid[currentPosition].temperature += fradiantHeat;
+			//     }
 			// }
 			if (extremelyFastNumberFromZeroTo(4) == 0) // only check phase sometimes bcoz its lots of work.
 			{
@@ -3360,14 +3303,14 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 						{
 							if (nSolidNeighbours > materials[grid[currentPosition].material].crystal_n)
 							{
-								if (nAttachableNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
+								if (nAttachableNeighbours > 0) {    grid[currentPosition].phase = PHASE_SOLID; }
 							}
 						}
 						else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_EQUAL)
 						{
 							if (nSolidNeighbours == materials[grid[currentPosition].material].crystal_n)
 							{
-								if (nAttachableNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
+								if (nAttachableNeighbours > 0) {    grid[currentPosition].phase = PHASE_SOLID; }
 							}
 						}
 
@@ -3375,52 +3318,52 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 						// But their information should be known in this code.
 						// else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_LESSTHAN)
 						// {
-						// 	if (nSolidNeighbours < materials[grid[currentPosition].material].crystal_n)
-						// 	{
-						// 		if (nAttachableNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
-						// 	}
+						//     if (nSolidNeighbours < materials[grid[currentPosition].material].crystal_n)
+						//     {
+						//         if (nAttachableNeighbours > 0) {    grid[currentPosition].phase = PHASE_SOLID; }
+						//     }
 						// }
 						// else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_EVENNUMBER)
 						// {
-						// 	if (nSolidNeighbours % 2 == 0)
-						// 	{
-						// 		if (nAttachableNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
-						// 	}
+						//     if (nSolidNeighbours % 2 == 0)
+						//     {
+						//         if (nAttachableNeighbours > 0) {    grid[currentPosition].phase = PHASE_SOLID; }
+						//     }
 						// }
 						// else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_ODDNUMBER)
 						// {
-						// 	if (nSolidNeighbours % 2 == 1)
-						// 	{
-						// 		if (nAttachableNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
-						// 	}
+						//     if (nSolidNeighbours % 2 == 1)
+						//     {
+						//         if (nAttachableNeighbours > 0) {    grid[currentPosition].phase = PHASE_SOLID; }
+						//     }
 						// }
 
 						else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_CORNER)
 						{
 							if (longestSolidStreak == 3 && (longestSolidStreakOffset % 2) == 0 )
 							{
-								if (nAttachableNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
+								if (nAttachableNeighbours > 0) {    grid[currentPosition].phase = PHASE_SOLID; }
 							}
 						}
 						else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_EDGE)
 						{
 							if (longestSolidStreak == 3 && (longestSolidStreakOffset % 2) == 1 )
 							{
-								if (nAttachableNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
+								if (nAttachableNeighbours > 0) {    grid[currentPosition].phase = PHASE_SOLID; }
 							}
 						}
 						else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_ROW)
 						{
 							if (longestSolidStreak == materials[grid[currentPosition].material].crystal_n )
 							{
-								if (nAttachableNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
+								if (nAttachableNeighbours > 0) {    grid[currentPosition].phase = PHASE_SOLID; }
 							}
 						}
 						else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_LEFTN)
 						{
-							if (	grid[currentPosition + (materials[grid[currentPosition].material].crystal_n) ].phase == PHASE_SOLID)
+							if (    grid[currentPosition + (materials[grid[currentPosition].material].crystal_n) ].phase == PHASE_SOLID)
 							{
-								if (nAttachableNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
+								if (nAttachableNeighbours > 0) {    grid[currentPosition].phase = PHASE_SOLID; }
 							}
 						}
 						else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_NOTLEFTRIGHTN)
@@ -3430,7 +3373,7 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 							    grid[currentPosition - (materials[grid[currentPosition].material].crystal_n) ].phase != PHASE_SOLID
 							)
 							{
-								if (nAttachableNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
+								if (nAttachableNeighbours > 0) {    grid[currentPosition].phase = PHASE_SOLID; }
 							}
 							else
 							{
@@ -3451,7 +3394,7 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 								    grid[currentPosition - (sizeX) - (materials[ grid[currentPosition].material].crystal_n * 2 )].phase != PHASE_SOLID
 								)
 								{
-									if (nAttachableNeighbours > 0) {	grid[currentPosition].phase = PHASE_SOLID; }
+									if (nAttachableNeighbours > 0) {    grid[currentPosition].phase = PHASE_SOLID; }
 								}
 								else
 								{
@@ -3487,7 +3430,7 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 				{
 					if (extremelyFastNumberFromZeroTo(1) == 0)
 					{
-						// 	neighbour = neighbourOffsets[ extremelyFastNumberFromZeroTo(7) ] + currentPosition;
+						//     neighbour = neighbourOffsets[ extremelyFastNumberFromZeroTo(7) ] + currentPosition;
 						// }
 						// else
 						// {
@@ -3516,7 +3459,7 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 				{
 					if (extremelyFastNumberFromZeroTo(1) == 0)
 					{
-						// 	neighbour = neighbourOffsets[ extremelyFastNumberFromZeroTo(7) ] + currentPosition;
+						//     neighbour = neighbourOffsets[ extremelyFastNumberFromZeroTo(7) ] + currentPosition;
 						// }
 						// else
 						// {
@@ -3583,7 +3526,7 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 					// }
 				}
 				// {
-				// 	neighbour = neighbourOffsets[ extremelyFastNumberFromZeroTo(7) ] + currentPosition;
+				//     neighbour = neighbourOffsets[ extremelyFastNumberFromZeroTo(7) ] + currentPosition;
 				// }
 
 // else
@@ -3607,7 +3550,7 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 				{
 					if (extremelyFastNumberFromZeroTo(1) == 0)
 					{
-						// 	neighbour = neighbourOffsets[ extremelyFastNumberFromZeroTo(7) ] + currentPosition;
+						//     neighbour = neighbourOffsets[ extremelyFastNumberFromZeroTo(7) ] + currentPosition;
 						// }
 						// else
 						// {
@@ -3733,7 +3676,7 @@ bool animalCanEat(unsigned int currentPosition , unsigned int neighbour )
 		{
 			seedGrid[currentPosition].energy  += seedEfficiency ;
 // #ifdef ANIMAL_BEHAVIOR_READOUT
-// 				printf("animal %u ate a seed for %f. Has %f reproduces at %f.\n", animalIndex, seedEfficiency, seedGrid[currentPosition].energy , animals[animalIndex].reproductionEnergy );
+//                 printf("animal %u ate a seed for %f. Has %f reproduces at %f.\n", animalIndex, seedEfficiency, seedGrid[currentPosition].energy , animals[animalIndex].reproductionEnergy );
 // #endif
 			// clearSeedParticle(neighbour);
 			// eaten = true;
@@ -3745,13 +3688,13 @@ bool animalCanEat(unsigned int currentPosition , unsigned int neighbour )
 	{
 		if (lifeGrid[neighbour].identity > 0x00)
 		{
-// 				seedGrid[currentPosition].energy  += plantEfficiency;
+//                 seedGrid[currentPosition].energy  += plantEfficiency;
 // #ifdef ANIMAL_BEHAVIOR_READOUT
-// 				printf("animal %u ate a plant for %f. Has %f reproduces at %f.\n", animalIndex, plantEfficiency, seedGrid[currentPosition].energy , animals[animalIndex].reproductionEnergy );
+//                 printf("animal %u ate a plant for %f. Has %f reproduces at %f.\n", animalIndex, plantEfficiency, seedGrid[currentPosition].energy , animals[animalIndex].reproductionEnergy );
 // #endif
-// 				clearLifeParticle(neighbour);
-// 				eaten = true;
-// 				break;
+//                 clearLifeParticle(neighbour);
+//                 eaten = true;
+//                 break;
 			return true;
 		}
 	}
@@ -3761,11 +3704,11 @@ bool animalCanEat(unsigned int currentPosition , unsigned int neighbour )
 		{
 			seedGrid[currentPosition].energy  += mineralEfficiency;
 // #ifdef ANIMAL_BEHAVIOR_READOUT
-// 				printf("animal %u ate a mineral for %f. Has %f reproduces at %f.\n" , animalIndex, mineralEfficiency, seedGrid[currentPosition].energy , animals[animalIndex].reproductionEnergy );
+//                 printf("animal %u ate a mineral for %f. Has %f reproduces at %f.\n" , animalIndex, mineralEfficiency, seedGrid[currentPosition].energy , animals[animalIndex].reproductionEnergy );
 // #endif
-// 				clearParticle( neighbour);
-// 				eaten = true;
-// 				break;
+//                 clearParticle( neighbour);
+//                 eaten = true;
+//                 break;
 			return true;
 		}
 	}
@@ -3781,13 +3724,13 @@ bool animalCanEat(unsigned int currentPosition , unsigned int neighbour )
 		{
 
 // #ifdef ANIMAL_BEHAVIOR_READOUT
-// 				printf(" Animal %u scavenged some meat for %f.\n" , animalIndex , bloodEfficiency );
+//                 printf(" Animal %u scavenged some meat for %f.\n" , animalIndex , bloodEfficiency );
 // #endif
 
 
-// 				seedGrid[currentPosition].energy  += bloodEfficiency;
-// 				clearParticle(neighbour);
-// 				eaten = true;
+//                 seedGrid[currentPosition].energy  += bloodEfficiency;
+//                 clearParticle(neighbour);
+//                 eaten = true;
 			// break;
 			return true;
 		}
@@ -4065,15 +4008,15 @@ void animalTurn(unsigned int i)
 	// for (unsigned int pulse = 0; pulse < animals[animalIndex].fitness; ++pulse)
 	// {
 
-	// 	unsigned int randomOrgan = extremelyFastNumberFromZeroTo(animals[animalIndex].totalArea);
+	//     unsigned int randomOrgan = extremelyFastNumberFromZeroTo(animals[animalIndex].totalArea);
 
-	// 	unsigned int organRegionA = 0;
-	// 	unsigned int organRegionB =
+	//     unsigned int organRegionA = 0;
+	//     unsigned int organRegionB =
 
-	// 	    if ( randomOrgan > organRegion && randomOrgan < organRegion)
+	//         if ( randomOrgan > organRegion && randomOrgan < organRegion)
 
 
-	// 	}
+	//     }
 
 
 
@@ -4099,21 +4042,21 @@ void animalTurn(unsigned int i)
 		animals[animalIndex].steady = false;
 	}
 
-// 	// reproduce
-// 	if (seedGrid[i].energy > animals[animalIndex].reproductionEnergy && animals[animalIndex].age > (animals[animalIndex].reproductionEnergy + 100)  && animalReproductionEnabled)
-// 	{
-// 		animalReproduce(i);
-// 	}
+//     // reproduce
+//     if (seedGrid[i].energy > animals[animalIndex].reproductionEnergy && animals[animalIndex].age > (animals[animalIndex].reproductionEnergy + 100)  && animalReproductionEnabled)
+//     {
+//         animalReproduce(i);
+//     }
 
-// 	// die
-// 	if (seedGrid[i].energy < 0.0f)
-// 	{
+//     // die
+//     if (seedGrid[i].energy < 0.0f)
+//     {
 // #ifdef ANIMAL_BEHAVIOR_READOUT
-// 		printf("animal %u ran out of energy and died.\n ", animalIndex  );
+//         printf("animal %u ran out of energy and died.\n ", animalIndex  );
 // #endif
-// 		killAnAnimal(i);
-// 		return;
-// 	}
+//         killAnAnimal(i);
+//         return;
+//     }
 
 
 	// fall if the animal is unsupported
@@ -4313,10 +4256,10 @@ void thread_graphics()
 
 		// for (unsigned int i = 0; i < totalSize; ++i)
 		// {
-		// 	if (seedGrid[i].stage == STAGE_ANIMAL)
-		// 	{
-		// 		clearAnimalDrawing(i);
-		// 	}
+		//     if (seedGrid[i].stage == STAGE_ANIMAL)
+		//     {
+		//         clearAnimalDrawing(i);
+		//     }
 		// }
 
 		for (unsigned int i = 0; i < totalSize; ++i)
@@ -4383,7 +4326,7 @@ int drawCharacter ( std::string genes , unsigned int identity)
 	{
 		cursor_string++; if (cursor_string > genesize) {return -1;}
 		int numberModifier = 0.0f;
-		while (!numberModifier) {	numberModifier = alphanumeric( genes[cursor_string] ); cursor_string++; if (cursor_string > genesize) {return -1;} }
+		while (!numberModifier) {    numberModifier = alphanumeric( genes[cursor_string] ); cursor_string++; if (cursor_string > genesize) {return -1;} }
 		numberModifier = numberModifier % materials.size();
 		cursor_germinationMaterial = numberModifier;
 		break;
@@ -4393,7 +4336,7 @@ int drawCharacter ( std::string genes , unsigned int identity)
 	{
 		cursor_string++; if (cursor_string > genesize) {return -1;}
 		int numberModifier = 0.0f;
-		while (!numberModifier) {	numberModifier = alphanumeric( genes[cursor_string] ); cursor_string++; if (cursor_string > genesize) {return -1;} }
+		while (!numberModifier) {    numberModifier = alphanumeric( genes[cursor_string] ); cursor_string++; if (cursor_string > genesize) {return -1;} }
 		cursor_energySource = numberModifier % 4; // or however many there are (plus one);
 #ifdef PLANT_DRAWING_READOUT
 		printf("set energy source to %u\n", cursor_energySource);
@@ -4405,7 +4348,7 @@ int drawCharacter ( std::string genes , unsigned int identity)
 	{
 		cursor_string++; if (cursor_string > genesize) {return -1;}
 		float numberModifier = 0.0f;
-		while (!numberModifier) {	numberModifier = alphanumeric( genes[cursor_string] ); cursor_string++; if (cursor_string > genesize) {return -1;} }
+		while (!numberModifier) {    numberModifier = alphanumeric( genes[cursor_string] ); cursor_string++; if (cursor_string > genesize) {return -1;} }
 		float branchRotation = ((numberModifier - 13.0f) / 13.0f) * 3.14159f;
 #ifdef PLANT_DRAWING_READOUT
 		printf("branch with angle %f\n", branchRotation);
@@ -4444,7 +4387,7 @@ int drawCharacter ( std::string genes , unsigned int identity)
 		cursor_string++; if (cursor_string > genesize) {return -1;}
 
 		int numberModifier = 0;
-		while (!numberModifier) {	numberModifier = alphanumeric( genes[cursor_string] ); cursor_string++; if (cursor_string > genesize) {return -1;} }
+		while (!numberModifier) {    numberModifier = alphanumeric( genes[cursor_string] ); cursor_string++; if (cursor_string > genesize) {return -1;} }
 
 		// rotationIncrement describes what fraction of the whole circle the array occupies.
 		float arrayTotalAngle =  numberModifier;
@@ -4452,7 +4395,7 @@ int drawCharacter ( std::string genes , unsigned int identity)
 		arrayTotalAngle = arrayTotalAngle * 2 * 3.1415;
 
 		numberModifier = 0;
-		while (!numberModifier) {	numberModifier = alphanumeric( genes[cursor_string] ); cursor_string++; if (cursor_string > genesize) {return -1;} }
+		while (!numberModifier) {    numberModifier = alphanumeric( genes[cursor_string] ); cursor_string++; if (cursor_string > genesize) {return -1;} }
 
 		float repeats = numberModifier;
 		float rotationIncrement = (arrayTotalAngle / repeats);
@@ -4500,7 +4443,7 @@ int drawCharacter ( std::string genes , unsigned int identity)
 		cursor_string++; if (cursor_string > genesize) {return -1;}
 
 		int numberModifier = 0;
-		while (!numberModifier) {	numberModifier = alphanumeric( genes[cursor_string] ); cursor_string++; if (cursor_string > genesize) {return -1;} }
+		while (!numberModifier) {    numberModifier = alphanumeric( genes[cursor_string] ); cursor_string++; if (cursor_string > genesize) {return -1;} }
 
 		// rotationIncrement describes what fraction of the whole circle the array occupies.
 		float repeats =  numberModifier;
@@ -4547,7 +4490,7 @@ int drawCharacter ( std::string genes , unsigned int identity)
 
 		// get number of times to repeat the sequence
 		int numberModifier = 0;
-		while (!numberModifier) {	numberModifier = alphanumeric( genes[cursor_string] ) / 2  ; cursor_string++; if (cursor_string > genesize) {return -1;} }
+		while (!numberModifier) {    numberModifier = alphanumeric( genes[cursor_string] ) / 2  ; cursor_string++; if (cursor_string > genesize) {return -1;} }
 
 		int repeats = numberModifier % 8;
 
@@ -4559,7 +4502,7 @@ int drawCharacter ( std::string genes , unsigned int identity)
 		float prevScalingFactor = scalingFactor;
 
 		numberModifier = 0;
-		while (!numberModifier) {	numberModifier = alphanumeric( genes[cursor_string] )  ; cursor_string++; if (cursor_string > genesize) {return -1;} }
+		while (!numberModifier) {    numberModifier = alphanumeric( genes[cursor_string] )  ; cursor_string++; if (cursor_string > genesize) {return -1;} }
 
 		float newScalingFactor = 1.0f - (numberModifier / 26.0f); // the scaling factor should range between 1 and close to 0, but never less than 0 or bigger than 1.
 		if (newScalingFactor > 1.0f) {newScalingFactor = 1.0f;}
@@ -4729,7 +4672,7 @@ int drawCharacter ( std::string genes , unsigned int identity)
 		cursor_string++; if (cursor_string > genesize) {return -1;}
 
 		int numberModifier = 0;
-		while (!numberModifier) {	numberModifier = alphanumeric( genes[cursor_string] ); cursor_string++; if (cursor_string > genesize) {return -1;} }
+		while (!numberModifier) {    numberModifier = alphanumeric( genes[cursor_string] ); cursor_string++; if (cursor_string > genesize) {return -1;} }
 
 		// get the circle radius (the next number in the string). nerfed on purpose otherwise there are giant blobs everywhere.
 		unsigned int radius = (numberModifier / 2) * scalingFactor;
@@ -5149,14 +5092,14 @@ void thread_seeds()
 		// SEEDS. Some of the particles on the seed grid are seeds that fall downwards.
 		if (seedGrid[i].stage == STAGE_FRUIT)
 		{
-			// if (extremelyFastNumberFromZeroTo(1) == 0) 		// get blown by the wind only some of the time
+			// if (extremelyFastNumberFromZeroTo(1) == 0)         // get blown by the wind only some of the time
 			// {
-			// 	unsigned int neighbour = neighbourOffsets[ weatherGrid[i].direction ] + i;
-			// 	if ((grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS  ) && seedGrid[neighbour].stage == 0x00  )
-			// 	{
-			// 		swapSeedParticle( i, neighbour );
-			// 		continue;
-			// 	}
+			//     unsigned int neighbour = neighbourOffsets[ weatherGrid[i].direction ] + i;
+			//     if ((grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS  ) && seedGrid[neighbour].stage == 0x00  )
+			//     {
+			//         swapSeedParticle( i, neighbour );
+			//         continue;
+			//     }
 			// }
 
 			unsigned int j = extremelyFastNumberFromZeroTo(4);
@@ -5188,14 +5131,14 @@ void thread_seeds()
 
 
 
-			// if (		j == 0)		{ neighbour = i - sizeX - 1 ;	}
-			// else if (	j == 1)		{ neighbour = i - sizeX	 	;	}
-			// else if (	j == 2)		{ neighbour = i - sizeX + 1 ;	}
-			// else if (	j == 3)		{ neighbour = i + 1	    	;	}
-			// else if (	j == 4)		{ neighbour = i - 1 		;	}
-			// else if (	j == 5)		{ neighbour = i + sizeX - 1 ;	}
-			// else if (	j == 6)		{ neighbour = i + sizeX		;	}
-			// else if (	j == 7)		{ neighbour = i + sizeX + 1 ;	}
+			// if (        j == 0)        { neighbour = i - sizeX - 1 ;    }
+			// else if (    j == 1)        { neighbour = i - sizeX         ;    }
+			// else if (    j == 2)        { neighbour = i - sizeX + 1 ;    }
+			// else if (    j == 3)        { neighbour = i + 1            ;    }
+			// else if (    j == 4)        { neighbour = i - 1         ;    }
+			// else if (    j == 5)        { neighbour = i + sizeX - 1 ;    }
+			// else if (    j == 6)        { neighbour = i + sizeX        ;    }
+			// else if (    j == 7)        { neighbour = i + sizeX + 1 ;    }
 
 			if (lifeGrid[neighbour].identity == seedGrid[i].parentIdentity)
 			{
