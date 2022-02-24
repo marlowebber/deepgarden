@@ -162,7 +162,7 @@ unsigned int animalCursorOrgan = ORGAN_MUSCLE;
 
 std::string exampleAnimal = std::string(" uaiajbcmemjccded ");
 
-int defaultTemperature = 300;
+int defaultTemperature = 1000;
 int defaultPressure = 1000;
 int defaultVelocity = 0;
 
@@ -391,19 +391,10 @@ void thread_weather()
 #endif
 	if (doWeather)
 	{
-		// if you update from x0 y0 to xn yn every time, information will propagate unevenly toward the highest numbered corner, making round waves egg shaped. Fix this by alternating directions each turn. Adds kind of a fast wobble to the fluid.
-		// reverseWeatherState = !reverseWeatherState;
-
 		for (unsigned int y = 0; y < weatherGridY ; ++y)
 		{
 			for (unsigned int x = 0; x < weatherGridX; ++x)
 			{
-				// unsigned int x = wx;
-				// unsigned int y = wy;
-
-				// if (reverseWeatherState) {x = weatherGridX - (wx + 1); }
-				// if (reverseWeatherState) {y = weatherGridY - (wy + 1); }
-
 				unsigned int weatherGridI = (y * weatherGridX) + x;
 				unsigned int i = ((y * weatherGridScale) * sizeX) + (x * weatherGridScale);
 				if (i > totalSize) { i = totalSize;}
@@ -426,17 +417,10 @@ void thread_weather()
 				if (grid[i].phase == PHASE_SOLID || grid[i].phase == PHASE_POWDER )
 				{
 					empty = false;
-
-
-					// grid[i].temperature
-
-
-
-				} //empty = false; }
-
+				}
 
 				if (weatherGrid[weatherGridI].temperature  < 0) {weatherGrid[weatherGridI].temperature = 0;}
-			
+
 
 				// couple the material grid temp to the weather grid temp
 				int combinedTemp = 0;
@@ -447,40 +431,54 @@ void thread_weather()
 				unsigned int uboem = abs(combinedTemp);
 				grid[i].temperature = uboem;
 
-
-				
 				// return to default temperature
 				dt = 0;
-				dt = (defaultTemperature - weatherGrid[weatherGridI].temperature) ;
+				dt = (defaultTemperature - weatherGrid[weatherGridI].temperature  ) ;
 				weatherGrid[weatherGridI].temperature += dt >> 8;
 
 
 
 
+				// smooth the simulation by mixing each cell with the average of its neighbours.
+				dp = 0;
+				dx = 0;
+				dy = 0;
+				dt = 0;
 
-				// dp = dt;
+				int avgTemp = 0;
 
-				// weatherGrid[weatherGridI].pressure += ( dt )  >> 12;
+				for (unsigned int n = 0; n < N_NEIGHBOURS; ++n)
+				{
+					// if (empty) {weatherGridNeighbour = weatherGridI;}
+
+					unsigned int weatherGridNeighbour = weatherGridI + weatherGridOffsets[n] ;
+					if (weatherGridNeighbour >= weatherGridSize ) {weatherGridNeighbour = weatherGridI;}                     // you must add 8 numbers here or later math will break down. if a neighbour is not valid, add your own values instead.
+					dp += weatherGrid[ weatherGridNeighbour ].pressure ;
+					dx += weatherGrid[ weatherGridNeighbour ].velocityX;
+					dy += weatherGrid[ weatherGridNeighbour ].velocityY;
+					dt += weatherGrid[weatherGridNeighbour].temperature;
+				}
+				dx = dx >> 3 ;                                                                                              // N_NEIGHBOURS is 8, so you can do the division part of the average by using a bit shift.
+				dy = dy >> 3 ;
+				dp = dp >> 3 ;
+				avgTemp = dt >> 3 ;
+				dt = 0;
+				weatherGrid[weatherGridI].pressure  += (dp - weatherGrid[weatherGridI].pressure)  >> 5; // this number is how strong the smoothing effect should be.
+				weatherGrid[weatherGridI].velocityX += (dx - weatherGrid[weatherGridI].velocityX) >> 5; // Less smoothing gives rise to nice fluid effects, but too little and the simulation will be unstable.
+				weatherGrid[weatherGridI].velocityY += (dy - weatherGrid[weatherGridI].velocityY) >> 5; // Too much makes it boring and no details emerge.
+				// weatherGrid[weatherGridI].temperature += (dt - weatherGrid[weatherGridI].temperature) >> 2;
 
 
 
-				// printf("grid[i].temperature %i \n", grid[i].temperature);
-				 // grid[i].temperature +=  (   weatherGrid[weatherGridI].temperature - grid[i].temperature) >> 16 ;
 
-// 				unsigned int ugridTemp = abs(miami);
-
-
-// if (miami > 0)
-// {
-// 		grid[i].temperature 		+= ugridTemp;
-
-// 	}
-// 	else {
-// 		grid[i].temperature 		-= ugridTemp;
-// 	}
 
 
 				// for each cell, rotate around the four cardinal neighbours.
+				dp = 0;
+				dx = 0;
+				dy = 0;
+				dt = 0;
+
 				for (unsigned int n = 0; n < N_NEIGHBOURS; ++n)
 				{
 					unsigned int neighbour = weatherGridI + weatherGridOffsets[n];
@@ -494,29 +492,31 @@ void thread_weather()
 						{
 							dp += sign * (weatherGrid[ neighbour ].velocityX - weatherGrid[ weatherGridI ].velocityX )   ; // A difference in speed creates pressure.
 							dx += sign * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )   ; // A difference in pressure creates movement.
-							// dt += sign * dx * weatherGrid[neighbour].temperature;
 
-							// // weatherGrid[ neighbour ].temperature    += (dp*dx) >> 4;
-							// int tempamount = (dp*dx )>>6;
-							// weatherGrid[ weatherGridI ].temperature +=( weatherGrid[ neighbour ].temperature * dx ) >> 12;
-							// weatherGrid[ neighbour ].temperature -= tempamount;
+							// int dnt = (sign * (weatherGrid[ weatherGridI ].velocityX )  *  (( weatherGrid[neighbour].temperature - weatherGrid[weatherGridI].temperature)/2))  ;
+
+							// dt -= (  dnt);
+							// weatherGrid[neighbour].temperature +=  (  dnt);
+
+
+
+
+
+
+
+
 						}
 
 						if (n == 2 || n == 6)                                                                              // on the Y axes, exchange vertical pressure and wind.
 						{
 							dp += sign * (weatherGrid[ neighbour ].velocityY - weatherGrid[ weatherGridI ].velocityY )  ;
 							dy += sign * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )  ;
-							// dt += sign * dy * weatherGrid[neighbour].temperature;
-
-							// weatherGrid[ neighbour ].temperature += (dp*dy) >> 4;
-							// weatherGrid[ neighbour ].temperature -= (dp*dy) >> 4;
 
 
-							// weatherGrid[ weatherGridI ].temperature +=( weatherGrid[ neighbour ].temperature * dy ) >> 12;
+							// int dnt = (sign * (weatherGrid[ weatherGridI ].velocityY )  * ((weatherGrid[neighbour].temperature - weatherGrid[weatherGridI].temperature)/2 )) ;
 
-							// int tempamount = (dp*dy    )>> 6;
-							// weatherGrid[ weatherGridI ].temperature -= tempamount;
-							// weatherGrid[ neighbour ].temperature += tempamount;
+							// dt -= ( dnt);
+							// weatherGrid[neighbour].temperature += ( dnt);
 						}
 					}
 				}
@@ -525,7 +525,31 @@ void thread_weather()
 				weatherGrid[weatherGridI].pressure  += dp  >> 1;
 				weatherGrid[weatherGridI].velocityY += dy  >> 1;
 
-				weatherGrid[weatherGridI].temperature += dp  >> 3;
+
+
+
+				// dt = 0;
+				// mix heat from whichever way the wind is blowing
+				int takeX = x - (dx >> 14)  ;                                               // the velocity itself is used to find the grid location to take from.
+				int takeY = y - (dy >> 14)  ;                                               // velocity numbers range greatly and can be very high, use this number to scale them to an appropriate take distance.
+
+				// if      (takeX >  100)  { takeX =   100; }
+				// else if (takeX < -100)  { takeX =  -100; }
+				// if      (takeY >  100)  { takeY =   100; }
+				// else if (takeY < -100)  { takeY =  -100; }
+
+				int takeI = ((takeY * weatherGridX) + takeX );
+				if (takeI >= weatherGridSize) {takeI = weatherGridSize - 1;}
+				if (takeI <= 0) {takeI = 0;}
+
+
+				weatherGrid[takeI].temperature += (( weatherGrid[weatherGridI].temperature - weatherGrid[takeI].temperature) >> 1);
+
+
+
+
+
+				// weatherGrid[weatherGridI].temperature += dt;// >> 1 ;// >> 10;
 
 
 
@@ -533,9 +557,9 @@ void thread_weather()
 				// dp = 0;
 				dx = 0;
 				dy = 0;
-				int takeX = x - (weatherGrid[weatherGridI].velocityX >> 8)  ;                                               // the velocity itself is used to find the grid location to take from.
-				int takeY = y - (weatherGrid[weatherGridI].velocityY >> 8)  ;                                               // velocity numbers range greatly and can be very high, use this number to scale them to an appropriate take distance.
-				int takeI = ((takeY * weatherGridX) + takeX );
+				takeX = x - (weatherGrid[weatherGridI].velocityX >> 8)  ;                                               // the velocity itself is used to find the grid location to take from.
+				takeY = y - (weatherGrid[weatherGridI].velocityY >> 8)  ;                                               // velocity numbers range greatly and can be very high, use this number to scale them to an appropriate take distance.
+				takeI = ((takeY * weatherGridX) + takeX );
 				if (takeI >= weatherGridSize) {takeI = weatherGridSize - 1;}
 				if (takeI <= 0) {takeI = 0;}
 				dx = weatherGrid[takeI].velocityX;
@@ -543,7 +567,7 @@ void thread_weather()
 				// dt = weatherGrid[takeI].temperature;
 				weatherGrid[weatherGridI].velocityX += (( dx - weatherGrid[weatherGridI].velocityX) >> 2);                  // mix in the velocity contribution from far-away.
 				weatherGrid[weatherGridI].velocityY += (( dy - weatherGrid[weatherGridI].velocityY) >> 2);                  // adding more looks cool, but makes the fluid explode on touch like nitroglycerin!
-				
+
 				// weatherGrid[weatherGridI].temperature += (( dt - weatherGrid[weatherGridI].temperature) >> 2);
 
 
@@ -551,28 +575,12 @@ void thread_weather()
 
 				// mix heat from nearby
 
-				dt = 0;
-				takeX = x - (weatherGrid[weatherGridI].velocityX >> 8)  ;                                               // the velocity itself is used to find the grid location to take from.
-				takeY = y - (weatherGrid[weatherGridI].velocityY >> 8)  ;                                               // velocity numbers range greatly and can be very high, use this number to scale them to an appropriate take distance.
-				takeI = ((takeY * weatherGridX) + takeX );
-				if (takeI >= weatherGridSize) {takeI = weatherGridSize - 1;}
-				if (takeI <= 0) {takeI = 0;}
-				dt = weatherGrid[takeI].temperature;
+				//
+				// dt = weatherGrid[takeI].temperature;
 				// dy = weatherGrid[takeI].velocityY;
 				// dt = weatherGrid[takeI].temperature;
 				// weatherGrid[weatherGridI].temperature += (( dx - weatherGrid[weatherGridI].velocityX) >> 2);                  // mix in the velocity contribution from far-away.
 				// weatherGrid[weatherGridI].temperature += (( dy - weatherGrid[weatherGridI].velocityY) >> 2);                  // adding more looks cool, but makes the fluid explode on touch like nitroglycerin!
-
-
-				weatherGrid[weatherGridI].temperature += (( dt - weatherGrid[weatherGridI].temperature) >> 2);
-
-
-
-				// weatherGrid[weatherGridI].temperature += (( defaultTemperature - weatherGrid[weatherGridI].temperature) >> 4);
-
-
-
-
 
 
 
@@ -588,33 +596,8 @@ void thread_weather()
 
 
 
-				// smooth the simulation by mixing each cell with the average of its neighbours.
-				dp = 0;
-				dx = 0;
-				dy = 0;
-				dt = 0;
-				for (unsigned int n = 0; n < N_NEIGHBOURS; ++n)
-				{
-					// if (empty) {weatherGridNeighbour = weatherGridI;}
 
-					unsigned int weatherGridNeighbour = weatherGridI + weatherGridOffsets[n] ;
-					if (weatherGridNeighbour >= weatherGridSize ) {weatherGridNeighbour = weatherGridI;}                     // you must add 8 numbers here or later math will break down. if a neighbour is not valid, add your own values instead.
-					dp += weatherGrid[ weatherGridNeighbour ].pressure ;
-					dx += weatherGrid[ weatherGridNeighbour ].velocityX;
-					dy += weatherGrid[ weatherGridNeighbour ].velocityY;
-					dt += weatherGrid[weatherGridNeighbour].temperature;
-				}
-				dx = dx >> 3 ;                                                                                              // N_NEIGHBOURS is 8, so you can do the division part of the average by using a bit shift.
-				dy = dy >> 3 ;
-				dp = dp >> 3 ;
-				dt = dt >> 3 ;
-				weatherGrid[weatherGridI].pressure  += (dp - weatherGrid[weatherGridI].pressure)  >> 5; // this number is how strong the smoothing effect should be.
-				weatherGrid[weatherGridI].velocityX += (dx - weatherGrid[weatherGridI].velocityX) >> 5; // Less smoothing gives rise to nice fluid effects, but too little and the simulation will be unstable.
-				weatherGrid[weatherGridI].velocityY += (dy - weatherGrid[weatherGridI].velocityY) >> 5; // Too much makes it boring and no details emerge.
-				weatherGrid[weatherGridI].temperature += (dt - weatherGrid[weatherGridI].temperature) >> 2;
-
-
-					// grid[i].temperature += ((   grid[i].temperature -  weatherGrid[weatherGridI].temperature ) )  >> 16;
+				// grid[i].temperature += ((   grid[i].temperature -  weatherGrid[weatherGridI].temperature ) )  >> 16;
 
 
 
@@ -3234,16 +3217,20 @@ void setNeutralTemp ()
 void setExtremeTempPoint (unsigned int x , unsigned  int y)
 {
 
-	if (true )
-
+	for (int i = -1; i < 2; ++i)
 	{
+		for (int j = -1; j < 2; ++j)
+		{
 
-		unsigned int weatherGridI =  ((x / weatherGridScale) * weatherGridX ) + (y / weatherGridScale);
-		weatherGridI = weatherGridI % weatherGridSize;
-		weatherGrid[ weatherGridI].temperature += 1000000;
-		weatherGrid[ weatherGridI].pressure += 1000000;
+
+
+			unsigned int weatherGridI =  (( (y + i) / weatherGridScale) * weatherGridX ) + ((x + j) / weatherGridScale);
+			weatherGridI = weatherGridI % weatherGridSize;
+			weatherGrid[ weatherGridI].temperature += 100000;
+			weatherGrid[ weatherGridI].pressure += 100000;
+
+		}
 	}
-
 
 	if (false)
 	{
