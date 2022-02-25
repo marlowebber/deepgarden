@@ -380,10 +380,6 @@ int weatherGridOffsets[] =
 
 Weather weatherGrid[weatherGridSize];
 
-
-
-// bool reverseWeatherState = false;
-
 void thread_weather()
 {
 #ifdef THREAD_TIMING_READOUT
@@ -412,7 +408,6 @@ void thread_weather()
 					weatherGrid[weatherGridI].pressure += ( defaultPressure - weatherGrid[weatherGridI].pressure ) >> 4;
 				}
 
-
 				if (grid[i].phase == PHASE_SOLID || grid[i].phase == PHASE_POWDER )
 				{
 					empty = false;
@@ -420,15 +415,13 @@ void thread_weather()
 
 				if (weatherGrid[weatherGridI].temperature  < 0) {weatherGrid[weatherGridI].temperature = 0;}
 
-
-
-
 				// couple the material grid temp to the weather grid temp
-				// int amount = ( weatherGrid[weatherGridI].temperature - grid[i].temperature ) >> 16;
-				// weatherGrid[weatherGridI].temperature  -= amount;
-				// grid[i].temperature   += amount;
-
-				// weatherGrid[weatherGridI].temperature += dt >> 8;
+				int amount = ( weatherGrid[weatherGridI].temperature + grid[i].temperature ) / 2;// >> 16;
+				weatherGrid[weatherGridI].temperature  = amount;
+				grid[i].temperature   = amount;
+				grid[i+1].temperature = amount;
+				grid[i+sizeX].temperature = amount;
+				grid[i+sizeX+1].temperature = amount;
 
 
 				// smooth the simulation by mixing each cell with the average of its neighbours.
@@ -436,8 +429,6 @@ void thread_weather()
 				int ax = 0;
 				int ay = 0;
 				int at = 0;
-
-				// int avgTemp = 0;
 				for (unsigned int n = 0; n < N_NEIGHBOURS; ++n)
 				{
 					unsigned int weatherGridNeighbour = weatherGridI + weatherGridOffsets[n] ;
@@ -451,29 +442,16 @@ void thread_weather()
 				ay = ay >> 3 ;
 				ap = ap >> 3 ;
 				at = at >> 3 ;
-				// dt = 0;
-
-
-
-
+	
 				dp +=   (ap - weatherGrid[weatherGridI].pressure   ) >> 5;
 				dx +=   (ax - weatherGrid[weatherGridI].velocityX  ) >> 5;
 				dy +=   (ay - weatherGrid[weatherGridI].velocityY  ) >> 5;
 				dt +=   (at - weatherGrid[weatherGridI].temperature) >> 5;
 
-
-
-
 				// return to default temperature
 				dt += (defaultTemperature - weatherGrid[weatherGridI].temperature  ) >> 8 ;
 
-
-
 				// for each cell, interchange pressure and velocity with the four cardinal neighbours.
-				// dp = 0;
-				// dx = 0;
-				// dy = 0;
-				// dt = 0;
 				for (unsigned int n = 0; n < N_NEIGHBOURS; n += 2)
 				{
 					unsigned int neighbour = weatherGridI + weatherGridOffsets[n];
@@ -495,11 +473,6 @@ void thread_weather()
 						}
 					}
 				}
-				// weatherGrid[weatherGridI].velocityX   += dx  >> 1;                                                           // mix in the pressure and velocity contributions for this turn. Reducing them as little as possible allows beautiful ripples and detail.
-				// weatherGrid[weatherGridI].pressure    += dp  >> 1;
-				// weatherGrid[weatherGridI].velocityY   += dy  >> 1;
-			
-
 
 				// mix heat from whichever way the wind is blowing
 				int takeX = x - (dx >> 12)  ;                                               // the velocity itself is used to find the grid location to take from.
@@ -507,31 +480,31 @@ void thread_weather()
 				int takeI = ((takeY * weatherGridX) + takeX );
 				if (takeI < 0) {takeI = 0;}
 				else if (takeI >= weatherGridSize) {takeI = weatherGridSize - 1;}
-
-				// weatherGrid[takeI].temperature += (( weatherGrid[weatherGridI].temperature - weatherGrid[takeI].temperature) >> 1);
 				dt += (( weatherGrid[takeI].temperature - weatherGrid[weatherGridI].temperature) >> 1);
 
 
 				// mix velocity from far away. This is a key component of turbulent behavior in the sim, and produces a billowing effect that looks very realistic. It is prone to great instability.
-				// dx = 0;
-				// dy = 0;
-				takeX = x - (weatherGrid[weatherGridI].velocityX >> 8)  ;                                               // the velocity itself is used to find the grid location to take from.
-				takeY = y - (weatherGrid[weatherGridI].velocityY >> 8)  ;                                               // velocity numbers range greatly and can be very high, use this number to scale them to an appropriate take distance.
-				takeI = ((takeY * weatherGridX) + takeX );
+				 takeX = x - (weatherGrid[weatherGridI].velocityX >> 8)  ;                                               // the velocity itself is used to find the grid location to take from.
+				 takeY = y - (weatherGrid[weatherGridI].velocityY >> 8)  ;                                               // velocity numbers range greatly and can be very high, use this number to scale them to an appropriate take distance.
+
+				 takeI = ((takeY * weatherGridX) + takeX );
 				if (takeI >= weatherGridSize) {takeI = weatherGridSize - 1;}
 				if (takeI <= 0) {takeI = 0;}
 		
 				dx += (( weatherGrid[takeI].velocityX - weatherGrid[weatherGridI].velocityX) >> 2);                  // mix in the velocity contribution from far-away.
 				dy += (( weatherGrid[takeI].velocityY - weatherGrid[weatherGridI].velocityY) >> 2);                  // adding more looks cool, but makes the fluid explode on touch like nitroglycerin!
 
+				// interchange pressure with temperature. For physical stability, use only the greatest of the two.	
+				if (dp > dt)
+				{
+					dt += dp>>1;
+				}
+				else 
+				{
+					dp += dt>>1;
+				}
 
-				// interchange pressure and temperature .
-				int gt = dp >> 3; // this line is what creates temperature from pressure.
-				int gp = dt >> 3;
-
-				dp += gp;
-				dt += gt;
-
+				// buoyancy.
 
 				// apply the changes you computed in this turn.
 				weatherGrid[weatherGridI].pressure    += dp;
@@ -3155,17 +3128,19 @@ void setNeutralTemp ()
 void setExtremeTempPoint (unsigned int x , unsigned  int y)
 {
 
-	for (int i = -1; i < 2; ++i)
+	int blobesize = 50;
+
+	for (int i = -blobesize; i < blobesize; ++i)
 	{
-		for (int j = -1; j < 2; ++j)
+		for (int j = -blobesize; j < blobesize; ++j)
 		{
 
 
 
 			unsigned int weatherGridI =  (( (y + i) / weatherGridScale) * weatherGridX ) + ((x + j) / weatherGridScale);
 			weatherGridI = weatherGridI % weatherGridSize;
-			weatherGrid[ weatherGridI].temperature += 100000;
-			weatherGrid[ weatherGridI].pressure += 100000;
+			weatherGrid[ weatherGridI].temperature += 1000;
+			// weatherGrid[ weatherGridI].pressure += 1000;
 
 		}
 	}
