@@ -416,13 +416,18 @@ void thread_weather()
 				if (weatherGrid[weatherGridI].temperature  < 0) {weatherGrid[weatherGridI].temperature = 0;}
 
 				// couple the material grid temp to the weather grid temp
-				int amount = ( weatherGrid[weatherGridI].temperature + grid[i].temperature ) / 2;// >> 16;
+				int amount = ( weatherGrid[weatherGridI].temperature + grid[i].temperature ) / 2;
 				weatherGrid[weatherGridI].temperature  = amount;
-				grid[i].temperature   = amount;
-				grid[i+1].temperature = amount;
-				grid[i+sizeX].temperature = amount;
-				grid[i+sizeX+1].temperature = amount;
 
+				// because the weather grid is several times smaller than the material grid, you have to go set the temperatures of all the applicable grid squares.
+				for (unsigned int scaledGridPointY = 0; scaledGridPointY < weatherGridScale; ++scaledGridPointY)
+				{
+					for (unsigned int scaledGridPointX = 0; scaledGridPointX < weatherGridScale; ++scaledGridPointX)
+					{
+						unsigned int scaledGridPointI =  i + ((scaledGridPointY * sizeX) + scaledGridPointX );
+						grid[scaledGridPointI].temperature = amount;
+					}
+				}
 
 				// smooth the simulation by mixing each cell with the average of its neighbours.
 				int ap = 0;
@@ -442,7 +447,6 @@ void thread_weather()
 				ay = ay >> 3 ;
 				ap = ap >> 3 ;
 				at = at >> 3 ;
-	
 				dp +=   (ap - weatherGrid[weatherGridI].pressure   ) >> 5;
 				dx +=   (ax - weatherGrid[weatherGridI].velocityX  ) >> 5;
 				dy +=   (ay - weatherGrid[weatherGridI].velocityY  ) >> 5;
@@ -452,6 +456,8 @@ void thread_weather()
 				dt += (defaultTemperature - weatherGrid[weatherGridI].temperature  ) >> 8 ;
 
 				// for each cell, interchange pressure and velocity with the four cardinal neighbours.
+				int bouyancy = 0;
+
 				for (unsigned int n = 0; n < N_NEIGHBOURS; n += 2)
 				{
 					unsigned int neighbour = weatherGridI + weatherGridOffsets[n];
@@ -466,45 +472,34 @@ void thread_weather()
 							dx += (sign * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> 1   ; // A difference in pressure creates movement.
 						}
 
-						if (n == 2 || n == 6)                                                                              // on the Y axes, exchange vertical pressure and wind.
+						else if (n == 2 || n == 6)                                                                              // on the Y axes, exchange vertical pressure and wind.
 						{
 							dp += (sign * (weatherGrid[ neighbour ].velocityY - weatherGrid[ weatherGridI ].velocityY )) >> 1  ;
 							dy += (sign * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> 1  ;
+							bouyancy += ( ( weatherGrid[ weatherGridI ].temperature ) - weatherGrid[ neighbour ].temperature ); // bouyancy does not need sign applied because it is supposed to only go in one direction!
 						}
 					}
 				}
 
-				// mix heat from whichever way the wind is blowing
-				int takeX = x - (dx >> 12)  ;                                               // the velocity itself is used to find the grid location to take from.
-				int takeY = y - (dy >> 12)  ;                                               // velocity numbers range greatly and can be very high, use this number to scale them to an appropriate take distance.
+				// mix heat and velocity from far away. This is a key component of turbulent behavior in the sim, and produces a billowing effect that looks very realistic. It is prone to great instability.
+				int takeX = x - (dx >> 10)  ;                                                                           // the velocity itself is used to find the grid location to take from.
+				int takeY = y - (dy >> 10) + (bouyancy >> 8) ;                                                          // velocity numbers range greatly and can be very high, use this number to scale them to an appropriate take distance.
 				int takeI = ((takeY * weatherGridX) + takeX );
 				if (takeI < 0) {takeI = 0;}
 				else if (takeI >= weatherGridSize) {takeI = weatherGridSize - 1;}
 				dt += (( weatherGrid[takeI].temperature - weatherGrid[weatherGridI].temperature) >> 1);
+				dx += (( weatherGrid[takeI].velocityX   - weatherGrid[weatherGridI].velocityX) >> 2);                  // mix in the velocity contribution from far-away.
+				dy += (( weatherGrid[takeI].velocityY   - weatherGrid[weatherGridI].velocityY) >> 2);                  // adding more looks cool, but makes the fluid explode on touch like nitroglycerin!
 
-
-				// mix velocity from far away. This is a key component of turbulent behavior in the sim, and produces a billowing effect that looks very realistic. It is prone to great instability.
-				 takeX = x - (weatherGrid[weatherGridI].velocityX >> 8)  ;                                               // the velocity itself is used to find the grid location to take from.
-				 takeY = y - (weatherGrid[weatherGridI].velocityY >> 8)  ;                                               // velocity numbers range greatly and can be very high, use this number to scale them to an appropriate take distance.
-
-				 takeI = ((takeY * weatherGridX) + takeX );
-				if (takeI >= weatherGridSize) {takeI = weatherGridSize - 1;}
-				if (takeI <= 0) {takeI = 0;}
-		
-				dx += (( weatherGrid[takeI].velocityX - weatherGrid[weatherGridI].velocityX) >> 2);                  // mix in the velocity contribution from far-away.
-				dy += (( weatherGrid[takeI].velocityY - weatherGrid[weatherGridI].velocityY) >> 2);                  // adding more looks cool, but makes the fluid explode on touch like nitroglycerin!
-
-				// interchange pressure with temperature. For physical stability, use only the greatest of the two.	
+				// interchange pressure with temperature.
 				if (dp > dt)
 				{
-					dt += dp>>1;
+					dt += dp >> 2;
 				}
-				else 
+				else
 				{
-					dp += dt>>1;
+					dp += dt >> 2;
 				}
-
-				// buoyancy.
 
 				// apply the changes you computed in this turn.
 				weatherGrid[weatherGridI].pressure    += dp;
