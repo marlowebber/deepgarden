@@ -420,15 +420,13 @@ void thread_weather()
 
 				if (weatherGrid[weatherGridI].temperature  < 0) {weatherGrid[weatherGridI].temperature = 0;}
 
+
+
+
 				// couple the material grid temp to the weather grid temp
-				int combinedTemp = 0;
-				combinedTemp += weatherGrid[weatherGridI].temperature;
-				combinedTemp += grid[i].temperature;
-				combinedTemp = combinedTemp / 2;
-				weatherGrid[weatherGridI].temperature = combinedTemp;
-				// unsigned int uboem 
-				combinedTemp = abs(combinedTemp);
-				grid[i].temperature = combinedTemp;
+				// int amount = ( weatherGrid[weatherGridI].temperature - grid[i].temperature ) >> 16;
+				// weatherGrid[weatherGridI].temperature  -= amount;
+				// grid[i].temperature   += amount;
 
 				// return to default temperature
 				dt = 0;
@@ -454,18 +452,19 @@ void thread_weather()
 				dx = dx >> 3 ;                                                                                              // N_NEIGHBOURS is 8, so you can do the division part of the average by using a bit shift.
 				dy = dy >> 3 ;
 				dp = dp >> 3 ;
-				avgTemp = dt >> 3 ;
-				dt = 0;
+				dt = dt >> 3 ;
+				// dt = 0;
 				weatherGrid[weatherGridI].pressure  += (dp - weatherGrid[weatherGridI].pressure)  >> 5; // this number is how strong the smoothing effect should be.
 				weatherGrid[weatherGridI].velocityX += (dx - weatherGrid[weatherGridI].velocityX) >> 5; // Less smoothing gives rise to nice fluid effects, but too little and the simulation will be unstable.
 				weatherGrid[weatherGridI].velocityY += (dy - weatherGrid[weatherGridI].velocityY) >> 5; // Too much makes it boring and no details emerge.
+				weatherGrid[weatherGridI].temperature += (dt - weatherGrid[weatherGridI].temperature) >> 5;
 
 				// for each cell, interchange pressure and velocity with the four cardinal neighbours.
 				dp = 0;
 				dx = 0;
 				dy = 0;
 				dt = 0;
-				for (unsigned int n = 0; n < N_NEIGHBOURS; ++n)
+				for (unsigned int n = 0; n < N_NEIGHBOURS; n += 2)
 				{
 					unsigned int neighbour = weatherGridI + weatherGridOffsets[n];
 					if (edge)    {neighbour = weatherGridI;}                                                                // if you do not control this, cells on the left and right edge will be able to exchange with the far edge, even though neighbour is less than weatherGridSize. Leading to absolute chaos.
@@ -489,10 +488,11 @@ void thread_weather()
 				weatherGrid[weatherGridI].velocityX += dx  >> 1;                                                           // mix in the pressure and velocity contributions for this turn. Reducing them as little as possible allows beautiful ripples and detail.
 				weatherGrid[weatherGridI].pressure  += dp  >> 1;
 				weatherGrid[weatherGridI].velocityY += dy  >> 1;
+				weatherGrid[weatherGridI].temperature += dp >> 3; // this line is what creates temperature from pressure.
 
 				// mix heat from whichever way the wind is blowing
-				int takeX = x - (dx >> 14)  ;                                               // the velocity itself is used to find the grid location to take from.
-				int takeY = y - (dy >> 14)  ;                                               // velocity numbers range greatly and can be very high, use this number to scale them to an appropriate take distance.
+				int takeX = x - (dx >> 12)  ;                                               // the velocity itself is used to find the grid location to take from.
+				int takeY = y - (dy >> 12)  ;                                               // velocity numbers range greatly and can be very high, use this number to scale them to an appropriate take distance.
 				int takeI = ((takeY * weatherGridX) + takeX );
 				if (takeI < 0) {takeI = 0;}
 				else if (takeI >= weatherGridSize) {takeI = weatherGridSize - 1;}
@@ -4132,24 +4132,28 @@ void thread_graphics()
 
 			unsigned int weatherGridI = ((y / weatherGridScale) * weatherGridX + (x / weatherGridScale));
 
-			if (grid[i].phase == PHASE_VACUUM)
-			{
-				energyColorGrid[ (i * numberOfFieldsPerVertex) + 0 ] = weatherGrid[weatherGridI].temperature / maximumDisplayTemperature;
-				energyColorGrid[ (i * numberOfFieldsPerVertex) + 1 ] = weatherGrid[weatherGridI].temperature / maximumDisplayTemperature;
-				energyColorGrid[ (i * numberOfFieldsPerVertex) + 2 ] = weatherGrid[weatherGridI].temperature / maximumDisplayTemperature;
-				energyColorGrid[ (i * numberOfFieldsPerVertex) + 3 ] = 1.0f;
-				energyColorGrid[ (i * numberOfFieldsPerVertex) + 4 ] = fx;
-				energyColorGrid[ (i * numberOfFieldsPerVertex) + 5 ] = fy;
-			}
-			else
-			{
-				energyColorGrid[ (i * numberOfFieldsPerVertex) + 0 ] = grid[i].temperature / maximumDisplayTemperature;
-				energyColorGrid[ (i * numberOfFieldsPerVertex) + 1 ] = grid[i].temperature / maximumDisplayTemperature;
-				energyColorGrid[ (i * numberOfFieldsPerVertex) + 2 ] = grid[i].temperature / maximumDisplayTemperature;
-				energyColorGrid[ (i * numberOfFieldsPerVertex) + 3 ] = 1.0f;
-				energyColorGrid[ (i * numberOfFieldsPerVertex) + 4 ] = fx;
-				energyColorGrid[ (i * numberOfFieldsPerVertex) + 5 ] = fy;
-			}
+			int itemp = weatherGrid[weatherGridI].temperature + grid[i].temperature;
+			float ftemp = itemp;
+			ftemp = ftemp / (20000.0f);
+
+			// if (grid[i].phase == PHASE_VACUUM)
+			// {
+			energyColorGrid[ (i * numberOfFieldsPerVertex) + 0 ] = ftemp;
+			energyColorGrid[ (i * numberOfFieldsPerVertex) + 1 ] = ftemp;
+			energyColorGrid[ (i * numberOfFieldsPerVertex) + 2 ] = ftemp;
+			energyColorGrid[ (i * numberOfFieldsPerVertex) + 3 ] = 1.0f;
+			energyColorGrid[ (i * numberOfFieldsPerVertex) + 4 ] = fx;
+			energyColorGrid[ (i * numberOfFieldsPerVertex) + 5 ] = fy;
+			// }
+			// else
+			// {
+			// energyColorGrid[ (i * numberOfFieldsPerVertex) + 0 ] = grid[i].temperature / maximumDisplayTemperature;
+			// energyColorGrid[ (i * numberOfFieldsPerVertex) + 1 ] = grid[i].temperature / maximumDisplayTemperature;
+			// energyColorGrid[ (i * numberOfFieldsPerVertex) + 2 ] = grid[i].temperature / maximumDisplayTemperature;
+			// energyColorGrid[ (i * numberOfFieldsPerVertex) + 3 ] = 1.0f;
+			// energyColorGrid[ (i * numberOfFieldsPerVertex) + 4 ] = fx;
+			// energyColorGrid[ (i * numberOfFieldsPerVertex) + 5 ] = fy;
+			// }
 		}
 		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, energyColorGrid, GL_DYNAMIC_DRAW );
 		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
