@@ -428,42 +428,52 @@ void thread_weather()
 				// weatherGrid[weatherGridI].temperature  -= amount;
 				// grid[i].temperature   += amount;
 
-				// return to default temperature
-				dt = 0;
-				dt = (defaultTemperature - weatherGrid[weatherGridI].temperature  ) ;
-				weatherGrid[weatherGridI].temperature += dt >> 8;
+				// weatherGrid[weatherGridI].temperature += dt >> 8;
 
 
 				// smooth the simulation by mixing each cell with the average of its neighbours.
-				dp = 0;
-				dx = 0;
-				dy = 0;
-				dt = 0;
-				int avgTemp = 0;
+				int ap = 0;
+				int ax = 0;
+				int ay = 0;
+				int at = 0;
+
+				// int avgTemp = 0;
 				for (unsigned int n = 0; n < N_NEIGHBOURS; ++n)
 				{
 					unsigned int weatherGridNeighbour = weatherGridI + weatherGridOffsets[n] ;
 					if (weatherGridNeighbour >= weatherGridSize ) {weatherGridNeighbour = weatherGridI;}                     // you must add 8 numbers here or later math will break down. if a neighbour is not valid, add your own values instead.
-					dp += weatherGrid[ weatherGridNeighbour ].pressure ;
-					dx += weatherGrid[ weatherGridNeighbour ].velocityX;
-					dy += weatherGrid[ weatherGridNeighbour ].velocityY;
-					dt += weatherGrid[weatherGridNeighbour].temperature;
+					ap += weatherGrid[ weatherGridNeighbour ].pressure ;
+					ax += weatherGrid[ weatherGridNeighbour ].velocityX;
+					ay += weatherGrid[ weatherGridNeighbour ].velocityY;
+					at += weatherGrid[weatherGridNeighbour].temperature;
 				}
-				dx = dx >> 3 ;                                                                                              // N_NEIGHBOURS is 8, so you can do the division part of the average by using a bit shift.
-				dy = dy >> 3 ;
-				dp = dp >> 3 ;
-				dt = dt >> 3 ;
+				ax = ax >> 3 ;                                                                                              // N_NEIGHBOURS is 8, so you can do the division part of the average by using a bit shift.
+				ay = ay >> 3 ;
+				ap = ap >> 3 ;
+				at = at >> 3 ;
 				// dt = 0;
-				weatherGrid[weatherGridI].pressure  += (dp - weatherGrid[weatherGridI].pressure)  >> 5; // this number is how strong the smoothing effect should be.
-				weatherGrid[weatherGridI].velocityX += (dx - weatherGrid[weatherGridI].velocityX) >> 5; // Less smoothing gives rise to nice fluid effects, but too little and the simulation will be unstable.
-				weatherGrid[weatherGridI].velocityY += (dy - weatherGrid[weatherGridI].velocityY) >> 5; // Too much makes it boring and no details emerge.
-				weatherGrid[weatherGridI].temperature += (dt - weatherGrid[weatherGridI].temperature) >> 5;
+
+
+
+
+				dp +=   (ap - weatherGrid[weatherGridI].pressure   ) >> 5;
+				dx +=   (ax - weatherGrid[weatherGridI].velocityX  ) >> 5;
+				dy +=   (ay - weatherGrid[weatherGridI].velocityY  ) >> 5;
+				dt +=   (at - weatherGrid[weatherGridI].temperature) >> 5;
+
+
+
+
+				// return to default temperature
+				dt += (defaultTemperature - weatherGrid[weatherGridI].temperature  ) >> 8 ;
+
+
 
 				// for each cell, interchange pressure and velocity with the four cardinal neighbours.
-				dp = 0;
-				dx = 0;
-				dy = 0;
-				dt = 0;
+				// dp = 0;
+				// dx = 0;
+				// dy = 0;
+				// dt = 0;
 				for (unsigned int n = 0; n < N_NEIGHBOURS; n += 2)
 				{
 					unsigned int neighbour = weatherGridI + weatherGridOffsets[n];
@@ -474,21 +484,22 @@ void thread_weather()
 
 						if (n == 0 || n == 4 )                                                                             // on the X axes, exchange horizontal pressure and wind.
 						{
-							dp += sign * (weatherGrid[ neighbour ].velocityX - weatherGrid[ weatherGridI ].velocityX )   ; // A difference in speed creates pressure.
-							dx += sign * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )   ; // A difference in pressure creates movement.
+							dp += (sign * (weatherGrid[ neighbour ].velocityX - weatherGrid[ weatherGridI ].velocityX )) >> 1   ; // A difference in speed creates pressure.
+							dx += (sign * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> 1   ; // A difference in pressure creates movement.
 						}
 
 						if (n == 2 || n == 6)                                                                              // on the Y axes, exchange vertical pressure and wind.
 						{
-							dp += sign * (weatherGrid[ neighbour ].velocityY - weatherGrid[ weatherGridI ].velocityY )  ;
-							dy += sign * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )  ;
+							dp += (sign * (weatherGrid[ neighbour ].velocityY - weatherGrid[ weatherGridI ].velocityY )) >> 1  ;
+							dy += (sign * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> 1  ;
 						}
 					}
 				}
-				weatherGrid[weatherGridI].velocityX += dx  >> 1;                                                           // mix in the pressure and velocity contributions for this turn. Reducing them as little as possible allows beautiful ripples and detail.
-				weatherGrid[weatherGridI].pressure  += dp  >> 1;
-				weatherGrid[weatherGridI].velocityY += dy  >> 1;
-				weatherGrid[weatherGridI].temperature += dp >> 3; // this line is what creates temperature from pressure.
+				// weatherGrid[weatherGridI].velocityX   += dx  >> 1;                                                           // mix in the pressure and velocity contributions for this turn. Reducing them as little as possible allows beautiful ripples and detail.
+				// weatherGrid[weatherGridI].pressure    += dp  >> 1;
+				// weatherGrid[weatherGridI].velocityY   += dy  >> 1;
+			
+
 
 				// mix heat from whichever way the wind is blowing
 				int takeX = x - (dx >> 12)  ;                                               // the velocity itself is used to find the grid location to take from.
@@ -497,20 +508,37 @@ void thread_weather()
 				if (takeI < 0) {takeI = 0;}
 				else if (takeI >= weatherGridSize) {takeI = weatherGridSize - 1;}
 
-				weatherGrid[takeI].temperature += (( weatherGrid[weatherGridI].temperature - weatherGrid[takeI].temperature) >> 1);
+				// weatherGrid[takeI].temperature += (( weatherGrid[weatherGridI].temperature - weatherGrid[takeI].temperature) >> 1);
+				dt += (( weatherGrid[takeI].temperature - weatherGrid[weatherGridI].temperature) >> 1);
+
 
 				// mix velocity from far away. This is a key component of turbulent behavior in the sim, and produces a billowing effect that looks very realistic. It is prone to great instability.
-				dx = 0;
-				dy = 0;
+				// dx = 0;
+				// dy = 0;
 				takeX = x - (weatherGrid[weatherGridI].velocityX >> 8)  ;                                               // the velocity itself is used to find the grid location to take from.
 				takeY = y - (weatherGrid[weatherGridI].velocityY >> 8)  ;                                               // velocity numbers range greatly and can be very high, use this number to scale them to an appropriate take distance.
 				takeI = ((takeY * weatherGridX) + takeX );
 				if (takeI >= weatherGridSize) {takeI = weatherGridSize - 1;}
 				if (takeI <= 0) {takeI = 0;}
-				dx = weatherGrid[takeI].velocityX;
-				dy = weatherGrid[takeI].velocityY;
-				weatherGrid[weatherGridI].velocityX += (( dx - weatherGrid[weatherGridI].velocityX) >> 2);                  // mix in the velocity contribution from far-away.
-				weatherGrid[weatherGridI].velocityY += (( dy - weatherGrid[weatherGridI].velocityY) >> 2);                  // adding more looks cool, but makes the fluid explode on touch like nitroglycerin!
+		
+				dx += (( weatherGrid[takeI].velocityX - weatherGrid[weatherGridI].velocityX) >> 2);                  // mix in the velocity contribution from far-away.
+				dy += (( weatherGrid[takeI].velocityY - weatherGrid[weatherGridI].velocityY) >> 2);                  // adding more looks cool, but makes the fluid explode on touch like nitroglycerin!
+
+
+				// interchange pressure and temperature .
+				int gt = dp >> 3; // this line is what creates temperature from pressure.
+				int gp = dt >> 3;
+
+				dp += gp;
+				dt += gt;
+
+
+				// apply the changes you computed in this turn.
+				weatherGrid[weatherGridI].pressure    += dp;
+				weatherGrid[weatherGridI].velocityX   += dx;
+				weatherGrid[weatherGridI].velocityY   += dy;
+				weatherGrid[weatherGridI].temperature += dt;
+
 
 				// the game simplifies angle in some cases to a number in the range 0 to 7, which points to one of the 8 neighbours.
 				// this algorithm efficiently calculates it from a float angle. It uses integer comparisons to steer the direction around from a starting angle.
