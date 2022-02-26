@@ -18,6 +18,7 @@ bool useGerminationMaterial = false;
 bool animalReproductionEnabled = true;
 bool doWeather = true;
 bool carnageMode = false;
+bool normalMaterials = true;
 
 #define RENDERING_THREADS 4
 
@@ -2218,8 +2219,13 @@ void copyParticle(unsigned int from, unsigned int to)
 	memcpy( &colorGrid[ to_offset ],  &colorGrid[ from_offset ], 16 );
 }
 
+
+
+// these materials are expected by the game, so they must be loaded in every situation.
 void resetMaterials()
 {
+
+
 	materials.clear();
 
 	// materials[0] is supposed to be vacuum.
@@ -2230,13 +2236,13 @@ void resetMaterials()
 	vacuum.insulativity = 1000;
 	materials.push_back(vacuum);
 
-// materials[1] is supposed to be soil.
-	Material bumdirt = Material();
-	bumdirt.color = color_lightgrey;
-	bumdirt.melting = 1000;
-	bumdirt.boiling = 2200;
-	bumdirt.insulativity = 10;
-	materials.push_back(bumdirt);
+// materials[1] is supposed to be water.
+	Material water = Material();
+	water.color = color_lightblue;
+	water.melting = 273;
+	water.boiling = 373;
+	water.insulativity = 10;
+	materials.push_back(water);
 
 // materials[2] is supposed to be blood.
 	Material blood = Material();
@@ -2253,6 +2259,97 @@ void resetMaterials()
 	bone.boiling = 2200;
 	bone.insulativity = 400;
 	materials.push_back(bone);
+
+
+}
+
+
+void standardMaterials()
+{
+
+	// defaultMaterials();
+
+	Material rock1 = Material();
+	rock1.color = color_lightgrey;
+	rock1.melting = 600;
+	rock1.boiling = 1800;
+	rock1.insulativity = 400;
+	rock1.crystal_n = extremelyFastNumberFromZeroTo(4);
+	unsigned int randomCondition =  extremelyFastNumberFromZeroTo(6);
+	if (randomCondition == 0)      {rock1.crystal_condition = CONDITION_GREATERTHAN; }
+	else if (randomCondition == 1) {rock1.crystal_condition = CONDITION_EQUAL; }
+	else if (randomCondition == 2) {rock1.crystal_condition = CONDITION_LESSTHAN; }
+	// else if (randomCondition == 3) {newMaterial.crystal_condition = CONDITION_EVENNUMBER; }
+	// else if (randomCondition == 4) {newMaterial.crystal_condition = CONDITION_ODDNUMBER; }
+	else if (randomCondition == 3) {rock1.crystal_condition = CONDITION_EDGE; }
+	else if (randomCondition == 4) {rock1.crystal_condition = CONDITION_CORNER; }
+	else if (randomCondition == 5) {rock1.crystal_condition = CONDITION_ROW; }
+	// else if (randomCondition == 8) {newMaterial.crystal_condition = CONDITION_LEFTN; }
+	else if (randomCondition == 6) {rock1.crystal_condition = CONDITION_NOTLEFTRIGHTN; }
+	// else if (randomCondition == 10) {newMaterial.crystal_condition = CONDITION_NOTLRNEIGHBOURS; }
+
+	materials.push_back(rock1);
+
+
+
+	Material rock2 = Material();
+	rock2.color = color_grey;
+	rock2.melting = 800;
+	rock2.boiling = 2000;
+	rock2.insulativity = 400;
+	rock2.crystal_n = extremelyFastNumberFromZeroTo(4);
+	// unsigned int
+	randomCondition =  extremelyFastNumberFromZeroTo(6);
+	if (randomCondition == 0)      {rock2.crystal_condition = CONDITION_GREATERTHAN; }
+	else if (randomCondition == 1) {rock2.crystal_condition = CONDITION_EQUAL; }
+	else if (randomCondition == 2) {rock2.crystal_condition = CONDITION_LESSTHAN; }
+	// else if (randomCondition == 3) {newMaterial.crystal_condition = CONDITION_EVENNUMBER; }
+	// else if (randomCondition == 4) {newMaterial.crystal_condition = CONDITION_ODDNUMBER; }
+	else if (randomCondition == 3) {rock2.crystal_condition = CONDITION_EDGE; }
+	else if (randomCondition == 4) {rock2.crystal_condition = CONDITION_CORNER; }
+	else if (randomCondition == 5) {rock2.crystal_condition = CONDITION_ROW; }
+	// else if (randomCondition == 8) {newMaterial.crystal_condition = CONDITION_LEFTN; }
+	else if (randomCondition == 6) {rock2.crystal_condition = CONDITION_NOTLEFTRIGHTN; }
+	// else if (randomCondition == 10) {newMaterial.crystal_condition = CONDITION_NOTLRNEIGHBOURS; }
+
+
+	materials.push_back(rock2);
+
+
+	Material rock3 = Material();
+	rock3.color = color_darkgrey;
+	rock3.melting = 1000;
+	rock3.boiling = 2400;
+	rock3.insulativity = 400;
+	rock3.crystal_n = extremelyFastNumberFromZeroTo(4);
+	// unsigned int
+	randomCondition =  extremelyFastNumberFromZeroTo(6);
+	if (randomCondition == 0)      {rock3.crystal_condition = CONDITION_GREATERTHAN; }
+	else if (randomCondition == 1) {rock3.crystal_condition = CONDITION_EQUAL; }
+	else if (randomCondition == 2) {rock3.crystal_condition = CONDITION_LESSTHAN; }
+	// else if (randomCondition == 3) {newMaterial.crystal_condition = CONDITION_EVENNUMBER; }
+	// else if (randomCondition == 4) {newMaterial.crystal_condition = CONDITION_ODDNUMBER; }
+	else if (randomCondition == 3) {rock3.crystal_condition = CONDITION_EDGE; }
+	else if (randomCondition == 4) {rock3.crystal_condition = CONDITION_CORNER; }
+	else if (randomCondition == 5) {rock3.crystal_condition = CONDITION_ROW; }
+	// else if (randomCondition == 8) {newMaterial.crystal_condition = CONDITION_LEFTN; }
+	else if (randomCondition == 6) {rock3.crystal_condition = CONDITION_NOTLEFTRIGHTN; }
+	// else if (randomCondition == 10) {newMaterial.crystal_condition = CONDITION_NOTLRNEIGHBOURS; }
+
+
+
+	materials.push_back(rock3);
+
+
+
+}
+
+
+
+void randomMaterials()
+{
+
+
 
 	unsigned int nNewMaterials = 5;
 	for (unsigned int k = 0; k < nNewMaterials; ++k)
@@ -2502,26 +2599,139 @@ Color blackbodyLookup( unsigned int temperature )
 	}
 }
 
-void createRandomWorld()
+
+
+// void setupWorldEarth()
+// {
+
+// 	clearGrids();
+// 	resetMaterials();
+
+// 	sunlightTemp = 5900;
+
+// 	sunlightColor = blackbodyLookup(sunlightTemp);
+
+
+
+
+
+// 	// compute the background sky
+// 	for (unsigned int i = 0; i < totalSize; ++i)
+// 	{
+// 		unsigned int a_offset  = i * numberOfFieldsPerVertex;
+// 		memcpy( &(backgroundSky[ a_offset ]), &color_black,                     sizeof(Color) );
+// 		if (extremelyFastNumberFromZeroTo(100) ==  0)
+// 		{
+// 			// create a background star with random blackbody color and alpha
+// 			unsigned int randomColorTemperature = extremelyFastNumberFromZeroTo(5000);
+// 			Color randomStarColor = blackbodyLookup(randomColorTemperature);
+// 			float randomStarAlpha = RNG();
+// 			randomStarAlpha = randomStarAlpha * randomStarAlpha * randomStarAlpha * randomStarAlpha * randomStarAlpha * randomStarAlpha * randomStarAlpha; // cubing the value or more shifts the distribution lower while preserving the range.
+// 			randomStarAlpha = randomStarAlpha / 2;
+// 			randomStarColor.a = randomStarAlpha;
+// 			memcpy( &(backgroundSky[ a_offset ]), &randomStarColor,                     sizeof(Color) );
+// 		}
+// 	}
+
+
+
+// }
+
+
+
+void createWorld( unsigned int world)
 {
 	clearGrids();
-	resetMaterials();
-	sunlightColor = blackbodyLookup(sunlightTemp);
-	// defaultTemperature = RNG() * 1500;
+
+	// defaultMaterials();
+
+	resetMaterials();	
 
 
-	for (unsigned int k = 0; k < materials.size(); ++k)
+	switch (world)
 	{
-		materials[k]. availability = extremelyFastNumberFromZeroTo(50);
-		for (unsigned int i = 0; i < sizeX; ++i)
+
+	case WORLD_EARTH:
+	{
+
+		standardMaterials();
+		sunlightTemp = 5900;
+
+		defaultTemperature = 300;
+		defaultPressure = 1000;
+
+		for (int i = 0; i < totalSize; ++i)
 		{
-			if (extremelyFastNumberFromZeroTo(100) == 0)
+			if (i >0 && i < 50 * sizeX)
 			{
-				unsigned int radius = extremelyFastNumberFromZeroTo(materials[k]. availability  );
-				paintMaterialCircle(i + (50 * sizeX * (k + 1)  ), radius , k , 10000000 );
+				unsigned int rand = extremelyFastNumberFromZeroTo(2);
+				if (rand == 0)
+				{
+					setParticle(4, i);
+				}
+				else if (rand == 1)
+				{
+					setParticle(5, i);
+				}else if (rand == 2)
+				{
+					setParticle(6, i);
+				}
+			}
+
+			if (i > 50*sizeX && i < 55 * sizeX)
+			{
+setParticle(1, i);
 			}
 		}
+
+
+		break;
 	}
+
+
+
+	case WORLD_RANDOM:
+	{
+		sunlightTemp = RNG() * 10000;
+
+		defaultTemperature = RNG() * 1000;
+		defaultPressure = RNG() * 2000;
+
+		randomMaterials();
+
+		for (unsigned int k = 0; k < materials.size(); ++k)
+		{
+			materials[k]. availability = extremelyFastNumberFromZeroTo(50);
+			for (unsigned int i = 0; i < sizeX; ++i)
+			{
+				if (extremelyFastNumberFromZeroTo(100) == 0)
+				{
+					unsigned int radius = extremelyFastNumberFromZeroTo(materials[k]. availability  );
+					paintMaterialCircle(i + (50 * sizeX * (k + 1)  ), radius , k , 10000000 );
+				}
+			}
+		}
+
+
+
+
+		break;
+	}
+
+	}
+
+
+
+
+	sunlightColor = blackbodyLookup(sunlightTemp);
+
+
+
+
+
+
+
+
 
 	// compute the background sky
 	for (unsigned int i = 0; i < totalSize; ++i)
@@ -3040,6 +3250,7 @@ void initialize ()
 	cursor_seedColor = color_yellow;
 	clearGrids();
 	resetMaterials();
+	// defaultMaterials();
 
 }
 
@@ -3167,11 +3378,13 @@ void materialPostProcess(unsigned int i)
 	}
 	if (grid[i].phase == PHASE_GAS)
 	{
-		ppColor = addColor(ppColor, phaseTingeGas);
+		// ppColor = addColor(ppColor, phaseTingeGas);
+		ppColor.a *= 0.35;
 	}
 	else if (grid[i].phase == PHASE_LIQUID)
 	{
-		ppColor = addColor(ppColor, phaseTingeLiquid);
+		// ppColor = addColor(ppColor, phaseTingeLiquid);
+		ppColor.a *= 0.65;
 	}
 	else if (grid[i].phase == PHASE_SOLID)
 	{
@@ -3422,7 +3635,7 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 			{
 				unsigned int neighbour = neighbourOffsets[ (  1 +  extremelyFastNumberFromZeroTo(2) )  ] + currentPosition;
 
-				if (velocityAbs > 1000)
+				if (velocityAbs > 10000)
 				{
 					if (extremelyFastNumberFromZeroTo(1) == 0)
 					{
@@ -3451,7 +3664,7 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 				unsigned int neighbour = neighbourOffsets[ (  0 +  extremelyFastNumberFromZeroTo(4) )  ] + currentPosition;
 
 
-				if (velocityAbs > 100)
+				if (velocityAbs > 1000)
 				{
 					if (extremelyFastNumberFromZeroTo(1) == 0)
 					{
@@ -3502,7 +3715,7 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 
 
 
-					if (velocityAbs > 5)
+					if (velocityAbs > 50)
 					{
 
 						if (extremelyFastNumberFromZeroTo(1) == 0)
@@ -3542,7 +3755,7 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 
 				// unsigned int neighbour = neighbourOffsets[ extremelyFastNumberFromZeroTo(N_NEIGHBOURS) ] + currentPosition;
 
-				if (velocityAbs > 10000)
+				if (velocityAbs > 100000)
 				{
 					if (extremelyFastNumberFromZeroTo(1) == 0)
 					{

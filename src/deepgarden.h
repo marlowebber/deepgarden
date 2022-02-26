@@ -137,6 +137,16 @@ extern const unsigned int MATERIAL_VACUUM ;
 
 #define ORGAN_MARKER_A 1024 // used for the polygon filling algorithm. Do not use in gene codes! must be different to all the other organ codes!
 
+
+
+
+// worlds are specifications for sets of materials and environment conditions.
+
+#define WORLD_EARTH 1
+#define WORLD_RANDOM 2
+
+
+void createWorld( unsigned int world);
 float RNG();
 
 void initialize ();

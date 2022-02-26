@@ -121,7 +121,8 @@ void thread_interface()
 				break;
 
 			case SDLK_k:
-				createRandomWorld();
+				// createRandomWorld();
+			 createWorld( WORLD_EARTH);
 				break;
 
 			case SDLK_p:
