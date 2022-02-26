@@ -418,7 +418,7 @@ void thread_weather()
 				if (weatherGrid[weatherGridI].temperature  < 0) {weatherGrid[weatherGridI].temperature = 0;}
 
 				// couple the material grid temp to the weather grid temp
-				int amount = ( weatherGrid[weatherGridI].temperature + grid[i].temperature ) / 2;
+				int amount = ( weatherGrid[weatherGridI].temperature + ( grid[i].temperature * pressureScale) ) / 2;
 				weatherGrid[weatherGridI].temperature  = amount;
 
 				// because the weather grid is several times smaller than the material grid, you have to go set the temperatures of all the applicable grid squares.
@@ -427,7 +427,7 @@ void thread_weather()
 					for (unsigned int scaledGridPointX = 0; scaledGridPointX < weatherGridScale; ++scaledGridPointX)
 					{
 						unsigned int scaledGridPointI =  i + ((scaledGridPointY * sizeX) + scaledGridPointX );
-						grid[scaledGridPointI].temperature = amount;
+						grid[scaledGridPointI].temperature = (amount / pressureScale);
 					}
 				}
 
@@ -449,13 +449,13 @@ void thread_weather()
 				ay = ay >> 3 ;
 				ap = ap >> 3 ;
 				at = at >> 3 ;
-				dp +=   (ap - weatherGrid[weatherGridI].pressure   ) >> 5;
-				dx +=   (ax - weatherGrid[weatherGridI].velocityX  ) >> 5;
-				dy +=   (ay - weatherGrid[weatherGridI].velocityY  ) >> 5;
-				dt +=   (at - weatherGrid[weatherGridI].temperature) >> 5;
+				dp +=   (ap - weatherGrid[weatherGridI].pressure   ) >> 4;
+				dx +=   (ax - weatherGrid[weatherGridI].velocityX  ) >> 4;
+				dy +=   (ay - weatherGrid[weatherGridI].velocityY  ) >> 4;
+				dt +=   (at - weatherGrid[weatherGridI].temperature) >> 4;
 
 				// return to default temperature
-				dt += (defaultTemperature - weatherGrid[weatherGridI].temperature  ) >> 8 ;
+				dt += ( (defaultTemperature * pressureScale) - weatherGrid[weatherGridI].temperature  ) >> 8 ;
 
 				// for each cell, interchange pressure and velocity with the four cardinal neighbours.
 				int bouyancy = 0;
@@ -484,8 +484,32 @@ void thread_weather()
 				}
 
 				// mix heat and velocity from far away. This is a key component of turbulent behavior in the sim, and produces a billowing effect that looks very realistic. It is prone to great instability.
-				int takeX = x - (dx >> 10)  ;                                                                           // the velocity itself is used to find the grid location to take from.
-				int takeY = y - (dy >> 10) + (bouyancy >> 8) ;                                                          // velocity numbers range greatly and can be very high, use this number to scale them to an appropriate take distance.
+
+				int takeX = (dx >> 10);
+				int takeY = (dy >> 10); + (bouyancy >> 8);
+
+				if (takeX > 0)
+				{
+					if (takeX > ( (weatherGridX - 1) - x)) { takeX = (weatherGridX - 1) - x; }
+				}
+				else
+				{
+					if ( abs(takeX)  > x ) {takeX = x;}
+				}
+
+				if (takeY > 0)
+				{
+					if (takeY > ( (weatherGridY - 1) - y)) { takeY = (weatherGridY - 1) - y; }
+				}
+				else
+				{
+					if ( abs(takeY)  > y ) {takeY = y;}
+				}
+
+				takeX = x - takeX  ;                                                                           // the velocity itself is used to find the grid location to take from.
+				takeY = y - takeY ;                                                          // velocity numbers range greatly and can be very high, use this number to scale them to an appropriate take distance.
+
+
 				int takeI = ((takeY * weatherGridX) + takeX );
 				if (takeI < 0) {takeI = 0;}
 				else if (takeI >= weatherGridSize) {takeI = weatherGridSize - 1;}
@@ -1915,6 +1939,7 @@ void photate( unsigned int i )
 		)
 		{
 			blocked ++;
+			grid[currentPosition].temperature++;
 		}
 
 		if (!blocked)
@@ -2535,6 +2560,14 @@ void paintMaterialCircle(unsigned int k, unsigned int radius, unsigned int mater
 	}
 }
 
+
+
+
+
+const Color color_blackbody_772      = Color(0.16f, 0.0f, 0.0f, 0.03f);
+const Color color_blackbody_852      = Color(0.33f, 0.0f, 0.0f, 0.11f);
+const Color color_blackbody_908   = Color(0.5f, 0.0f, 0.0f, 0.20f);
+
 Color blackbodyLookup( unsigned int temperature )
 {
 	if (temperature > 0 && temperature < 600 )
@@ -2543,15 +2576,15 @@ Color blackbodyLookup( unsigned int temperature )
 	}
 	else if (temperature < 772) // faint red
 	{
-		return Color(0.16f, 0.0f, 0.0f, 0.03f);
+		return color_blackbody_772;
 	}
 	else if (temperature < 852) // blood red
 	{
-		return  Color(0.33f, 0.0f, 0.0f, 0.11f);
+		return  color_blackbody_852;
 	}
 	else if (temperature < 908) // dark cherry
 	{
-		return Color(0.5f, 0.0f, 0.0f, 0.20f);
+		return color_blackbody_908;
 	}
 	else if (temperature < 963) // medium cherry
 	{
@@ -2645,7 +2678,7 @@ void createWorld( unsigned int world)
 
 	// defaultMaterials();
 
-	resetMaterials();	
+	resetMaterials();
 
 
 	switch (world)
@@ -2662,7 +2695,7 @@ void createWorld( unsigned int world)
 
 		for (int i = 0; i < totalSize; ++i)
 		{
-			if (i >0 && i < 50 * sizeX)
+			if (i > 0 && i < 50 * sizeX)
 			{
 				unsigned int rand = extremelyFastNumberFromZeroTo(2);
 				if (rand == 0)
@@ -2672,15 +2705,15 @@ void createWorld( unsigned int world)
 				else if (rand == 1)
 				{
 					setParticle(5, i);
-				}else if (rand == 2)
+				} else if (rand == 2)
 				{
 					setParticle(6, i);
 				}
 			}
 
-			if (i > 50*sizeX && i < 55 * sizeX)
+			if (i > 50 * sizeX && i < 65 * sizeX)
 			{
-setParticle(1, i);
+				setParticle(1, i);
 			}
 		}
 
@@ -3335,7 +3368,7 @@ void setNeutralTemp ()
 void setExtremeTempPoint (unsigned int x , unsigned  int y)
 {
 
-	int blobesize = 50;
+	int blobesize = 1;
 
 	for (int i = -blobesize; i < blobesize; ++i)
 	{
@@ -3346,8 +3379,8 @@ void setExtremeTempPoint (unsigned int x , unsigned  int y)
 
 			unsigned int weatherGridI =  (( (y + i) / weatherGridScale) * weatherGridX ) + ((x + j) / weatherGridScale);
 			weatherGridI = weatherGridI % weatherGridSize;
-			weatherGrid[ weatherGridI].temperature += 1000;
-			// weatherGrid[ weatherGridI].pressure += 1000;
+			// weatherGrid[ weatherGridI].temperature += 1000;
+			weatherGrid[ weatherGridI].pressure += 100000;
 
 		}
 	}
@@ -3376,21 +3409,37 @@ void materialPostProcess(unsigned int i)
 	{
 		ppColor =  materials[ grid[i].material ].color ;
 	}
-	if (grid[i].phase == PHASE_GAS)
+	
+	ppColor = addColor(ppColor, blackbodyLookup( grid[i].temperature ) );
+	
+
+	if (grid[i].phase == PHASE_VACUUM)
 	{
 		// ppColor = addColor(ppColor, phaseTingeGas);
-		ppColor.a *= 0.35;
+		ppColor.a = 0.35f;
+	}
+	else if (grid[i].phase == PHASE_GAS)
+	{
+		// ppColor = addColor(ppColor, phaseTingeGas);
+		ppColor.a = 0.5f;
 	}
 	else if (grid[i].phase == PHASE_LIQUID)
 	{
 		// ppColor = addColor(ppColor, phaseTingeLiquid);
-		ppColor.a *= 0.65;
+		ppColor.a = 0.65f;
 	}
 	else if (grid[i].phase == PHASE_SOLID)
 	{
-		ppColor = addColor(ppColor, phaseTingeSolid);
+		ppColor = addColor(ppColor, phaseTingeSolid); // same opacity but different shade to powder
+		// ppColor.a = 1.0f;
 	}
-	ppColor = addColor(ppColor, blackbodyLookup( grid[i].temperature ) );
+
+	if (grid[i].temperature > 5000) // extremely high temperatures display alpha 1 regardless of material phase. Also get higher alpha gradually the more extreme the temp.
+	{
+		float ftemp = grid[i].temperature ;
+		ppColor.a += ((ftemp- 5000.0f) / 5000.0f);
+	}
+
 	colorGrid[ (i * numberOfFieldsPerVertex) + 0 ] = ppColor.r;
 	colorGrid[ (i * numberOfFieldsPerVertex) + 1 ] = ppColor.g;
 	colorGrid[ (i * numberOfFieldsPerVertex) + 2 ] = ppColor.b;
@@ -3405,6 +3454,8 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 		if (grid[currentPosition].phase != PHASE_VACUUM)
 		{
 
+			unsigned int random = extremelyFastNumberFromZeroTo(N_NEIGHBOURS);
+
 			unsigned int x = i % sizeX ;
 			unsigned int y = i / sizeX;
 			unsigned int wx = x / weatherGridScale;
@@ -3412,11 +3463,8 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 			unsigned int weatherGridI = (wy * weatherGridX) + (wx);
 			int velocityAbs = abs(weatherGrid[weatherGridI].velocityX) + abs(weatherGrid[weatherGridI].velocityY);
 
-
-
-
 			// exchange heat with a neighbour.
-			unsigned int thermoNeighbour = neighbourOffsets[extremelyFastNumberFromZeroTo(7)] + currentPosition ;
+			unsigned int thermoNeighbour = neighbourOffsets[random] + currentPosition ;
 			if (grid[thermoNeighbour].phase != PHASE_VACUUM)
 			{
 				int avgTemp = (((grid[currentPosition].temperature ) - (grid[thermoNeighbour].temperature)) ) ;
@@ -3424,29 +3472,8 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 				grid[thermoNeighbour].temperature += avgTemp;
 				grid[currentPosition].temperature -= avgTemp;
 			}
-			// else
-			// {
-			//     if (doWeather)
-			//     {
 
-			//         // float fgridtemp = grid[currentPosition].temperature;
-			//         //  float favgTemp = (fgridtemp  + weatherGrid[thermoNeighbour].temperature)/2 ;
-
-			//         // weatherGrid[thermoNeighbour].temperature = avgTemp;
-			//         // grid[currentPosition].temperature = avgTemp;
-			//     }
-			//     else
-			//     {
-			//         // if neighbour is a vacuum, radiate heat away into space. more so if it is hotter.
-			//         int crntmp = grid[currentPosition].temperature;
-			//         int dftmp = defaultTemperature;
-			//         int radiantHeat = (crntmp - dftmp) / radiantHeatIntensity;
-			//         grid[currentPosition].temperature -= radiantHeat;
-			//         float fradiantHeat = radiantHeat;
-			//         weatherGrid[currentPosition].temperature += fradiantHeat;
-			//     }
-			// }
-			if (extremelyFastNumberFromZeroTo(4) == 0) // only check phase sometimes bcoz its lots of work.
+			if ((random>>1) == 0) // only check phase sometimes bcoz its lots of work.
 			{
 				// Phase change logic, which also includes crystallization.
 				if (grid[currentPosition].phase == PHASE_SOLID)
@@ -3471,10 +3498,17 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 					}
 					else if  (grid[currentPosition].temperature < materials[grid[currentPosition].material].melting)
 					{
-						grid[currentPosition].phase = PHASE_POWDER;
-					}
-					else
-					{
+						//
+						// }
+						// else
+						// {
+
+						if  (grid[currentPosition].temperature < ( materials[grid[currentPosition].material].melting >> 1))
+						{
+							grid[currentPosition].phase = PHASE_POWDER;
+							continue;
+						}
+
 						unsigned int nSolidNeighbours = 0;
 						unsigned int nAttachableNeighbours = 0;
 
@@ -3633,17 +3667,17 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 			// movement instructions for POWDERS
 			if (grid[currentPosition].phase  == PHASE_POWDER)
 			{
-				unsigned int neighbour = neighbourOffsets[ (  1 +  extremelyFastNumberFromZeroTo(2) )  ] + currentPosition;
+				unsigned int neighbour = neighbourOffsets[ (  1 +  (random>>2) )  ] + currentPosition;
 
 				if (velocityAbs > 10000)
 				{
-					if (extremelyFastNumberFromZeroTo(1) == 0)
+					if (random>>3 == 0)
 					{
 						//     neighbour = neighbourOffsets[ extremelyFastNumberFromZeroTo(7) ] + currentPosition;
 						// }
 						// else
 						// {
-						int noise = extremelyFastNumberFromZeroTo (2) - 1;
+						int noise = (random>>2) - 1;
 						neighbour = neighbourOffsets[ (weatherGrid[weatherGridI].direction + noise) % N_NEIGHBOURS ] + currentPosition;
 					}
 				}
@@ -3661,18 +3695,18 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 			// movement instructions for LIQUIDS
 			else if (grid[currentPosition].phase == PHASE_LIQUID)
 			{
-				unsigned int neighbour = neighbourOffsets[ (  0 +  extremelyFastNumberFromZeroTo(4) )  ] + currentPosition;
+				unsigned int neighbour = neighbourOffsets[ (  0 +  (random>>1) )  ] + currentPosition;
 
 
 				if (velocityAbs > 1000)
 				{
-					if (extremelyFastNumberFromZeroTo(1) == 0)
+					if (random>>3 == 0)
 					{
 						//     neighbour = neighbourOffsets[ extremelyFastNumberFromZeroTo(7) ] + currentPosition;
 						// }
 						// else
 						// {
-						int noise = extremelyFastNumberFromZeroTo (2) - 1;
+						int noise = (random>>2) - 1;
 						neighbour = neighbourOffsets[ (weatherGrid[weatherGridI].direction + noise) % N_NEIGHBOURS ] + currentPosition;
 					}
 				}
@@ -3691,7 +3725,7 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 			// movement instructions for GASES
 			else if (grid[currentPosition].phase == PHASE_GAS)
 			{
-				unsigned int neighbour = neighbourOffsets[ extremelyFastNumberFromZeroTo(7) ] + currentPosition;
+				unsigned int neighbour = neighbourOffsets[ random ] + currentPosition;
 
 				// alternate between wind movement and random scatter movement, to look more natural.
 				// if (extremelyFastNumberFromZeroTo(1) == 0)
@@ -3718,13 +3752,13 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 					if (velocityAbs > 50)
 					{
 
-						if (extremelyFastNumberFromZeroTo(1) == 0)
+						if (random>>3 == 0)
 						{
-							neighbour = neighbourOffsets[ extremelyFastNumberFromZeroTo(7) ] + currentPosition;
+							neighbour = neighbourOffsets[ random ] + currentPosition;
 							// }
 							// else
 							// {
-							int noise = extremelyFastNumberFromZeroTo (2) - 1;
+							int noise = (random>>2)- 1;
 							neighbour = neighbourOffsets[ (weatherGrid[weatherGridI].direction + noise) % N_NEIGHBOURS ] + currentPosition;
 						}
 
@@ -3757,13 +3791,13 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 
 				if (velocityAbs > 100000)
 				{
-					if (extremelyFastNumberFromZeroTo(1) == 0)
+					if (random>>3 == 0)
 					{
 						//     neighbour = neighbourOffsets[ extremelyFastNumberFromZeroTo(7) ] + currentPosition;
 						// }
 						// else
 						// {
-						int noise = extremelyFastNumberFromZeroTo (2) - 1;
+						int noise = (random>>2) - 1;
 						unsigned int neighbour = neighbourOffsets[ (weatherGrid[weatherGridI].direction + noise) % N_NEIGHBOURS ] + currentPosition;
 						swapParticle(currentPosition, neighbour);
 						currentPosition = neighbour;

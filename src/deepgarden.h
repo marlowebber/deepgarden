@@ -36,6 +36,10 @@ extern  const unsigned int totalSize;
 
 #define numberOfFairTurnsPerSegment 8
 
+#define pressureScale 10
+
+
+
 #define NUMBER_OF_FRAMES     1
 
 struct Color
@@ -51,7 +55,7 @@ struct Color
 
 // Material is what flavor a square can be. It controls color, melting temperature, and phase change rules
 extern const unsigned int MATERIAL_VACUUM ;
-#define MATERIAL_BUMDIRT 1
+#define MATERIAL_WATER 1
 #define MATERIAL_BLOOD 2
 #define MATERIAL_BONE 3
 
