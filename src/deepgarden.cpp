@@ -343,6 +343,44 @@ std::list<ProposedLifeParticle> v;
 std::list<ProposedLifeParticle> v_extrudedParticles;
 
 
+
+
+
+
+void clearParticle( unsigned int i)
+{
+	grid[i].temperature = defaultTemperature;
+	grid[i].material = MATERIAL_VACUUM;
+	grid[i].phase = PHASE_VACUUM;
+	unsigned int a_offset = (i * numberOfFieldsPerVertex);
+	memcpy( &colorGrid[ a_offset ], &color_clear, 16 );
+}
+
+void swapParticle (unsigned int a, unsigned int b)
+{
+	float temp_color[4];
+	unsigned int a_offset = (a * numberOfFieldsPerVertex);
+	unsigned int b_offset = (b * numberOfFieldsPerVertex);
+	memcpy( temp_color, &colorGrid[ b_offset ] , 16 ); // 4x floats of 4 bytes each
+	memcpy( &colorGrid[ b_offset], &colorGrid[ a_offset] , 16 );
+	memcpy( &colorGrid[ a_offset ], temp_color, 16 );
+	Particle tempParticle = grid[b];
+	grid[b] = grid[a];
+	grid[a] = tempParticle;
+}
+
+void copyParticle(unsigned int from, unsigned int to)
+{
+	grid[to] = grid[from];
+	unsigned int from_offset = (from * numberOfFieldsPerVertex);
+	unsigned int to_offset = (to * numberOfFieldsPerVertex);
+	memcpy( &colorGrid[ to_offset ],  &colorGrid[ from_offset ], 16 );
+}
+
+
+
+
+
 struct Weather
 {
 	int temperature;
@@ -428,8 +466,312 @@ void thread_weather_sector(unsigned int from, unsigned int to)
 			{
 				for (unsigned int scaledGridPointX = 0; scaledGridPointX < weatherGridScale; ++scaledGridPointX)
 				{
-					unsigned int scaledGridPointI =  i + ((scaledGridPointY * sizeX) + scaledGridPointX );
-					grid[scaledGridPointI].temperature = (amount / pressureScale);
+					unsigned int currentPosition =  i + ((scaledGridPointY * sizeX) + scaledGridPointX );
+					grid[currentPosition].temperature = (amount / pressureScale);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+					int velocityAbs = abs(weatherGrid[weatherGridI].velocityX) + abs(weatherGrid[weatherGridI].velocityY);
+
+					unsigned int random = extremelyFastNumberFromZeroTo(N_NEIGHBOURS);
+
+					// exchange heat with a neighbour.
+					unsigned int thermoNeighbour = neighbourOffsets[random] + currentPosition ;
+					if (grid[thermoNeighbour].phase != PHASE_VACUUM)
+					{
+						int avgTemp = (((grid[currentPosition].temperature ) - (grid[thermoNeighbour].temperature)) ) ;
+						avgTemp = avgTemp / materials[ grid[currentPosition].material ].insulativity;
+						grid[thermoNeighbour].temperature += avgTemp;
+						grid[currentPosition].temperature -= avgTemp;
+					}
+
+					if ((random >> 1) == 0) // only check phase sometimes bcoz its lots of work.
+					{
+						// Phase change logic, which also includes crystallization.
+						if (grid[currentPosition].phase == PHASE_SOLID)
+						{
+							if  (grid[currentPosition].temperature > materials[grid[currentPosition].material].boiling)
+							{
+								grid[currentPosition].phase = PHASE_GAS;
+							}
+						}
+						else if (grid[currentPosition].phase == PHASE_POWDER)
+						{
+							if  (grid[currentPosition].temperature > materials[grid[currentPosition].material].melting)
+							{
+								grid[currentPosition].phase = PHASE_LIQUID;
+							}
+						}
+						else if (grid[currentPosition].phase == PHASE_LIQUID)
+						{
+							if (grid[currentPosition].temperature > materials[grid[currentPosition].material].boiling)
+							{
+								grid[currentPosition].phase = PHASE_GAS;
+							}
+							else if  (grid[currentPosition].temperature < materials[grid[currentPosition].material].melting)
+							{
+								if  (grid[currentPosition].temperature < ( materials[grid[currentPosition].material].melting >> 1))
+								{
+									grid[currentPosition].phase = PHASE_POWDER;
+									continue;
+								}
+
+								unsigned int nSolidNeighbours = 0;
+								unsigned int nAttachableNeighbours = 0;
+
+								// go around the neighbours in order, check if they are solid. check how many in a row are solid, and whether it started from an odd or even number, indicating if it is a corner or an edge.
+								unsigned int currentSolidStreak = 0;
+								unsigned int longestSolidStreak = 0;
+								unsigned int longestSolidStreakOffset = 0;
+								unsigned int currentStreakOffset = 0;
+
+								for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
+								{
+									if (grid[neighbourOffsets[j] + currentPosition].phase == PHASE_SOLID )
+									{
+										nSolidNeighbours++;
+										currentSolidStreak++;
+										if (currentSolidStreak > longestSolidStreak)
+										{
+											longestSolidStreak = currentSolidStreak;
+											longestSolidStreakOffset = currentStreakOffset;
+										}
+										nAttachableNeighbours++;
+									}
+									else
+									{
+										if (grid[neighbourOffsets[j] + currentPosition].phase == PHASE_LIQUID ||
+										        grid[neighbourOffsets[j] + currentPosition].phase == PHASE_POWDER )
+										{
+											nAttachableNeighbours++;
+										}
+										currentStreakOffset = j;
+									}
+								}
+
+								if (materials[grid[currentPosition].material].crystal_condition == CONDITION_GREATERTHAN)
+								{
+									if (nSolidNeighbours > materials[grid[currentPosition].material].crystal_n)
+									{
+										if (nAttachableNeighbours > 0) {    grid[currentPosition].phase = PHASE_SOLID; }
+									}
+								}
+								else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_EQUAL)
+								{
+									if (nSolidNeighbours == materials[grid[currentPosition].material].crystal_n)
+									{
+										if (nAttachableNeighbours > 0) {    grid[currentPosition].phase = PHASE_SOLID; }
+									}
+								}
+								else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_LESSTHAN)
+								{
+									if (nSolidNeighbours < materials[grid[currentPosition].material].crystal_n)
+									{
+										if (nAttachableNeighbours > 0) {    grid[currentPosition].phase = PHASE_SOLID; }
+									}
+								}
+								else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_CORNER)
+								{
+									if (longestSolidStreak == 3 && (longestSolidStreakOffset % 2) == 0 )
+									{
+										if (nAttachableNeighbours > 0) {    grid[currentPosition].phase = PHASE_SOLID; }
+									}
+								}
+								else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_EDGE)
+								{
+									if (longestSolidStreak == 3 && (longestSolidStreakOffset % 2) == 1 )
+									{
+										if (nAttachableNeighbours > 0) {    grid[currentPosition].phase = PHASE_SOLID; }
+									}
+								}
+								else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_ROW)
+								{
+									if (longestSolidStreak == materials[grid[currentPosition].material].crystal_n )
+									{
+										if (nAttachableNeighbours > 0) {    grid[currentPosition].phase = PHASE_SOLID; }
+									}
+								}
+								else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_LEFTN)
+								{
+									if (    grid[currentPosition + (materials[grid[currentPosition].material].crystal_n) ].phase == PHASE_SOLID)
+									{
+										if (nAttachableNeighbours > 0) {    grid[currentPosition].phase = PHASE_SOLID; }
+									}
+								}
+								else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_NOTLEFTRIGHTN)
+								{
+									if (
+									    grid[currentPosition + (materials[grid[currentPosition].material].crystal_n) ].phase != PHASE_SOLID &&
+									    grid[currentPosition - (materials[grid[currentPosition].material].crystal_n) ].phase != PHASE_SOLID
+									)
+									{
+										if (nAttachableNeighbours > 0) {    grid[currentPosition].phase = PHASE_SOLID; }
+									}
+									else
+									{
+										grid[currentPosition].phase = PHASE_LIQUID;
+									}
+								}
+
+								else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_NOTLRNEIGHBOURS)
+								{
+									if (currentPosition > sizeX + 40 && currentPosition < (totalSize - sizeX - 40))
+									{
+										if (
+										    grid[currentPosition           + (materials[ grid[currentPosition].material].crystal_n * 2 )].phase != PHASE_SOLID &&
+										    grid[currentPosition           - (materials[ grid[currentPosition].material].crystal_n * 2 )].phase != PHASE_SOLID &&
+										    grid[currentPosition + (sizeX) + (materials[ grid[currentPosition].material].crystal_n * 2 )].phase != PHASE_SOLID &&
+										    grid[currentPosition + (sizeX) - (materials[ grid[currentPosition].material].crystal_n * 2 )].phase != PHASE_SOLID &&
+										    grid[currentPosition - (sizeX) + (materials[ grid[currentPosition].material].crystal_n * 2 )].phase != PHASE_SOLID &&
+										    grid[currentPosition - (sizeX) - (materials[ grid[currentPosition].material].crystal_n * 2 )].phase != PHASE_SOLID
+										)
+										{
+											if (nAttachableNeighbours > 0) {    grid[currentPosition].phase = PHASE_SOLID; }
+										}
+										else
+										{
+											grid[currentPosition].phase = PHASE_LIQUID;
+										}
+									}
+								}
+
+								// small chance to solidify at random and form the nucleus of a new crystal.
+								if (extremelyFastNumberFromZeroTo(10000) == 0)
+								{
+									grid[currentPosition].phase = PHASE_SOLID;
+								}
+							}
+						}
+						else if (grid[currentPosition].phase == PHASE_GAS)
+						{
+							if (grid[currentPosition].temperature < materials[grid[currentPosition].material].boiling)
+							{
+								grid[currentPosition].phase = PHASE_LIQUID;
+							}
+						}
+					}
+
+
+
+					// movement instructions for POWDERS
+					if (grid[currentPosition].phase  == PHASE_POWDER)
+					{
+						unsigned int neighbour = neighbourOffsets[ (  1 +  (random >> 2) )  ] + currentPosition;
+
+						if (velocityAbs > 10000)
+						{
+							if (random >> 3 == 0)
+							{
+								int noise = (random >> 2) - 1;
+								neighbour = neighbourOffsets[ (weatherGrid[weatherGridI].direction + noise) % N_NEIGHBOURS ] + currentPosition;
+							}
+						}
+
+
+						if ((    grid[neighbour].phase == PHASE_VACUUM) ||
+						        (grid[neighbour].phase == PHASE_GAS) ||
+						        (grid[neighbour].phase == PHASE_LIQUID)  )
+						{
+							swapParticle(currentPosition, neighbour);
+							currentPosition = neighbour;
+						}
+					}
+
+					// movement instructions for LIQUIDS
+					else if (grid[currentPosition].phase == PHASE_LIQUID)
+					{
+						unsigned int neighbour = neighbourOffsets[ (  0 +  (random >> 1) )  ] + currentPosition;
+
+
+						if (velocityAbs > 1000)
+						{
+							if (random >> 3 == 0)
+							{
+								int noise = (random >> 2) - 1;
+								neighbour = neighbourOffsets[ (weatherGrid[weatherGridI].direction + noise) % N_NEIGHBOURS ] + currentPosition;
+							}
+						}
+
+
+
+						if ((    grid[neighbour].phase == PHASE_VACUUM) ||
+						        (grid[neighbour].phase == PHASE_GAS) ||
+						        (grid[neighbour].phase == PHASE_LIQUID)     )
+						{
+							swapParticle(currentPosition, neighbour);
+							currentPosition = neighbour;
+						}
+					}
+
+					// movement instructions for GASES
+					else if (grid[currentPosition].phase == PHASE_GAS)
+					{
+						unsigned int neighbour = neighbourOffsets[ random ] + currentPosition;
+
+						// alternate between wind movement and random scatter movement, to look more natural.
+						if (weatherGridI < weatherGridSize)
+						{
+							if (velocityAbs > 50)
+							{
+								if (random >> 3 == 0)
+								{
+									neighbour = neighbourOffsets[ random ] + currentPosition;
+									int noise = (random >> 2) - 1;
+									neighbour = neighbourOffsets[ (weatherGrid[weatherGridI].direction + noise) % N_NEIGHBOURS ] + currentPosition;
+								}
+							}
+						}
+
+						if (grid[neighbour].phase  == PHASE_VACUUM || (grid[neighbour].phase == PHASE_GAS) )
+						{
+							swapParticle(currentPosition, neighbour);
+						}
+					}
+
+					else if
+					// movement instructions for SOLIDS
+					(grid[currentPosition].phase  == PHASE_SOLID)
+					{
+
+
+						if (velocityAbs > 100000)
+						{
+							if (random >> 3 == 0)
+							{
+								int noise = (random >> 2) - 1;
+								unsigned int neighbour = neighbourOffsets[ (weatherGrid[weatherGridI].direction + noise) % N_NEIGHBOURS ] + currentPosition;
+								swapParticle(currentPosition, neighbour);
+								currentPosition = neighbour;
+							}
+						}
+
+					}
+
+
+
+
+
+
+
+
+
+
 				}
 			}
 
@@ -630,15 +972,24 @@ void thread_weather()
 	// 	if (from < (sizeX + 1)) {from = (sizeX + 1);}
 	// 	if (to > totalSize - (sizeX + 1)) {to = totalSize - (sizeX + 1);}
 
-		boost::thread t1{  thread_weather_sector, 0*(weatherGridY/4)  , 1*(weatherGridY/4)  } ;
-		boost::thread t2{  thread_weather_sector, 1*(weatherGridY/4)  , 2*(weatherGridY/4)  } ;
-		boost::thread t3{  thread_weather_sector, 2*(weatherGridY/4)  , 3*(weatherGridY/4)  } ;
-		boost::thread t4{  thread_weather_sector, 3*(weatherGridY/4)  , (weatherGridY-1) } ;
+	boost::thread t1{  thread_weather_sector, 0 * (weatherGridY / 8)  +1, 1 * (weatherGridY / 8)  } ;
+	boost::thread t2{  thread_weather_sector, 1 * (weatherGridY / 8)  , 2 * (weatherGridY / 8)  } ;
+	boost::thread t3{  thread_weather_sector, 2 * (weatherGridY / 8)  , 3 * (weatherGridY / 8)  } ;
+	boost::thread t4{  thread_weather_sector, 3 * (weatherGridY / 8)  , 4 * (weatherGridY / 8)  } ;
+	boost::thread t5{  thread_weather_sector, 4 * (weatherGridY / 8)  , 5 * (weatherGridY / 8)  } ;
+	boost::thread t6{  thread_weather_sector, 5 * (weatherGridY / 8)  , 6 * (weatherGridY / 8)  } ;
+	boost::thread t7{  thread_weather_sector, 6 * (weatherGridY / 8)  , 7 * (weatherGridY / 8)  } ;
+	boost::thread t8{  thread_weather_sector, 7 * (weatherGridY / 8)  , (weatherGridY - 1-1) } ;
 
-		t1.join();
-		t2.join();
-		t3.join();
-		t4.join();
+
+	t1.join();
+	t2.join();
+	t3.join();
+	t4.join();
+	t5.join();
+	t6.join();
+	t7.join();
+	t8.join();
 
 
 
@@ -2268,37 +2619,6 @@ void incrementAnimalSegmentPositions (unsigned int animalIndex, unsigned int i, 
 
 
 
-void clearParticle( unsigned int i)
-{
-	grid[i].temperature = defaultTemperature;
-	grid[i].material = MATERIAL_VACUUM;
-	grid[i].phase = PHASE_VACUUM;
-	unsigned int a_offset = (i * numberOfFieldsPerVertex);
-	memcpy( &colorGrid[ a_offset ], &color_clear, 16 );
-}
-
-void swapParticle (unsigned int a, unsigned int b)
-{
-	float temp_color[4];
-	unsigned int a_offset = (a * numberOfFieldsPerVertex);
-	unsigned int b_offset = (b * numberOfFieldsPerVertex);
-	memcpy( temp_color, &colorGrid[ b_offset ] , 16 ); // 4x floats of 4 bytes each
-	memcpy( &colorGrid[ b_offset], &colorGrid[ a_offset] , 16 );
-	memcpy( &colorGrid[ a_offset ], temp_color, 16 );
-	Particle tempParticle = grid[b];
-	grid[b] = grid[a];
-	grid[a] = tempParticle;
-}
-
-void copyParticle(unsigned int from, unsigned int to)
-{
-	grid[to] = grid[from];
-	unsigned int from_offset = (from * numberOfFieldsPerVertex);
-	unsigned int to_offset = (to * numberOfFieldsPerVertex);
-	memcpy( &colorGrid[ to_offset ],  &colorGrid[ from_offset ], 16 );
-}
-
-
 
 // these materials are expected by the game, so they must be loaded in every situation.
 void resetMaterials()
@@ -3500,6 +3820,13 @@ void materialPostProcess(unsigned int i)
 	colorGrid[ (i * numberOfFieldsPerVertex) + 3 ] = ppColor.a;
 }
 
+
+
+void updateMaterialSquare(unsigned int i)
+{
+
+}
+
 void thread_temperature2_sector ( unsigned int from, unsigned int to )
 {
 	for (unsigned int i = from; i < to; ++i)
@@ -3508,14 +3835,17 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 		if (grid[currentPosition].phase != PHASE_VACUUM)
 		{
 
-			unsigned int random = extremelyFastNumberFromZeroTo(N_NEIGHBOURS);
 
 			unsigned int x = i % sizeX ;
 			unsigned int y = i / sizeX;
 			unsigned int wx = x / weatherGridScale;
 			unsigned int wy = y / weatherGridScale;
 			unsigned int weatherGridI = (wy * weatherGridX) + (wx);
+
+
 			int velocityAbs = abs(weatherGrid[weatherGridI].velocityX) + abs(weatherGrid[weatherGridI].velocityY);
+
+			unsigned int random = extremelyFastNumberFromZeroTo(N_NEIGHBOURS);
 
 			// exchange heat with a neighbour.
 			unsigned int thermoNeighbour = neighbourOffsets[random] + currentPosition ;
@@ -3552,11 +3882,6 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 					}
 					else if  (grid[currentPosition].temperature < materials[grid[currentPosition].material].melting)
 					{
-						//
-						// }
-						// else
-						// {
-
 						if  (grid[currentPosition].temperature < ( materials[grid[currentPosition].material].melting >> 1))
 						{
 							grid[currentPosition].phase = PHASE_POWDER;
@@ -3610,31 +3935,13 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 								if (nAttachableNeighbours > 0) {    grid[currentPosition].phase = PHASE_SOLID; }
 							}
 						}
-
-						// These conditions produce boring results, so i do not care to include them, as even checking for them slows down the program.
-						// But their information should be known in this code.
-						// else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_LESSTHAN)
-						// {
-						//     if (nSolidNeighbours < materials[grid[currentPosition].material].crystal_n)
-						//     {
-						//         if (nAttachableNeighbours > 0) {    grid[currentPosition].phase = PHASE_SOLID; }
-						//     }
-						// }
-						// else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_EVENNUMBER)
-						// {
-						//     if (nSolidNeighbours % 2 == 0)
-						//     {
-						//         if (nAttachableNeighbours > 0) {    grid[currentPosition].phase = PHASE_SOLID; }
-						//     }
-						// }
-						// else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_ODDNUMBER)
-						// {
-						//     if (nSolidNeighbours % 2 == 1)
-						//     {
-						//         if (nAttachableNeighbours > 0) {    grid[currentPosition].phase = PHASE_SOLID; }
-						//     }
-						// }
-
+						else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_LESSTHAN)
+						{
+							if (nSolidNeighbours < materials[grid[currentPosition].material].crystal_n)
+							{
+								if (nAttachableNeighbours > 0) {    grid[currentPosition].phase = PHASE_SOLID; }
+							}
+						}
 						else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_CORNER)
 						{
 							if (longestSolidStreak == 3 && (longestSolidStreakOffset % 2) == 0 )
@@ -3727,10 +4034,6 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 				{
 					if (random >> 3 == 0)
 					{
-						//     neighbour = neighbourOffsets[ extremelyFastNumberFromZeroTo(7) ] + currentPosition;
-						// }
-						// else
-						// {
 						int noise = (random >> 2) - 1;
 						neighbour = neighbourOffsets[ (weatherGrid[weatherGridI].direction + noise) % N_NEIGHBOURS ] + currentPosition;
 					}
@@ -3756,10 +4059,6 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 				{
 					if (random >> 3 == 0)
 					{
-						//     neighbour = neighbourOffsets[ extremelyFastNumberFromZeroTo(7) ] + currentPosition;
-						// }
-						// else
-						// {
 						int noise = (random >> 2) - 1;
 						neighbour = neighbourOffsets[ (weatherGrid[weatherGridI].direction + noise) % N_NEIGHBOURS ] + currentPosition;
 					}
@@ -3782,53 +4081,18 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 				unsigned int neighbour = neighbourOffsets[ random ] + currentPosition;
 
 				// alternate between wind movement and random scatter movement, to look more natural.
-				// if (extremelyFastNumberFromZeroTo(1) == 0)
-				// {
-
-				// unsigned int x = neighbour % sizeX ;
-				// unsigned int y = neighbour / sizeX;
-				// unsigned int wx = x / weatherGridScale;
-				// unsigned int wy = y / weatherGridScale;
-				// unsigned int weatherGridI = (wy * weatherGridX) + (wx);
 				if (weatherGridI < weatherGridSize)
 				{
-					// if (weatherGrid[weatherGridI].direction >= N_NEIGHBOURS)
-					// {
-
-					// neighbour = neighbourOffsets[ extremelyFastNumberFromZeroTo(7) ] + currentPosition;
-
-					// }
-					// else
-					// {
-
-
-
 					if (velocityAbs > 50)
 					{
-
 						if (random >> 3 == 0)
 						{
 							neighbour = neighbourOffsets[ random ] + currentPosition;
-							// }
-							// else
-							// {
 							int noise = (random >> 2) - 1;
 							neighbour = neighbourOffsets[ (weatherGrid[weatherGridI].direction + noise) % N_NEIGHBOURS ] + currentPosition;
 						}
-
 					}
-
-
-
-					// }
 				}
-				// {
-				//     neighbour = neighbourOffsets[ extremelyFastNumberFromZeroTo(7) ] + currentPosition;
-				// }
-
-// else
-
-
 
 				if (grid[neighbour].phase  == PHASE_VACUUM || (grid[neighbour].phase == PHASE_GAS) )
 				{
@@ -3841,16 +4105,11 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 			(grid[currentPosition].phase  == PHASE_SOLID)
 			{
 
-				// unsigned int neighbour = neighbourOffsets[ extremelyFastNumberFromZeroTo(N_NEIGHBOURS) ] + currentPosition;
 
 				if (velocityAbs > 100000)
 				{
 					if (random >> 3 == 0)
 					{
-						//     neighbour = neighbourOffsets[ extremelyFastNumberFromZeroTo(7) ] + currentPosition;
-						// }
-						// else
-						// {
 						int noise = (random >> 2) - 1;
 						unsigned int neighbour = neighbourOffsets[ (weatherGrid[weatherGridI].direction + noise) % N_NEIGHBOURS ] + currentPosition;
 						swapParticle(currentPosition, neighbour);
@@ -5343,6 +5602,8 @@ void thread_life()
 					}
 				}
 			}
+
+
 		}
 	}
 

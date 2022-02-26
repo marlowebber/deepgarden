@@ -204,7 +204,7 @@ int main( int argc, char * argv[] )
 		// start threads in order of chunkiest to least chunky.
 		if (!crudOps && !paused)
 		{
-			boost::thread t99{ thread_temperature2 };
+			// boost::thread t99{ thread_temperature2 };
 			boost::thread t2{ thread_physics };
 			boost::thread t3{ thread_weather };
 			boost::thread t6{ thread_interface };
@@ -219,7 +219,7 @@ int main( int argc, char * argv[] )
 			t6.join();
 			t3.join();
 			t2.join();
-			t99.join();
+			// t99.join();
 		}
 		else
 		{
