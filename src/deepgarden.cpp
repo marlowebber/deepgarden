@@ -210,7 +210,7 @@ unsigned int animationChangeCount = 0;
 unsigned int animationGlobalFrame = FRAME_BODY;
 
 unsigned int ppPhaseOffset = 0;
-const unsigned int ppSkipSize = 3;
+const unsigned int ppSkipSize = 5;
 
 
 struct Material
@@ -361,7 +361,7 @@ Weather::Weather()
 }
 
 
-#define weatherGridScale 2
+#define weatherGridScale 3
 
 const int weatherGridX = sizeX / weatherGridScale;
 const int weatherGridY = sizeY / weatherGridScale;
@@ -1939,7 +1939,11 @@ void photate( unsigned int i )
 		)
 		{
 			blocked ++;
-			grid[currentPosition].temperature++;
+			if (blocked < lampBrightness)
+			{
+
+				grid[currentPosition].temperature += (lampBrightness - blocked);
+			}
 		}
 
 		if (!blocked)
@@ -3409,9 +3413,9 @@ void materialPostProcess(unsigned int i)
 	{
 		ppColor =  materials[ grid[i].material ].color ;
 	}
-	
+
 	ppColor = addColor(ppColor, blackbodyLookup( grid[i].temperature ) );
-	
+
 
 	if (grid[i].phase == PHASE_VACUUM)
 	{
@@ -3437,7 +3441,7 @@ void materialPostProcess(unsigned int i)
 	if (grid[i].temperature > 5000) // extremely high temperatures display alpha 1 regardless of material phase. Also get higher alpha gradually the more extreme the temp.
 	{
 		float ftemp = grid[i].temperature ;
-		ppColor.a += ((ftemp- 5000.0f) / 5000.0f);
+		ppColor.a += ((ftemp - 5000.0f) / 5000.0f);
 	}
 
 	colorGrid[ (i * numberOfFieldsPerVertex) + 0 ] = ppColor.r;
@@ -3473,7 +3477,7 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 				grid[currentPosition].temperature -= avgTemp;
 			}
 
-			if ((random>>1) == 0) // only check phase sometimes bcoz its lots of work.
+			if ((random >> 1) == 0) // only check phase sometimes bcoz its lots of work.
 			{
 				// Phase change logic, which also includes crystallization.
 				if (grid[currentPosition].phase == PHASE_SOLID)
@@ -3667,17 +3671,17 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 			// movement instructions for POWDERS
 			if (grid[currentPosition].phase  == PHASE_POWDER)
 			{
-				unsigned int neighbour = neighbourOffsets[ (  1 +  (random>>2) )  ] + currentPosition;
+				unsigned int neighbour = neighbourOffsets[ (  1 +  (random >> 2) )  ] + currentPosition;
 
 				if (velocityAbs > 10000)
 				{
-					if (random>>3 == 0)
+					if (random >> 3 == 0)
 					{
 						//     neighbour = neighbourOffsets[ extremelyFastNumberFromZeroTo(7) ] + currentPosition;
 						// }
 						// else
 						// {
-						int noise = (random>>2) - 1;
+						int noise = (random >> 2) - 1;
 						neighbour = neighbourOffsets[ (weatherGrid[weatherGridI].direction + noise) % N_NEIGHBOURS ] + currentPosition;
 					}
 				}
@@ -3695,18 +3699,18 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 			// movement instructions for LIQUIDS
 			else if (grid[currentPosition].phase == PHASE_LIQUID)
 			{
-				unsigned int neighbour = neighbourOffsets[ (  0 +  (random>>1) )  ] + currentPosition;
+				unsigned int neighbour = neighbourOffsets[ (  0 +  (random >> 1) )  ] + currentPosition;
 
 
 				if (velocityAbs > 1000)
 				{
-					if (random>>3 == 0)
+					if (random >> 3 == 0)
 					{
 						//     neighbour = neighbourOffsets[ extremelyFastNumberFromZeroTo(7) ] + currentPosition;
 						// }
 						// else
 						// {
-						int noise = (random>>2) - 1;
+						int noise = (random >> 2) - 1;
 						neighbour = neighbourOffsets[ (weatherGrid[weatherGridI].direction + noise) % N_NEIGHBOURS ] + currentPosition;
 					}
 				}
@@ -3752,13 +3756,13 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 					if (velocityAbs > 50)
 					{
 
-						if (random>>3 == 0)
+						if (random >> 3 == 0)
 						{
 							neighbour = neighbourOffsets[ random ] + currentPosition;
 							// }
 							// else
 							// {
-							int noise = (random>>2)- 1;
+							int noise = (random >> 2) - 1;
 							neighbour = neighbourOffsets[ (weatherGrid[weatherGridI].direction + noise) % N_NEIGHBOURS ] + currentPosition;
 						}
 
@@ -3791,13 +3795,13 @@ void thread_temperature2_sector ( unsigned int from, unsigned int to )
 
 				if (velocityAbs > 100000)
 				{
-					if (random>>3 == 0)
+					if (random >> 3 == 0)
 					{
 						//     neighbour = neighbourOffsets[ extremelyFastNumberFromZeroTo(7) ] + currentPosition;
 						// }
 						// else
 						// {
-						int noise = (random>>2) - 1;
+						int noise = (random >> 2) - 1;
 						unsigned int neighbour = neighbourOffsets[ (weatherGrid[weatherGridI].direction + noise) % N_NEIGHBOURS ] + currentPosition;
 						swapParticle(currentPosition, neighbour);
 						currentPosition = neighbour;

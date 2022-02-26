@@ -21,7 +21,7 @@ using namespace glm;
 
 extern  const unsigned int totalSize;
 
-#define sizeX 4096
+#define sizeX 8192
 #define sizeY 256
 #define maxGenomeSize 64
 #define N_NEIGHBOURS 8                 // this is always 8 on a 2D square grid. 
