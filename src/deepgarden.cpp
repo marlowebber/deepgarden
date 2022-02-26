@@ -74,11 +74,11 @@ int spriteNeighbourOffsets[] =
 const unsigned int totalSize = sizeX * sizeY;
 const unsigned int numberOfFieldsPerVertex = 6; /*  R, G, B, A, X, Y  */
 
-float * colorGrid = new float[totalSize * numberOfFieldsPerVertex ];        // the colorgrid is like a painting of the game world which can be drawn to the screen easily, and updated as the game is played. it concerns the physical material.
-float * lifeColorGrid      = new float[totalSize * numberOfFieldsPerVertex ];  // the same but concerning growing plants. Because plant color information is not easily stored anywhere else, this grid must be preserved in save and load operations.
-float * animationGrid     = new float[totalSize * numberOfFieldsPerVertex ];    // the same, but for the sprites of animals. This is updated every turn, and animals carry their own copy of their sprites, so this does not need to be preserved.
-float * seedColorGrid      = new float[totalSize * numberOfFieldsPerVertex];   // the same, but for the colors of seeds and falling photons.
-float * ppGrid           = new float[totalSize * numberOfFieldsPerVertex];
+float * colorGrid          = new float[totalSize * numberOfFieldsPerVertex];        // the colorgrid is like a painting of the game world which can be drawn to the screen easily, and updated as the game is played. it concerns the physical material.
+float * lifeColorGrid      = new float[totalSize * numberOfFieldsPerVertex];        // the same but concerning growing plants. Because plant color information is not easily stored anywhere else, this grid must be preserved in save and load operations.
+float * animationGrid      = new float[totalSize * numberOfFieldsPerVertex];        // the same, but for the sprites of animals. This is updated every turn, and animals carry their own copy of their sprites, so this does not need to be preserved.
+float * seedColorGrid      = new float[totalSize * numberOfFieldsPerVertex];        // the same, but for the colors of seeds and falling photons.
+float * ppGrid             = new float[totalSize * numberOfFieldsPerVertex];
 float * backgroundSky      = new float[totalSize * numberOfFieldsPerVertex];
 
 // PLANT DRAWING
@@ -166,13 +166,11 @@ int defaultTemperature = 1000;
 int defaultPressure = 1000;
 int defaultVelocity = 0;
 
-int radiantHeatIntensity = 50; // this is a physical constant that determines how much heat radiates from material, and how strongly material heat is coupled to the atmosphere.
-
-float combinedGasLawConstant = 0.001f;
+const int radiantHeatIntensity = 50; // this is a physical constant that determines how much heat radiates from material, and how strongly material heat is coupled to the atmosphere.
+const float combinedGasLawConstant = 0.001f;
 
 unsigned int sunlightDirection = 2;
 unsigned int sunlightEnergy = 10;
-unsigned int sunlightHeatCoeff = 1;
 unsigned int sunlightTemp = 1000;
 unsigned int sunlightPenetrationDepth = 20; // light is slightly reduced traveling through solid things. this affects plants in game as well as being an artistic effect. This number is how far the light goes into solid things.
 
@@ -182,22 +180,22 @@ unsigned int nGerminatedSeeds = 0;
 unsigned int lampBrightness = 10;
 
 // raw energy values are DIVIDED by these numbers to get the result. So more means less.
-unsigned int lightEfficiency   = 10000;
-float movementEfficiency = 5000.0f;
+const unsigned int lightEfficiency   = 10000;
+const float movementEfficiency = 5000.0f;
 
 // except for these, where the value is what you get from eating a square.
-float meatEfficiency    = 1.0f;
-float bloodEfficiency   = 1.0f;
-float seedEfficiency    = 1.0f;
-float mineralEfficiency = 1.0f;
-float plantEfficiency   = 1.0f;
+const float meatEfficiency    = 1.0f;
+const float bloodEfficiency   = 1.0f;
+const float seedEfficiency    = 1.0f;
+const float mineralEfficiency = 1.0f;
+const float plantEfficiency   = 1.0f;
 
 vec_u2 playerCursor = vec_u2(0, 0);
 
-float maximumDisplayEnergy = 1.0f;
-float maximumDisplayTemperature = 2000.0f;
-float maximumDisplayPressure = 2000.0f;
-float maximumDisplayVelocity = 1.0f;
+const float maximumDisplayEnergy = 1.0f;
+const float maximumDisplayTemperature = 2000.0f;
+const float maximumDisplayPressure = 2000.0f;
+const float maximumDisplayVelocity = 1.0f;
 
 unsigned int visualizer = VISUALIZE_MATERIAL;
 
@@ -209,6 +207,9 @@ std::list<vec_u2> v_seeds;
 
 unsigned int animationChangeCount = 0;
 unsigned int animationGlobalFrame = FRAME_BODY;
+
+unsigned int ppPhaseOffset = 0;
+const unsigned int ppSkipSize = 3;
 
 
 struct Material
@@ -3160,26 +3161,23 @@ void materialPostProcess(unsigned int i)
 	unsigned int x = i % sizeX;
 	unsigned int y = i / sizeX;
 	Color ppColor =  color_clear;
-	if (grid[i].phase != PHASE_VACUUM)
+	if (grid[i].material  < materials.size())
 	{
-		if (grid[i].material  < materials.size())
-		{
-			ppColor =  materials[ grid[i].material ].color ;
-		}
-		if (grid[i].phase == PHASE_GAS)
-		{
-			ppColor = addColor(ppColor, phaseTingeGas);
-		}
-		else if (grid[i].phase == PHASE_LIQUID)
-		{
-			ppColor = addColor(ppColor, phaseTingeLiquid);
-		}
-		else if (grid[i].phase == PHASE_SOLID)
-		{
-			ppColor = addColor(ppColor, phaseTingeSolid);
-		}
-		ppColor = addColor(ppColor, blackbodyLookup( grid[i].temperature ) );
+		ppColor =  materials[ grid[i].material ].color ;
 	}
+	if (grid[i].phase == PHASE_GAS)
+	{
+		ppColor = addColor(ppColor, phaseTingeGas);
+	}
+	else if (grid[i].phase == PHASE_LIQUID)
+	{
+		ppColor = addColor(ppColor, phaseTingeLiquid);
+	}
+	else if (grid[i].phase == PHASE_SOLID)
+	{
+		ppColor = addColor(ppColor, phaseTingeSolid);
+	}
+	ppColor = addColor(ppColor, blackbodyLookup( grid[i].temperature ) );
 	colorGrid[ (i * numberOfFieldsPerVertex) + 0 ] = ppColor.r;
 	colorGrid[ (i * numberOfFieldsPerVertex) + 1 ] = ppColor.g;
 	colorGrid[ (i * numberOfFieldsPerVertex) + 2 ] = ppColor.b;
@@ -3629,13 +3627,14 @@ void thread_physics ()
 		}
 	}
 
-	unsigned int processChunkSize = (totalSize / 10);
-	for (unsigned int i = 0; i < processChunkSize; ++i)
+	// figure out what color hot or illuminated stuff should be. For efficiency, only update one in every few squares per turn- it looks fine in the game.
+	for (unsigned int i = ppPhaseOffset; i < totalSize; i += ppSkipSize)
 	{
-		unsigned int x = extremelyFastNumberFromZeroTo(sizeX - 1);
-		unsigned int y = extremelyFastNumberFromZeroTo(sizeY - 1);
-		materialPostProcess(  (y * sizeX) + x  );
+		materialPostProcess(  i );
 	}
+	ppPhaseOffset++;
+
+	if (ppPhaseOffset % ppSkipSize == 0 ) { ppPhaseOffset = 0;}
 #ifdef THREAD_TIMING_READOUT
 	auto end = std::chrono::steady_clock::now();
 	auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
