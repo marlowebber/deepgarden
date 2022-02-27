@@ -36,8 +36,9 @@ extern  const unsigned int totalSize;
 
 #define numberOfFairTurnsPerSegment 8
 
-#define pressureScale 10
-
+#define temperatureScale 5
+#define pressureVelocityScale 2
+#define materialWindPushScale 0
 
 
 #define NUMBER_OF_FRAMES     1

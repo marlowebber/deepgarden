@@ -425,6 +425,7 @@ unsigned int materialPhysics (unsigned int currentPosition, unsigned int weather
 
 	// Exchange heat by conduction.
 	unsigned int thermoNeighbour = neighbourOffsets[random] + currentPosition ;
+	if (thermoNeighbour > totalSize) {thermoNeighbour = currentPosition;}
 
 	if (grid[thermoNeighbour].phase != PHASE_VACUUM)
 	{
@@ -445,6 +446,11 @@ unsigned int materialPhysics (unsigned int currentPosition, unsigned int weather
 			if  (grid[currentPosition].temperature > materials[grid[currentPosition].material].boiling)
 			{
 				grid[currentPosition].phase = PHASE_GAS;
+			}
+
+			if  (grid[currentPosition].temperature > materials[grid[currentPosition].material].melting)
+			{
+				grid[currentPosition].phase = PHASE_LIQUID;
 			}
 		}
 		else if (grid[currentPosition].phase == PHASE_POWDER)
@@ -478,7 +484,9 @@ unsigned int materialPhysics (unsigned int currentPosition, unsigned int weather
 
 				for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
 				{
-					if (grid[neighbourOffsets[j] + currentPosition].phase == PHASE_SOLID )
+					unsigned int neighbour = neighbourOffsets[j] + currentPosition;
+					if (neighbour > totalSize) {neighbour = currentPosition; }
+					if (grid[neighbour].phase == PHASE_SOLID )
 					{
 						nSolidNeighbours++;
 						currentSolidStreak++;
@@ -491,8 +499,8 @@ unsigned int materialPhysics (unsigned int currentPosition, unsigned int weather
 					}
 					else
 					{
-						if (grid[neighbourOffsets[j] + currentPosition].phase == PHASE_LIQUID ||
-						        grid[neighbourOffsets[j] + currentPosition].phase == PHASE_POWDER )
+						if (grid[neighbour].phase == PHASE_LIQUID ||
+						        grid[neighbour].phase == PHASE_POWDER )
 						{
 							nAttachableNeighbours++;
 						}
@@ -609,16 +617,18 @@ unsigned int materialPhysics (unsigned int currentPosition, unsigned int weather
 	{
 		unsigned int neighbour = neighbourOffsets[ (  1 +  (random >> 2) )  ] + currentPosition;
 
-		if (velocityAbs > 10000)
+		if (velocityAbs > (2000 >> materialWindPushScale) )
 		{
 			if (random >> 3 == 0)
 			{
 				int noise = (random >> 2) - 1;
 				neighbour = neighbourOffsets[ (weatherGrid[weatherGridI].direction + noise) % N_NEIGHBOURS ] + currentPosition;
+				// if (neighbour > totalSize) {neighbour = currentPosition;}
 			}
 		}
 
 
+if (neighbour >= totalSize) {neighbour = currentPosition;}
 		if ((    grid[neighbour].phase == PHASE_VACUUM) ||
 		        (grid[neighbour].phase == PHASE_GAS) ||
 		        (grid[neighbour].phase == PHASE_LIQUID)  )
@@ -634,18 +644,19 @@ unsigned int materialPhysics (unsigned int currentPosition, unsigned int weather
 	else if (grid[currentPosition].phase == PHASE_LIQUID)
 	{
 		unsigned int neighbour = neighbourOffsets[ (  0 +  (random >> 1) )  ] + currentPosition;
+		// if (neighbour >= totalSize) {neighbour = currentPosition;}
 
-
-		if (velocityAbs > 1000)
+		if (velocityAbs > (1000 >> materialWindPushScale))
 		{
 			if (random >> 3 == 0)
 			{
 				int noise = (random >> 2) - 1;
 				neighbour = neighbourOffsets[ (weatherGrid[weatherGridI].direction + noise) % N_NEIGHBOURS ] + currentPosition;
+
 			}
 		}
 
-
+if (neighbour >= totalSize) {neighbour = currentPosition;}
 
 		if ((    grid[neighbour].phase == PHASE_VACUUM) ||
 		        (grid[neighbour].phase == PHASE_GAS) ||
@@ -662,21 +673,23 @@ unsigned int materialPhysics (unsigned int currentPosition, unsigned int weather
 	else if (grid[currentPosition].phase == PHASE_GAS)
 	{
 		unsigned int neighbour = neighbourOffsets[ random ] + currentPosition;
-
+// if (neighbour > totalSize) {neighbour = currentPosition;}
 		// alternate between wind movement and random scatter movement, to look more natural.
 		if (weatherGridI < weatherGridSize)
 		{
-			if (velocityAbs > 50)
+			// if (velocityAbs > 50)
+			// {
+			if (random >> 3 == 0)
 			{
-				if (random >> 3 == 0)
-				{
-					neighbour = neighbourOffsets[ random ] + currentPosition;
-					int noise = (random >> 2) - 1;
-					neighbour = neighbourOffsets[ (weatherGrid[weatherGridI].direction + noise) % N_NEIGHBOURS ] + currentPosition;
-				}
+				// neighbour = neighbourOffsets[ random ] + currentPosition;
+				int noise = (random >> 2) - 1;
+				neighbour = neighbourOffsets[ (weatherGrid[weatherGridI].direction + noise) % N_NEIGHBOURS ] + currentPosition;
+				
 			}
+			// }
 		}
 
+if (neighbour >= totalSize) {neighbour = currentPosition;}
 		if (grid[neighbour].phase  == PHASE_VACUUM || (grid[neighbour].phase == PHASE_GAS) )
 		{
 			swapParticle(currentPosition, neighbour);
@@ -691,12 +704,13 @@ unsigned int materialPhysics (unsigned int currentPosition, unsigned int weather
 	{
 
 
-		if (velocityAbs > 100000)
+		if (velocityAbs > (10000 >> materialWindPushScale))
 		{
 			if (random >> 3 == 0)
 			{
 				int noise = (random >> 2) - 1;
 				unsigned int neighbour = neighbourOffsets[ (weatherGrid[weatherGridI].direction + noise) % N_NEIGHBOURS ] + currentPosition;
+				if (neighbour >= totalSize) {neighbour = currentPosition;}
 				swapParticle(currentPosition, neighbour);
 				currentPosition = neighbour;
 			}
@@ -711,235 +725,361 @@ unsigned int materialPhysics (unsigned int currentPosition, unsigned int weather
 }
 
 
+
+void airflowEdge( unsigned int x, unsigned int y )
+{
+
+
+	if (x > weatherGridX - 1) {x = weatherGridX - 1;}
+	if (y > weatherGridY - 1) {y = weatherGridY - 1;}
+	unsigned int weatherGridI = (y * weatherGridX) + x;
+	unsigned int i = ((y * weatherGridScale) * sizeX) + (x * weatherGridScale);
+	if (i > totalSize) { i = totalSize;}
+
+	int dp = 0;
+	int dx = 0;
+	int dy = 0;
+	int dt = 0;
+
+	if (weatherGrid[weatherGridI].temperature  < 0) {weatherGrid[weatherGridI].temperature = 0;}
+
+	// couple the material grid temp to the weather grid temp
+	int gridCouplingAmount = ( weatherGrid[weatherGridI].temperature + ( grid[i].temperature * temperatureScale) ) / 2;
+	weatherGrid[weatherGridI].temperature  = gridCouplingAmount;
+
+	// because the weather grid is several times smaller than the material grid, you have to go set the temperatures of all the applicable grid squares.
+	unsigned int filledSquares = 0;
+	for (unsigned int scaledGridPointY = 0; scaledGridPointY < weatherGridScale; ++scaledGridPointY)
+	{
+		for (unsigned int scaledGridPointX = 0; scaledGridPointX < weatherGridScale; ++scaledGridPointX)
+		{
+			unsigned int currentPosition =  i + ((scaledGridPointY * sizeX) + scaledGridPointX );
+			grid[currentPosition].temperature = (gridCouplingAmount / temperatureScale);
+			// perform material physics (falling sand physics).
+			// this is a perfect place to do it because you're already having to iterate across the material grid
+			// but you are doing it cell by cell in the weather grid, which keeps the work in a close area at all times
+			// i believe this improves the computers performance greatly
+
+			if (currentPosition < totalSize && weatherGridI < weatherGridSize)
+			{
+
+				filledSquares += materialPhysics(currentPosition, weatherGridI);
+			}
+
+
+		}
+	}
+
+	// smooth the simulation by mixing each cell with the average of its neighbours.
+	int ap = 0;
+	int ax = 0;
+	int ay = 0;
+	int at = 0;
+	for (unsigned int n = 0; n < N_NEIGHBOURS; ++n)
+	{
+		unsigned int weatherGridNeighbour = weatherGridI + weatherGridOffsets[n] ;
+		if (weatherGridNeighbour >= weatherGridSize ) {weatherGridNeighbour = weatherGridI;}                     // you must add 8 numbers here or later math will break down. if a neighbour is not valid, add your own values instead.
+		ap += weatherGrid[ weatherGridNeighbour ].pressure ;
+		ax += weatherGrid[ weatherGridNeighbour ].velocityX;
+		ay += weatherGrid[ weatherGridNeighbour ].velocityY;
+		at += weatherGrid[weatherGridNeighbour].temperature;
+	}
+	ax = ax >> 3 ;                                                                                              // N_NEIGHBOURS is 8, so you can do the division part of the average by using a bit shift.
+	ay = ay >> 3 ;
+	ap = ap >> 3 ;
+	at = at >> 3 ;
+
+	// if (filledSquares > 4)
+	// {
+	dp =   (ap - weatherGrid[weatherGridI].pressure   );
+	dx =   (ax - weatherGrid[weatherGridI].velocityX  );
+	dy =   (ay - weatherGrid[weatherGridI].velocityY  );
+	dt =   (at - weatherGrid[weatherGridI].temperature);
+
+	// apply the changes you computed in this turn, and finish.
+	weatherGrid[weatherGridI].pressure    = dp;
+	weatherGrid[weatherGridI].velocityX   = dx;
+	weatherGrid[weatherGridI].velocityY   = dy;
+	weatherGrid[weatherGridI].temperature = dt;
+	return;
+
+	// }
+}
+
+void airflow( unsigned int x, unsigned int y )
+{
+
+	unsigned int weatherGridI = (y * weatherGridX) + x;
+	unsigned int i = ((y * weatherGridScale) * sizeX) + (x * weatherGridScale);
+	if (i > totalSize) { i = totalSize;}
+
+	int dp = 0;
+	int dx = 0;
+	int dy = 0;
+	int dt = 0;
+
+	if (weatherGrid[weatherGridI].temperature  < 0) {weatherGrid[weatherGridI].temperature = 0;}
+
+	// couple the material grid temp to the weather grid temp
+	int gridCouplingAmount = ( weatherGrid[weatherGridI].temperature + ( grid[i].temperature * temperatureScale) ) / 2;
+	weatherGrid[weatherGridI].temperature  = gridCouplingAmount;
+
+	// because the weather grid is several times smaller than the material grid, you have to go set the temperatures of all the applicable grid squares.
+	unsigned int filledSquares = 0;
+	for (unsigned int scaledGridPointY = 0; scaledGridPointY < weatherGridScale; ++scaledGridPointY)
+	{
+		for (unsigned int scaledGridPointX = 0; scaledGridPointX < weatherGridScale; ++scaledGridPointX)
+		{
+			unsigned int currentPosition =  i + ((scaledGridPointY * sizeX) + scaledGridPointX );
+			grid[currentPosition].temperature = (gridCouplingAmount / temperatureScale);
+			// perform material physics (falling sand physics).
+			// this is a perfect place to do it because you're already having to iterate across the material grid
+			// but you are doing it cell by cell in the weather grid, which keeps the work in a close area at all times
+			// i believe this improves the computers performance greatly
+			filledSquares += materialPhysics(currentPosition, weatherGridI);
+
+		}
+	}
+
+	// smooth the simulation by mixing each cell with the average of its neighbours.
+	int ap = 0;
+	int ax = 0;
+	int ay = 0;
+	int at = 0;
+	for (unsigned int n = 0; n < N_NEIGHBOURS; ++n)
+	{
+		unsigned int weatherGridNeighbour = weatherGridI + weatherGridOffsets[n] ;
+		if (weatherGridNeighbour >= weatherGridSize ) {weatherGridNeighbour = weatherGridI;}                     // you must add 8 numbers here or later math will break down. if a neighbour is not valid, add your own values instead.
+		ap += weatherGrid[ weatherGridNeighbour ].pressure ;
+		ax += weatherGrid[ weatherGridNeighbour ].velocityX;
+		ay += weatherGrid[ weatherGridNeighbour ].velocityY;
+		at += weatherGrid[weatherGridNeighbour].temperature;
+	}
+	ax = ax >> 3 ;                                                                                              // N_NEIGHBOURS is 8, so you can do the division part of the average by using a bit shift.
+	ay = ay >> 3 ;
+	ap = ap >> 3 ;
+	at = at >> 3 ;
+
+
+
+	if (filledSquares > 4)
+	{
+
+		// return to normal pressure.
+		ap += ( defaultPressure - weatherGrid[weatherGridI].pressure ) >> 3;
+
+		// clear a lot of velocity.
+		ax -= ( weatherGrid[weatherGridI].velocityX  ) >> 3 ;
+		ay -= ( weatherGrid[weatherGridI].velocityY  ) >> 3 ;
+
+
+		// apply the changes you computed in this turn, and finish.
+		weatherGrid[weatherGridI].pressure    = ap;
+		weatherGrid[weatherGridI].velocityX   = ax;
+		weatherGrid[weatherGridI].velocityY   = ay;
+		weatherGrid[weatherGridI].temperature = at;
+		return;
+
+	}
+	else
+	{
+
+
+
+
+		// return to default temperature
+		dt += ( (defaultTemperature * temperatureScale) - weatherGrid[weatherGridI].temperature  ) >> 8 ;
+
+		// return to normal pressure.
+		dp += ( defaultPressure - weatherGrid[weatherGridI].pressure ) >> 8;
+
+		// clear some velocity.
+		dx -= ( weatherGrid[weatherGridI].velocityX  ) >> 7 ;
+		dy -= ( weatherGrid[weatherGridI].velocityY  ) >> 7 ;
+
+
+
+		dp +=   (ap - weatherGrid[weatherGridI].pressure   ) >> 4;
+		dx +=   (ax - weatherGrid[weatherGridI].velocityX  ) >> 4;
+		dy +=   (ay - weatherGrid[weatherGridI].velocityY  ) >> 4;
+		dt +=   (at - weatherGrid[weatherGridI].temperature) >> 4;
+
+
+
+	}
+
+
+
+	// for each cell, interchange pressure and velocity with the four cardinal neighbours.
+	int bouyancy = 0;
+
+	for (unsigned int n = 0; n < N_NEIGHBOURS; n += 2)
+	{
+		unsigned int neighbour = weatherGridI + weatherGridOffsets[n];
+		// if (edge)    {neighbour = weatherGridI;}                                                                // if you do not control this, cells on the left and right edge will be able to exchange with the far edge, even though neighbour is less than weatherGridSize. Leading to absolute chaos.
+		if (neighbour < weatherGridSize)
+		{
+			int sign = 1; if (n > 3) { sign = -1; }                                                            // the sign of the difference between two things depends on the order you compare them. Add when facing down, subtract when facing up.
+
+			if (n == 0 || n == 4 )                                                                             // on the X axes, exchange horizontal pressure and wind.
+			{
+				dp += (sign * (weatherGrid[ neighbour ].velocityX - weatherGrid[ weatherGridI ].velocityX )) >> 1   ; // A difference in speed creates pressure.
+				dx += (sign * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> 2   ; // A difference in pressure creates movement.
+			}
+
+			else if (n == 2 || n == 6)                                                                              // on the Y axes, exchange vertical pressure and wind.
+			{
+				dp += (sign * (weatherGrid[ neighbour ].velocityY - weatherGrid[ weatherGridI ].velocityY )) >> 1  ;
+				dy += (sign * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> 2  ;
+				bouyancy += ( ( weatherGrid[ weatherGridI ].temperature ) - weatherGrid[ neighbour ].temperature ); // bouyancy does not need sign applied because it is supposed to only go in one direction!
+			}
+		}
+	}
+
+	// mix heat and velocity from far away. This is a key component of turbulent behavior in the sim, and produces a billowing effect that looks very realistic. It is prone to great instability.
+
+	int takeX = (dx >> 10);
+	int takeY = (dy >> 10); + (bouyancy >> 8);
+
+	// to prevent wrapping around the edges of the simulation.
+	if (takeX > 0)
+	{
+		if (takeX > ( (weatherGridX - 1) - x)) { takeX = (weatherGridX - 1) - x; }
+	}
+	else
+	{
+		if ( abs(takeX)  > x ) {takeX = x;}
+	}
+
+	if (takeY > 0)
+	{
+		if (takeY > ( (weatherGridY - 1) - y)) { takeY = (weatherGridY - 1) - y; }
+	}
+	else
+	{
+		if ( abs(takeY)  > y ) {takeY = y;}
+	}
+
+	takeX = x - takeX  ;                                                                           // the velocity itself is used to find the grid location to take from.
+	takeY = y - takeY ;                                                          // velocity numbers range greatly and can be very high, use this number to scale them to an appropriate take distance.
+
+
+	int takeI = ((takeY * weatherGridX) + takeX );
+	if (takeI < 0) {takeI = 0;}
+	else if (takeI >= weatherGridSize) {takeI = weatherGridSize - 1;}
+	dt += (( weatherGrid[takeI].temperature - weatherGrid[weatherGridI].temperature) >> 1);
+	dx += (( weatherGrid[takeI].velocityX   - weatherGrid[weatherGridI].velocityX) >> 2);                  // mix in the velocity contribution from far-away.
+	dy += (( weatherGrid[takeI].velocityY   - weatherGrid[weatherGridI].velocityY) >> 2);                  // adding more looks cool, but makes the fluid explode on touch like nitroglycerin!
+
+	// interchange pressure with temperature.
+	if (dp > dt)
+	{
+		dt += dp >> 4;
+	}
+	else
+	{
+		dp += dt >> 4;
+	}
+
+	// apply the changes you computed in this turn.
+	weatherGrid[weatherGridI].pressure    += dp;
+	weatherGrid[weatherGridI].velocityX   += dx;
+	weatherGrid[weatherGridI].velocityY   += dy;
+	weatherGrid[weatherGridI].temperature += dt;
+
+
+	// the game simplifies angle in some cases to a number in the range 0 to 7, which points to one of the 8 neighbours.
+	// this algorithm efficiently calculates it from a float angle. It uses integer comparisons to steer the direction around from a starting angle.
+	// It is much faster than doing a mapping using division.
+	unsigned int angle = -1;
+	unsigned int absX = abs(weatherGrid[weatherGridI].velocityX );
+	unsigned int absY = abs(weatherGrid[weatherGridI].velocityY );
+	if (weatherGrid[weatherGridI].velocityX > 0)
+	{
+		angle += (N_NEIGHBOURS / 2);
+
+		if (weatherGrid[weatherGridI].velocityX > 0)
+		{
+			if (absX > absY )
+			{
+				angle++;
+				if (absX > ( absY << 1) ) // this means, if absX is more than twice the size of absY
+				{
+					angle++;
+				}
+			}
+		}
+		else
+		{
+			if (absX > absY )
+			{
+				angle--;
+				if (absX > ( absY << 1) )
+				{
+					angle--;
+				}
+			}
+		}
+	}
+	else
+	{
+		angle += N_NEIGHBOURS ;
+		if (weatherGrid[weatherGridI].velocityX > 0)
+		{
+			if (absX > absY )
+			{
+				angle++;
+				if (absX > ( absY << 1) )
+				{
+					angle++;
+				}
+			}
+		}
+		else
+		{
+			if (absX > absY )
+			{
+				angle--;
+				if (absX > ( absY << 1) )
+				{
+					angle--;
+				}
+			}
+		}
+	}
+	weatherGrid[weatherGridI].direction = angle % N_NEIGHBOURS;
+}
+
+
+
+
+
 void thread_weather_sector(unsigned int from, unsigned int to)
 {
+
+
+
+
 
 	for (unsigned int y = from; y < to ; ++y)
 	{
 		for (unsigned int x = 0; x < weatherGridX; ++x)
 		{
-			unsigned int weatherGridI = (y * weatherGridX) + x;
-			unsigned int i = ((y * weatherGridScale) * sizeX) + (x * weatherGridScale);
-			if (i > totalSize) { i = totalSize;}
 
-			int dp = 0;
-			int dx = 0;
-			int dy = 0;
-			int dt = 0;
-			// bool edge = false;
-			// bool empty = true;
-
-			if (x == 0 || y == 0 || x == weatherGridX - 1 || y == weatherGridY - 1)
+			if (x == 0 || x == 0 || y >= weatherGridY - 1 || x >= weatherGridX - 1 )
 			{
-				// return to normal pressure at the edges
-				weatherGrid[weatherGridI].pressure += ( defaultPressure - weatherGrid[weatherGridI].pressure ) >> 4;
-			}
-
-			// if (grid[i].phase == PHASE_SOLID || grid[i].phase == PHASE_POWDER )
-			// {
-			// 	empty = false;
-			// }
-
-			if (weatherGrid[weatherGridI].temperature  < 0) {weatherGrid[weatherGridI].temperature = 0;}
-
-			// couple the material grid temp to the weather grid temp
-			int gridCouplingAmount = ( weatherGrid[weatherGridI].temperature + ( grid[i].temperature * pressureScale) ) / 2;
-			weatherGrid[weatherGridI].temperature  = gridCouplingAmount;
-
-			// because the weather grid is several times smaller than the material grid, you have to go set the temperatures of all the applicable grid squares.
-			unsigned int filledSquares = 0;
-			for (unsigned int scaledGridPointY = 0; scaledGridPointY < weatherGridScale; ++scaledGridPointY)
-			{
-				for (unsigned int scaledGridPointX = 0; scaledGridPointX < weatherGridScale; ++scaledGridPointX)
-				{
-					unsigned int currentPosition =  i + ((scaledGridPointY * sizeX) + scaledGridPointX );
-
-
-					grid[currentPosition].temperature = (gridCouplingAmount / pressureScale);
-
-
-					// perform material physics (falling sand physics).
-					// this is a perfect place to do it because you're already having to iterate across the material grid
-					// but you are doing it cell by cell in the weather grid, which keeps the work in a close area at all times
-					// i believe this improves the computers performance greatly
-					filledSquares += materialPhysics(currentPosition, weatherGridI);
-
-
-
-				}
-			}
-
-			// smooth the simulation by mixing each cell with the average of its neighbours.
-			int ap = 0;
-			int ax = 0;
-			int ay = 0;
-			int at = 0;
-			for (unsigned int n = 0; n < N_NEIGHBOURS; ++n)
-			{
-				unsigned int weatherGridNeighbour = weatherGridI + weatherGridOffsets[n] ;
-				if (weatherGridNeighbour >= weatherGridSize ) {weatherGridNeighbour = weatherGridI;}                     // you must add 8 numbers here or later math will break down. if a neighbour is not valid, add your own values instead.
-				ap += weatherGrid[ weatherGridNeighbour ].pressure ;
-				ax += weatherGrid[ weatherGridNeighbour ].velocityX;
-				ay += weatherGrid[ weatherGridNeighbour ].velocityY;
-				at += weatherGrid[weatherGridNeighbour].temperature;
-			}
-			ax = ax >> 3 ;                                                                                              // N_NEIGHBOURS is 8, so you can do the division part of the average by using a bit shift.
-			ay = ay >> 3 ;
-			ap = ap >> 3 ;
-			at = at >> 3 ;
-			dp +=   (ap - weatherGrid[weatherGridI].pressure   ) >> 4;
-			dx +=   (ax - weatherGrid[weatherGridI].velocityX  ) >> 4;
-			dy +=   (ay - weatherGrid[weatherGridI].velocityY  ) >> 4;
-			dt +=   (at - weatherGrid[weatherGridI].temperature) >> 4;
-
-			// return to default temperature
-			dt += ( (defaultTemperature * pressureScale) - weatherGrid[weatherGridI].temperature  ) >> 8 ;
-
-			// clear some velocity.
-			dx -= ( weatherGrid[weatherGridI].velocityX  ) >> 8 ;
-			dy -= ( weatherGrid[weatherGridI].velocityY  ) >> 8 ;
-
-			if (filledSquares > 4) { continue; }
-
-			// for each cell, interchange pressure and velocity with the four cardinal neighbours.
-			int bouyancy = 0;
-
-			for (unsigned int n = 0; n < N_NEIGHBOURS; n += 2)
-			{
-				unsigned int neighbour = weatherGridI + weatherGridOffsets[n];
-				// if (edge)    {neighbour = weatherGridI;}                                                                // if you do not control this, cells on the left and right edge will be able to exchange with the far edge, even though neighbour is less than weatherGridSize. Leading to absolute chaos.
-				if (neighbour < weatherGridSize)
-				{
-					int sign = 1; if (n > 3) { sign = -1; }                                                            // the sign of the difference between two things depends on the order you compare them. Add when facing down, subtract when facing up.
-
-					if (n == 0 || n == 4 )                                                                             // on the X axes, exchange horizontal pressure and wind.
-					{
-						dp += (sign * (weatherGrid[ neighbour ].velocityX - weatherGrid[ weatherGridI ].velocityX )) >> 1   ; // A difference in speed creates pressure.
-						dx += (sign * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> 1   ; // A difference in pressure creates movement.
-					}
-
-					else if (n == 2 || n == 6)                                                                              // on the Y axes, exchange vertical pressure and wind.
-					{
-						dp += (sign * (weatherGrid[ neighbour ].velocityY - weatherGrid[ weatherGridI ].velocityY )) >> 1  ;
-						dy += (sign * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> 1  ;
-						bouyancy += ( ( weatherGrid[ weatherGridI ].temperature ) - weatherGrid[ neighbour ].temperature ); // bouyancy does not need sign applied because it is supposed to only go in one direction!
-					}
-				}
-			}
-
-			// mix heat and velocity from far away. This is a key component of turbulent behavior in the sim, and produces a billowing effect that looks very realistic. It is prone to great instability.
-
-			int takeX = (dx >> 10);
-			int takeY = (dy >> 10); + (bouyancy >> 8);
-
-			if (takeX > 0)
-			{
-				if (takeX > ( (weatherGridX - 1) - x)) { takeX = (weatherGridX - 1) - x; }
+				airflowEdge(x, y);
 			}
 			else
 			{
-				if ( abs(takeX)  > x ) {takeX = x;}
+				airflow(x, y);
 			}
-
-			if (takeY > 0)
-			{
-				if (takeY > ( (weatherGridY - 1) - y)) { takeY = (weatherGridY - 1) - y; }
-			}
-			else
-			{
-				if ( abs(takeY)  > y ) {takeY = y;}
-			}
-
-			takeX = x - takeX  ;                                                                           // the velocity itself is used to find the grid location to take from.
-			takeY = y - takeY ;                                                          // velocity numbers range greatly and can be very high, use this number to scale them to an appropriate take distance.
-
-
-			int takeI = ((takeY * weatherGridX) + takeX );
-			if (takeI < 0) {takeI = 0;}
-			else if (takeI >= weatherGridSize) {takeI = weatherGridSize - 1;}
-			dt += (( weatherGrid[takeI].temperature - weatherGrid[weatherGridI].temperature) >> 1);
-			dx += (( weatherGrid[takeI].velocityX   - weatherGrid[weatherGridI].velocityX) >> 2);                  // mix in the velocity contribution from far-away.
-			dy += (( weatherGrid[takeI].velocityY   - weatherGrid[weatherGridI].velocityY) >> 2);                  // adding more looks cool, but makes the fluid explode on touch like nitroglycerin!
-
-			// interchange pressure with temperature.
-			if (dp > dt)
-			{
-				dt += dp >> 4;
-			}
-			else
-			{
-				dp += dt >> 4;
-			}
-
-			// apply the changes you computed in this turn.
-			weatherGrid[weatherGridI].pressure    += dp;
-			weatherGrid[weatherGridI].velocityX   += dx;
-			weatherGrid[weatherGridI].velocityY   += dy;
-			weatherGrid[weatherGridI].temperature += dt;
-
-
-			// the game simplifies angle in some cases to a number in the range 0 to 7, which points to one of the 8 neighbours.
-			// this algorithm efficiently calculates it from a float angle. It uses integer comparisons to steer the direction around from a starting angle.
-			// It is much faster than doing a mapping using division.
-			unsigned int angle = -1;
-			unsigned int absX = abs(weatherGrid[weatherGridI].velocityX );
-			unsigned int absY = abs(weatherGrid[weatherGridI].velocityY );
-			if (weatherGrid[weatherGridI].velocityX > 0)
-			{
-				angle += (N_NEIGHBOURS / 2);
-
-				if (weatherGrid[weatherGridI].velocityX > 0)
-				{
-					if (absX > absY )
-					{
-						angle++;
-						if (absX > ( absY << 1) ) // this means, if absX is more than twice the size of absY
-						{
-							angle++;
-						}
-					}
-				}
-				else
-				{
-					if (absX > absY )
-					{
-						angle--;
-						if (absX > ( absY << 1) )
-						{
-							angle--;
-						}
-					}
-				}
-			}
-			else
-			{
-				angle += N_NEIGHBOURS ;
-				if (weatherGrid[weatherGridI].velocityX > 0)
-				{
-					if (absX > absY )
-					{
-						angle++;
-						if (absX > ( absY << 1) )
-						{
-							angle++;
-						}
-					}
-				}
-				else
-				{
-					if (absX > absY )
-					{
-						angle--;
-						if (absX > ( absY << 1) )
-						{
-							angle--;
-						}
-					}
-				}
-			}
-			weatherGrid[weatherGridI].direction = angle % N_NEIGHBOURS;
 		}
 	}
+
+
+
+
 
 }
 
@@ -972,14 +1112,16 @@ void thread_weather()
 	// 	if (from < (sizeX + 1)) {from = (sizeX + 1);}
 	// 	if (to > totalSize - (sizeX + 1)) {to = totalSize - (sizeX + 1);}
 
-	boost::thread t1{  thread_weather_sector, 1   , 1 * (weatherGridY / 8)  } ;
+
+
+	boost::thread t1{  thread_weather_sector, 0   , 1 * (weatherGridY / 8)  } ;
 	boost::thread t2{  thread_weather_sector, 1 * (weatherGridY / 8)  , 2 * (weatherGridY / 8)  } ;
 	boost::thread t3{  thread_weather_sector, 2 * (weatherGridY / 8)  , 3 * (weatherGridY / 8)  } ;
 	boost::thread t4{  thread_weather_sector, 3 * (weatherGridY / 8)  , 4 * (weatherGridY / 8)  } ;
 	boost::thread t5{  thread_weather_sector, 4 * (weatherGridY / 8)  , 5 * (weatherGridY / 8)  } ;
 	boost::thread t6{  thread_weather_sector, 5 * (weatherGridY / 8)  , 6 * (weatherGridY / 8)  } ;
 	boost::thread t7{  thread_weather_sector, 6 * (weatherGridY / 8)  , 7 * (weatherGridY / 8)  } ;
-	boost::thread t8{  thread_weather_sector, 7 * (weatherGridY / 8)  , (weatherGridY -1 ) } ;
+	boost::thread t8{  thread_weather_sector, 7 * (weatherGridY / 8)  , (weatherGridY ) } ;
 
 
 	t1.join();
@@ -2340,12 +2482,19 @@ void photate( unsigned int i )
 		)
 		{
 			blocked ++;
-			if (blocked < lampBrightness)
+
+			int lightIntensity = lampBrightness - blocked;
+			if (lightIntensity > 0)
 			{
 
-				grid[currentPosition].temperature += (lampBrightness - blocked);
+				grid[currentPosition].temperature += lightIntensity;
 			}
+
 		}
+
+
+
+
 
 		if (!blocked)
 		{
