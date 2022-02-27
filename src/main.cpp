@@ -205,8 +205,10 @@ int main( int argc, char * argv[] )
 		if (!crudOps && !paused)
 		{
 			// boost::thread t99{ thread_temperature2 };
-			boost::thread t2{ thread_physics };
+			
 			boost::thread t3{ thread_weather };
+			boost::thread t2{ thread_physics };
+			boost::thread t10 { thread_animals };
 			boost::thread t6{ thread_interface };
 			boost::thread t7 { thread_life};
 			boost::thread t8 { thread_seeds};
@@ -217,8 +219,9 @@ int main( int argc, char * argv[] )
 			t8.join();
 			t7.join();
 			t6.join();
-			t3.join();
+			t10.join();
 			t2.join();
+			t3.join();
 			// t99.join();
 		}
 		else

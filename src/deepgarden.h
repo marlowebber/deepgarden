@@ -191,6 +191,8 @@ void thread_plantDrawing();
 
 void thread_weather();
 
+void thread_animals();
+
 void save();
 
 void load();
