@@ -679,21 +679,23 @@ unsigned int materialPhysics (unsigned int currentPosition, unsigned int weather
 		// alternate between wind movement and random scatter movement, to look more natural.
 		if (weatherGridI < weatherGridSize)
 		{
-			if (velocityAbs < 500)
-			{
+			// if (velocityAbs < 500)
+			// {
 
-				if (extremelyFastNumberFromZeroTo(500 - velocityAbs) == 0 )
-				{
+				// if (extremelyFastNumberFromZeroTo(500 - velocityAbs) == 0 )
+				// {
+			if (extremelyFastNumberFromZeroTo(1)==0)
+			{
 					int noise = (random >> 2) - 1;
 					neighbour = neighbourOffsets[ (weatherGrid[weatherGridI].direction + noise) % N_NEIGHBOURS ] + currentPosition;
 				}
-			}
+			// }
 
-			else
-			{
-				int noise = (random >> 2) - 1;
-				neighbour = neighbourOffsets[ (weatherGrid[weatherGridI].direction + noise) % N_NEIGHBOURS ] + currentPosition;
-			}
+			// else
+			// {
+				// int noise = (random >> 2) - 1;
+				// neighbour = neighbourOffsets[ (weatherGrid[weatherGridI].direction + noise) % N_NEIGHBOURS ] + currentPosition;
+			// }
 		}
 
 		if (neighbour >= totalSize) {neighbour = currentPosition;}
@@ -867,14 +869,14 @@ void airflow( unsigned int x, unsigned int y )
 
 			if (n == 0 || n == 4 )                                                                             // on the X axes, exchange horizontal pressure and wind.
 			{
-				dp += (sign * (weatherGrid[ neighbour ].velocityX - weatherGrid[ weatherGridI ].velocityX )) >> 1   ; // A difference in speed creates pressure.
-				dx += (sign * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> 1   ; // A difference in pressure creates movement.
+				dp += ((sign * (weatherGrid[ neighbour ].velocityX - weatherGrid[ weatherGridI ].velocityX )) >> 1 )   ; // A difference in speed creates pressure.
+				dx += ((sign * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> 1 )   ; // A difference in pressure creates movement.
 			}
 
 			else if (n == 2 || n == 6)                                                                              // on the Y axes, exchange vertical pressure and wind.
 			{
-				dp += (sign * (weatherGrid[ neighbour ].velocityY - weatherGrid[ weatherGridI ].velocityY )) >> 1  ;
-				dy += (sign * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> 1  ;
+				dp += ((sign * (weatherGrid[ neighbour ].velocityY - weatherGrid[ weatherGridI ].velocityY )) >> 1)  ;
+				dy += ((sign * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> 1)  ;
 				bouyancy += ( ( weatherGrid[ weatherGridI ].temperature ) - weatherGrid[ neighbour ].temperature ); // bouyancy does not need sign applied because it is supposed to only go in one direction!
 			}
 		}
@@ -882,8 +884,8 @@ void airflow( unsigned int x, unsigned int y )
 
 	// mix heat and velocity from far away. This is a key component of turbulent behavior in the sim, and produces a billowing effect that looks very realistic. It is prone to great instability.
 
-	int takeX = (dx >> 10);
-	int takeY = (dy >> 10); + (bouyancy >> 8);
+	int takeX = (dx >> 4);
+	int takeY = (dy >> 4); + (bouyancy >> 8);
 
 	// to prevent wrapping around the edges of the simulation.
 	if (takeX > 0)
