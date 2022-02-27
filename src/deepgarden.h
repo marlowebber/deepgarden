@@ -218,6 +218,7 @@ void dropAllSeeds();
 void eraseAllLife();
 
 
+void clearAllPressureVelocity();
 void animalCrudOps(unsigned int i);
 bool isAnimal(unsigned int i);
 

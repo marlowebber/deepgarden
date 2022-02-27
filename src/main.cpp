@@ -122,7 +122,7 @@ void thread_interface()
 
 			case SDLK_k:
 				// createRandomWorld();
-			 createWorld( WORLD_EARTH);
+				createWorld( WORLD_EARTH);
 				break;
 
 			case SDLK_p:
@@ -152,6 +152,11 @@ void thread_interface()
 			case SDLK_q:
 				eraseAllLife();
 				break;
+
+			case SDLK_f:
+				clearAllPressureVelocity();
+				break;
+
 
 			case SDLK_ESCAPE:
 				quit();
@@ -205,7 +210,7 @@ int main( int argc, char * argv[] )
 		if (!crudOps && !paused)
 		{
 			// boost::thread t99{ thread_temperature2 };
-			
+
 			boost::thread t3{ thread_weather };
 			boost::thread t2{ thread_physics };
 			boost::thread t10 { thread_animals };
