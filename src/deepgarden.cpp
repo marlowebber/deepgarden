@@ -679,10 +679,10 @@ unsigned int materialPhysics (unsigned int currentPosition, unsigned int weather
 		// alternate between wind movement and random scatter movement, to look more natural.
 		if (weatherGridI < weatherGridSize)
 		{
-			if (velocityAbs < 1000)
+			if (velocityAbs < 500)
 			{
 
-				if (extremelyFastNumberFromZeroTo(1000 - velocityAbs) == 0 )
+				if (extremelyFastNumberFromZeroTo(500 - velocityAbs) == 0 )
 				{
 					int noise = (random >> 2) - 1;
 					neighbour = neighbourOffsets[ (weatherGrid[weatherGridI].direction + noise) % N_NEIGHBOURS ] + currentPosition;
@@ -918,11 +918,11 @@ void airflow( unsigned int x, unsigned int y )
 	// interchange pressure with temperature.
 	if (dp > dt)
 	{
-		dt += dp >> 4;
+		dt += dp >> 2;
 	}
 	else
 	{
-		dp += dt >> 4;
+		dp += dt >> 2;
 	}
 
 	// apply the changes you computed in this turn.
@@ -2290,42 +2290,78 @@ void photate( unsigned int i )
 		currentPosition = neighbourOffsets[sunlightDirection] + currentPosition;
 		if (currentPosition > totalSize) {break;}
 		unsigned int b_offset = (currentPosition * numberOfFieldsPerVertex) ;
+
+
+
 		if (
 		    grid[currentPosition].phase == PHASE_SOLID ||
 		    grid[currentPosition].phase == PHASE_POWDER ||
-		    lifeGrid[currentPosition].identity > 0x00 ||
-		    seedGrid[currentPosition].stage != STAGE_NULL
+		    lifeGrid[currentPosition].identity > 0x00
 		)
 		{
 			blocked ++;
+
+			int lightIntensity = 0;
+
+			if (lampBrightness > blocked)
+			{
+				lightIntensity =	lampBrightness - blocked;
+
+				if (seedGrid[currentPosition].stage == STAGE_NULL)
+				{
+					seedGrid[currentPosition].energy = lightIntensity;
+				}
+
+				grid[currentPosition].temperature +=  lightIntensity * 10;
+			}
+			return;
 		}
 
 
 
 		unsigned int weatherGridI =  (( (y ) / weatherGridScale) * weatherGridX ) + ((x ) / weatherGridScale);
-		blocked += weatherGrid[weatherGridI].saturation;
+		// blocked += weatherGrid[weatherGridI].saturation;
 
-
-		int lightIntensity = 0;
-
-		if (lampBrightness > blocked)
+		if (weatherGrid[weatherGridI].saturation > 0)
 		{
-			lightIntensity =	lampBrightness - blocked;
-	
-			grid[currentPosition].temperature += lightIntensity;
+
+
+			blocked += weatherGrid[weatherGridI].saturation;
+
+			int lightIntensity = 0;
+
+			if (lampBrightness > blocked)
+			{
+				lightIntensity =	lampBrightness - blocked;
+			}
+			if (seedGrid[currentPosition].stage == STAGE_NULL)
+			{
+
+				seedGrid[currentPosition].energy = lightIntensity;
+
+				weatherGrid[weatherGridI].temperature += lightIntensity * 10  * temperatureScale;
+			}
+
 		}
-		if (seedGrid[currentPosition].stage == STAGE_NULL)
-		{
-			seedGrid[currentPosition].energy = lightIntensity;
 
-			float li = lightIntensity;
-			float la = lampBrightness + 1;
+		// int lightIntensity = 0;
 
-			float a = li / la;
+		// if (lampBrightness > blocked)
+		// {
+		// 	lightIntensity =	lampBrightness - blocked;
+		// }
+		// if (seedGrid[currentPosition].stage == STAGE_NULL)
+		// {
+		// 	seedGrid[currentPosition].energy = lightIntensity;
 
-			memcpy( &seedColorGrid[ b_offset],     &sunlightColor ,     sizeof(Color) );
-			seedColorGrid[ (b_offset + 3) ] = a;
-		}
+		// 	// float li = lightIntensity;
+		// 	// float la = lampBrightness + 1;
+
+		// 	// float a = li / la;
+
+		// 	// memcpy( &seedColorGrid[ b_offset],     &sunlightColor ,     sizeof(Color) );
+		// 	// seedColorGrid[ (b_offset + 3) ] = a;
+		// }
 		// else
 		// {
 		// 	if (seedGrid[currentPosition].stage == STAGE_NULL)
@@ -3412,20 +3448,20 @@ void materialPostProcess(unsigned int i)
 	Color ppColor =  color_clear;
 	if (grid[i].material  < materials.size())
 	{
-		if (grid[i].phase != PHASE_GAS)
-		{
-			ppColor =  materials[ grid[i].material ].color ;
-		}
+		// if (grid[i].phase != PHASE_GAS)
+		// {
+		ppColor =  materials[ grid[i].material ].color ;
+		// }
 	}
 
 
 	if (grid[i].phase == PHASE_VACUUM)
 	{
-		ppColor.a = 0.35f;
+		ppColor.a = 0.0f;
 	}
 	else if (grid[i].phase == PHASE_GAS)
 	{
-		ppColor.a = 0.5f;
+		ppColor.a = 0.25f;
 	}
 	else if (grid[i].phase == PHASE_LIQUID)
 	{
@@ -3454,14 +3490,14 @@ void materialPostProcess(unsigned int i)
 
 	ppColor = addColor( ppColor, life_color );
 
-	if (seedGrid[i].stage == STAGE_NULL)
-	{
-		ppColor = multiplyColor( ppColor, seed_color );
-	}
-	else
-	{
-		ppColor = addColor( ppColor, seed_color );
-	}
+	// if (seedGrid[i].stage == STAGE_NULL)
+	// {
+	// 	ppColor = multiplyColor( ppColor, seed_color );
+	// }
+	// else
+	// {
+	// 	ppColor = addColor( ppColor, seed_color );
+	// }
 
 
 

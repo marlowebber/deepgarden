@@ -54,7 +54,7 @@ Color multiplyColor (Color a, Color b)
 	c.r = (a.r * a.a) * (b.r * b.a);
 	c.g = (a.g * a.a) * (b.g * b.a);
 	c.b = (a.b * a.a) * (b.b * b.a);
-	c.a = a.a * b.a;
+	c.a = a.a ;
 
 	return c;
 
