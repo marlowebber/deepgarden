@@ -36,8 +36,6 @@ Color::Color(float r, float g, float b, float a)
 
 Color addColor (Color a, Color b)
 {
-
-
 	Color c = Color(0.0f, 0.0f, 0.0f, 0.0f);
 
 	c.r = (a.r * a.a) + (b.r * b.a);
@@ -46,8 +44,19 @@ Color addColor (Color a, Color b)
 	c.a = a.a + b.a;
 
 	return c;
+}
 
+Color multiplyColor (Color a, Color b)
+{
 
+	Color c = Color(0.0f, 0.0f, 0.0f, 0.0f);
+
+	c.r = (a.r * a.a) * (b.r * b.a);
+	c.g = (a.g * a.a) * (b.g * b.a);
+	c.b = (a.b * a.a) * (b.b * b.a);
+	c.a = a.a * b.a;
+
+	return c;
 
 }
 

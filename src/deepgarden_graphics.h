@@ -22,6 +22,7 @@ void vertToBuffer (GLfloat * vertex_buffer_data, unsigned int * cursor, Color ve
 void advanceIndexBuffers (unsigned int * index_buffer_data, unsigned int * index_buffer_content, unsigned int * index_buffer_cursor);
 
 
+Color multiplyColor (Color a, Color b);
 
 Color addColor (Color a, Color b);
 
