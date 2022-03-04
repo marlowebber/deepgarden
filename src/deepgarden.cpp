@@ -161,7 +161,7 @@ unsigned int animalCursorOrgan = ORGAN_MUSCLE;
 
 std::string exampleAnimal = std::string(" uaiajbcmemjccded ");
 
-int defaultTemperature = 1000;
+int defaultTemperature = 300;
 int defaultPressure = 1000;
 int defaultVelocity = 0;
 
@@ -382,7 +382,7 @@ struct Weather
 };
 Weather::Weather()
 {
-	this->temperature = defaultTemperature;
+	this->temperature = defaultTemperature * temperatureScale;
 	this->pressure = defaultPressure;
 	this->direction = 0;
 	this->velocityX = defaultVelocity;
@@ -393,7 +393,7 @@ Weather::Weather()
 
 const int weatherGridX = sizeX / weatherGridScale;
 const int weatherGridY = sizeY / weatherGridScale;
-const int weatherGridSize = weatherGridX * weatherGridY;//totalSize / weatherGridScale;
+const int weatherGridSize = weatherGridX * weatherGridY;
 
 int weatherGridOffsets[] =
 {
@@ -682,19 +682,19 @@ unsigned int materialPhysics (unsigned int currentPosition, unsigned int weather
 			// if (velocityAbs < 500)
 			// {
 
-				// if (extremelyFastNumberFromZeroTo(500 - velocityAbs) == 0 )
-				// {
-			if (extremelyFastNumberFromZeroTo(1)==0)
+			// if (extremelyFastNumberFromZeroTo(500 - velocityAbs) == 0 )
+			// {
+			if (extremelyFastNumberFromZeroTo(1) == 0)
 			{
-					int noise = (random >> 2) - 1;
-					neighbour = neighbourOffsets[ (weatherGrid[weatherGridI].direction + noise) % N_NEIGHBOURS ] + currentPosition;
-				}
+				int noise = (random >> 2) - 1;
+				neighbour = neighbourOffsets[ (weatherGrid[weatherGridI].direction + noise) % N_NEIGHBOURS ] + currentPosition;
+			}
 			// }
 
 			// else
 			// {
-				// int noise = (random >> 2) - 1;
-				// neighbour = neighbourOffsets[ (weatherGrid[weatherGridI].direction + noise) % N_NEIGHBOURS ] + currentPosition;
+			// int noise = (random >> 2) - 1;
+			// neighbour = neighbourOffsets[ (weatherGrid[weatherGridI].direction + noise) % N_NEIGHBOURS ] + currentPosition;
 			// }
 		}
 
@@ -734,11 +734,14 @@ unsigned int materialPhysics (unsigned int currentPosition, unsigned int weather
 // this one simply mirrors the conditions of the cells closest the edge, making the edge itself seem like a one-way trip into empty space.
 void airflowEdge( unsigned int x, unsigned int y )
 {
+	// make sure parameters are valid
 	if (x > weatherGridX - 1) {x = weatherGridX - 1;}
 	if (y > weatherGridY - 1) {y = weatherGridY - 1;}
 	unsigned int weatherGridI = (y * weatherGridX) + x;
 	unsigned int i = ((y * weatherGridScale) * sizeX) + (x * weatherGridScale);
 	if (i > totalSize) { i = totalSize;}
+
+	// reflect the cell closer in than you, allowing air to escape the simulation
 	if (x == weatherGridX - 1)
 	{
 		weatherGrid[weatherGridI] = weatherGrid[weatherGridI + weatherGridOffsets[0] ]; //
@@ -755,6 +758,79 @@ void airflowEdge( unsigned int x, unsigned int y )
 	{
 		weatherGrid[weatherGridI] = weatherGrid[weatherGridI + weatherGridOffsets[6] ]; // if you are on the bottom row, mirror the square above you
 	}
+
+
+	// smooth the simulation by mixing each cell with the average of its neighbours.
+	int ap = 0;
+	int ax = 0;
+	int ay = 0;
+	int at = 0;
+	for (unsigned int n = 0; n < N_NEIGHBOURS; ++n)
+	{
+		unsigned int weatherGridNeighbour = weatherGridI + weatherGridOffsets[n] ;
+		if (weatherGridNeighbour >= weatherGridSize ) {weatherGridNeighbour = weatherGridI;}                     // you must add 8 numbers here or later math will break down. if a neighbour is not valid, add your own values instead.
+		ap += weatherGrid[ weatherGridNeighbour ].pressure ;
+		ax += weatherGrid[ weatherGridNeighbour ].velocityX;
+		ay += weatherGrid[ weatherGridNeighbour ].velocityY;
+		at += weatherGrid[weatherGridNeighbour].temperature;
+	}
+	ax = ax >> 3 ;                                                                                              // N_NEIGHBOURS is 8, so you can do the division part of the average by using a bit shift.
+	ay = ay >> 3 ;
+	ap = ap >> 3 ;
+	at = at >> 3 ;
+
+	// if (filledSquares > ((weatherGridScale*weatherGridScale)/2) ) // if more than half the weathergrid square is full of material
+	// {
+
+	// // return to normal pressure.
+	// ap += ( defaultPressure - weatherGrid[weatherGridI].pressure ) >> 3;
+
+	// // clear a lot of velocity.
+	// ax -= ( weatherGrid[weatherGridI].velocityX  ) >> 3 ;
+	// ay -= ( weatherGrid[weatherGridI].velocityY  ) >> 3 ;
+
+
+	// return;
+
+
+	// // apply the changes you computed in this turn, and finish.
+	weatherGrid[weatherGridI].pressure    = ap;
+	weatherGrid[weatherGridI].velocityX   = ax;
+	weatherGrid[weatherGridI].velocityY   = ay;
+	weatherGrid[weatherGridI].temperature = at;
+
+
+	// couple the material grid temp to the weather grid temp
+	int gridCouplingAmount = ( weatherGrid[weatherGridI].temperature + ( grid[i].temperature * temperatureScale) ) / 2;
+	weatherGrid[weatherGridI].temperature  = gridCouplingAmount;
+
+	// because the weather grid is several times smaller than the material grid, you have to go set the temperatures of all the applicable grid squares.
+	unsigned int filledSquares = 0;
+	weatherGrid[weatherGridI].saturation = 0;
+	for (unsigned int scaledGridPointY = 0; scaledGridPointY < weatherGridScale; ++scaledGridPointY)
+	{
+		for (unsigned int scaledGridPointX = 0; scaledGridPointX < weatherGridScale; ++scaledGridPointX)
+		{
+			unsigned int currentPosition =  i + ((scaledGridPointY * sizeX) + scaledGridPointX );
+			grid[currentPosition].temperature = (gridCouplingAmount / temperatureScale);
+			// perform material physics (falling sand physics).
+			// this is a perfect place to do it because you're already having to iterate across the material grid
+			// but you are doing it cell by cell in the weather grid, which keeps the work in a close area at all times
+			// i believe this improves the computers performance greatly
+
+			if (grid[currentPosition].phase == PHASE_GAS)
+			{
+				weatherGrid[weatherGridI].saturation++;
+			}
+
+			filledSquares += materialPhysics(currentPosition, weatherGridI);
+		}
+	}
+	// return;
+
+	// }
+
+
 }
 
 void airflow( unsigned int x, unsigned int y )
@@ -816,7 +892,7 @@ void airflow( unsigned int x, unsigned int y )
 	ap = ap >> 3 ;
 	at = at >> 3 ;
 
-	if (filledSquares > 4)
+	if (filledSquares > ((weatherGridScale * weatherGridScale) / 2) ) // if more than half the weathergrid square is full of material
 	{
 
 		// // return to normal pressure.
@@ -827,12 +903,15 @@ void airflow( unsigned int x, unsigned int y )
 		// ay -= ( weatherGrid[weatherGridI].velocityY  ) >> 3 ;
 
 
-		// // apply the changes you computed in this turn, and finish.
-		// weatherGrid[weatherGridI].pressure    = ap;
-		// weatherGrid[weatherGridI].velocityX   = ax;
-		// weatherGrid[weatherGridI].velocityY   = ay;
-		// weatherGrid[weatherGridI].temperature = at;
 		// return;
+
+
+		// // apply the changes you computed in this turn, and finish.
+		weatherGrid[weatherGridI].pressure    = ap;
+		weatherGrid[weatherGridI].velocityX   = 0;
+		weatherGrid[weatherGridI].velocityY   = 0;
+		weatherGrid[weatherGridI].temperature = at;
+		return;
 
 	}
 	// else
@@ -998,12 +1077,12 @@ void airflow( unsigned int x, unsigned int y )
 void thread_weather_sector(unsigned int from, unsigned int to)
 {
 
-	for (unsigned int y = from; y < to ; ++y)
+	for (unsigned int y = from; y <= to ; ++y)
 	{
 		for (unsigned int x = 0; x < weatherGridX; ++x)
 		{
 
-			if (x == 0 || x == 0 || y >= weatherGridY - 1 || x >= weatherGridX - 1 )
+			if (x == 0 || x == 0 || y > weatherGridY - 1 || x > weatherGridX - 1 )
 			{
 				airflowEdge(x, y);
 			}
@@ -1029,6 +1108,12 @@ void thread_weather()
 	boost::thread t6{  thread_weather_sector, 5 * (weatherGridY / 8)  , 6 * (weatherGridY / 8)  } ;
 	boost::thread t7{  thread_weather_sector, 6 * (weatherGridY / 8)  , 7 * (weatherGridY / 8)  } ;
 	boost::thread t8{  thread_weather_sector, 7 * (weatherGridY / 8)  , (weatherGridY ) } ;
+
+
+	// for (int i = 0; i < sizeX; ++i)
+	// {
+	// thread_weather_sector( sizeY-1, sizeY);
+	// }
 
 	t1.join();
 	t2.join();
@@ -3408,7 +3493,7 @@ void clearAllPressureVelocity()
 		weatherGrid[weatherGridI].velocityX = 0;
 		weatherGrid[weatherGridI].velocityY = 0;
 		weatherGrid[weatherGridI].pressure = defaultPressure;
-		weatherGrid[weatherGridI].temperature = defaultTemperature;
+		weatherGrid[weatherGridI].temperature = defaultTemperature * temperatureScale;
 	}
 }
 
