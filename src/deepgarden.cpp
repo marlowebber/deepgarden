@@ -785,26 +785,11 @@ void airflowEdge( unsigned int x, unsigned int y )
 	ap = ap >> 3 ;
 	at = at >> 3 ;
 
-	// if (filledSquares > ((weatherGridScale*weatherGridScale)/2) ) // if more than half the weathergrid square is full of material
-	// {
-
-	// // return to normal pressure.
-	// ap += ( defaultPressure - weatherGrid[weatherGridI].pressure ) >> 3;
-
-	// // clear a lot of velocity.
-	// ax -= ( weatherGrid[weatherGridI].velocityX  ) >> 3 ;
-	// ay -= ( weatherGrid[weatherGridI].velocityY  ) >> 3 ;
-
-
-	// return;
-
-
 	// // apply the changes you computed in this turn, and finish.
 	weatherGrid[weatherGridI].pressure    = ap;
 	weatherGrid[weatherGridI].velocityX   = ax;
 	weatherGrid[weatherGridI].velocityY   = ay;
 	weatherGrid[weatherGridI].temperature = at;
-
 
 	// couple the material grid temp to the weather grid temp
 	int gridCouplingAmount = ( weatherGrid[weatherGridI].temperature + ( grid[i].temperature * temperatureScale) ) / 2;
@@ -832,11 +817,6 @@ void airflowEdge( unsigned int x, unsigned int y )
 			filledSquares += materialPhysics(currentPosition, weatherGridI);
 		}
 	}
-	// return;
-
-	// }
-
-
 }
 
 void airflow( unsigned int x, unsigned int y )
@@ -855,7 +835,6 @@ void airflow( unsigned int x, unsigned int y )
 	// couple the material grid temp to the weather grid temp
 	int gridCouplingAmount = ( weatherGrid[weatherGridI].temperature + ( grid[i].temperature * temperatureScale) ) / 2;
 	weatherGrid[weatherGridI].temperature  = gridCouplingAmount;
-
 
 
 	// because the weather grid is several times smaller than the material grid, you have to go set the temperatures of all the applicable grid squares.
@@ -878,11 +857,6 @@ void airflow( unsigned int x, unsigned int y )
 			}
 
 			filledSquares += materialPhysics(currentPosition, weatherGridI);
-
-
-
-
-			// weatherGrid[weatherGridI].temperature += (seedGrid[currentPosition] * temperatureScale) >> 2;
 		}
 	}
 
@@ -907,18 +881,6 @@ void airflow( unsigned int x, unsigned int y )
 
 	if (filledSquares > ((weatherGridScale * weatherGridScale) / 2) ) // if more than half the weathergrid square is full of material
 	{
-
-		// // return to normal pressure.
-		// ap += ( defaultPressure - weatherGrid[weatherGridI].pressure ) >> 3;
-
-		// // clear a lot of velocity.
-		// ax -= ( weatherGrid[weatherGridI].velocityX  ) >> 3 ;
-		// ay -= ( weatherGrid[weatherGridI].velocityY  ) >> 3 ;
-
-
-		// return;
-
-
 		// // apply the changes you computed in this turn, and finish.
 		weatherGrid[weatherGridI].pressure    = ap;
 		weatherGrid[weatherGridI].velocityX   = 0;
@@ -927,9 +889,6 @@ void airflow( unsigned int x, unsigned int y )
 		return;
 
 	}
-	// else
-	// {
-
 
 
 
@@ -1031,58 +990,65 @@ void airflow( unsigned int x, unsigned int y )
 	unsigned int angle = -1;
 	unsigned int absX = abs(weatherGrid[weatherGridI].velocityX  );
 	unsigned int absY = abs(weatherGrid[weatherGridI].velocityY  );
-	if (weatherGrid[weatherGridI].velocityX > 0)
+	if (absX > 10 || absY > 10)
 	{
-		angle += (N_NEIGHBOURS / 2);
-
 		if (weatherGrid[weatherGridI].velocityX > 0)
 		{
-			if (absX > absY )
+			angle += (N_NEIGHBOURS / 2);
+
+			if (weatherGrid[weatherGridI].velocityX > 0)
 			{
-				angle++;
-				if (absX > ( absY << 1) ) // this means, if absX is more than twice the size of absY
+				if (absX > absY )
 				{
 					angle++;
+					if (absX > ( absY << 1) ) // this means, if absX is more than twice the size of absY
+					{
+						angle++;
+					}
+				}
+			}
+			else
+			{
+				if (absX > absY )
+				{
+					angle--;
+					if (absX > ( absY << 1) )
+					{
+						angle--;
+					}
 				}
 			}
 		}
 		else
 		{
-			if (absX > absY )
+			angle += N_NEIGHBOURS ;
+			if (weatherGrid[weatherGridI].velocityX > 0)
 			{
-				angle--;
-				if (absX > ( absY << 1) )
+				if (absX > absY )
+				{
+					angle++;
+					if (absX > ( absY << 1) )
+					{
+						angle++;
+					}
+				}
+			}
+			else
+			{
+				if (absX > absY )
 				{
 					angle--;
+					if (absX > ( absY << 1) )
+					{
+						angle--;
+					}
 				}
 			}
 		}
 	}
 	else
 	{
-		angle += N_NEIGHBOURS ;
-		if (weatherGrid[weatherGridI].velocityX > 0)
-		{
-			if (absX > absY )
-			{
-				angle++;
-				if (absX > ( absY << 1) )
-				{
-					angle++;
-				}
-			}
-		}
-		else
-		{
-			if (absX > absY )
-			{
-				angle--;
-				if (absX > ( absY << 1) )
-				{
-					angle--;
-				}
-			}
-		}
+		angle = extremelyFastNumberFromZeroTo(N_NEIGHBOURS);
 	}
 	weatherGrid[weatherGridI].direction = angle % N_NEIGHBOURS;
 }
@@ -3075,15 +3041,15 @@ void createWorld( unsigned int world)
 				}
 			}
 
-			if (i > 50 * sizeX && i < 65 * sizeX)
-			{
-				setParticle(1, i);
-			}
+			// if (i > 50 * sizeX && i < 65 * sizeX)
+			// {
+			// 	setParticle(1, i);
+			// }
 
-			if (i > 65)
+			if (i > 50)
 			{
 
-				if (extremelyFastNumberFromZeroTo(weatherGridScale * 100) == 0)
+				if (extremelyFastNumberFromZeroTo(weatherGridScale * 50) == 0)
 				{
 					// pre-moisten the air
 					setParticle(1, i);
@@ -3556,10 +3522,7 @@ void materialPostProcess(unsigned int i)
 	Color ppColor =  color_clear;
 	if (grid[i].material  < materials.size())
 	{
-		// if (grid[i].phase != PHASE_GAS)
-		// {
 		ppColor =  materials[ grid[i].material ].color ;
-		// }
 	}
 
 
@@ -3580,31 +3543,23 @@ void materialPostProcess(unsigned int i)
 		ppColor = addColor(ppColor, phaseTingeSolid); // same opacity but different shade to powder
 	}
 
-
-
-	unsigned int weatherGridI =  ((x / weatherGridScale) * weatherGridX ) + (y / weatherGridScale);
+	unsigned int weatherGridI =  ((y / weatherGridScale) * weatherGridX ) + (x / weatherGridScale);
 	if (weatherGridI < weatherGridSize)
 	{
 		if (weatherGrid[weatherGridI].saturation > 0)
 		{
-
 			float fsat = weatherGrid[weatherGridI].saturation;
 			float newalpha = fsat / (weatherGridScale * weatherGridScale);
 
 			ppColor = addColor(ppColor, Color( 1.0f, 1.0f, 1.0f, newalpha)  );
-
 		}
 	}
-
-
 
 	if (grid[i].temperature > 5000) // extremely high temperatures display alpha 1 regardless of material phase. Also get higher alpha gradually the more extreme the temp.
 	{
 		float ftemp = grid[i].temperature ;
 		ppColor.a += ((ftemp - 5000.0f) / 5000.0f);
 	}
-
-
 
 	Color seed_color;
 	Color life_color;
@@ -3616,27 +3571,37 @@ void materialPostProcess(unsigned int i)
 
 	ppColor = addColor( ppColor, life_color );
 
-	// if (seedGrid[i].stage == STAGE_NULL)
-	// {
-	// 	ppColor = multiplyColor( ppColor, seed_color );
-	// }
-	// else
-	// {
-	// 	ppColor = addColor( ppColor, seed_color );
-	// }
-
-
-
-
 	ppColor = addColor( ppColor, blackbodyLookup( grid[i].temperature ) );
-
-
-
 
 	colorGrid[ (i * numberOfFieldsPerVertex) + 0 ] = ppColor.r;
 	colorGrid[ (i * numberOfFieldsPerVertex) + 1 ] = ppColor.g;
 	colorGrid[ (i * numberOfFieldsPerVertex) + 2 ] = ppColor.b;
 	colorGrid[ (i * numberOfFieldsPerVertex) + 3 ] = ppColor.a;
+}
+
+
+
+void weatherPostProcess( unsigned int weatherGridI )
+{
+
+		// unsigned int weatherGridI = (y * weatherGridX) + x;
+
+	unsigned int x = weatherGridI % weatherGridX;
+	unsigned int y = weatherGridI / weatherGridX;
+	unsigned int i = ((y * weatherGridScale) * sizeX) + (x * weatherGridScale);
+	if (i > totalSize) { i = totalSize;}
+
+	for (unsigned int scaledGridPointY = 0; scaledGridPointY < weatherGridScale; ++scaledGridPointY)
+	{
+		for (unsigned int scaledGridPointX = 0; scaledGridPointX < weatherGridScale; ++scaledGridPointX)
+		{
+			unsigned int currentPosition =  i+ ((scaledGridPointY * sizeX) + scaledGridPointX );
+			// grid[currentPosition].temperature = (gridCouplingAmount / temperatureScale);
+		 materialPostProcess(currentPosition);
+	
+		}
+	}
+
 }
 
 void updateMaterialSquare(unsigned int i)
@@ -3677,9 +3642,9 @@ void thread_physics ()
 	if (photoPhaseOffset % photoSkipSize == 0 ) { photoPhaseOffset = 0;}
 
 	// figure out what color hot or illuminated stuff should be. For efficiency, only update one in every few squares per turn- it looks fine in the game.
-	for (unsigned int i = ppPhaseOffset; i < totalSize; i += ppSkipSize)
+	for (unsigned int i = ppPhaseOffset; i < weatherGridSize; i += ppSkipSize)
 	{
-		materialPostProcess(  i );
+		weatherPostProcess(  i );
 	}
 	ppPhaseOffset++;
 
