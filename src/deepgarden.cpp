@@ -209,7 +209,7 @@ unsigned int animationGlobalFrame = FRAME_BODY;
 
 unsigned int ppPhaseOffset = 0;
 unsigned int photoPhaseOffset = 0;
-const unsigned int ppSkipSize = 10;
+const unsigned int ppSkipSize = 20;
 const unsigned int photoSkipSize = 5;
 
 struct Material
@@ -345,17 +345,17 @@ void clearParticle( unsigned int i)
 	grid[i].material = MATERIAL_VACUUM;
 	grid[i].phase = PHASE_VACUUM;
 	unsigned int a_offset = (i * numberOfFieldsPerVertex);
-	// memcpy( &colorGrid[ a_offset ], &color_clear, 16 );
+	memcpy( &colorGrid[ a_offset ], &color_clear, 16 );
 }
 
 void swapParticle (unsigned int a, unsigned int b)
 {
 	float temp_color[4];
-	// unsigned int a_offset = (a * numberOfFieldsPerVertex);
-	// unsigned int b_offset = (b * numberOfFieldsPerVertex);
-	// memcpy( temp_color, &colorGrid[ b_offset ] , 16 ); // 4x floats of 4 bytes each
-	// memcpy( &colorGrid[ b_offset], &colorGrid[ a_offset] , 16 );
-	// memcpy( &colorGrid[ a_offset ], temp_color, 16 );
+	unsigned int a_offset = (a * numberOfFieldsPerVertex);
+	unsigned int b_offset = (b * numberOfFieldsPerVertex);
+	memcpy( temp_color, &colorGrid[ b_offset ] , 16 ); // 4x floats of 4 bytes each
+	memcpy( &colorGrid[ b_offset], &colorGrid[ a_offset] , 16 );
+	memcpy( &colorGrid[ a_offset ], temp_color, 16 );
 	Particle tempParticle = grid[b];
 	grid[b] = grid[a];
 	grid[a] = tempParticle;
@@ -366,7 +366,7 @@ void copyParticle(unsigned int from, unsigned int to)
 	grid[to] = grid[from];
 	unsigned int from_offset = (from * numberOfFieldsPerVertex);
 	unsigned int to_offset = (to * numberOfFieldsPerVertex);
-	// memcpy( &colorGrid[ to_offset ],  &colorGrid[ from_offset ], 16 );
+	memcpy( &colorGrid[ to_offset ],  &colorGrid[ from_offset ], 16 );
 }
 
 struct Weather
@@ -389,7 +389,6 @@ Weather::Weather()
 	this->velocityY = defaultVelocity;
 }
 
-#define weatherGridScale 3
 
 const int weatherGridX = sizeX / weatherGridScale;
 const int weatherGridY = sizeY / weatherGridScale;
@@ -2427,11 +2426,11 @@ void photate( unsigned int i )
 		unsigned int weatherGridI =  (( (y ) / weatherGridScale) * weatherGridX ) + ((x ) / weatherGridScale);
 
 
-		if (weatherGrid[weatherGridI].saturation > 0)
+		if (weatherGrid[weatherGridI].saturation > 2)
 		{
 
 
-			blocked += weatherGrid[weatherGridI].saturation;
+			blocked += weatherGrid[weatherGridI].saturation * 2;
 
 			int lightIntensity = 0;
 
@@ -2446,6 +2445,12 @@ void photate( unsigned int i )
 			}
 
 		}
+
+
+
+
+
+
 
 		// int lightIntensity = 0;
 
@@ -3574,6 +3579,24 @@ void materialPostProcess(unsigned int i)
 	{
 		ppColor = addColor(ppColor, phaseTingeSolid); // same opacity but different shade to powder
 	}
+
+
+
+	unsigned int weatherGridI =  ((x / weatherGridScale) * weatherGridX ) + (y / weatherGridScale);
+	if (weatherGridI < weatherGridSize)
+	{
+		if (weatherGrid[weatherGridI].saturation > 0)
+		{
+
+			float fsat = weatherGrid[weatherGridI].saturation;
+			float newalpha = fsat / (weatherGridScale * weatherGridScale);
+
+			ppColor = addColor(ppColor, Color( 1.0f, 1.0f, 1.0f, newalpha)  );
+
+		}
+	}
+
+
 
 	if (grid[i].temperature > 5000) // extremely high temperatures display alpha 1 regardless of material phase. Also get higher alpha gradually the more extreme the temp.
 	{
