@@ -429,6 +429,13 @@ unsigned int materialPhysics (unsigned int currentPosition, unsigned int weather
 		grid[currentPosition].temperature -= avgTemp;
 	}
 
+	// heat by radiation from sunlight.
+
+	if (seedGrid[currentPosition].stage == STAGE_NULL)
+	{
+		grid[currentPosition].temperature += seedGrid[currentPosition].energy;
+	}
+
 	// Phase change logic. Melting, boiling etc.
 	// do not return yet, you still need to do movement.
 	if ((random >> 1) == 0) // only check phase sometimes bcoz its lots of work for liquids.
@@ -850,6 +857,8 @@ void airflow( unsigned int x, unsigned int y )
 	int gridCouplingAmount = ( weatherGrid[weatherGridI].temperature + ( grid[i].temperature * temperatureScale) ) / 2;
 	weatherGrid[weatherGridI].temperature  = gridCouplingAmount;
 
+
+
 	// because the weather grid is several times smaller than the material grid, you have to go set the temperatures of all the applicable grid squares.
 	unsigned int filledSquares = 0;
 	weatherGrid[weatherGridI].saturation = 0;
@@ -870,6 +879,11 @@ void airflow( unsigned int x, unsigned int y )
 			}
 
 			filledSquares += materialPhysics(currentPosition, weatherGridI);
+
+
+
+
+			// weatherGrid[weatherGridI].temperature += (seedGrid[currentPosition] * temperatureScale) >> 2;
 		}
 	}
 
@@ -1016,8 +1030,8 @@ void airflow( unsigned int x, unsigned int y )
 	// this algorithm efficiently calculates it from a float angle. It uses integer comparisons to steer the direction around from a starting angle.
 	// It is much faster than doing a mapping using division.
 	unsigned int angle = -1;
-	unsigned int absX = abs(weatherGrid[weatherGridI].velocityX );
-	unsigned int absY = abs(weatherGrid[weatherGridI].velocityY );
+	unsigned int absX = abs(weatherGrid[weatherGridI].velocityX  );
+	unsigned int absY = abs(weatherGrid[weatherGridI].velocityY  );
 	if (weatherGrid[weatherGridI].velocityX > 0)
 	{
 		angle += (N_NEIGHBOURS / 2);
@@ -2386,28 +2400,32 @@ void photate( unsigned int i )
 		    lifeGrid[currentPosition].identity > 0x00
 		)
 		{
-			blocked ++;
 
-			int lightIntensity = 0;
 
-			if (lampBrightness > blocked)
+			int lightIntensity = lampBrightness - blocked;
+
+			if (lightIntensity > 0)
 			{
-				lightIntensity =	lampBrightness - blocked;
+				// lightIntensity =	;
 
 				if (seedGrid[currentPosition].stage == STAGE_NULL)
 				{
 					seedGrid[currentPosition].energy = lightIntensity;
 				}
 
-				grid[currentPosition].temperature +=  lightIntensity * 10;
+				// grid[currentPosition].temperature +=  lightIntensity * (blocked / 2) ;
+
+				blocked += lightIntensity;
+
 			}
+
 			return;
 		}
 
 
 
 		unsigned int weatherGridI =  (( (y ) / weatherGridScale) * weatherGridX ) + ((x ) / weatherGridScale);
-		// blocked += weatherGrid[weatherGridI].saturation;
+
 
 		if (weatherGrid[weatherGridI].saturation > 0)
 		{
@@ -2425,8 +2443,6 @@ void photate( unsigned int i )
 			{
 
 				seedGrid[currentPosition].energy = lightIntensity;
-
-				weatherGrid[weatherGridI].temperature += lightIntensity * 10  * temperatureScale;
 			}
 
 		}
@@ -3628,10 +3644,10 @@ void thread_physics ()
 		{
 
 			int x = i % sizeX;
-			if (x < (sizeX / 2))
-			{
-				photate(i);
-			}
+			// if (x < (sizeX / 2))
+			// {
+			photate(i);
+			// }
 		}
 	}
 	photoPhaseOffset++;
