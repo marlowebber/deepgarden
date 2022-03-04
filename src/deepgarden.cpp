@@ -375,7 +375,7 @@ struct Weather
 	int pressure;
 	int velocityX;
 	int velocityY;
-	unsigned int direction;
+	// unsigned int direction;
 	int saturation;
 
 	Weather();
@@ -384,7 +384,7 @@ Weather::Weather()
 {
 	this->temperature = defaultTemperature * temperatureScale;
 	this->pressure = defaultPressure;
-	this->direction = 0;
+	// this->direction = 0;
 	this->velocityX = defaultVelocity;
 	this->velocityY = defaultVelocity;
 }
@@ -407,6 +407,84 @@ int weatherGridOffsets[] =
 };
 
 Weather weatherGrid[weatherGridSize];
+
+
+unsigned int calculateWeatherGridDirection(unsigned int weatherGridI)
+{
+	// 	the game simplifies angle in some cases to a number in the range 0 to 7, which points to one of the 8 neighbours.
+	// this algorithm efficiently calculates it from a float angle. It uses integer comparisons to steer the direction around from a starting angle.
+	// It is much faster than doing a mapping using division.
+	unsigned int angle = 0;
+	unsigned int absX = abs(weatherGrid[weatherGridI].velocityX  );
+	unsigned int absY = abs(weatherGrid[weatherGridI].velocityY  );
+	if (absX > 10 || absY > 10)
+	{
+		if (weatherGrid[weatherGridI].velocityX > 0)
+		{
+			angle += (N_NEIGHBOURS / 2);
+
+			if (weatherGrid[weatherGridI].velocityX > 0)
+			{
+				if (absX > absY )
+				{
+					angle++;
+					if (absX > ( absY << 1) ) // this means, if absX is more than twice the size of absY
+					{
+						angle++;
+					}
+				}
+			}
+			else
+			{
+				if (absX > absY )
+				{
+					angle--;
+					if (absX > ( absY << 1) )
+					{
+						angle--;
+					}
+				}
+			}
+		}
+		else
+		{
+			angle += N_NEIGHBOURS ;
+			if (weatherGrid[weatherGridI].velocityX > 0)
+			{
+				if (absX > absY )
+				{
+					angle++;
+					if (absX > ( absY << 1) )
+					{
+						angle++;
+					}
+				}
+			}
+			else
+			{
+				if (absX > absY )
+				{
+					angle--;
+					if (absX > ( absY << 1) )
+					{
+						angle--;
+					}
+				}
+			}
+		}
+
+		angle += (extremelyFastNumberFromZeroTo(2) - 1);
+		angle = angle % N_NEIGHBOURS;
+	}
+	else
+	{
+		angle = extremelyFastNumberFromZeroTo(N_NEIGHBOURS - 1);
+	}
+	return angle;
+}
+
+
+
 
 // The classic falling sand physics thread.
 // returns whether or not the cell contains a material that blocks air pressure, which informs the air pressure thread.
@@ -632,8 +710,18 @@ unsigned int materialPhysics (unsigned int currentPosition, unsigned int weather
 		{
 			if (random >> 3 == 0)
 			{
+
+
+
+
+
+
+
+
+				unsigned int direction = calculateWeatherGridDirection( weatherGridI);
+
 				int noise = (random >> 2) - 1;
-				neighbour = neighbourOffsets[ (weatherGrid[weatherGridI].direction + noise) % N_NEIGHBOURS ] + currentPosition;
+				neighbour = neighbourOffsets[ (direction + noise) % N_NEIGHBOURS ] + currentPosition;
 			}
 		}
 
@@ -658,8 +746,11 @@ unsigned int materialPhysics (unsigned int currentPosition, unsigned int weather
 		{
 			if (random >> 3 == 0)
 			{
-				int noise = (random >> 2) - 1;
-				neighbour = neighbourOffsets[ (weatherGrid[weatherGridI].direction + noise) % N_NEIGHBOURS ] + currentPosition;
+
+				unsigned int direction = calculateWeatherGridDirection( weatherGridI);
+
+				// int noise = (random >> 2) - 1;
+				neighbour = neighbourOffsets[ direction  ] + currentPosition;
 
 			}
 		}
@@ -690,11 +781,15 @@ unsigned int materialPhysics (unsigned int currentPosition, unsigned int weather
 
 			// if (extremelyFastNumberFromZeroTo(500 - velocityAbs) == 0 )
 			// {
-			if (extremelyFastNumberFromZeroTo(1) == 0)
-			{
-				int noise = (random >> 2) - 1;
-				neighbour = neighbourOffsets[ (weatherGrid[weatherGridI].direction + noise) % N_NEIGHBOURS ] + currentPosition;
-			}
+			// if (extremelyFastNumberFromZeroTo(1) == 0)
+			// {
+
+
+			unsigned int direction = calculateWeatherGridDirection( weatherGridI);
+
+			// int noise = (random >> 2) - 1;
+			neighbour = neighbourOffsets[ direction ] + currentPosition;
+			// }
 			// }
 
 			// else
@@ -721,8 +816,12 @@ unsigned int materialPhysics (unsigned int currentPosition, unsigned int weather
 		{
 			if (random >> 3 == 0)
 			{
-				int noise = (random >> 2) - 1;
-				unsigned int neighbour = neighbourOffsets[ (weatherGrid[weatherGridI].direction + noise) % N_NEIGHBOURS ] + currentPosition;
+
+				unsigned int direction = calculateWeatherGridDirection( weatherGridI);
+
+
+				// int noise = (random >> 2) - 1;
+				unsigned int neighbour = neighbourOffsets[ direction  ] + currentPosition;
 				if (neighbour >= totalSize) {neighbour = currentPosition;}
 				swapParticle(currentPosition, neighbour);
 				currentPosition = neighbour;
@@ -912,8 +1011,7 @@ void airflow( unsigned int x, unsigned int y )
 
 	for (unsigned int n = 0; n < N_NEIGHBOURS; n += 2)
 	{
-		unsigned int neighbour = weatherGridI + weatherGridOffsets[n];
-		// if (edge)    {neighbour = weatherGridI;}                                                                // if you do not control this, cells on the left and right edge will be able to exchange with the far edge, even though neighbour is less than weatherGridSize. Leading to absolute chaos.
+		unsigned int neighbour = weatherGridI + weatherGridOffsets[n];                                                    // if you do not control this, cells on the left and right edge will be able to exchange with the far edge, even though neighbour is less than weatherGridSize. Leading to absolute chaos.
 		if (neighbour < weatherGridSize)
 		{
 			int sign = 1; if (n > 3) { sign = -1; }                                                            // the sign of the difference between two things depends on the order you compare them. Add when facing down, subtract when facing up.
@@ -934,7 +1032,6 @@ void airflow( unsigned int x, unsigned int y )
 	}
 
 	// mix heat and velocity from far away. This is a key component of turbulent behavior in the sim, and produces a billowing effect that looks very realistic. It is prone to great instability.
-
 	int takeX = (dx >> 4);
 	int takeY = (dy >> 4); + (bouyancy >> 8);
 
@@ -987,70 +1084,70 @@ void airflow( unsigned int x, unsigned int y )
 	// the game simplifies angle in some cases to a number in the range 0 to 7, which points to one of the 8 neighbours.
 	// this algorithm efficiently calculates it from a float angle. It uses integer comparisons to steer the direction around from a starting angle.
 	// It is much faster than doing a mapping using division.
-	unsigned int angle = -1;
-	unsigned int absX = abs(weatherGrid[weatherGridI].velocityX  );
-	unsigned int absY = abs(weatherGrid[weatherGridI].velocityY  );
-	if (absX > 10 || absY > 10)
-	{
-		if (weatherGrid[weatherGridI].velocityX > 0)
-		{
-			angle += (N_NEIGHBOURS / 2);
+	// unsigned int angle = -1;
+	// unsigned int absX = abs(weatherGrid[weatherGridI].velocityX  );
+	// unsigned int absY = abs(weatherGrid[weatherGridI].velocityY  );
+	// if (absX > 10 || absY > 10)
+	// {
+	// 	if (weatherGrid[weatherGridI].velocityX > 0)
+	// 	{
+	// 		angle += (N_NEIGHBOURS / 2);
 
-			if (weatherGrid[weatherGridI].velocityX > 0)
-			{
-				if (absX > absY )
-				{
-					angle++;
-					if (absX > ( absY << 1) ) // this means, if absX is more than twice the size of absY
-					{
-						angle++;
-					}
-				}
-			}
-			else
-			{
-				if (absX > absY )
-				{
-					angle--;
-					if (absX > ( absY << 1) )
-					{
-						angle--;
-					}
-				}
-			}
-		}
-		else
-		{
-			angle += N_NEIGHBOURS ;
-			if (weatherGrid[weatherGridI].velocityX > 0)
-			{
-				if (absX > absY )
-				{
-					angle++;
-					if (absX > ( absY << 1) )
-					{
-						angle++;
-					}
-				}
-			}
-			else
-			{
-				if (absX > absY )
-				{
-					angle--;
-					if (absX > ( absY << 1) )
-					{
-						angle--;
-					}
-				}
-			}
-		}
-	}
-	else
-	{
-		angle = extremelyFastNumberFromZeroTo(N_NEIGHBOURS);
-	}
-	weatherGrid[weatherGridI].direction = angle % N_NEIGHBOURS;
+	// 		if (weatherGrid[weatherGridI].velocityX > 0)
+	// 		{
+	// 			if (absX > absY )
+	// 			{
+	// 				angle++;
+	// 				if (absX > ( absY << 1) ) // this means, if absX is more than twice the size of absY
+	// 				{
+	// 					angle++;
+	// 				}
+	// 			}
+	// 		}
+	// 		else
+	// 		{
+	// 			if (absX > absY )
+	// 			{
+	// 				angle--;
+	// 				if (absX > ( absY << 1) )
+	// 				{
+	// 					angle--;
+	// 				}
+	// 			}
+	// 		}
+	// 	}
+	// 	else
+	// 	{
+	// 		angle += N_NEIGHBOURS ;
+	// 		if (weatherGrid[weatherGridI].velocityX > 0)
+	// 		{
+	// 			if (absX > absY )
+	// 			{
+	// 				angle++;
+	// 				if (absX > ( absY << 1) )
+	// 				{
+	// 					angle++;
+	// 				}
+	// 			}
+	// 		}
+	// 		else
+	// 		{
+	// 			if (absX > absY )
+	// 			{
+	// 				angle--;
+	// 				if (absX > ( absY << 1) )
+	// 				{
+	// 					angle--;
+	// 				}
+	// 			}
+	// 		}
+	// 	}
+	// }
+	// else
+	// {
+	// 	angle = extremelyFastNumberFromZeroTo(N_NEIGHBOURS);
+	// }
+	// weatherGrid[weatherGridI].direction = angle % N_NEIGHBOURS;
 }
 
 void thread_weather_sector(unsigned int from, unsigned int to)
@@ -1058,18 +1155,30 @@ void thread_weather_sector(unsigned int from, unsigned int to)
 
 	for (unsigned int y = from; y <= to ; ++y)
 	{
-		for (unsigned int x = 0; x < weatherGridX; ++x)
-		{
 
-			if (x == 0 || x == 0 || y > weatherGridY - 1 || x > weatherGridX - 1 )
+		if (y >= weatherGridY - 1 || y == 0)
+		{
+			for (unsigned int x = 0; x < weatherGridX; ++x)
 			{
 				airflowEdge(x, y);
 			}
-			else
+		}
+		else
+		{
+			for (unsigned int x = 0; x < weatherGridX; ++x)
 			{
-				airflow(x, y);
+
+				if (x == 0 || x >= weatherGridX - 1)
+				{
+					airflowEdge(x, y);
+				}
+				else
+				{
+					airflow(x, y);
+				}
 			}
 		}
+
 	}
 }
 
@@ -2349,7 +2458,7 @@ void photate( unsigned int i )
 {
 	unsigned int currentPosition = i;
 	unsigned int blocked = 0;
-	while (true)
+	while (false)
 	{
 		unsigned int x = currentPosition % sizeX;
 		unsigned int y = currentPosition / sizeX;
@@ -2387,77 +2496,48 @@ void photate( unsigned int i )
 			return;
 		}
 
-
-
 		unsigned int weatherGridI =  (( (y ) / weatherGridScale) * weatherGridX ) + ((x ) / weatherGridScale);
 
-
-		if (weatherGrid[weatherGridI].saturation > 2)
+		if (weatherGrid[weatherGridI].saturation > 0)
 		{
 
+			int amountToBlock  = weatherGrid[weatherGridI].saturation * weatherGrid[weatherGridI].saturation ;
 
-			blocked += weatherGrid[weatherGridI].saturation * 2;
+			int lightIntensity = lampBrightness - blocked;
 
-			int lightIntensity = 0;
-
-			if (lampBrightness > blocked)
+			if (amountToBlock > lightIntensity)
 			{
-				lightIntensity =	lampBrightness - blocked;
+				amountToBlock = lightIntensity;
+
 			}
+
+
+
 			if (seedGrid[currentPosition].stage == STAGE_NULL)
 			{
-
-				seedGrid[currentPosition].energy = lightIntensity;
+				seedGrid[currentPosition].energy = amountToBlock;
 			}
+
+
+			blocked += amountToBlock;
+
+
+
+
+
+			// int lightIntensity = 0;
+
+			// if (lampBrightness > amountToBlock)
+			// {
+			// lightIntensity =	lampBrightness - amountToBlock;
+
+
+			// }
+
+
 
 		}
 
-
-
-
-
-
-
-		// int lightIntensity = 0;
-
-		// if (lampBrightness > blocked)
-		// {
-		// 	lightIntensity =	lampBrightness - blocked;
-		// }
-		// if (seedGrid[currentPosition].stage == STAGE_NULL)
-		// {
-		// 	seedGrid[currentPosition].energy = lightIntensity;
-
-		// 	// float li = lightIntensity;
-		// 	// float la = lampBrightness + 1;
-
-		// 	// float a = li / la;
-
-		// 	// memcpy( &seedColorGrid[ b_offset],     &sunlightColor ,     sizeof(Color) );
-		// 	// seedColorGrid[ (b_offset + 3) ] = a;
-		// }
-		// else
-		// {
-		// 	if (seedGrid[currentPosition].stage == STAGE_NULL)
-		// 	{
-		// 		seedGrid[currentPosition].energy = lampBrightness  / blocked;
-		// 		memcpy( &seedColorGrid[ b_offset],     &color_shadow ,     sizeof(Color) );
-		// 		unsigned int a_offset = (b_offset) + 3;
-		// 		seedColorGrid[a_offset] = 1 / (seedGrid[currentPosition].energy ) ;
-
-		// 		// 0 at 700, 100% at 1000
-		// 		if (grid[currentPosition].temperature > 600 )
-		// 		{
-		// 			seedColorGrid[a_offset] = seedColorGrid[a_offset] / 2;
-		// 			if (grid[currentPosition].temperature > 1000)
-		// 			{
-		// 				seedColorGrid[a_offset] = 0;
-		// 			}
-		// 		}
-		// 		if (seedColorGrid[a_offset] > 0.5f) {seedColorGrid[a_offset] = 0.5f;}
-		// 		if (grid[currentPosition].phase == PHASE_VACUUM && lifeGrid[currentPosition].identity == 0x00) {seedColorGrid[a_offset] = 0.0f;}
-		// 	}
-		// }
 		if (x == 0 || y == 0 || x >= sizeX || y >= sizeY) {break;}
 	}
 }
@@ -3551,7 +3631,18 @@ void materialPostProcess(unsigned int i)
 			float fsat = weatherGrid[weatherGridI].saturation;
 			float newalpha = fsat / (weatherGridScale * weatherGridScale);
 
-			ppColor = addColor(ppColor, Color( 1.0f, 1.0f, 1.0f, newalpha)  );
+			// newalpha *=2;
+			if (newalpha > 0.5f)
+			{
+
+				ppColor = addColor(ppColor, Color( 1.0f - (newalpha*2), 1.0f - (newalpha*2), 1.0f - (newalpha*2), newalpha*2)  );
+			}
+			else
+			{
+
+				ppColor = addColor(ppColor, Color( 1.0f, 1.0f, 1.0f, newalpha*2)  );
+			}
+
 		}
 	}
 
@@ -3584,7 +3675,7 @@ void materialPostProcess(unsigned int i)
 void weatherPostProcess( unsigned int weatherGridI )
 {
 
-		// unsigned int weatherGridI = (y * weatherGridX) + x;
+	// unsigned int weatherGridI = (y * weatherGridX) + x;
 
 	unsigned int x = weatherGridI % weatherGridX;
 	unsigned int y = weatherGridI / weatherGridX;
@@ -3595,10 +3686,10 @@ void weatherPostProcess( unsigned int weatherGridI )
 	{
 		for (unsigned int scaledGridPointX = 0; scaledGridPointX < weatherGridScale; ++scaledGridPointX)
 		{
-			unsigned int currentPosition =  i+ ((scaledGridPointY * sizeX) + scaledGridPointX );
+			unsigned int currentPosition =  i + ((scaledGridPointY * sizeX) + scaledGridPointX );
 			// grid[currentPosition].temperature = (gridCouplingAmount / temperatureScale);
-		 materialPostProcess(currentPosition);
-	
+			materialPostProcess(currentPosition);
+
 		}
 	}
 
