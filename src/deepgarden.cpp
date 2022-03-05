@@ -375,20 +375,22 @@ struct Weather
 	int pressure;
 	int velocityX;
 	int velocityY;
-	// unsigned int direction;
 	int saturation;
+	unsigned int filledSquares;
 
 	Weather();
 };
+
 Weather::Weather()
 {
 	this->temperature = defaultTemperature * temperatureScale;
 	this->pressure = defaultPressure;
-	// this->direction = 0;
 	this->velocityX = (RNG() - 0.5f) * 100;
 	this->velocityY = (RNG() - 0.5f) * 100;
-}
 
+	this->saturation = 0;
+	this->filledSquares = 0;
+}
 
 const int weatherGridX = sizeX / weatherGridScale;
 const int weatherGridY = sizeY / weatherGridScale;
@@ -408,15 +410,10 @@ int weatherGridOffsets[] =
 
 Weather weatherGrid[weatherGridSize];
 
-
-
-
 unsigned int calculateVelocityDirection( int velocityX,  int velocityY)
 {
-
-	// 	the game simplifies angle in some cases to a number in the range 0 to 7, which points to one of the 8 neighbours.
+	// the game simplifies angle in some cases to a number in the range 0 to 7, which points to one of the 8 neighbours.
 	// this algorithm uses integer comparisons to steer the direction around from a starting angle.
-
 	int angle = 0;
 	int absX = abs( velocityX  );
 	int absY = abs( velocityY  );
@@ -687,24 +684,26 @@ void materialPhaseChange( unsigned int currentPosition, unsigned int saturation)
 
 
 
+void conductHeat(unsigned int currentPosition, unsigned int neighbour)
+{
+	// Exchange heat by conduction.
+	if (grid[neighbour].phase != PHASE_VACUUM)
+	{
+		int avgTemp = (((grid[currentPosition].temperature ) - (grid[neighbour].temperature)) ) ;
+		avgTemp = avgTemp >> materials[ grid[neighbour].material ].insulativity;
+		grid[neighbour].temperature += avgTemp;
+		grid[currentPosition].temperature -= avgTemp;
+	}
+}
+
 
 
 // The classic falling sand physics thread.
-// returns whether or not the cell contains a material that blocks air pressure, which informs the air pressure thread.
-unsigned int materialPhysics (unsigned int currentPosition,  unsigned int velocityAbs, unsigned int direction)
+void materialPhysics (unsigned int currentPosition,  unsigned int velocityAbs, unsigned int direction)
 {
-	unsigned int random = extremelyFastNumberFromZeroTo(N_NEIGHBOURS - 1);
+	unsigned int random = extremelyFastNumberFromZeroTo(N_NEIGHBOURS);
 
-	// Exchange heat by conduction.
-	unsigned int thermoNeighbour = neighbourOffsets[random] + currentPosition ;
-	if (thermoNeighbour > totalSize) {thermoNeighbour = currentPosition;}
-	if (grid[thermoNeighbour].phase != PHASE_VACUUM)
-	{
-		int avgTemp = (((grid[currentPosition].temperature ) - (grid[thermoNeighbour].temperature)) ) ;
-		avgTemp = avgTemp / materials[ grid[currentPosition].material ].insulativity;
-		grid[thermoNeighbour].temperature += avgTemp;
-		grid[currentPosition].temperature -= avgTemp;
-	}
+
 
 	// heat by radiation from sunlight.
 	// if (seedGrid[currentPosition].stage == STAGE_NULL)
@@ -712,34 +711,42 @@ unsigned int materialPhysics (unsigned int currentPosition,  unsigned int veloci
 	// 	grid[currentPosition].temperature += seedGrid[currentPosition].energy;
 	// }
 
-	// movement instructions for POWDERS
-	if (grid[currentPosition].phase  == PHASE_POWDER)
+	// movement instructions for GASES
+	if (grid[currentPosition].phase == PHASE_GAS)
 	{
-		unsigned int neighbour = neighbourOffsets[ (  1 +  (random >> 2) )  ] + currentPosition;
-		if (velocityAbs > (20000 >> materialWindPushScale) )
-		{
-			neighbour = neighbourOffsets[ direction  ] + currentPosition;
-		}
+		unsigned int neighbour = neighbourOffsets[ direction ] + currentPosition;
 		if (neighbour >= totalSize) {neighbour = currentPosition;}
-		if ((    grid[neighbour].phase == PHASE_VACUUM) ||
-		        (grid[neighbour].phase == PHASE_GAS) ||
-		        (grid[neighbour].phase == PHASE_LIQUID)  )
+
+		conductHeat(currentPosition, neighbour);
+
+		if (grid[neighbour].phase  == PHASE_VACUUM || (grid[neighbour].phase == PHASE_GAS) )
 		{
 			swapParticle(currentPosition, neighbour);
-			currentPosition = neighbour;
 		}
-		return 1; // this material blocks air.
+		// return ;
 	}
 
 	// movement instructions for LIQUIDS
 	else if (grid[currentPosition].phase == PHASE_LIQUID)
 	{
 		unsigned int neighbour = neighbourOffsets[ (  0 +  (random >> 1) )  ] + currentPosition;
-		if (velocityAbs > (10000 >> materialWindPushScale))
+
+		// if (neighbour >= totalSize) {neighbour = currentPosition;}
+
+
+	
+		if (velocityAbs > 10000)
 		{
 			neighbour = neighbourOffsets[ direction  ] + currentPosition;
+
 		}
+
+
 		if (neighbour >= totalSize) {neighbour = currentPosition;}
+
+	conductHeat(currentPosition, neighbour);
+
+
 		if ((    grid[neighbour].phase == PHASE_VACUUM) ||
 		        (grid[neighbour].phase == PHASE_GAS) ||
 		        (grid[neighbour].phase == PHASE_LIQUID)     )
@@ -747,37 +754,62 @@ unsigned int materialPhysics (unsigned int currentPosition,  unsigned int veloci
 			swapParticle(currentPosition, neighbour);
 			currentPosition = neighbour;
 		}
-		return 0; // this material permits air pressure.
+
+
+		// return ;
 	}
 
-	// movement instructions for GASES
-	else if (grid[currentPosition].phase == PHASE_GAS)
+	// movement instructions for POWDERS
+	else if (grid[currentPosition].phase  == PHASE_POWDER)
 	{
-		unsigned int neighbour = neighbourOffsets[ random ] + currentPosition;
-		neighbour = neighbourOffsets[ direction ] + currentPosition;
+		unsigned int neighbour = neighbourOffsets[ (  1 +  (random >> 2) )  ] + currentPosition;
+		// if (neighbour >= totalSize) {neighbour = currentPosition;}
+
+
+		if (velocityAbs > 20000 )
+		{
+			neighbour = neighbourOffsets[ direction  ] + currentPosition;
+
+		}
+
+
 		if (neighbour >= totalSize) {neighbour = currentPosition;}
-		if (grid[neighbour].phase  == PHASE_VACUUM || (grid[neighbour].phase == PHASE_GAS) )
+
+		conductHeat(currentPosition, neighbour);
+
+		if ((    grid[neighbour].phase == PHASE_VACUUM) ||
+		        (grid[neighbour].phase == PHASE_GAS) ||
+		        (grid[neighbour].phase == PHASE_LIQUID)  )
 		{
 			swapParticle(currentPosition, neighbour);
+			currentPosition = neighbour;
 		}
-		return 0;
+
+
+		// return ;
 	}
 
 	else if
 	// movement instructions for SOLIDS
 	(grid[currentPosition].phase  == PHASE_SOLID)
 	{
-		if (velocityAbs > (50000 >> materialWindPushScale))
+		unsigned int neighbour = neighbourOffsets[ random  ] + currentPosition;
+		if (neighbour >= totalSize) {neighbour = currentPosition;}
+
+		conductHeat(currentPosition, neighbour);
+
+		if (velocityAbs > 50000)
 		{
-			unsigned int neighbour = neighbourOffsets[ direction  ] + currentPosition;
+			neighbour = neighbourOffsets[ direction  ] + currentPosition;
 			if (neighbour >= totalSize) {neighbour = currentPosition;}
+			// if (neighbour >= totalSize) {neighbour = currentPosition;}
 			swapParticle(currentPosition, neighbour);
 			currentPosition = neighbour;
 		}
-		return 1;
+		// return ;
 	}
 
-	return 0; // for vacuum, i guess.
+	return ;
 }
 
 
@@ -849,24 +881,27 @@ void airflow( unsigned int x, unsigned int y )
 	weatherGrid[weatherGridI].temperature  = gridCouplingAmount;
 
 	// because the weather grid is several times smaller than the material grid, you have to go set the temperatures of all the applicable grid squares.
-	unsigned int filledSquares = 0;
-	weatherGrid[weatherGridI].saturation = 0;
-	for (unsigned int scaledGridPointY = 0; scaledGridPointY < weatherGridScale; ++scaledGridPointY)
-	{
-		for (unsigned int scaledGridPointX = 0; scaledGridPointX < weatherGridScale; ++scaledGridPointX)
-		{
-			unsigned int currentPosition =  i + ((scaledGridPointY * sizeX) + scaledGridPointX );
-			grid[currentPosition].temperature = (gridCouplingAmount / temperatureScale);
-			if (grid[currentPosition].phase == PHASE_GAS)
-			{
-				weatherGrid[weatherGridI].saturation++;
-			}
-			else if (grid[currentPosition].phase == PHASE_SOLID || grid[currentPosition].phase == PHASE_POWDER )
-			{
-				filledSquares ++;
-			}
-		}
-	}
+	// unsigned int filledSquares = 0;
+	// weatherGrid[weatherGridI].saturation = 0;
+	// for (unsigned int scaledGridPointY = 0; scaledGridPointY < weatherGridScale; ++scaledGridPointY)
+	// {
+	// 	for (unsigned int scaledGridPointX = 0; scaledGridPointX < weatherGridScale; ++scaledGridPointX)
+	// 	{
+	// 		unsigned int currentPosition =  i + ((scaledGridPointY * sizeX) + scaledGridPointX );
+
+
+	// 		grid[currentPosition].temperature = (gridCouplingAmount / temperatureScale);
+
+	// 		if (grid[currentPosition].phase == PHASE_GAS)
+	// 		{
+	// 			weatherGrid[weatherGridI].saturation++;
+	// 		}
+	// 		else if (grid[currentPosition].phase == PHASE_SOLID || grid[currentPosition].phase == PHASE_POWDER )
+	// 		{
+	// 			filledSquares ++;
+	// 		}
+	// 	}
+	// }
 
 	// smooth the simulation by mixing each cell with the average of its neighbours.
 	int ap = 0;
@@ -970,7 +1005,7 @@ void airflow( unsigned int x, unsigned int y )
 		dp += dt >> 2;
 	}
 
-	if (filledSquares > ((weatherGridScale * weatherGridScale) / 2) ) // if more than half the weathergrid square is full of material
+	if (weatherGrid[weatherGridI]. filledSquares > ((weatherGridScale * weatherGridScale) / 2) ) // if more than half the weathergrid square is full of material
 	{
 		// // apply the changes you computed in this turn, and finish.
 		weatherGrid[weatherGridI].pressure    = dp;
@@ -2571,7 +2606,7 @@ void resetMaterials()
 	vacuum.color = color_clear;
 	vacuum.melting = 0;
 	vacuum.boiling = 0;
-	vacuum.insulativity = 1000;
+	vacuum.insulativity = 32;
 	materials.push_back(vacuum);
 
 // materials[1] is supposed to be water.
@@ -2579,7 +2614,7 @@ void resetMaterials()
 	water.color = color_lightblue;
 	water.melting = 273;
 	water.boiling = 373;
-	water.insulativity = 10;
+	water.insulativity = 1;
 	materials.push_back(water);
 
 // materials[2] is supposed to be blood.
@@ -2587,7 +2622,7 @@ void resetMaterials()
 	blood.color = color_darkred;
 	blood.melting = 0;
 	blood.boiling = 100;
-	blood.insulativity = 33;
+	blood.insulativity = 1;
 	materials.push_back(blood);
 
 // materials[3] is supposed to be bones.
@@ -2595,7 +2630,7 @@ void resetMaterials()
 	bone.color = color_offwhite;
 	bone.melting = 1000;
 	bone.boiling = 2200;
-	bone.insulativity = 400;
+	bone.insulativity = 3;
 	materials.push_back(bone);
 }
 
@@ -2605,7 +2640,7 @@ void standardMaterials()
 	rock1.color = color_lightgrey;
 	rock1.melting = 600;
 	rock1.boiling = 1800;
-	rock1.insulativity = 400;
+	rock1.insulativity = 3;
 	rock1.crystal_n = extremelyFastNumberFromZeroTo(4);
 	unsigned int randomCondition =  extremelyFastNumberFromZeroTo(6);
 	if (randomCondition == 0)      {rock1.crystal_condition = CONDITION_GREATERTHAN; }
@@ -2625,7 +2660,7 @@ void standardMaterials()
 	rock2.color = color_grey;
 	rock2.melting = 800;
 	rock2.boiling = 2000;
-	rock2.insulativity = 400;
+	rock2.insulativity = 2;
 	rock2.crystal_n = extremelyFastNumberFromZeroTo(4);
 	// unsigned int
 	randomCondition =  extremelyFastNumberFromZeroTo(6);
@@ -2646,7 +2681,7 @@ void standardMaterials()
 	rock3.color = color_darkgrey;
 	rock3.melting = 1000;
 	rock3.boiling = 2400;
-	rock3.insulativity = 400;
+	rock3.insulativity = 1;
 	rock3.crystal_n = extremelyFastNumberFromZeroTo(4);
 	// unsigned int
 	randomCondition =  extremelyFastNumberFromZeroTo(6);
@@ -3565,34 +3600,42 @@ void thread_materialPhysics(  )
 #ifdef THREAD_TIMING_READOUT
 	auto start = std::chrono::steady_clock::now();
 #endif
-	for (int y = 0; y < weatherGridY; ++y)
+
+	unsigned int weatherGridI = 0;
+	unsigned int i = 0;
+	for (unsigned int y = 0; y < weatherGridY; ++y)
 	{
-		for (int x = 0; x < weatherGridX; ++x)
+		for (unsigned int x = 0; x < weatherGridX; ++x)
 		{
-
-			// for (int weatherGridI = 0; weatherGridI < weatherGridSize; ++weatherGridI)
-			// 	{
-
-			unsigned int weatherGridI = (y * weatherGridX) + x;
 			unsigned int i = ((y * weatherGridScale) * sizeX) + (x * weatherGridScale); // in this case, i is the lower left corner of the weathergrid square.
-			unsigned int direction = calculateVelocityDirection( weatherGrid[weatherGridI]. velocityX,  weatherGrid[weatherGridI]. velocityY);
-			unsigned int velocityAbs = abs(weatherGrid[weatherGridI]. velocityX) + abs( weatherGrid[weatherGridI]. velocityY) ;
+
 
 			if (i < totalSize)
 			{
+
+				unsigned int weatherGridI = (y * weatherGridX) + x;
+
+				unsigned int direction = calculateVelocityDirection( weatherGrid[weatherGridI]. velocityX,  weatherGrid[weatherGridI]. velocityY);
+				unsigned int velocityAbs = abs(weatherGrid[weatherGridI]. velocityX) + abs( weatherGrid[weatherGridI]. velocityY) ;
+
+				unsigned int saturation = 0;
+				unsigned int filledSquares = 0;
+
 				for (unsigned int scaledGridPointY = 0; scaledGridPointY < weatherGridScale; ++scaledGridPointY)
 				{
 					for (unsigned int scaledGridPointX = 0; scaledGridPointX < weatherGridScale; ++scaledGridPointX)
 					{
 						unsigned int currentPosition =  i + ((scaledGridPointY * sizeX) + scaledGridPointX );
 						materialPhysics( currentPosition, velocityAbs, direction );
+
+						if (grid[currentPosition].phase == PHASE_GAS || grid[currentPosition].phase == PHASE_LIQUID)   { saturation++; }
+						else if (grid[currentPosition].phase == PHASE_SOLID || grid[currentPosition].phase ==  PHASE_POWDER) { filledSquares++; }
 					}
 				}
+
+				weatherGrid[weatherGridI].saturation = saturation;
+				weatherGrid[weatherGridI].filledSquares = filledSquares;
 			}
-
-// }
-
-
 		}
 	}
 #ifdef THREAD_TIMING_READOUT
