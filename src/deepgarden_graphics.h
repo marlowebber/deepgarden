@@ -28,4 +28,6 @@ Color addColor (Color a, Color b);
 
 Color filterColor( Color a, Color b);
 
+Color clampColor (Color in);
+
 #endif

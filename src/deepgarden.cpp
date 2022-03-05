@@ -172,10 +172,14 @@ int defaultVelocity = 0;
 const int radiantHeatIntensity = 50; // this is a physical constant that determines how much heat radiates from material, and how strongly material heat is coupled to the atmosphere.
 const float combinedGasLawConstant = 0.001f;
 
-unsigned int sunlightDirection = 2;
+// unsigned int sunlightDirection = 2;
 unsigned int sunlightEnergy = 10;
 unsigned int sunlightTemp = 1000;
 unsigned int sunlightPenetrationDepth = 20; // light is slightly reduced traveling through solid things. this affects plants in game as well as being an artistic effect. This number is how far the light goes into solid things.
+
+
+float timeOfDay = 0;
+float dayLength = 1000;
 
 Color sunlightColor = color_white_quarterClear;
 
@@ -2211,7 +2215,7 @@ void swapSeedParticle(unsigned int a, unsigned int b)
 }
 
 // travel from the indicated square in the light direction, marking cells as illuminated or dark along your way.
-void photate( unsigned int i )
+void photate( unsigned int i , unsigned int sunlightDirection)
 {
 	unsigned int currentPosition = i;
 	unsigned int blocked = 0;
@@ -2223,35 +2227,48 @@ void photate( unsigned int i )
 		if (currentPosition > totalSize) {break;}
 		unsigned int b_offset = (currentPosition * numberOfFieldsPerVertex) ;
 
+
+
+		int lightIntensity = lampBrightness - blocked;
+
+
+		if (seedGrid[currentPosition].stage == STAGE_NULL)
+		{
+
+
+			memcpy( &(seedColorGrid[b_offset]), &sunlightColor, 16 );
+
+
+			float flightIntensity = lightIntensity;
+			float flampBrightness = lampBrightness;
+			seedColorGrid[ (b_offset + 3) ] = (flightIntensity / flampBrightness);
+
+		}
+
+
+
+
+		unsigned int weatherGridI =  (( (y ) / weatherGridScale) * weatherGridX ) + ((x ) / weatherGridScale);
+
+
+
+		int amountToBlock  = 0; //weatherGrid[weatherGridI].saturation  ;
+
+
+
 		if (
 		    grid[currentPosition].phase == PHASE_SOLID ||
 		    grid[currentPosition].phase == PHASE_POWDER ||
 		    lifeGrid[currentPosition].identity > 0x00
 		)
 		{
-			int lightIntensity = lampBrightness - blocked;
-
-			if (lightIntensity > 0)
-			{
-				if (seedGrid[currentPosition].stage == STAGE_NULL)
-				{
-					seedGrid[currentPosition].energy = lightIntensity;
-				}
-
-				blocked += lightIntensity;
-			}
-
-			return;
+			amountToBlock ++;
 		}
 
-		unsigned int weatherGridI =  (( (y ) / weatherGridScale) * weatherGridX ) + ((x ) / weatherGridScale);
 
-		if (weatherGrid[weatherGridI].saturation > 0)
+
+		if (amountToBlock > 0)
 		{
-
-			int amountToBlock  = weatherGrid[weatherGridI].saturation * weatherGrid[weatherGridI].saturation ;
-
-			int lightIntensity = lampBrightness - blocked;
 
 			if (amountToBlock > lightIntensity)
 			{
@@ -2260,10 +2277,16 @@ void photate( unsigned int i )
 			}
 			if (seedGrid[currentPosition].stage == STAGE_NULL)
 			{
-				seedGrid[currentPosition].energy = amountToBlock;
+				seedGrid[currentPosition].energy = lightIntensity;
+
+
+
 			}
 			blocked += amountToBlock;
+
 		}
+
+
 
 		if (x == 0 || y == 0 || x >= sizeX || y >= sizeY) {break;}
 	}
@@ -2823,13 +2846,13 @@ void createWorld( unsigned int world)
 
 
 
-	case WORLD_GONQUAN:
+	case WORLD_GONQUIN:
 	{
 
 
 		standardMaterials();
 
-		sunlightTemp = 5500;
+		sunlightTemp = 1000;
 
 		defaultTemperature = 200;
 		defaultPressure = 500;
@@ -3383,10 +3406,10 @@ void materialPostProcess(unsigned int i, unsigned int weatherGridI, float satura
 		unsigned int b_offset = i * numberOfFieldsPerVertex;
 
 
-		Color ppColor ;
+		Color ppColor = color_clear;
 
 		// first, do the distant background.
-		memcpy( &ppColor, &backgroundSky[ b_offset ] , 16 ); // 4x floats of 4 bytes each
+		// memcpy( &ppColor, &backgroundSky[ b_offset ] , 16 ); // 4x floats of 4 bytes each
 
 		// then, we will do everything which reflects light, but does not emit it.
 		Color materialColor = materials[ grid[i].material ].color ;
@@ -3408,9 +3431,13 @@ void materialPostProcess(unsigned int i, unsigned int weatherGridI, float satura
 
 
 		// paint in the living plants and their seeds.
-		Color seed_color;
+		Color seed_color = color_clear;
 		Color life_color;
-		memcpy( &seed_color, &seedColorGrid[ b_offset ] , 16 ); // 4x floats of 4 bytes each
+
+		if (seedGrid[i].stage != STAGE_NULL)
+		{
+			memcpy( &seed_color, &seedColorGrid[ b_offset ] , 16 ); // 4x floats of 4 bytes each
+		}
 		memcpy( &life_color, &lifeColorGrid[ b_offset ] , 16 ); // 4x floats of 4 bytes each
 
 		life_color = filterColor( life_color, seed_color );
@@ -3429,8 +3456,22 @@ void materialPostProcess(unsigned int i, unsigned int weatherGridI, float satura
 			// printf("fsat %f flim %f\n", fsat, flim);
 
 			cloudTinge.a = (fsat / flim )  ;
+			cloudTinge = clampColor(cloudTinge);
 			ppColor = filterColor(    ppColor , cloudTinge );
 		}
+
+
+
+		if (seedGrid[i].stage == STAGE_NULL)
+		{
+			Color lightColor ;
+			memcpy( &lightColor, &seedColorGrid[ b_offset ] , 16 ); // 4x floats of 4 bytes each
+
+			ppColor = multiplyColor(ppColor, lightColor);
+
+		}
+
+
 
 
 
@@ -3439,10 +3480,17 @@ void materialPostProcess(unsigned int i, unsigned int weatherGridI, float satura
 		// Make hot stuff glow
 		ppColor = addColor( ppColor, blackbodyLookup( (grid[i].temperature) ) );
 
-		colorGrid[ (i * numberOfFieldsPerVertex) + 0 ] = ppColor.r;
-		colorGrid[ (i * numberOfFieldsPerVertex) + 1 ] = ppColor.g;
-		colorGrid[ (i * numberOfFieldsPerVertex) + 2 ] = ppColor.b;
-		colorGrid[ (i * numberOfFieldsPerVertex) + 3 ] = ppColor.a;
+
+
+
+		// ppColor = filterColor()
+
+
+
+		colorGrid[ b_offset + 0 ] = ppColor.r;
+		colorGrid[ b_offset + 1 ] = ppColor.g;
+		colorGrid[ b_offset + 2 ] = ppColor.b;
+		colorGrid[ b_offset + 3 ] = ppColor.a;
 	}
 }
 
@@ -3571,21 +3619,70 @@ void thread_physics ()
 	seedExtremelyFastNumberGenerators(); // make sure randomness is really random
 	// }
 
-	// shine the sunlight
-	for (int i = ((sizeY - 2) * sizeX ) + photoPhaseOffset; i < (sizeY - 1)*sizeX; i += photoSkipSize)
-	{
-		if (extremelyFastNumberFromZeroTo(4) == 0)
-		{
 
-			int x = i % sizeX;
-			// if (x < (sizeX / 2))
-			// {
-			// photate(i);
-			// }
-		}
+
+	// printf("sunlightDirection %u timeOfDay %u dayLength %u\n", sunlightDirection, timeOfDay, dayLength);
+	timeOfDay += 1.0f;
+	// if (timeOfDay >= dayLength) {timeOfDay = 0;}
+	// float fneighbours = N_NEIGHBOURS;
+	unsigned int sunlightDirection = ((timeOfDay / dayLength) * (N_NEIGHBOURS)) ;
+	// sunlightDirection = sunlightDirection % N_NEIGHBOURS;
+
+
+	if (sunlightDirection >= N_NEIGHBOURS)
+	{
+		sunlightDirection = 0;
+		timeOfDay = 0;
 	}
+
+
+
+	// if (sunlightDirection)
+	// shine the sunlight
+	// for (int i = ((sizeY - 2) * sizeX ) + photoPhaseOffset; i < (sizeY - 1)*sizeX; i += photoPhaseOffset)
+	// {
+
+	int y = 0;
+	int x = 0;
+
+	for ( y = photoPhaseOffset; y < sizeY; y+=photoSkipSize)
+	{
+		int i = (y * sizeX) + x;
+		photate(i, sunlightDirection);
+	}
+
+	y = sizeY-1;
+
+	for ( x = photoPhaseOffset; x < sizeX; x+=photoSkipSize)
+	{
+		int i = (y * sizeX) + x;
+		photate(i, sunlightDirection);
+	}
+
+	x = sizeX-1;
+
+	for ( y = sizeY-1-photoPhaseOffset; y >= 0; y-=photoSkipSize)
+	{
+		int i = (y * sizeX) + x;
+		photate(i, sunlightDirection);
+	}
+
+
+
+
+
+
+	// // }
 	photoPhaseOffset++;
 	if (photoPhaseOffset % photoSkipSize == 0 ) { photoPhaseOffset = 0;}
+
+
+
+
+
+
+
+
 
 	// figure out what color hot or illuminated stuff should be. For efficiency, only update one in every few squares per turn- it looks fine in the game.
 	for (unsigned int i = ppPhaseOffset; i < weatherGridSize; i += ppSkipSize)
@@ -4907,6 +5004,17 @@ void thread_seeds()
 #endif
 	for (unsigned int i = (sizeX + 1); i < (totalSize - (sizeX + 1)); ++i)
 	{
+
+		// if (seedGrid[i].stage == STAGE_NULL)
+
+		// {
+		// 	if (seedGrid[i].energy > 0.0f)
+		// 	{
+
+		// 	seedGrid[i].energy -= 1.0f;
+		// 	}
+		// }
+
 		// SEEDS. Some of the particles on the seed grid are seeds that fall downwards.
 		if (seedGrid[i].stage == STAGE_FRUIT)
 		{

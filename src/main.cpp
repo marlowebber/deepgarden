@@ -122,7 +122,7 @@ void thread_interface()
 
 			case SDLK_k:
 				// createRandomWorld();
-				createWorld( WORLD_EARTH);
+				createWorld( WORLD_GONQUIN);
 				break;
 
 			case SDLK_p:
