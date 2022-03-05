@@ -26,4 +26,6 @@ Color multiplyColor (Color a, Color b);
 
 Color addColor (Color a, Color b);
 
+Color filterColor( Color a, Color b);
+
 #endif

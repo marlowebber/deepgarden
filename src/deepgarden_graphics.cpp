@@ -34,29 +34,64 @@ Color::Color(float r, float g, float b, float a)
 	this->a = a;
 }
 
+
+Color clampColor (Color in)
+{
+
+	Color out = in;
+
+	if      (out.r > 1.0f) {out.r = 1.0f;}
+	else if (out.r < 0.0f) {out.r = 0.0f;}
+
+	if      (out.g > 1.0f) {out.g = 1.0f;}
+	else if (out.g < 0.0f) {out.g = 0.0f;}
+
+	if      (out.b > 1.0f) {out.b = 1.0f;}
+	else if (out.b < 0.0f) {out.b = 0.0f;}
+
+	return out;
+
+}
+
+// add both colors together.
+// in life, this is like two lights shining together. the result is a mix of both, depending on their strengths.
 Color addColor (Color a, Color b)
 {
 	Color c = Color(0.0f, 0.0f, 0.0f, 0.0f);
-
 	c.r = (a.r * a.a) + (b.r * b.a);
 	c.g = (a.g * a.a) + (b.g * b.a);
 	c.b = (a.b * a.a) + (b.b * b.a);
-	c.a = a.a + b.a;
+	c.a = a.a + b.a; 
 
-	return c;
+	return clampColor(c);
 }
 
+
+// multiply the amount of color in A by the amount of color in B.
+// in life, this is like colored light falling on a colored object. If they are the same color, the result will be brighter.
 Color multiplyColor (Color a, Color b)
+{
+	Color c = Color(0.0f, 0.0f, 0.0f, 0.0f);
+	c.r = (a.r * a.a) * (b.r * b.a);
+	c.g = (a.g * a.a) * (b.g * b.a);
+	c.b = (a.b * a.a) * (b.b * b.a);
+	c.a = b.a ;
+	return clampColor(c);
+}
+
+// allow B to block A.
+// in life, this is like a color image shining through a color window. the image is filtered by the color and opacity of the window.
+Color filterColor( Color a, Color b)
 {
 
 	Color c = Color(0.0f, 0.0f, 0.0f, 0.0f);
 
-	c.r = (a.r * a.a) * (b.r * b.a);
-	c.g = (a.g * a.a) * (b.g * b.a);
-	c.b = (a.b * a.a) * (b.b * b.a);
-	c.a = a.a ;
+	c.r = (b.r ) + ((1.0f - (b.a)) * (a.r));
+	c.g = (b.g ) + ((1.0f - (b.a)) * (a.g));
+	c.b = (b.b ) + ((1.0f - (b.a)) * (a.b));
+	c.a = a.a + b.a; 
 
-	return c;
+	return clampColor(c);
 
 }
 
@@ -135,7 +170,7 @@ void setupGraphics()
 {
 
 
-	// glPointSize(3);    
+	// glPointSize(3);
 
 	// Setup the game window with SDL2
 	SDL_Init( SDL_INIT_VIDEO );
@@ -248,8 +283,8 @@ void setupGraphics()
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-	
-	glPointSize(3);    
+
+	glPointSize(3);
 }
 
 void prepareForWorldDraw ()
@@ -292,7 +327,7 @@ void vertToBuffer (GLfloat * vertex_buffer_data, unsigned int * cursor, Color ve
 	float floatx = x;
 	float floaty = y;
 	unsigned int cursorValue = *(cursor);
-	memcpy((vertex_buffer_data+cursorValue), &vert_color , floats_per_color); // a float is 4 bytes, 4 floats = 16 bytes
+	memcpy((vertex_buffer_data + cursorValue), &vert_color , floats_per_color); // a float is 4 bytes, 4 floats = 16 bytes
 	vertex_buffer_data[cursorValue + 4] = floatx;
 	vertex_buffer_data[cursorValue + 5] = floaty;
 	(*cursor) += 6;
@@ -313,11 +348,11 @@ void advanceIndexBuffers (unsigned int * index_buffer_data, unsigned int * index
 
 
 
-void preDraw() 
+void preDraw()
 {
 
 
-   prepareForWorldDraw ();
+	prepareForWorldDraw ();
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -325,7 +360,7 @@ void preDraw()
 }
 
 
-void postDraw () 
+void postDraw ()
 {
 	// cleanupAfterWorldDraw();
 
