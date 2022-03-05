@@ -178,6 +178,7 @@ void thread_temperature2 ();
 void thread_life();
 void thread_seeds();
 
+void thread_materialPhysics(  );
 void setExtremeTempPoint (unsigned int x , unsigned  int y);
 void sendLifeToBackground ();
 

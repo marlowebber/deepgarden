@@ -1,7 +1,7 @@
 #include "deepgarden.h"
 
 //https://github.com/edrosten/8bit_rng/blob/master/rng-4261412736.c
-uint16_t x, y, z, a;
+uint32_t x, y, z, a;
 
 vec_u2::vec_u2(unsigned int a, unsigned int b)
 {
@@ -196,11 +196,11 @@ float RNG()
 	return dis(e);
 }
 
-inline uint16_t extremelyFastRandomByte()
+inline uint32_t extremelyFastRandomByte()
 {
 	// it used to be an actual byte, but that makes it eventually run out of randomness and always choose the same number!!
 	// mask off the top 8 if you really need a byte.
-	uint16_t t = x ^ (x << 8);
+	uint32_t t = x ^ (x << 8);
 	x = y;
 	y = z;
 	z = a;
@@ -209,26 +209,26 @@ inline uint16_t extremelyFastRandomByte()
 	return a;
 }
 
-uint16_t extremelyFastNumberInRange(uint16_t from, uint16_t to)
+uint32_t extremelyFastNumberInRange(uint32_t from, uint32_t to)
 {
 	return from + ( extremelyFastRandomByte() % ( to - from + 1 ) );
 }
 
-uint16_t extremelyFastNumberFromZeroTo( uint16_t to)
+uint32_t extremelyFastNumberFromZeroTo( uint32_t to)
 {
 	return ( extremelyFastRandomByte() % ( to + 1 ) );
 }
 
 void seedExtremelyFastNumberGenerators()
 {
-	x = !z;
-	y = !y;
-	z = !x;
-	a = 1;
+	// x = !z;
+	// y = !y;
+	// z = !x;
+	// a = 1;
 
-	// if (RNG() < 0.5)  {x = 1;}
-	// if (RNG() < 0.5)  {y = 1;}
-	// if (RNG() < 0.5)  {z = 1;}
+	if (RNG() < 0.5)  {x = 1;}
+	if (RNG() < 0.5)  {y = 1;}
+	if (RNG() < 0.5)  {z = 1;}
 }
 
 

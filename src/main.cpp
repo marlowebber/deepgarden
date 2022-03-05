@@ -212,6 +212,7 @@ int main( int argc, char * argv[] )
 			// boost::thread t99{ thread_temperature2 };
 
 			boost::thread t3{ thread_weather };
+			boost::thread t454{ thread_materialPhysics };
 			boost::thread t2{ thread_physics };
 			boost::thread t10 { thread_animals };
 			boost::thread t6{ thread_interface };
@@ -226,6 +227,7 @@ int main( int argc, char * argv[] )
 			t6.join();
 			t10.join();
 			t2.join();
+			t454.join();
 			t3.join();
 			// t99.join();
 		}

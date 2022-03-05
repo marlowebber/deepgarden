@@ -36,8 +36,8 @@ float magnitude_int( int x,  int y);
 int distanceBetweenPoints( vec_i2 a, vec_i2 b );
 
 void seedExtremelyFastNumberGenerators();
-uint16_t extremelyFastNumberInRange(uint16_t from, uint16_t to);
-uint16_t extremelyFastNumberFromZeroTo( uint16_t to);
+uint32_t extremelyFastNumberInRange    (uint32_t from, uint32_t to);
+uint32_t extremelyFastNumberFromZeroTo( uint32_t to);
 
 
 
