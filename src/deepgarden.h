@@ -149,8 +149,9 @@ extern const unsigned int MATERIAL_VACUUM ;
 
 // worlds are specifications for sets of materials and environment conditions.
 
-#define WORLD_EARTH 1
-#define WORLD_RANDOM 2
+#define WORLD_EARTH   1 // a warm world with thick air, blue sky and green grass. water is liquid on its surface.
+#define WORLD_RANDOM  2 // material and environmental features are chosen at random.
+#define WORLD_GONQUAN 3 // a cold world with stone monoliths that float over the surface.
 
 
 void createWorld( unsigned int world);
