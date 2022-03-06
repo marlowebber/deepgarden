@@ -149,9 +149,21 @@ extern const unsigned int MATERIAL_VACUUM ;
 
 // worlds are specifications for sets of materials and environment conditions.
 
-#define WORLD_EARTH   1 // a warm world with thick air, blue sky and green grass. water is liquid on its surface.
-#define WORLD_RANDOM  2 // material and environmental features are chosen at random.
-#define WORLD_GONQUIN 3 // a cold world with stone monoliths that float over the surface.
+#define WORLD_EARTH       1 // a warm world with thick air, blue sky and green grass. water is liquid on its surface.
+#define WORLD_RANDOM      2 // material and environmental features are chosen at random.
+#define WORLD_CATUN       3 // a cold fortress world with thin air and stone monoliths that float over the surface.
+
+/*
+
+OTHER KNOWN WORLDS NOT YET EXPLORED
+
+BRIN             an airless comet deep in space. caches of technology are hidden here.
+JELLY WORLD      a chaotic explosion of life on a hydrocarbon world of tar and petrol.
+POOL OF THE SUN  an ornate temple carved from red stone. koi fish swim in the pool. it is filled with red and gold water, which is lit by a skylight.
+DIAGONAL         stochastic random noise is disabled, leading to a world of bizarre angles and currents.
+
+
+*/
 
 
 void createWorld( unsigned int world);
