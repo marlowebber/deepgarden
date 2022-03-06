@@ -172,10 +172,10 @@ int defaultVelocity = 0;
 const int radiantHeatIntensity = 50; // this is a physical constant that determines how much heat radiates from material, and how strongly material heat is coupled to the atmosphere.
 const float combinedGasLawConstant = 0.001f;
 
-unsigned int sunlightBrightness = 10;            // the amount of actual light coming from the emitter. how far it penetrates material.
+unsigned int sunlightBrightness = 50;            // the amount of actual light coming from the emitter. how far it penetrates material.
 unsigned int sunlightTemp = 1000;                // this is not the temperature applied to lit objects, but, the actual color temperature of the emitter.
 Color sunlightColor = color_white_quarterClear;  // this is also the color of the emitter but in an easier to use form.
-
+unsigned int sunlightDirection = 2;
 
 float timeOfDay = 0.5f;
 
@@ -212,7 +212,7 @@ unsigned int animationGlobalFrame = FRAME_BODY;
 
 unsigned int ppPhaseOffset = 0;
 unsigned int photoPhaseOffset = 0;
-const unsigned int ppSkipSize = 20;
+const unsigned int ppSkipSize = 10;
 const unsigned int photoSkipSize = 5;
 
 struct Material
@@ -2883,7 +2883,7 @@ void createWorld( unsigned int world)
 				if (x > 500 && x < 600)
 				{
 
-					setParticle(6, i);
+					setParticle(5, i);
 					grid[i].phase = PHASE_SOLID;
 					grid[i].temperature = 2000;
 				}
@@ -2898,7 +2898,21 @@ void createWorld( unsigned int world)
 				if (x > 700 && x < 1700)
 				{
 
-					setParticle(4, i);
+					setParticle(5, i);
+					grid[i].phase = PHASE_SOLID;
+				}
+			}
+
+
+
+			if ((i > (300 * sizeX)) && (i < (1000 * sizeX)) )
+			{
+				unsigned int x = i % sizeX;
+
+				if (x > 500 && x < 600)
+				{
+
+					setParticle(5, i);
 					grid[i].phase = PHASE_SOLID;
 				}
 			}
@@ -3573,6 +3587,49 @@ void thread_materialPhysics(  )
 #endif
 }
 
+
+void materialHeatGlow(unsigned int i, unsigned int weatherGridI)
+{
+
+	if (grid[i].phase != PHASE_VACUUM)
+	{
+		if (grid[i].temperature > 600 )  // hot stuff emits light
+		{
+			if (extremelyFastNumberFromZeroTo(photoSkipSize) == 0 )
+			{
+				bool edge = false;
+				unsigned int randomDirection = extremelyFastNumberFromZeroTo(N_NEIGHBOURS);
+				unsigned int neighbour = i;
+
+				for (int j = 0; j < N_NEIGHBOURS; ++j)
+				{
+					randomDirection ++;
+					randomDirection = randomDirection % N_NEIGHBOURS;
+
+					neighbour  = (i + neighbourOffsets[ randomDirection ]);
+					if (neighbour < totalSize)
+					{
+						if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_LIQUID || grid[neighbour].phase == PHASE_GAS)  // but only if it is on the edge of a material, not inside the bulk (which is already painted with glow in a cheaper way)
+						{
+							edge = true;
+							break;
+						}
+					}
+				}
+
+				if (edge)
+				{
+
+					unsigned int radiantLightIntensity = ((grid[i].temperature - 600) >> 4);
+					photate(weatherGridI, blackbodyLookup(grid[i].temperature) , radiantLightIntensity, randomDirection);
+				}
+			}
+		}
+	}
+}
+
+
+
 void weatherPostProcess( unsigned int weatherGridI )
 {
 	unsigned int x = weatherGridI % weatherGridX;
@@ -3581,7 +3638,10 @@ void weatherPostProcess( unsigned int weatherGridI )
 	if (i > totalSize) { i = totalSize;}
 
 
-
+	if (x == 0 || y == 0 || x == weatherGridX - 1 || y == weatherGridY - 1)
+	{
+		photate(weatherGridI, sunlightColor, sunlightBrightness, sunlightDirection);
+	}
 
 
 
@@ -3625,7 +3685,9 @@ void weatherPostProcess( unsigned int weatherGridI )
 			}
 
 
+
 			materialPostProcess(currentPosition, weatherGridI, saturationLimit);
+			materialHeatGlow(currentPosition,  weatherGridI);
 			materialPhaseChange(currentPosition,  saturationLimit - weatherGrid[weatherGridI].saturation  );
 
 		}
@@ -3646,8 +3708,10 @@ void thread_physics ()
 
 	seedExtremelyFastNumberGenerators(); // make sure randomness is really random
 
-	timeOfDay += 0.005f;
+	timeOfDay += 0.001f;
 
+
+	//-------------------------------
 
 	// int sunsetColorTemp = sunlightTemp * cos((timeOfDay));
 	// sunsetColorTemp = abs(sunsetColorTemp);
@@ -3664,22 +3728,23 @@ void thread_physics ()
 	// if (fsunlightDirection < 0.0f) {fsunlightDirection = 0.0f;}
 	// else if (fsunlightDirection > fneighbours) {fsunlightDirection = fneighbours;}
 
-	unsigned int sunlightDirection = 0;
+	// unsigned int sunlightDirection = 0;
 	// sunlightColor = blackbodyLookup(sunsetColorTemp);
 
 
+	//-------------------------------
 
 
 	if (timeOfDay < 0.1f)
 	{
 		sunlightDirection = 4;
-		sunlightColor = blackbodyLookup(sunlightTemp / 4);
+		sunlightColor = blackbodyLookup(sunlightTemp * timeOfDay);
 	}
 	else	if (timeOfDay < 0.2f)
 	{
 		sunlightDirection = 3;
 
-		sunlightColor = blackbodyLookup(sunlightTemp / 2);
+		sunlightColor = blackbodyLookup(sunlightTemp  * timeOfDay * 2);
 	}
 	else	if (timeOfDay < 0.8f)
 	{
@@ -3692,13 +3757,13 @@ void thread_physics ()
 	{
 		sunlightDirection = 1;
 
-		sunlightColor = blackbodyLookup(sunlightTemp / 2);
+		sunlightColor = blackbodyLookup(sunlightTemp * (1 - timeOfDay ) * 2 );
 	}
 	else	if (timeOfDay < 1.0f)
 	{
 		sunlightDirection = 0;
 
-		sunlightColor = blackbodyLookup(sunlightTemp / 4);
+		sunlightColor = blackbodyLookup(sunlightTemp * (1 - timeOfDay));
 	}
 
 	else {
@@ -3712,13 +3777,14 @@ void thread_physics ()
 		timeOfDay = 0.0f;
 	}
 
-	sunlightDirection = extremelyFastNumberFromZeroTo(N_NEIGHBOURS-1);
-
+	// sunlightDirection = extremelyFastNumberFromZeroTo(N_NEIGHBOURS-1);
+	sunlightDirection = 2;
 // printf("t %f \n",)
 
 	printf(" sunlightTemp %u, timeOfDay %f, sunlightDirection %u, sunlightBrightness %u\n "	, sunlightTemp, timeOfDay, sunlightDirection, sunlightBrightness);
 
 
+	//-------------------------------
 
 	// if (timeOfDay < 1.0f)
 	// {
@@ -3726,80 +3792,76 @@ void thread_physics ()
 	int y = 0;
 	int x = 0;
 
-	for ( y = photoPhaseOffset; y < weatherGridY; y += photoSkipSize)
-	{
-		int weatherGridI = (y * weatherGridX) + x;
-		photate(weatherGridI, sunlightColor, sunlightBrightness, sunlightDirection);
-	}
 
-	y = sizeY - 1;
+	// y = sizeY - 1;
 
-	for ( x = photoPhaseOffset; x < weatherGridX; x += photoSkipSize)
-	{
-		int weatherGridI = (y * weatherGridX) + x;
-		photate(weatherGridI, sunlightColor, sunlightBrightness, sunlightDirection);
-	}
+	// y = 0;
 
-	x = sizeX - 1;
+	// for ( x = photoPhaseOffset; x < weatherGridX; x += photoSkipSize)
+	// {
+	// 	int weatherGridI = (y * weatherGridX) + x;
+	// 	photate(weatherGridI, sunlightColor, sunlightBrightness, sunlightDirection);
+	// }
 
-	for ( y = photoPhaseOffset; y < weatherGridY; y += photoSkipSize)
-	{
-		int weatherGridI = (y * weatherGridX) + x;
-		photate(weatherGridI, sunlightColor, sunlightBrightness, sunlightDirection);
-	}
+	// x = 0;
+
+	// for ( y = photoPhaseOffset; y < weatherGridY; y += photoSkipSize)
+	// {
+	// 	int weatherGridI = (y * weatherGridX) + x;
+	// 	photate(weatherGridI, sunlightColor, sunlightBrightness, sunlightDirection);
+	// }
+
+	// y = sizeY - 1;
+
+	// for ( x = photoPhaseOffset; x < weatherGridX; x += photoSkipSize)
+	// {
+	// 	int weatherGridI = (y * weatherGridX) + x;
+	// 	photate(weatherGridI, sunlightColor, sunlightBrightness, sunlightDirection);
+	// }
+
+	// x = sizeX - 1;
+
+	// for ( y = photoPhaseOffset; y < weatherGridY; y += photoSkipSize)
+	// {
+	// 	int weatherGridI = (y * weatherGridX) + x;
+	// 	photate(weatherGridI, sunlightColor, sunlightBrightness, sunlightDirection);
+	// }
+	// }
+
+
+	// for (unsigned int weatherGridI = 0; weatherGridI < weatherGridSize; ++weatherGridI)
+	// {
+	// 	x = weatherGridI % weatherGridX;
+	// 	y = weatherGridI / weatherGridX;
+
+	// 	if (x == 0 || y == 0 || x == weatherGridX - 1 || y == weatherGridY - 1)
+	// 	{
+	// 		photate(weatherGridI, sunlightColor, sunlightBrightness, sunlightDirection);
+	// 	}
 	// }
 
 
 
+	//-------------------------------
 
-	for (int i = sizeX + 1; i < totalSize - (sizeX + 1); ++i)
-	{
+	// for (int i = sizeX + 1; i < totalSize - (sizeX + 1); ++i)
+	// {
 
-		if (grid[i].phase != PHASE_VACUUM)
-		{
-			if (grid[i].temperature > 600 )  // hot stuff emits light
-			{
-				if (extremelyFastNumberFromZeroTo(photoSkipSize) == 0 )
-				{
-					bool edge = false;
-					unsigned int randomDirection = extremelyFastNumberFromZeroTo(N_NEIGHBOURS);
-					unsigned int neighbour = i;
+	// 	unsigned int x = i % sizeX;
+	// 	unsigned int y = i / sizeX;
+	// 	unsigned int wx = x / weatherGridScale;
+	// 	unsigned int wy = y / weatherGridScale;
+	// 	unsigned int weatherGridI = (wy * weatherGridX) + wx;
 
+	// 	if (wx == 0 || wy == 0 || wx == weatherGridX - 1 || wy == weatherGridY - 1)
+	// 	{
+	// 		photate(weatherGridI, sunlightColor, sunlightBrightness, sunlightDirection);
+	// 	}
 
-					for (int j = 0; j < N_NEIGHBOURS; ++j)
-					{
-						randomDirection ++;
-						randomDirection = randomDirection % N_NEIGHBOURS;
+	// }
 
-						neighbour  = (i + neighbourOffsets[ randomDirection ]);
-						if (grid[neighbour].phase == PHASE_VACUUM)  // but only if it is on the edge of a material, not inside the bulk (which is already painted with glow in a cheaper way)
-						{
-							edge = true;
-							break;
-						}
-					}
-
-					if (edge)
-					{
-
-						unsigned int x = i % sizeX;
-						unsigned int y = i / sizeX;
-						unsigned int wx = x / weatherGridScale;
-						unsigned int wy = y / weatherGridScale;
-						unsigned int weatherGridI = (wy * weatherGridX) + wx;
-
-
-
-						unsigned int radiantLightIntensity = ((grid[i].temperature - 600) >> 4);
-						photate(weatherGridI, blackbodyLookup(grid[i].temperature) , radiantLightIntensity, randomDirection);
-					}
-				}
-			}
-		}
-	}
-
-	photoPhaseOffset++;
-	if (photoPhaseOffset % photoSkipSize == 0 ) { photoPhaseOffset = 0;}
+	// photoPhaseOffset++;
+	// if (photoPhaseOffset % photoSkipSize == 0 ) { photoPhaseOffset = 0;}
 
 
 
@@ -3810,40 +3872,64 @@ void thread_physics ()
 
 
 	// figure out what color hot or illuminated stuff should be. For efficiency, only update one in every few squares per turn- it looks fine in the game.
-	for (unsigned int i = ppPhaseOffset; i < weatherGridSize; i += ppSkipSize)
+	for (unsigned int weatherGridI = ppPhaseOffset; weatherGridI < weatherGridSize; weatherGridI += ppSkipSize)
 	{
 
-		lightGrid[i].a *= 0.9f;
+		lightGrid[weatherGridI].a *= 0.9f;
 
-		Color avg = color_clear;
+		// Color avg = color_clear;
+		unsigned int count = 0;
 		for (int j = 0; j < N_NEIGHBOURS; ++j)
 		{
-			unsigned int neighbour = i + weatherGridOffsets[j] ;
+
+			// unsigned int j = extremelyFastNumberFromZeroTo(N_NEIGHBOURS - 1);
+			unsigned int neighbour = weatherGridI + weatherGridOffsets[j] ;
 			if (neighbour < weatherGridSize)
 			{
 
-				avg.r += lightGrid[ neighbour].r;
-				avg.g += lightGrid[ neighbour].g;
-				avg.b += lightGrid[ neighbour].b;	
-				avg.a += lightGrid[ neighbour].a;
+				lightGrid[weatherGridI].r += lightGrid[ neighbour].r;
+				lightGrid[weatherGridI].g += lightGrid[ neighbour].g;
+				lightGrid[weatherGridI].b += lightGrid[ neighbour].b;
+				lightGrid[weatherGridI].a += lightGrid[ neighbour].a;
+
+
+
+
+
+				count++;
+
 			}
+			// }
+			// avg.r = avg.r / N_NEIGHBOURS;
+			// avg.g = avg.g / N_NEIGHBOURS;
+			// avg.b = avg.b / N_NEIGHBOURS;
+			// avg.a = avg.a / N_NEIGHBOURS;
+
+			// for (int j = 0; j < N_NEIGHBOURS; ++j)
+			// {
+			// 	unsigned int neighbour = i + weatherGridOffsets[j] ;
+			// 	if (neighbour < weatherGridSize)
+			// 	{
+
+			// 		lightGrid[ neighbour] = avg;
+			// 	}
+
+
 		}
-		avg.r = avg.r / N_NEIGHBOURS;
-		avg.g = avg.g / N_NEIGHBOURS;
-		avg.b = avg.b / N_NEIGHBOURS;
-		avg.a = avg.a / N_NEIGHBOURS;
 
-		for (int j = 0; j < N_NEIGHBOURS; ++j)
-		{
-			unsigned int neighbour = i + weatherGridOffsets[j] ;
-			if (neighbour < weatherGridSize)
-			{
 
-				lightGrid[ neighbour] = avg;
-			}
+		lightGrid[weatherGridI].r = lightGrid[weatherGridI].r  / (count + 1);
+		lightGrid[weatherGridI].g = lightGrid[weatherGridI].g  / (count + 1);
+		lightGrid[weatherGridI].b = lightGrid[weatherGridI].b  / (count + 1);
+		lightGrid[weatherGridI].a = lightGrid[weatherGridI].a  / (count + 1);
 
-		}
-		weatherPostProcess(  i );
+
+
+
+
+
+
+		weatherPostProcess(  weatherGridI );
 	}
 	ppPhaseOffset++;
 	if (ppPhaseOffset % ppSkipSize == 0 )
