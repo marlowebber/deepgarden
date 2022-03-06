@@ -172,19 +172,15 @@ int defaultVelocity = 0;
 const int radiantHeatIntensity = 50; // this is a physical constant that determines how much heat radiates from material, and how strongly material heat is coupled to the atmosphere.
 const float combinedGasLawConstant = 0.001f;
 
-// unsigned int sunlightDirection = 2;
-unsigned int sunlightEnergy = 10;
-unsigned int sunlightTemp = 1000;
-unsigned int sunlightPenetrationDepth = 20; // light is slightly reduced traveling through solid things. this affects plants in game as well as being an artistic effect. This number is how far the light goes into solid things.
+unsigned int sunlightBrightness = 10;            // the amount of actual light coming from the emitter. how far it penetrates material.
+unsigned int sunlightTemp = 1000;                // this is not the temperature applied to lit objects, but, the actual color temperature of the emitter.
+Color sunlightColor = color_white_quarterClear;  // this is also the color of the emitter but in an easier to use form.
 
 
 float timeOfDay = 0;
 float dayLength = 1000;
 
-Color sunlightColor = color_white_quarterClear;
-
 unsigned int nGerminatedSeeds = 0;
-unsigned int lampBrightness = 10;
 
 // raw energy values are DIVIDED by these numbers to get the result. So more means less.
 const unsigned int lightEfficiency   = 10000;
@@ -2194,12 +2190,6 @@ void setSeedParticle( std::string genes, unsigned int parentIdentity, float ener
 	memcpy( (&seedColorGrid[i * numberOfFieldsPerVertex]) ,  &(cursor_seedColor),  sizeof(Color) );
 }
 
-void setPhoton(  unsigned int i)
-{
-	seedGrid[i].stage = STAGE_PHOTON;
-	seedGrid[i].energy = sunlightEnergy;
-	memcpy( (&seedColorGrid[i * numberOfFieldsPerVertex]) ,  &(color_white_quarterClear),  sizeof(Color) );
-}
 
 void swapSeedParticle(unsigned int a, unsigned int b)
 {
@@ -2215,46 +2205,37 @@ void swapSeedParticle(unsigned int a, unsigned int b)
 }
 
 // travel from the indicated square in the light direction, marking cells as illuminated or dark along your way.
-void photate( unsigned int i , unsigned int sunlightDirection)
+void photate( unsigned int i ,  Color lightColor,  float lightBrightness,  unsigned int lightDirection)
 {
 	unsigned int currentPosition = i;
-	unsigned int blocked = 0;
+	float blocked = 0.0f;
+
 	while (true)
 	{
+		// calculate indexes
 		unsigned int x = currentPosition % sizeX;
 		unsigned int y = currentPosition / sizeX;
-		currentPosition = neighbourOffsets[sunlightDirection] + currentPosition;
+		currentPosition = neighbourOffsets[lightDirection] + currentPosition;
 		if (currentPosition > totalSize) {break;}
 		unsigned int b_offset = (currentPosition * numberOfFieldsPerVertex) ;
-
-
-
-		int lightIntensity = lampBrightness - blocked;
-
+		unsigned int weatherGridI =  (( (y ) / weatherGridScale) * weatherGridX ) + ((x ) / weatherGridScale);
 
 		if (seedGrid[currentPosition].stage == STAGE_NULL)
 		{
+			memcpy( &(seedColorGrid[b_offset]), &lightColor, 16 );
 
+			float energy  = 0.0f;
 
-			memcpy( &(seedColorGrid[b_offset]), &sunlightColor, 16 );
+			if (lightBrightness > 0.0f)
+			{
+				energy    = (lightBrightness - blocked );
+				if (energy < 0.0f) {energy = 0.0f;}
+				else { energy = energy / lightBrightness; }
+			}
 
-
-			float flightIntensity = lightIntensity;
-			float flampBrightness = lampBrightness;
-			seedColorGrid[ (b_offset + 3) ] = (flightIntensity / flampBrightness);
-
+			seedColorGrid[ (b_offset + 3) ] =  energy;
+			seedGrid[currentPosition].energy = energy;
 		}
-
-
-
-
-		unsigned int weatherGridI =  (( (y ) / weatherGridScale) * weatherGridX ) + ((x ) / weatherGridScale);
-
-
-
-		int amountToBlock  = 0; //weatherGrid[weatherGridI].saturation  ;
-
-
 
 		if (
 		    grid[currentPosition].phase == PHASE_SOLID ||
@@ -2262,30 +2243,8 @@ void photate( unsigned int i , unsigned int sunlightDirection)
 		    lifeGrid[currentPosition].identity > 0x00
 		)
 		{
-			amountToBlock ++;
+			blocked += 1.0f;
 		}
-
-
-
-		if (amountToBlock > 0)
-		{
-
-			if (amountToBlock > lightIntensity)
-			{
-				amountToBlock = lightIntensity;
-
-			}
-			if (seedGrid[currentPosition].stage == STAGE_NULL)
-			{
-				seedGrid[currentPosition].energy = lightIntensity;
-
-
-
-			}
-			blocked += amountToBlock;
-
-		}
-
 
 
 		if (x == 0 || y == 0 || x >= sizeX || y >= sizeY) {break;}
@@ -2871,11 +2830,12 @@ void createWorld( unsigned int world)
 			{
 				unsigned int x = i % sizeX;
 
-				if (x > 500 && x < 1000)
+				if (x > 500 && x < 600)
 				{
 
 					setParticle(6, i);
-					grid[i].phase == PHASE_SOLID;
+					grid[i].phase = PHASE_SOLID;
+					grid[i].temperature = 2000;
 				}
 			}
 
@@ -3382,6 +3342,8 @@ void setExtremeTempPoint (unsigned int x , unsigned  int y)
 			unsigned int weatherGridI =  (( (y + i) / weatherGridScale) * weatherGridX ) + ((x + j) / weatherGridScale);
 			weatherGridI = weatherGridI % weatherGridSize;
 			weatherGrid[ weatherGridI].pressure += 100000;
+			weatherGrid[ weatherGridI].temperature += 100000;
+
 		}
 	}
 
@@ -3645,34 +3607,65 @@ void thread_physics ()
 	int y = 0;
 	int x = 0;
 
-	for ( y = photoPhaseOffset; y < sizeY; y+=photoSkipSize)
+	for ( y = photoPhaseOffset; y < sizeY; y += photoSkipSize)
 	{
 		int i = (y * sizeX) + x;
-		photate(i, sunlightDirection);
+		photate(i, sunlightColor, sunlightBrightness, sunlightDirection);
 	}
 
-	y = sizeY-1;
+	y = sizeY - 1;
 
-	for ( x = photoPhaseOffset; x < sizeX; x+=photoSkipSize)
+	for ( x = photoPhaseOffset; x < sizeX; x += photoSkipSize)
 	{
 		int i = (y * sizeX) + x;
-		photate(i, sunlightDirection);
+		photate(i, sunlightColor, sunlightBrightness, sunlightDirection);
 	}
 
-	x = sizeX-1;
+	x = sizeX - 1;
 
-	for ( y = sizeY-1-photoPhaseOffset; y >= 0; y-=photoSkipSize)
+	for ( y = sizeY - 1 - photoPhaseOffset; y >= 0; y -= photoSkipSize)
 	{
 		int i = (y * sizeX) + x;
-		photate(i, sunlightDirection);
+		photate(i, sunlightColor, sunlightBrightness, sunlightDirection);
 	}
 
 
 
 
+	for (int i = sizeX + 1; i < totalSize - (sizeX + 1); ++i)
+	{
+		if (grid[i].phase != PHASE_VACUUM)
+		{
+			if (grid[i].temperature > 600 )  // hot stuff emits light
+			{
+				if (extremelyFastNumberFromZeroTo(photoSkipSize) == 0 )
+				{
+					bool edge = false;
+					unsigned int randomDirection = extremelyFastNumberFromZeroTo(N_NEIGHBOURS);
+					unsigned int neighbour = i;
 
 
-	// // }
+					for (int j = 0; j < N_NEIGHBOURS; ++j)
+					{
+						randomDirection = (j + randomDirection) % N_NEIGHBOURS;
+
+						neighbour  = (i + neighbourOffsets[ randomDirection ]);
+						if (grid[neighbour].phase == PHASE_VACUUM)  // but only if it is on the edge of a material, not inside the bulk (which is already painted with glow in a cheaper way)
+						{
+							edge = true;
+							break;
+						}
+					}
+
+					if (edge)
+					{
+						photate(i, blackbodyLookup(grid[i].temperature) , 1, randomDirection);
+					}
+				}
+			}
+		}
+	}
+
 	photoPhaseOffset++;
 	if (photoPhaseOffset % photoSkipSize == 0 ) { photoPhaseOffset = 0;}
 
@@ -5170,14 +5163,12 @@ void insertRandomAnimal ()
 
 void increaseLampBrightness ()
 {
-	lampBrightness ++;
-	lampBrightness = lampBrightness % maxLampBrightness;
+	sunlightBrightness ++;
 }
 
 void decreaseLampBrightness ()
 {
-	lampBrightness--;
-	lampBrightness = lampBrightness % maxLampBrightness;
+	sunlightBrightness--;
 }
 
 void save ()
