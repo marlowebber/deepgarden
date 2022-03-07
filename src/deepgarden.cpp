@@ -176,13 +176,14 @@ unsigned int sunlightBrightness = 50;            // the amount of actual light c
 unsigned int sunlightTemp = 1000;                // this is not the temperature applied to lit objects, but, the actual color temperature of the emitter.
 Color sunlightColor = color_white_quarterClear;  // this is also the color of the emitter but in an easier to use form.
 unsigned int sunlightDirection = 2;
+float fsundirection = 0.0f;
 
 float timeOfDay = 0.5f;
 
 unsigned int nGerminatedSeeds = 0;
 
 // raw energy values are DIVIDED by these numbers to get the result. So more means less.
-const unsigned int lightEfficiency   = 10000;
+const unsigned int lightEfficiency   = 1000;
 const float movementEfficiency = 5000.0f;
 
 // except for these, where the value is what you get from eating a square.
@@ -395,20 +396,20 @@ Weather::Weather()
 	this->filledSquares = 0;
 }
 
-const int weatherGridX = sizeX / weatherGridScale;
-const int weatherGridY = sizeY / weatherGridScale;
-const int weatherGridSize = weatherGridX * weatherGridY;
+const int weatherGridSizeX = sizeX / weatherGridScale;
+const int weatherGridSizeY = sizeY / weatherGridScale;
+const int weatherGridSize = weatherGridSizeX * weatherGridSizeY;
 
 int weatherGridOffsets[] =
 {
 	- 1,
-	- weatherGridX - 1,
-	- weatherGridX ,
-	- weatherGridX  + 1,
+	- weatherGridSizeX - 1,
+	- weatherGridSizeX ,
+	- weatherGridSizeX  + 1,
 	+ 1,
-	+weatherGridX + 1,
-	+weatherGridX,
-	+weatherGridX - 1
+	+weatherGridSizeX + 1,
+	+weatherGridSizeX,
+	+weatherGridSizeX - 1
 };
 
 Weather weatherGrid[weatherGridSize];
@@ -772,18 +773,18 @@ void materialPhysics (unsigned int currentPosition,  unsigned int velocityAbs, u
 void airflowEdge( unsigned int x, unsigned int y )
 {
 	// make sure parameters are valid
-	if (x > weatherGridX - 1) { return; } //x = weatherGridX - 1;}
-	if (y > weatherGridY - 1) { return; } //y = weatherGridY - 1;}
-	unsigned int weatherGridI = (y * weatherGridX) + x;
+	if (x > weatherGridSizeX - 1) { return; } //x = weatherGridSizeX - 1;}
+	if (y > weatherGridSizeY - 1) { return; } //y = weatherGridSizeY - 1;}
+	unsigned int weatherGridI = (y * weatherGridSizeX) + x;
 	unsigned int i = ((y * weatherGridScale) * sizeX) + (x * weatherGridScale);
 	if (i > totalSize) { i = totalSize;}
 
 	// reflect the cell closer in than you, allowing air to escape the simulation
-	if (x == weatherGridX - 1)
+	if (x == weatherGridSizeX - 1)
 	{
 		weatherGrid[weatherGridI] = weatherGrid[weatherGridI + weatherGridOffsets[0] ]; //
 	}
-	else if (y == weatherGridY - 1)
+	else if (y == weatherGridSizeY - 1)
 	{
 		weatherGrid[weatherGridI] = weatherGrid[weatherGridI + weatherGridOffsets[2] ]; //
 	}
@@ -799,7 +800,7 @@ void airflowEdge( unsigned int x, unsigned int y )
 
 void airflow( unsigned int x, unsigned int y )
 {
-	unsigned int weatherGridI = (y * weatherGridX) + x;
+	unsigned int weatherGridI = (y * weatherGridSizeX) + x;
 	unsigned int i = ((y * weatherGridScale) * sizeX) + (x * weatherGridScale);
 	if (i > totalSize) { i = totalSize;}
 
@@ -880,7 +881,7 @@ void airflow( unsigned int x, unsigned int y )
 	// to prevent wrapping around the edges of the simulation.
 	if (takeX > 0)
 	{
-		if (takeX > ( (weatherGridX - 1) - x)) { takeX = (weatherGridX - 1) - x; }
+		if (takeX > ( (weatherGridSizeX - 1) - x)) { takeX = (weatherGridSizeX - 1) - x; }
 	}
 	else
 	{
@@ -889,7 +890,7 @@ void airflow( unsigned int x, unsigned int y )
 
 	if (takeY > 0)
 	{
-		if (takeY > ( (weatherGridY - 1) - y)) { takeY = (weatherGridY - 1) - y; }
+		if (takeY > ( (weatherGridSizeY - 1) - y)) { takeY = (weatherGridSizeY - 1) - y; }
 	}
 	else
 	{
@@ -899,7 +900,7 @@ void airflow( unsigned int x, unsigned int y )
 	takeX = x - takeX  ;                                                                           // the velocity itself is used to find the grid location to take from.
 	takeY = y - takeY ;                                                          // velocity numbers range greatly and can be very high, use this number to scale them to an appropriate take distance.
 
-	int takeI = ((takeY * weatherGridX) + takeX );
+	int takeI = ((takeY * weatherGridSizeX) + takeX );
 	if (takeI < 0) {takeI = 0;}
 	else if (takeI >= weatherGridSize) {takeI = weatherGridSize - 1;}
 	dt += (( weatherGrid[takeI].temperature - weatherGrid[weatherGridI].temperature) >> 1);
@@ -938,9 +939,9 @@ void thread_weather_sector(unsigned int from, unsigned int to)
 {
 	for (unsigned int y = from; y <= to ; ++y)
 	{
-		for (unsigned int x = 0; x < weatherGridX; ++x)
+		for (unsigned int x = 0; x < weatherGridSizeX; ++x)
 		{
-			if (x == 0 || (x >= weatherGridX - 1) || y == 0 || (y >= weatherGridY - 1)  )
+			if (x == 0 || (x >= weatherGridSizeX - 1) || y == 0 || (y >= weatherGridSizeY - 1)  )
 			{
 				airflowEdge(x, y);
 			}
@@ -958,14 +959,14 @@ void thread_weather()
 	auto start = std::chrono::steady_clock::now();
 #endif
 
-	boost::thread t1{  thread_weather_sector, 0   , 1 * (weatherGridY / 8)  } ;
-	boost::thread t2{  thread_weather_sector, 1 * (weatherGridY / 8)  , 2 * (weatherGridY / 8)  } ;
-	boost::thread t3{  thread_weather_sector, 2 * (weatherGridY / 8)  , 3 * (weatherGridY / 8)  } ;
-	boost::thread t4{  thread_weather_sector, 3 * (weatherGridY / 8)  , 4 * (weatherGridY / 8)  } ;
-	boost::thread t5{  thread_weather_sector, 4 * (weatherGridY / 8)  , 5 * (weatherGridY / 8)  } ;
-	boost::thread t6{  thread_weather_sector, 5 * (weatherGridY / 8)  , 6 * (weatherGridY / 8)  } ;
-	boost::thread t7{  thread_weather_sector, 6 * (weatherGridY / 8)  , 7 * (weatherGridY / 8)  } ;
-	boost::thread t8{  thread_weather_sector, 7 * (weatherGridY / 8)  , (weatherGridY ) } ;
+	boost::thread t1{  thread_weather_sector, 0   , 1 * (weatherGridSizeY / 8)  } ;
+	boost::thread t2{  thread_weather_sector, 1 * (weatherGridSizeY / 8)  , 2 * (weatherGridSizeY / 8)  } ;
+	boost::thread t3{  thread_weather_sector, 2 * (weatherGridSizeY / 8)  , 3 * (weatherGridSizeY / 8)  } ;
+	boost::thread t4{  thread_weather_sector, 3 * (weatherGridSizeY / 8)  , 4 * (weatherGridSizeY / 8)  } ;
+	boost::thread t5{  thread_weather_sector, 4 * (weatherGridSizeY / 8)  , 5 * (weatherGridSizeY / 8)  } ;
+	boost::thread t6{  thread_weather_sector, 5 * (weatherGridSizeY / 8)  , 6 * (weatherGridSizeY / 8)  } ;
+	boost::thread t7{  thread_weather_sector, 6 * (weatherGridSizeY / 8)  , 7 * (weatherGridSizeY / 8)  } ;
+	boost::thread t8{  thread_weather_sector, 7 * (weatherGridSizeY / 8)  , (weatherGridSizeY ) } ;
 
 	t1.join();
 	t2.join();
@@ -2211,93 +2212,104 @@ void swapSeedParticle(unsigned int a, unsigned int b)
 	memcpy( &seedColorGrid[ a_offset ], temp_color,                     sizeof(Color) );
 }
 
-// travel from the indicated square in the light direction, marking cells as illuminated or dark along your way.
-void photate( unsigned int weatherGridI ,  Color lightColor,  float lightBrightness,  unsigned int lightDirection)
+
+
+
+void floatPhoton( unsigned int weatherGridI ,  Color lightColor,  float lightBrightness,  float lightDirection)
 {
-	// unsigned int currentPosition = i;
-
 	if (weatherGridI >= weatherGridSize) {return;}
-
 	float blocked = 0.0f;
+
+	float positionX = weatherGridI % weatherGridSizeX;
+	float positionY = weatherGridI / weatherGridSizeX;
+
+	unsigned int wx = positionX;
+	unsigned int wy = positionY;
+
+	// printf("original posx %f\n", positionX);
+	weatherGridI =  (wy * weatherGridSizeX) + wx ;//weatherGridI + neighbourOffsets[lightDirection] ;
 
 	while (true)
 	{
-		// calculate indexes
-
-		weatherGridI = weatherGridI + neighbourOffsets[lightDirection] ;
-
-		unsigned int wx = weatherGridI % weatherGridX;
-		unsigned int wy = weatherGridI / weatherGridX;
-
-		if (wx == 0 || wy == 0 || wx >= weatherGridX - 1 || wy >= weatherGridY - 1) {return;}
 
 
-		// currentPosition = neighbourOffsets[lightDirection] + currentPosition;
-		// if (currentPosition > totalSize) {break;}
-		// unsigned int b_offset = (currentPosition * numberOfFieldsPerVertex) ;
+		// unsigned int newX = 1 *
+
+		positionX += 1.42f * cos(lightDirection);
+		positionY += 1.42f * sin(lightDirection);
 
 
-		// unsigned int weatherGridI =  (( (y ) / weatherGridScale) * weatherGridX ) + ((x ) / weatherGridScale);
+		// printf(" posx %f\n", positionX);
 
-		// if (seedGrid[currentPosition].stage == STAGE_NULL)
-		// {
+		wx = positionX; //weatherGridI % weatherGridSizeX;
+		wy = positionY; //weatherGridI / weatherGridSizeX;
+
+		weatherGridI =  (wy * weatherGridSizeX) + wx ;//weatherGridI + neighbourOffsets[lightDirection] ;
+
+
+		if (wx == 0 || wy == 0 || wx >= weatherGridSizeX - 1 || wy >= weatherGridSizeY - 1) {return;}
 
 		float energy  = 0.0f;
-
 		if (lightBrightness > 0.0f)
 		{
 			energy    = (lightBrightness - blocked );
 			if (energy < 0.0f)
 			{
 				return;
-				// energy = 0.0f;
 			}
 			else { energy = energy / lightBrightness; }
 		}
 
-		// memcpy( &(seedColorGrid[b_offset]), &lightColor, 16 );
-		// seedColorGrid[ (b_offset + 3) ] =  energy;
-		// seedGrid[currentPosition].energy = energy;
-
 		if (weatherGridI < weatherGridSize)
 		{
-			memcpy( &(lightGrid[weatherGridI]), &lightColor, 16 );
-			lightGrid[weatherGridI].a = energy;
-
-			// Color shaderColor = lightColor;
-			// shaderColor.a *= 0.5f;
-
-			// for (int j = 0; j < N_NEIGHBOURS; ++j)
-			// {
-
-			// 	unsigned int weatherGridNeighbour = weatherGridI + weatherGridOffsets[j];
-
-			// 	if (weatherGridNeighbour < weatherGridSize)
-			// 	{
-
-			// 		memcpy( &(lightGrid[weatherGridNeighbour]), &shaderColor, 16 );
-			// 		lightGrid[weatherGridNeighbour].a += energy / 2;
-			// 	}
-
-
-			// }
-
+			Color newLightColor = lightColor;
+			newLightColor.a = energy;
+			lightGrid[weatherGridI] = newLightColor;//addColor(lightGrid[weatherGridI], newLightColor);
 		}
 
-		// }
-
-		if (
-		    // grid[currentPosition].phase == PHASE_SOLID ||
-		    // grid[currentPosition].phase == PHASE_POWDER ||
-		    // lifeGrid[currentPosition].identity > 0x00
-		    weatherGrid[weatherGridI].filledSquares > 0
-		)
+		if (weatherGrid[weatherGridI].filledSquares > 0)
 		{
 			blocked += weatherGrid[weatherGridI].filledSquares;
 		}
+	}
+}
 
 
+// travel from the indicated square in the light direction, marking cells as illuminated or dark along your way.
+void photate( unsigned int weatherGridI ,  Color lightColor,  float lightBrightness,  unsigned int lightDirection)
+{
+	if (weatherGridI >= weatherGridSize) {return;}
+	float blocked = 0.0f;
+	while (true)
+	{
+		weatherGridI = weatherGridI + neighbourOffsets[lightDirection] ;
+		unsigned int wx = weatherGridI % weatherGridSizeX;
+		unsigned int wy = weatherGridI / weatherGridSizeX;
 
+		if (wx == 0 || wy == 0 || wx >= weatherGridSizeX - 1 || wy >= weatherGridSizeY - 1) {return;}
+
+		float energy  = 0.0f;
+		if (lightBrightness > 0.0f)
+		{
+			energy    = (lightBrightness - blocked );
+			if (energy < 0.0f)
+			{
+				return;
+			}
+			else { energy = energy / lightBrightness; }
+		}
+
+		if (weatherGridI < weatherGridSize)
+		{
+			Color newLightColor = lightColor;
+			newLightColor.a = energy;
+			lightGrid[weatherGridI] = addColor(lightGrid[weatherGridI], newLightColor);
+		}
+
+		if (weatherGrid[weatherGridI].filledSquares > 0)
+		{
+			blocked += weatherGrid[weatherGridI].filledSquares;
+		}
 	}
 }
 
@@ -3417,7 +3429,7 @@ void setExtremeTempPoint (unsigned int x , unsigned  int y)
 	{
 		for (int j = -blobesize; j < blobesize; ++j)
 		{
-			unsigned int weatherGridI =  (( (y + i) / weatherGridScale) * weatherGridX ) + ((x + j) / weatherGridScale);
+			unsigned int weatherGridI =  (( (y + i) / weatherGridScale) * weatherGridSizeX ) + ((x + j) / weatherGridScale);
 			weatherGridI = weatherGridI % weatherGridSize;
 			weatherGrid[ weatherGridI].pressure += 100000;
 			weatherGrid[ weatherGridI].temperature += 100000;
@@ -3428,7 +3440,7 @@ void setExtremeTempPoint (unsigned int x , unsigned  int y)
 	if (false)
 	{
 		unsigned int i = ((y * sizeX) + x) % totalSize;
-		unsigned int weatherGridI =  ((x / weatherGridScale) * weatherGridX ) + (y / weatherGridScale);
+		unsigned int weatherGridI =  ((x / weatherGridScale) * weatherGridSizeX ) + (y / weatherGridScale);
 		weatherGrid[ weatherGridI].temperature = 10000000;
 		weatherGrid[ weatherGridI].pressure += 1000000;
 	}
@@ -3508,7 +3520,6 @@ void materialPostProcess(unsigned int i, unsigned int weatherGridI, float satura
 		// 	memcpy( &lightColor, &seedColorGrid[ b_offset ] , 16 ); // 4x floats of 4 bytes each
 
 
-		// printf("paint clouds\n");
 
 		ppColor = multiplyColor(ppColor, lightGrid[weatherGridI]);
 
@@ -3545,9 +3556,9 @@ void thread_materialPhysics(  )
 
 	unsigned int weatherGridI = 0;
 	unsigned int i = 0;
-	for (unsigned int y = 0; y < weatherGridY; ++y)
+	for (unsigned int y = 0; y < weatherGridSizeY; ++y)
 	{
-		for (unsigned int x = 0; x < weatherGridX; ++x)
+		for (unsigned int x = 0; x < weatherGridSizeX; ++x)
 		{
 			unsigned int i = ((y * weatherGridScale) * sizeX) + (x * weatherGridScale); // in this case, i is the lower left corner of the weathergrid square.
 
@@ -3555,7 +3566,7 @@ void thread_materialPhysics(  )
 			if (i < totalSize)
 			{
 
-				unsigned int weatherGridI = (y * weatherGridX) + x;
+				unsigned int weatherGridI = (y * weatherGridSizeX) + x;
 
 				unsigned int direction = calculateVelocityDirection( weatherGrid[weatherGridI]. velocityX,  weatherGrid[weatherGridI]. velocityY);
 				unsigned int velocityAbs = abs(weatherGrid[weatherGridI]. velocityX) + abs( weatherGrid[weatherGridI]. velocityY) ;
@@ -3621,7 +3632,20 @@ void materialHeatGlow(unsigned int i, unsigned int weatherGridI)
 				{
 
 					unsigned int radiantLightIntensity = ((grid[i].temperature - 600) >> 4);
-					photate(weatherGridI, blackbodyLookup(grid[i].temperature) , radiantLightIntensity, randomDirection);
+
+
+					float fdirection = randomDirection;
+
+
+					printf("original fdirection %f\n", fdirection);
+
+					fdirection = ((fdirection / N_NEIGHBOURS) * (2.0f* 3.1415f))-3.1415f; // radiate in the empty direction
+					fdirection += (RNG()-0.5) * (2.0f * 3.1415f) * (1.0f/N_NEIGHBOURS); // add up to 1/8th of a full circles worth of direction noise
+
+
+					printf(" fdirection %f\n", fdirection);
+
+					floatPhoton(weatherGridI, blackbodyLookup(grid[i].temperature) , radiantLightIntensity, fdirection);
 				}
 			}
 		}
@@ -3632,15 +3656,20 @@ void materialHeatGlow(unsigned int i, unsigned int weatherGridI)
 
 void weatherPostProcess( unsigned int weatherGridI )
 {
-	unsigned int x = weatherGridI % weatherGridX;
-	unsigned int y = weatherGridI / weatherGridX;
+	unsigned int x = weatherGridI % weatherGridSizeX;
+	unsigned int y = weatherGridI / weatherGridSizeX;
 	unsigned int i = ((y * weatherGridScale) * sizeX) + (x * weatherGridScale);
 	if (i > totalSize) { i = totalSize;}
 
 
-	if (x == 0 || y == 0 || x == weatherGridX - 1 || y == weatherGridY - 1)
+	lightGrid[weatherGridI].a *= 0.9f;
+
+	// float fdirection  = ((sunlightDirection / N_NEIGHBOURS) * (2.0f* 3.1415f))-3.1415f; // radiate in the empty direction
+	// printf( "fdirection %f\n", fdirection);
+
+	if (x == 0 || y == 0 || x == weatherGridSizeX - 1 || y == weatherGridSizeY - 1)
 	{
-		photate(weatherGridI, sunlightColor, sunlightBrightness, sunlightDirection);
+		floatPhoton(weatherGridI, sunlightColor, sunlightBrightness, fsundirection);
 	}
 
 
@@ -3708,7 +3737,11 @@ void thread_physics ()
 
 	seedExtremelyFastNumberGenerators(); // make sure randomness is really random
 
-	timeOfDay += 0.001f;
+	timeOfDay += 0.01f;
+
+
+	fsundirection = sin(timeOfDay);
+
 
 
 	//-------------------------------
@@ -3735,53 +3768,53 @@ void thread_physics ()
 	//-------------------------------
 
 
-	if (timeOfDay < 0.1f)
-	{
-		sunlightDirection = 4;
-		sunlightColor = blackbodyLookup(sunlightTemp * timeOfDay);
-	}
-	else	if (timeOfDay < 0.2f)
-	{
-		sunlightDirection = 3;
+// 	if (timeOfDay < 0.1f)
+// 	{
+// 		sunlightDirection = 4;
+// 		sunlightColor = blackbodyLookup(sunlightTemp * timeOfDay);
+// 	}
+// 	else	if (timeOfDay < 0.2f)
+// 	{
+// 		sunlightDirection = 3;
 
-		sunlightColor = blackbodyLookup(sunlightTemp  * timeOfDay * 2);
-	}
-	else	if (timeOfDay < 0.8f)
-	{
-		sunlightDirection = 2;
+// 		sunlightColor = blackbodyLookup(sunlightTemp  * timeOfDay * 2);
+// 	}
+// 	else	if (timeOfDay < 0.8f)
+// 	{
+// 		sunlightDirection = 2;
 
-		sunlightColor = blackbodyLookup(sunlightTemp );
-	}
+// 		sunlightColor = blackbodyLookup(sunlightTemp );
+// 	}
 
-	else	if (timeOfDay < 0.9f)
-	{
-		sunlightDirection = 1;
+// 	else	if (timeOfDay < 0.9f)
+// 	{
+// 		sunlightDirection = 1;
 
-		sunlightColor = blackbodyLookup(sunlightTemp * (1 - timeOfDay ) * 2 );
-	}
-	else	if (timeOfDay < 1.0f)
-	{
-		sunlightDirection = 0;
+// 		sunlightColor = blackbodyLookup(sunlightTemp * (1 - timeOfDay ) * 2 );
+// 	}
+// 	else	if (timeOfDay < 1.0f)
+// 	{
+// 		sunlightDirection = 0;
 
-		sunlightColor = blackbodyLookup(sunlightTemp * (1 - timeOfDay));
-	}
+// 		sunlightColor = blackbodyLookup(sunlightTemp * (1 - timeOfDay));
+// 	}
 
-	else {
-		sunlightDirection = 6;
-		sunlightColor = blackbodyLookup (0);
-	}
+// 	else {
+// 		sunlightDirection = 6;
+// 		sunlightColor = blackbodyLookup (0);
+// 	}
 
 
-	if (timeOfDay > 1.3f)
-	{
-		timeOfDay = 0.0f;
-	}
+// 	if (timeOfDay > 1.3f)
+// 	{
+// 		timeOfDay = 0.0f;
+// 	}
 
-	// sunlightDirection = extremelyFastNumberFromZeroTo(N_NEIGHBOURS-1);
-	sunlightDirection = 2;
-// printf("t %f \n",)
+// 	// sunlightDirection = extremelyFastNumberFromZeroTo(N_NEIGHBOURS-1);
+// 	sunlightDirection = 2;
+// // printf("t %f \n",)
 
-	printf(" sunlightTemp %u, timeOfDay %f, sunlightDirection %u, sunlightBrightness %u\n "	, sunlightTemp, timeOfDay, sunlightDirection, sunlightBrightness);
+// 	printf(" sunlightTemp %u, timeOfDay %f, sunlightDirection %u, sunlightBrightness %u\n "	, sunlightTemp, timeOfDay, sunlightDirection, sunlightBrightness);
 
 
 	//-------------------------------
@@ -3789,41 +3822,41 @@ void thread_physics ()
 	// if (timeOfDay < 1.0f)
 	// {
 
-	int y = 0;
-	int x = 0;
+	// int y = 0;
+	// int x = 0;
 
 
 	// y = sizeY - 1;
 
 	// y = 0;
 
-	// for ( x = photoPhaseOffset; x < weatherGridX; x += photoSkipSize)
+	// for ( x = photoPhaseOffset; x < weatherGridSizeX; x += photoSkipSize)
 	// {
-	// 	int weatherGridI = (y * weatherGridX) + x;
+	// 	int weatherGridI = (y * weatherGridSizeX) + x;
 	// 	photate(weatherGridI, sunlightColor, sunlightBrightness, sunlightDirection);
 	// }
 
 	// x = 0;
 
-	// for ( y = photoPhaseOffset; y < weatherGridY; y += photoSkipSize)
+	// for ( y = photoPhaseOffset; y < weatherGridSizeY; y += photoSkipSize)
 	// {
-	// 	int weatherGridI = (y * weatherGridX) + x;
+	// 	int weatherGridI = (y * weatherGridSizeX) + x;
 	// 	photate(weatherGridI, sunlightColor, sunlightBrightness, sunlightDirection);
 	// }
 
 	// y = sizeY - 1;
 
-	// for ( x = photoPhaseOffset; x < weatherGridX; x += photoSkipSize)
+	// for ( x = photoPhaseOffset; x < weatherGridSizeX; x += photoSkipSize)
 	// {
-	// 	int weatherGridI = (y * weatherGridX) + x;
+	// 	int weatherGridI = (y * weatherGridSizeX) + x;
 	// 	photate(weatherGridI, sunlightColor, sunlightBrightness, sunlightDirection);
 	// }
 
 	// x = sizeX - 1;
 
-	// for ( y = photoPhaseOffset; y < weatherGridY; y += photoSkipSize)
+	// for ( y = photoPhaseOffset; y < weatherGridSizeY; y += photoSkipSize)
 	// {
-	// 	int weatherGridI = (y * weatherGridX) + x;
+	// 	int weatherGridI = (y * weatherGridSizeX) + x;
 	// 	photate(weatherGridI, sunlightColor, sunlightBrightness, sunlightDirection);
 	// }
 	// }
@@ -3831,10 +3864,10 @@ void thread_physics ()
 
 	// for (unsigned int weatherGridI = 0; weatherGridI < weatherGridSize; ++weatherGridI)
 	// {
-	// 	x = weatherGridI % weatherGridX;
-	// 	y = weatherGridI / weatherGridX;
+	// 	x = weatherGridI % weatherGridSizeX;
+	// 	y = weatherGridI / weatherGridSizeX;
 
-	// 	if (x == 0 || y == 0 || x == weatherGridX - 1 || y == weatherGridY - 1)
+	// 	if (x == 0 || y == 0 || x == weatherGridSizeX - 1 || y == weatherGridSizeY - 1)
 	// 	{
 	// 		photate(weatherGridI, sunlightColor, sunlightBrightness, sunlightDirection);
 	// 	}
@@ -3851,9 +3884,9 @@ void thread_physics ()
 	// 	unsigned int y = i / sizeX;
 	// 	unsigned int wx = x / weatherGridScale;
 	// 	unsigned int wy = y / weatherGridScale;
-	// 	unsigned int weatherGridI = (wy * weatherGridX) + wx;
+	// 	unsigned int weatherGridI = (wy * weatherGridSizeX) + wx;
 
-	// 	if (wx == 0 || wy == 0 || wx == weatherGridX - 1 || wy == weatherGridY - 1)
+	// 	if (wx == 0 || wy == 0 || wx == weatherGridSizeX - 1 || wy == weatherGridSizeY - 1)
 	// 	{
 	// 		photate(weatherGridI, sunlightColor, sunlightBrightness, sunlightDirection);
 	// 	}
@@ -3875,7 +3908,7 @@ void thread_physics ()
 	for (unsigned int weatherGridI = ppPhaseOffset; weatherGridI < weatherGridSize; weatherGridI += ppSkipSize)
 	{
 
-		lightGrid[weatherGridI].a *= 0.9f;
+		// lightGrid[weatherGridI].a = 0.0f;
 
 		// Color avg = color_clear;
 		unsigned int count = 0;
@@ -4313,7 +4346,7 @@ void thread_graphics()
 			float fx = x;
 			float fy = y;
 
-			unsigned int weatherGridI = ((y / weatherGridScale) * weatherGridX + (x / weatherGridScale));
+			unsigned int weatherGridI = ((y / weatherGridScale) * weatherGridSizeX + (x / weatherGridScale));
 
 			int itemp = weatherGrid[weatherGridI].temperature + grid[i].temperature;
 			float ftemp = itemp;
@@ -4401,7 +4434,7 @@ void thread_graphics()
 			float fx = x;
 			float fy = y;
 
-			unsigned int weatherGridI = ((y / weatherGridScale) * weatherGridX + (x / weatherGridScale));
+			unsigned int weatherGridI = ((y / weatherGridScale) * weatherGridSizeX + (x / weatherGridScale));
 
 			energyColorGrid[ (i * numberOfFieldsPerVertex) + 0 ] = (weatherGrid[weatherGridI].velocityX / maximumDisplayVelocity ) + 0.5f ; //weatherGrid[i].pressure / maximumDisplayPressure;
 			energyColorGrid[ (i * numberOfFieldsPerVertex) + 1 ] = (weatherGrid[weatherGridI].velocityY / maximumDisplayVelocity ) + 0.5f ; //weatherGrid[i].pressure / maximumDisplayPressure;
@@ -5142,7 +5175,7 @@ void thread_life()
 			// currentPosition = neighbourOffsets[lightDirection] + currentPosition;
 			// if (currentPosition > totalSize) {break;}
 			// unsigned int b_offset = (currentPosition * numberOfFieldsPerVertex) ;
-			unsigned int weatherGridI =  (( (y ) / weatherGridScale) * weatherGridX ) + ((x ) / weatherGridScale);
+			unsigned int weatherGridI =  (( (y ) / weatherGridScale) * weatherGridSizeX ) + ((x ) / weatherGridScale);
 
 			if (weatherGridI < weatherGridSize)
 			{
@@ -5157,7 +5190,7 @@ void thread_life()
 					// }
 
 
-					lifeGrid[i].energy += lightGrid[weatherGridI].a;
+					lifeGrid[i].energy += lightGrid[weatherGridI].a / lightEfficiency;
 
 					// printf("illuminate plant\n");
 				}
@@ -5354,37 +5387,37 @@ void insertRandomSeed()
 			{
 			case 0:
 			{
-				exampleSentence = plant_Pycad;
+				// exampleSentence = plant_Pycad;
 				break;
 			}
 			case 1:
 			{
-				exampleSentence = plant_Lomondra;
+				// exampleSentence = plant_Lomondra;
 				break;
 			}
 			case 2:
 			{
-				exampleSentence = plant_Worrage;
+				// exampleSentence = plant_Worrage;
 				break;
 			}
 			case 3:
 			{
-				exampleSentence = plant_MilkWombler;
+				// exampleSentence = plant_MilkWombler;
 				break;
 			}
 			case 4:
 			{
-				exampleSentence = plant_SpleenCoral;
+				// exampleSentence = plant_SpleenCoral;
 				break;
 			}
 			case 5:
 			{
-				exampleSentence = plant_ParbasarbTree;
+				// exampleSentence = plant_ParbasarbTree;
 				break;
 			}
 			case 6:
 			{
-				exampleSentence = plant_LardGrass;
+				// exampleSentence = plant_LardGrass;
 				break;
 			}
 			case 7:
