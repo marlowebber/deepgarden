@@ -53,6 +53,18 @@ Color clampColor (Color in)
 
 }
 
+
+Color averageColor (Color a, Color b)
+{
+	Color c;// = Color()
+	c.r = (a.r + b.r)/2;
+	c.g = (a.g + b.g)/2;
+	c.b = (a.b + b.b)/2;
+	c.a = (a.a + b.a)/2;
+
+	return clampColor(c);
+}
+
 // add both colors together.
 // in life, this is like two lights shining together. the result is a mix of both, depending on their strengths.
 Color addColor (Color a, Color b)
