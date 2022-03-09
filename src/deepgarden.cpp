@@ -47,6 +47,9 @@ const Color color_brightred            = Color( 0.9f, 0.1f, 0.0f, 1.0f);
 const Color color_darkred            = Color( 0.5f, 0.05f, 0.0f, 1.0f);
 const Color color_brown             = Color(  0.25f, 0.1f, 0.0f, 1.0f );
 
+
+const Color color_nightLight = Color(0.3f, 0.6f, 1.0f, 0.45f);
+
 int neighbourOffsets[] =
 {
 	- 1,
@@ -2229,25 +2232,30 @@ void floatPhoton( unsigned int weatherGridI ,  Color lightColor,  float lightBri
 	// printf("original posx %f\n", positionX);
 	weatherGridI =  (wy * weatherGridSizeX) + wx ;//weatherGridI + neighbourOffsets[lightDirection] ;
 
+
+	float incrementX = (1.3f * cos(lightDirection)) + ((RNG()-0.5)*0.2f) ;
+	float incrementY = (1.3f * sin(lightDirection)) + ((RNG()-0.5)*0.2f) ;
+
 	while (true)
 	{
 
 
 		// unsigned int newX = 1 *
 
-		positionX += 1.42f * cos(lightDirection);
-		positionY += 1.42f * sin(lightDirection);
+		positionX += incrementX;
+		positionY += incrementY;
 
 
 		// printf(" posx %f\n", positionX);
 
 		wx = positionX; //weatherGridI % weatherGridSizeX;
 		wy = positionY; //weatherGridI / weatherGridSizeX;
+		if (wx == 0 || wy == 0 || wx >= weatherGridSizeX - 1 || wy >= weatherGridSizeY - 1) {return;}
+
 
 		weatherGridI =  (wy * weatherGridSizeX) + wx ;//weatherGridI + neighbourOffsets[lightDirection] ;
+		if (weatherGridI >= weatherGridSize) {return;}
 
-
-		if (wx == 0 || wy == 0 || wx >= weatherGridSizeX - 1 || wy >= weatherGridSizeY - 1) {return;}
 
 		float energy  = 0.0f;
 		if (lightBrightness > 0.0f)
@@ -2260,17 +2268,17 @@ void floatPhoton( unsigned int weatherGridI ,  Color lightColor,  float lightBri
 			else { energy = energy / lightBrightness; }
 		}
 
-		if (weatherGridI < weatherGridSize)
-		{
-			Color newLightColor = lightColor;
-			newLightColor.a = energy;
-			lightGrid[weatherGridI] = newLightColor;//addColor(lightGrid[weatherGridI], newLightColor);
-		}
 
-		if (weatherGrid[weatherGridI].filledSquares > 0)
-		{
-			blocked += weatherGrid[weatherGridI].filledSquares;
-		}
+		Color newLightColor = lightColor;
+		newLightColor.a = energy;
+		// if (energy < color_nightLight.a) { return;}
+		lightGrid[weatherGridI] = newLightColor;
+
+
+		// if (weatherGrid[weatherGridI].filledSquares > 0)
+		// {
+		blocked += weatherGrid[weatherGridI].filledSquares;
+		// }
 	}
 }
 
@@ -2979,6 +2987,20 @@ void createWorld( unsigned int world)
 					setParticle(1, i);
 				}
 			}
+
+			if ((i > (100 * sizeX)) && (i < (200 * sizeX)) )
+			{
+				unsigned int x = i % sizeX;
+
+				if (x > 500 && x < 600)
+				{
+
+					setParticle(5, i);
+					grid[i].phase = PHASE_SOLID;
+					grid[i].temperature = 2000;
+				}
+			}
+
 		}
 		break;
 	}
@@ -3639,8 +3661,8 @@ void materialHeatGlow(unsigned int i, unsigned int weatherGridI)
 
 					printf("original fdirection %f\n", fdirection);
 
-					fdirection = ((fdirection / N_NEIGHBOURS) * (2.0f* 3.1415f))-3.1415f; // radiate in the empty direction
-					fdirection += (RNG()-0.5) * (2.0f * 3.1415f) * (1.0f/N_NEIGHBOURS); // add up to 1/8th of a full circles worth of direction noise
+					fdirection = ((fdirection / N_NEIGHBOURS) * (2.0f * 3.1415f)) - 3.1415f; // radiate in the empty direction
+					fdirection += (RNG() - 0.5) * (2.0f * 3.1415f) * (1.0f / N_NEIGHBOURS); // add up to 1/8th of a full circles worth of direction noise
 
 
 					printf(" fdirection %f\n", fdirection);
@@ -3663,6 +3685,16 @@ void weatherPostProcess( unsigned int weatherGridI )
 
 
 	lightGrid[weatherGridI].a *= 0.9f;
+
+
+	// darken the light field over time.
+
+	// lightGrid[weatherGridI].r += ( color_nightLight.r - lightGrid[weatherGridI].r) * 0.2f;
+	// lightGrid[weatherGridI].g += ( color_nightLight.g - lightGrid[weatherGridI].g) * 0.2f;
+	// lightGrid[weatherGridI].b += ( color_nightLight.b - lightGrid[weatherGridI].b) * 0.2f;
+	// lightGrid[weatherGridI].a += ( color_nightLight.a - lightGrid[weatherGridI].a) * 0.2f;
+
+
 
 	// float fdirection  = ((sunlightDirection / N_NEIGHBOURS) * (2.0f* 3.1415f))-3.1415f; // radiate in the empty direction
 	// printf( "fdirection %f\n", fdirection);
@@ -3740,8 +3772,12 @@ void thread_physics ()
 	timeOfDay += 0.01f;
 
 
-	fsundirection = sin(timeOfDay);
+	fsundirection =  1.5* 3.1415f + (sin(timeOfDay) ) ;
 
+
+
+	int effectiveTemp = sunlightTemp - (sunlightTemp * abs (sin(timeOfDay)) );
+	sunlightColor = blackbodyLookup(effectiveTemp);
 
 
 	//-------------------------------
