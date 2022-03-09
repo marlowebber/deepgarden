@@ -2233,8 +2233,8 @@ void floatPhoton( unsigned int weatherGridI ,  Color lightColor,  float lightBri
 	weatherGridI =  (wy * weatherGridSizeX) + wx ;//weatherGridI + neighbourOffsets[lightDirection] ;
 
 
-	float incrementX = (1.3f * cos(lightDirection)) + ((RNG()-0.5)*0.2f) ;
-	float incrementY = (1.3f * sin(lightDirection)) + ((RNG()-0.5)*0.2f) ;
+	float incrementX = (1.3f * cos(lightDirection)) + ((RNG() - 0.5) * 0.2f) ;
+	float incrementY = (1.3f * sin(lightDirection)) + ((RNG() - 0.5) * 0.2f) ;
 
 	while (true)
 	{
@@ -2269,16 +2269,20 @@ void floatPhoton( unsigned int weatherGridI ,  Color lightColor,  float lightBri
 		}
 
 
-		Color newLightColor = lightColor;
-		newLightColor.a = energy;
-		// if (energy < color_nightLight.a) { return;}
-		lightGrid[weatherGridI] = newLightColor;
+		// Color newLightColor = lightColor;
+		// newLightColor.a = energy;
+		// lightGrid[weatherGridI] = newLightColor;
 
 
-		// if (weatherGrid[weatherGridI].filledSquares > 0)
-		// {
+
+		lightGrid[weatherGridI].r += (lightColor.r   - lightGrid[weatherGridI].r )  *  0.5f;
+		lightGrid[weatherGridI].g += (lightColor.g   - lightGrid[weatherGridI].g )  *  0.5f;
+		lightGrid[weatherGridI].b += (lightColor.b   - lightGrid[weatherGridI].b )  *  0.5f;
+		lightGrid[weatherGridI].a += (energy         - lightGrid[weatherGridI].a )  *  0.5f;
+
+
 		blocked += weatherGrid[weatherGridI].filledSquares;
-		// }
+
 	}
 }
 
@@ -2884,7 +2888,7 @@ void createWorld( unsigned int world)
 		sunlightTemp = 2000;
 
 		defaultTemperature = 200;
-		defaultPressure = 500;
+		defaultPressure = 100;
 
 		for (int i = 0; i < totalSize; ++i)
 		{
@@ -3684,7 +3688,7 @@ void weatherPostProcess( unsigned int weatherGridI )
 	if (i > totalSize) { i = totalSize;}
 
 
-	lightGrid[weatherGridI].a *= 0.9f;
+	lightGrid[weatherGridI].a *= 0.8f;
 
 
 	// darken the light field over time.
@@ -3772,7 +3776,7 @@ void thread_physics ()
 	timeOfDay += 0.01f;
 
 
-	fsundirection =  1.5* 3.1415f + (sin(timeOfDay) ) ;
+	fsundirection =  1.5 * 3.1415f + (sin(timeOfDay) ) ;
 
 
 
@@ -3944,56 +3948,55 @@ void thread_physics ()
 	for (unsigned int weatherGridI = ppPhaseOffset; weatherGridI < weatherGridSize; weatherGridI += ppSkipSize)
 	{
 
-		// lightGrid[weatherGridI].a = 0.0f;
-
-		// Color avg = color_clear;
+		// smooth out the light field. more blur in high pressure.
 		unsigned int count = 0;
+
+		// Color averageColor = color_clear;
+
 		for (int j = 0; j < N_NEIGHBOURS; ++j)
 		{
-
-			// unsigned int j = extremelyFastNumberFromZeroTo(N_NEIGHBOURS - 1);
 			unsigned int neighbour = weatherGridI + weatherGridOffsets[j] ;
 			if (neighbour < weatherGridSize)
 			{
-
 				lightGrid[weatherGridI].r += lightGrid[ neighbour].r;
 				lightGrid[weatherGridI].g += lightGrid[ neighbour].g;
 				lightGrid[weatherGridI].b += lightGrid[ neighbour].b;
 				lightGrid[weatherGridI].a += lightGrid[ neighbour].a;
 
-
-
-
+				// averageColor = addColor()
 
 				count++;
-
 			}
-			// }
-			// avg.r = avg.r / N_NEIGHBOURS;
-			// avg.g = avg.g / N_NEIGHBOURS;
-			// avg.b = avg.b / N_NEIGHBOURS;
-			// avg.a = avg.a / N_NEIGHBOURS;
-
-			// for (int j = 0; j < N_NEIGHBOURS; ++j)
-			// {
-			// 	unsigned int neighbour = i + weatherGridOffsets[j] ;
-			// 	if (neighbour < weatherGridSize)
-			// 	{
-
-			// 		lightGrid[ neighbour] = avg;
-			// 	}
-
-
 		}
 
+		lightGrid[weatherGridI].r = lightGrid[weatherGridI].r / (count+1);
+		lightGrid[weatherGridI].g = lightGrid[weatherGridI].g / (count+1);
+		lightGrid[weatherGridI].b = lightGrid[weatherGridI].b / (count+1);
+		lightGrid[weatherGridI].a = lightGrid[weatherGridI].a / (count+1);
 
-		lightGrid[weatherGridI].r = lightGrid[weatherGridI].r  / (count + 1);
-		lightGrid[weatherGridI].g = lightGrid[weatherGridI].g  / (count + 1);
-		lightGrid[weatherGridI].b = lightGrid[weatherGridI].b  / (count + 1);
-		lightGrid[weatherGridI].a = lightGrid[weatherGridI].a  / (count + 1);
+		// float blurRatio = (weatherGrid[weatherGridI].pressure / 2000);
+		// if (blurRatio < 0.0f) {blurRatio = 0.0f;}
+		// else if (blurRatio > 1.0f) {blurRatio = 1.0f;}
 
 
 
+		// for (int j = 0; j < N_NEIGHBOURS; ++j)
+		// {
+		// 	unsigned int neighbour = weatherGridI + weatherGridOffsets[j] ;
+		// 	if (neighbour < weatherGridSize)
+		// 	{
+		// 		// lightGrid[neighbour].r += (averageColor.r - lightGrid[neighbour].r ) * 0.5;
+		// 		// lightGrid[neighbour].g += (averageColor.g - lightGrid[neighbour].g ) * 0.5;
+		// 		// lightGrid[neighbour].b += (averageColor.b - lightGrid[neighbour].b ) * 0.5;
+		// 		// lightGrid[neighbour].a += (averageColor.a - lightGrid[neighbour].a ) * 0.5;
+		// 		lightGrid[neighbour] = averageColor;
+		// 	}
+		// }
+		// lightGrid[weatherGridI] = averageColor;
+		// // lightGrid[weatherGridI].r += (averageColor.r - lightGrid[weatherGridI].r ) * 0.5;
+		// // lightGrid[weatherGridI].g += (averageColor.g - lightGrid[weatherGridI].g ) * 0.5;
+		// // lightGrid[weatherGridI].b += (averageColor.b - lightGrid[weatherGridI].b ) * 0.5;
+		// // lightGrid[weatherGridI].a += (averageColor.a - lightGrid[weatherGridI].a ) * 0.5;
 
 
 
