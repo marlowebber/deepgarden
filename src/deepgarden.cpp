@@ -766,8 +766,8 @@ void materialPhysics (unsigned int currentPosition,  unsigned int velocityAbs, u
 void airflowEdge( unsigned int x, unsigned int y )
 {
 	// make sure parameters are valid
-	if (x > weatherGridSizeX - 1) { return; } 
-	if (y > weatherGridSizeY - 1) { return; } 
+	if (x > weatherGridSizeX - 1) { return; }
+	if (y > weatherGridSizeY - 1) { return; }
 	unsigned int weatherGridI = (y * weatherGridSizeX) + x;
 
 	if (y == weatherGridSizeY - 1)
@@ -810,20 +810,12 @@ void airflow( unsigned int x, unsigned int y )
 	for (unsigned int n = 0; n < N_NEIGHBOURS; ++n)
 	{
 		unsigned int weatherGridNeighbour = weatherGridI + weatherGridOffsets[n] ;
-		if (weatherGridNeighbour >= weatherGridSize ) {weatherGridNeighbour = weatherGridI;}                     // you must add 8 numbers here or later math will break down. if a neighbour is not valid, add your own values instead.
-
-		// unsigned int neighbourX = weatherGridNeighbour % weatherGridSizeX;
-		// if (neighbourX == 0 || neighbourX == weatherGridSizeX -1 ) {continue;} // prevent wrapping at the simulation edges
-
-		// if (  (weatherGrid[weatherGridNeighbour].airBlockedSquares <= (weatherGridScale * weatherGridScale) / 2)  )
-		// {
-
-			ap += weatherGrid[ weatherGridNeighbour ].pressure ;
-			ax += weatherGrid[ weatherGridNeighbour ].velocityX;
-			ay += weatherGrid[ weatherGridNeighbour ].velocityY;
-			at += weatherGrid[ weatherGridNeighbour ].temperature;
-			count++;
-		// }
+		if (weatherGridNeighbour >= weatherGridSize ) {weatherGridNeighbour = weatherGridI;}                     // you must add 8 numbers here or later math will break down. if a neighbour is not valid, add your own values instead
+		ap += weatherGrid[ weatherGridNeighbour ].pressure ;
+		ax += weatherGrid[ weatherGridNeighbour ].velocityX;
+		ay += weatherGrid[ weatherGridNeighbour ].velocityY;
+		at += weatherGrid[ weatherGridNeighbour ].temperature;
+		count++;
 	}
 	ax = ax / count ;                                                                                              // N_NEIGHBOURS is 8, so you can do the division part of the average by using a bit shift.
 	ay = ay / count ;
@@ -834,35 +826,27 @@ void airflow( unsigned int x, unsigned int y )
 	dy +=   (ay - weatherGrid[weatherGridI].velocityY  ) >> 4;
 	dt +=   (at - weatherGrid[weatherGridI].temperature) >> 4;
 
-
-	
-
 	// for each cell, interchange pressure and velocity with the four cardinal neighbours.
 	for (unsigned int n = 0; n < N_NEIGHBOURS; n += 2)
 	{
 		unsigned int neighbour = weatherGridI + weatherGridOffsets[n];                                                    // if you do not control this, cells on the left and right edge will be able to exchange with the far edge, even though neighbour is less than weatherGridSize. Leading to absolute chaos.
 		if (neighbour < weatherGridSize)
 		{
+			// unsigned int reductionFactor = (weatherGrid[neighbour].airBlockedSquares / 2) + 1;
 
-			// if (weatherGrid[neighbour].airBlockedSquares <= ((weatherGridScale * weatherGridScale) / 2) ) // if more than half the weathergrid square is full of material
-			// {
+			int sign = 1; if (n > 3) { sign = -1; }                                                            // the sign of the difference between two things depends on the order you compare them. Add when facing down, subtract when facing up.
 
-				unsigned int reductionFactor = (weatherGrid[neighbour].airBlockedSquares/2) +1;
+			if (n == 0 || n == 4 )                                                                             // on the X axes, exchange horizontal pressure and wind.
+			{
+				dp += ((sign * (weatherGrid[ neighbour ].velocityX - weatherGrid[ weatherGridI ].velocityX )) >> 1 )   ; // A difference in speed creates pressure.
+				dx += ((sign * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> 1 )   ; // A difference in pressure creates movement.
+			}
 
-				int sign = 1; if (n > 3) { sign = -1; }                                                            // the sign of the difference between two things depends on the order you compare them. Add when facing down, subtract when facing up.
-
-				if (n == 0 || n == 4 )                                                                             // on the X axes, exchange horizontal pressure and wind.
-				{
-					dp += ((sign * (weatherGrid[ neighbour ].velocityX - weatherGrid[ weatherGridI ].velocityX )) >> reductionFactor )   ; // A difference in speed creates pressure.
-					dx += ((sign * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> reductionFactor )   ; // A difference in pressure creates movement.
-				}
-
-				else if (n == 2 || n == 6)                                                                              // on the Y axes, exchange vertical pressure and wind.
-				{
-					dp += ((sign * (weatherGrid[ neighbour ].velocityY - weatherGrid[ weatherGridI ].velocityY )) >> reductionFactor)  ;
-					dy += ((sign * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> reductionFactor)  ;
-				}
-			// }
+			else if (n == 2 || n == 6)                                                                              // on the Y axes, exchange vertical pressure and wind.
+			{
+				dp += ((sign * (weatherGrid[ neighbour ].velocityY - weatherGrid[ weatherGridI ].velocityY )) >> 1)  ;
+				dy += ((sign * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> 1)  ;
+			}
 		}
 	}
 
@@ -900,34 +884,19 @@ void airflow( unsigned int x, unsigned int y )
 	// dy -= dt >> 0;// bouyancy does not need sign applied because it is supposed to only go in one direction!
 
 
-
-		// leaving return to zero out on purpose will force you to deal with other physics inconsistencies.
+	// leaving return to zero out on purpose will force you to deal with other physics inconsistencies.
 	dt += ( (defaultTemperature * temperatureScale) - weatherGrid[weatherGridI].temperature  ) >> 8 ; // return to default temperature
 	dp += ( defaultPressure - weatherGrid[weatherGridI].pressure ) >> 8;                              // return to normal pressure.
 	dx -= ( weatherGrid[weatherGridI].velocityX  ) >> 7 ; 	                                         // clear some velocity.
 	dy -= ( weatherGrid[weatherGridI].velocityY  ) >> 7 ;
 
-
-
-// // apply the changes you computed in this turn.
-
-// 	}
-// 	else
-// 	{
-
-	// if ( weatherGrid[weatherGridI].airBlockedSquares  > 0 ) // if more than half the weathergrid square is full of material
-	// {
-		// apply the changes you computed in this turn, and finish.
-		weatherGrid[weatherGridI].pressure    += (dp);
-		weatherGrid[weatherGridI].velocityX   += dx;
-		weatherGrid[weatherGridI].velocityY   += dy;
-		weatherGrid[weatherGridI].velocityX   *= (1  / (weatherGrid[weatherGridI].airBlockedSquares+1)   )  ;
-		weatherGrid[weatherGridI].velocityY   *= (1  / (weatherGrid[weatherGridI].airBlockedSquares+1)   )  ;
-		weatherGrid[weatherGridI].temperature += (dt);
-
-	// }
-
-
+	// apply the changes you computed in this turn, and finish.
+	weatherGrid[weatherGridI].pressure    += (dp);
+	weatherGrid[weatherGridI].velocityX   += dx;
+	weatherGrid[weatherGridI].velocityY   += dy;
+	weatherGrid[weatherGridI].velocityX   *= (1  / (weatherGrid[weatherGridI].airBlockedSquares + 1)   )  ;
+	weatherGrid[weatherGridI].velocityY   *= (1  / (weatherGrid[weatherGridI].airBlockedSquares + 1)   )  ;
+	weatherGrid[weatherGridI].temperature += (dt);
 }
 
 void thread_weather_sector(unsigned int from, unsigned int to)
@@ -936,7 +905,7 @@ void thread_weather_sector(unsigned int from, unsigned int to)
 	{
 		for (unsigned int x = 0; x < weatherGridSizeX; ++x)
 		{
-			if (x == 0 || (x >= weatherGridSizeX - 1) || y == 0 || (y >= weatherGridSizeY - 1)  )
+			if (y == 0 || (y >= weatherGridSizeY - 1)  )
 			{
 				airflowEdge(x, y);
 			}
@@ -3523,7 +3492,21 @@ void materialHeatGlow(unsigned int i, unsigned int weatherGridI)
 			}
 		}
 	}
+	else
+	{
+		int adjustedWeatherTemp = (weatherGrid[weatherGridI].temperature / temperatureScale);
+		if (adjustedWeatherTemp > 600)
+		{
+			unsigned int radiantLightIntensity = ((adjustedWeatherTemp  - 600) >> 4);
+			float fdirection = (RNG() - 0.5f) * 2 * 3.14f;
+			floatPhoton(weatherGridI, blackbodyLookup(adjustedWeatherTemp) , radiantLightIntensity, fdirection);
+		}
+	}
+
+
+
 }
+
 
 void weatherPostProcess( unsigned int weatherGridI )
 {
