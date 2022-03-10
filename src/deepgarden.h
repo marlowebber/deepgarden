@@ -40,7 +40,7 @@ extern  const unsigned int totalSize;
 #define pressureVelocityScale 2
 #define materialWindPushScale 0
 
-#define weatherGridScale 3
+#define weatherGridScale 2
 
 
 #define NUMBER_OF_FRAMES     1
