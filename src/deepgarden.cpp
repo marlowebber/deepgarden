@@ -820,10 +820,12 @@ void airflow( unsigned int x, unsigned int y )
 	ay = ay / count ;
 	ap = ap / count ;
 	at = at / count ;
-	dp +=   (ap - weatherGrid[weatherGridI].pressure   ) >> 4;
-	dx +=   (ax - weatherGrid[weatherGridI].velocityX  ) >> 4;
-	dy +=   (ay - weatherGrid[weatherGridI].velocityY  ) >> 4;
-	dt +=   (at - weatherGrid[weatherGridI].temperature) >> 4;
+
+	unsigned int avgBlock = 4 + (weatherGrid[weatherGridI].airBlockedSquares) ;
+	dp +=   (ap - weatherGrid[weatherGridI].pressure   ) >> avgBlock;
+	dx +=   (ax - weatherGrid[weatherGridI].velocityX  ) >> avgBlock;
+	dy +=   (ay - weatherGrid[weatherGridI].velocityY  ) >> avgBlock;
+	dt +=   (at - weatherGrid[weatherGridI].temperature) >> avgBlock;
 
 
 	// pv interchange
@@ -834,8 +836,8 @@ void airflow( unsigned int x, unsigned int y )
 	{
 		unsigned int blockageRatio = ((weatherGrid[weatherGridI].airBlockedSquares) ) + 1;
 		if ( weatherGrid[neighbour].airBlockedSquares > blockageRatio) {blockageRatio =  weatherGrid[neighbour].airBlockedSquares;}
-		dp += ((1 * (weatherGrid[ neighbour ].velocityY - weatherGrid[ weatherGridI ].velocityY )) >> 1);//(blockageRatio))  ;
-		dy += ((1 * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> 1);//(blockageRatio))  ;
+		dp += ((1 * (weatherGrid[ neighbour ].velocityY - weatherGrid[ weatherGridI ].velocityY )) >> (blockageRatio))  ;
+		dy += ((1 * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (blockageRatio))  ;
 	}
 
 	neighbour = weatherGridI - weatherGridSizeX ;
@@ -843,8 +845,8 @@ void airflow( unsigned int x, unsigned int y )
 	{
 		unsigned int blockageRatio = ((weatherGrid[weatherGridI].airBlockedSquares) ) + 1;
 		if ( weatherGrid[neighbour].airBlockedSquares > blockageRatio) {blockageRatio =  weatherGrid[neighbour].airBlockedSquares;}
-		dp += ((-1 * (weatherGrid[ neighbour ].velocityY - weatherGrid[ weatherGridI ].velocityY )) >> 1);//(blockageRatio))  ;
-		dy += ((-1 * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> 1);//(blockageRatio))  ;
+		dp += ((-1 * (weatherGrid[ neighbour ].velocityY - weatherGrid[ weatherGridI ].velocityY )) >> (blockageRatio))  ;
+		dy += ((-1 * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (blockageRatio))  ;
 	}
 
 	neighbour = weatherGridI + 1 ;
@@ -852,8 +854,8 @@ void airflow( unsigned int x, unsigned int y )
 	{
 		unsigned int blockageRatio = ((weatherGrid[weatherGridI].airBlockedSquares) ) + 1;
 		if ( weatherGrid[neighbour].airBlockedSquares > blockageRatio) {blockageRatio =  weatherGrid[neighbour].airBlockedSquares;}
-		dp += ((1 * (weatherGrid[ neighbour ].velocityX - weatherGrid[ weatherGridI ].velocityX )) >> 1); // (blockageRatio) )   ; // A difference in speed creates pressure.
-		dx += ((1 * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> 1); // (blockageRatio) )   ; // A difference in pressure creates movement.
+		dp += ((1 * (weatherGrid[ neighbour ].velocityX - weatherGrid[ weatherGridI ].velocityX )) >> (blockageRatio) )   ; // A difference in speed creates pressure.
+		dx += ((1 * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (blockageRatio) )   ; // A difference in pressure creates movement.
 	}
 
 	neighbour = weatherGridI - 1 ;
@@ -861,8 +863,8 @@ void airflow( unsigned int x, unsigned int y )
 	{
 		unsigned int blockageRatio = ((weatherGrid[weatherGridI].airBlockedSquares) ) + 1;
 		if ( weatherGrid[neighbour].airBlockedSquares > blockageRatio) {blockageRatio =  weatherGrid[neighbour].airBlockedSquares;}
-		dp += ((-1 * (weatherGrid[ neighbour ].velocityX - weatherGrid[ weatherGridI ].velocityX )) >> 1);//(blockageRatio) )   ; // A difference in speed creates pressure.
-		dx += ((-1 * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> 1);//(blockageRatio) )   ; // A difference in pressure creates movement.
+		dp += ((-1 * (weatherGrid[ neighbour ].velocityX - weatherGrid[ weatherGridI ].velocityX )) >> (blockageRatio) )   ; // A difference in speed creates pressure.
+		dx += ((-1 * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (blockageRatio) )   ; // A difference in pressure creates movement.
 	}
 
 
