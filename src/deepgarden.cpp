@@ -834,8 +834,8 @@ void airflow( unsigned int x, unsigned int y )
 	{
 		unsigned int blockageRatio = ((weatherGrid[weatherGridI].airBlockedSquares) ) + 1;
 		if ( weatherGrid[neighbour].airBlockedSquares > blockageRatio) {blockageRatio =  weatherGrid[neighbour].airBlockedSquares;}
-		dp += ((1 * (weatherGrid[ neighbour ].velocityY - weatherGrid[ weatherGridI ].velocityY )) >> (blockageRatio))  ;
-		dy += ((1 * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (blockageRatio))  ;
+		dp += ((1 * (weatherGrid[ neighbour ].velocityY - weatherGrid[ weatherGridI ].velocityY )) >> 1);//(blockageRatio))  ;
+		dy += ((1 * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> 1);//(blockageRatio))  ;
 	}
 
 	neighbour = weatherGridI - weatherGridSizeX ;
@@ -843,8 +843,8 @@ void airflow( unsigned int x, unsigned int y )
 	{
 		unsigned int blockageRatio = ((weatherGrid[weatherGridI].airBlockedSquares) ) + 1;
 		if ( weatherGrid[neighbour].airBlockedSquares > blockageRatio) {blockageRatio =  weatherGrid[neighbour].airBlockedSquares;}
-		dp += ((-1 * (weatherGrid[ neighbour ].velocityY - weatherGrid[ weatherGridI ].velocityY )) >> (blockageRatio))  ;
-		dy += ((-1 * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (blockageRatio))  ;
+		dp += ((-1 * (weatherGrid[ neighbour ].velocityY - weatherGrid[ weatherGridI ].velocityY )) >> 1);//(blockageRatio))  ;
+		dy += ((-1 * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> 1);//(blockageRatio))  ;
 	}
 
 	neighbour = weatherGridI + 1 ;
@@ -852,8 +852,8 @@ void airflow( unsigned int x, unsigned int y )
 	{
 		unsigned int blockageRatio = ((weatherGrid[weatherGridI].airBlockedSquares) ) + 1;
 		if ( weatherGrid[neighbour].airBlockedSquares > blockageRatio) {blockageRatio =  weatherGrid[neighbour].airBlockedSquares;}
-		dp += ((1 * (weatherGrid[ neighbour ].velocityX - weatherGrid[ weatherGridI ].velocityX )) >> (blockageRatio) )   ; // A difference in speed creates pressure.
-		dx += ((1 * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (blockageRatio) )   ; // A difference in pressure creates movement.
+		dp += ((1 * (weatherGrid[ neighbour ].velocityX - weatherGrid[ weatherGridI ].velocityX )) >> 1); // (blockageRatio) )   ; // A difference in speed creates pressure.
+		dx += ((1 * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> 1); // (blockageRatio) )   ; // A difference in pressure creates movement.
 	}
 
 	neighbour = weatherGridI - 1 ;
@@ -861,8 +861,8 @@ void airflow( unsigned int x, unsigned int y )
 	{
 		unsigned int blockageRatio = ((weatherGrid[weatherGridI].airBlockedSquares) ) + 1;
 		if ( weatherGrid[neighbour].airBlockedSquares > blockageRatio) {blockageRatio =  weatherGrid[neighbour].airBlockedSquares;}
-		dp += ((-1 * (weatherGrid[ neighbour ].velocityX - weatherGrid[ weatherGridI ].velocityX )) >> (blockageRatio) )   ; // A difference in speed creates pressure.
-		dx += ((-1 * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (blockageRatio) )   ; // A difference in pressure creates movement.
+		dp += ((-1 * (weatherGrid[ neighbour ].velocityX - weatherGrid[ weatherGridI ].velocityX )) >> 1);//(blockageRatio) )   ; // A difference in speed creates pressure.
+		dx += ((-1 * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> 1);//(blockageRatio) )   ; // A difference in pressure creates movement.
 	}
 
 
@@ -3545,33 +3545,35 @@ void weatherPostProcess( unsigned int weatherGridI )
 	}
 
 	// loop through the detailed grid cells contained in this bigger cell, and update and draw them.
-	for (unsigned int scaledGridPointY = 0; scaledGridPointY < weatherGridScale; ++scaledGridPointY)
+	for ( int scaledGridPointY = -(weatherGridScale / 2); scaledGridPointY < (weatherGridScale / 2); ++scaledGridPointY)
 	{
-		for (unsigned int scaledGridPointX = 0; scaledGridPointX < weatherGridScale; ++scaledGridPointX)
+		for ( int scaledGridPointX = -(weatherGridScale / 2); scaledGridPointX < (weatherGridScale / 2); ++scaledGridPointX)
 		{
 			unsigned int currentPosition =  i + ((scaledGridPointY * sizeX) + scaledGridPointX );
-
-
-			float saturationLimit = 0.0f;
-			if ( grid[currentPosition].phase == PHASE_GAS)
+			if (currentPosition < totalSize)
 			{
-				// when the temperature goes down, the amount of water that the air can hold decreases.
-				// when the temperature goes up, the amount of water that the air can hold increases, until the water boils into gas and mixes with the air completely.
-				// saturation limit = ((difference between current temp and melting) / (total liquid temp range)
-				// * (amount of grid cells per weather cell)) / (ratio of current pressure to default pressure)
-				// produces the amount of cells of a weather grid square that the air can absorb at the current temperature and pressure
-				float adjustedMeltTemp = materials[grid[currentPosition].material].melting * temperatureScale ;
-				float adjustedBoilTemp = materials[grid[currentPosition].material].boiling * temperatureScale ;
-				saturationLimit =
-				    ((weatherGrid[weatherGridI].temperature - adjustedMeltTemp )
-				     / (adjustedBoilTemp - adjustedMeltTemp) );
-				saturationLimit *= (weatherGridScale * weatherGridScale);
-				saturationLimit = saturationLimit / (weatherGrid[weatherGridI].pressure / 1000);
-			}
 
-			materialPostProcess(currentPosition, weatherGridI, saturationLimit);
-			materialHeatGlow(currentPosition,  weatherGridI);
-			materialPhaseChange(currentPosition,  saturationLimit - weatherGrid[weatherGridI].saturation  );
+				float saturationLimit = 0.0f;
+				if ( grid[currentPosition].phase == PHASE_GAS)
+				{
+					// when the temperature goes down, the amount of water that the air can hold decreases.
+					// when the temperature goes up, the amount of water that the air can hold increases, until the water boils into gas and mixes with the air completely.
+					// saturation limit = ((difference between current temp and melting) / (total liquid temp range)
+					// * (amount of grid cells per weather cell)) / (ratio of current pressure to default pressure)
+					// produces the amount of cells of a weather grid square that the air can absorb at the current temperature and pressure
+					float adjustedMeltTemp = materials[grid[currentPosition].material].melting * temperatureScale ;
+					float adjustedBoilTemp = materials[grid[currentPosition].material].boiling * temperatureScale ;
+					saturationLimit =
+					    ((weatherGrid[weatherGridI].temperature - adjustedMeltTemp )
+					     / (adjustedBoilTemp - adjustedMeltTemp) );
+					saturationLimit *= (weatherGridScale * weatherGridScale);
+					saturationLimit = saturationLimit / (weatherGrid[weatherGridI].pressure / 1000);
+				}
+
+				materialPostProcess(currentPosition, weatherGridI, saturationLimit);
+				materialHeatGlow(currentPosition,  weatherGridI);
+				materialPhaseChange(currentPosition,  saturationLimit - weatherGrid[weatherGridI].saturation  );
+			}
 		}
 	}
 }
