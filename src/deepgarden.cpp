@@ -101,10 +101,6 @@ float * lifeColorGrid      = new float[totalSize * numberOfFieldsPerVertex];    
 float * animationGrid      = new float[totalSize * numberOfFieldsPerVertex];        //  for the sprites of animals.
 float * seedColorGrid      = new float[totalSize * numberOfFieldsPerVertex];        //  for the colors of seeds and falling photons.
 
-
-// float * backgroundStars      = new float[totalSize * numberOfFieldsPerVertex];
-// float * backgroundSky        = new float[totalSize * numberOfFieldsPerVertex];
-
 // PLANT DRAWING
 unsigned int recursion_level = 0;
 const unsigned int recursion_limit = 4;
@@ -178,7 +174,6 @@ unsigned int animalCursorEnergySource = ENERGYSOURCE_PLANT;
 unsigned int animalRecursionLevel = 0;
 unsigned int animalCursorOrgan = ORGAN_MUSCLE;
 Color animalCursorColor = Color(0.5f, 0.5f, 0.5f, 1.0f);
-
 
 int defaultTemperature = 300;
 int defaultPressure = 1000;
@@ -777,15 +772,6 @@ void airflowEdge( unsigned int x, unsigned int y )
 	if (y > weatherGridSizeY - 1) { return; }
 	unsigned int weatherGridI = (y * weatherGridSizeX) + x;
 
-
-
-	// weatherGrid[weatherGridI].pressure    = defaultPressure ;//+= (defaultPressure - weatherGrid[weatherGridI].pressure)    * 0.5;
-	// weatherGrid[weatherGridI].velocityX    -= ( weatherGrid[weatherGridI].velocityX)   * 0.5;
-	// weatherGrid[weatherGridI].velocityY   *= -1 ;//-= ( weatherGrid[weatherGridI].velocityY)   * 0.5;
-	// weatherGrid[weatherGridI].temperature  += (defaultTemperature - weatherGrid[weatherGridI].temperature) * 0.5;
-
-
-
 	// smooth the simulation by mixing each cell with the average of its neighbours.
 	int ap = (weatherGrid[ weatherGridI].pressure   ) ;
 	int ax = (weatherGrid[ weatherGridI].velocityX  ) ;
@@ -796,9 +782,6 @@ void airflowEdge( unsigned int x, unsigned int y )
 	{
 		for ( int cx = -1; cx < 2; ++cx)
 		{
-			// unsigned int weatherGridNeighbour = weatherGridI + weatherGridOffsets[n] ;
-			// if (weatherGridNeighbour >= weatherGridSize ) {weatherGridNeighbour = weatherGridI;}                     // you must add 8 numbers here or later math will break down. if a neighbour is not valid, add your own values instead
-
 			int ix = cx + x;
 			int iy = cy + y;
 
@@ -815,59 +798,35 @@ void airflowEdge( unsigned int x, unsigned int y )
 		}
 	}
 
-	// if (count > 0)
-	// {
 	ax = ax / count ;                                                                                              // N_NEIGHBOURS is 8, so you can do the division part of the average by using a bit shift.
 	ay = ay / count ;
 	ap = ap / count ;
 	at = at / count ;
 
-
-
-	// unsigned int avgBlock = 8 + (weatherGrid[weatherGridI].airBlockedSquares) ;
 	weatherGrid[weatherGridI].pressure    = ap;
 	weatherGrid[weatherGridI].velocityX   = ax;
 	weatherGrid[weatherGridI].velocityY   = ay;
 	weatherGrid[weatherGridI].temperature = at;
-
-
-
-
-	// }
-
-
 }
-
-
 
 void applyAirflowChanges(unsigned int weatherGridI)
 {
-
-
-
-// cancel just a little bit of velocity, because the sim is unstable if it's exactly 1. Cancel more if there is stuff in the way.
+	// cancel just a little bit of velocity, because the sim is unstable if it's exactly 1. Cancel more if there is stuff in the way.
 	weatherGrid[weatherGridI].velocityX *= 0.9999;
 	weatherGrid[weatherGridI].velocityY *= 0.9999;
 
 	weatherGrid[weatherGridI].pressure    += (  defaultPressure                        - weatherGrid[weatherGridI].pressure   ) * 0.01;
 	weatherGrid[weatherGridI].temperature += ( (defaultTemperature * temperatureScale) - weatherGrid[weatherGridI].temperature) * 0.001;
 
-
-
-
-
 	weatherGrid[weatherGridI].pressure    += weatherGrid[weatherGridI]. dp   ;
 	weatherGrid[weatherGridI].velocityX   += weatherGrid[weatherGridI]. dx   ;
 	weatherGrid[weatherGridI].velocityY   += weatherGrid[weatherGridI]. dy   ;
 	weatherGrid[weatherGridI].temperature += weatherGrid[weatherGridI]. dt   ;
 
-
-	
 	weatherGrid[weatherGridI]. dp = 0;
 	weatherGrid[weatherGridI]. dx = 0;
 	weatherGrid[weatherGridI]. dy = 0;
 	weatherGrid[weatherGridI]. dt = 0;
-
 }
 
 void airflow( unsigned int x, unsigned int y )
@@ -876,14 +835,13 @@ void airflow( unsigned int x, unsigned int y )
 	unsigned int i = ((y * weatherGridScale) * sizeX) + (x * weatherGridScale);
 	if (i >= totalSize) { i = totalSize - 1;}
 
-
-
 	// couple the material grid temp to the weather grid temp
 	if (grid[i].phase != PHASE_VACUUM)
 	{
-		int gridCouplingAmount = ( weatherGrid[weatherGridI].temperature + ( grid[i].temperature * temperatureScale) ) / 2;
-		weatherGrid[weatherGridI].temperature  = gridCouplingAmount;
-		grid[i].temperature = gridCouplingAmount / temperatureScale;
+		int gridCouplingAmount = ( weatherGrid[weatherGridI].temperature  - (grid[i].temperature * temperatureScale) ) ;
+		const unsigned int heatCouplingConstant = 8;
+		grid[i].temperature += (gridCouplingAmount/temperatureScale)  >> heatCouplingConstant ;
+		weatherGrid[weatherGridI].temperature -= (gridCouplingAmount) >> heatCouplingConstant ;
 	}
 
 	// make sure these are never less than 1! the only reason they are signed integers is so you have a chance to check, instead of suffering an immediate failure.
@@ -893,7 +851,6 @@ void airflow( unsigned int x, unsigned int y )
 
 	if (weatherGrid[weatherGridI].airBlockedSquares < (weatherGridScale * weatherGridScale))
 	{
-
 		// smooth the simulation by mixing each cell with the average of its neighbours.
 		int ap = weatherGrid[weatherGridI].pressure;
 		int ax = weatherGrid[weatherGridI].velocityX;
@@ -919,14 +876,10 @@ void airflow( unsigned int x, unsigned int y )
 		weatherGrid[weatherGridI]. dy +=   (ay - weatherGrid[weatherGridI].velocityY  ) >> 3;
 		weatherGrid[weatherGridI]. dt +=   (at - weatherGrid[weatherGridI].temperature) >> 3;
 
-
-
-
 		// pt interchange
 		int dtp = (weatherGrid[weatherGridI].dt - weatherGrid[weatherGridI].dp) >> gasLawConstant;
 		weatherGrid[weatherGridI].dp -= dtp ;
 		weatherGrid[weatherGridI].dt += dtp;
-
 
 		// pv interchange
 		unsigned int neighbourA = (weatherGridI + weatherGridSizeX) % weatherGridSize;
@@ -946,8 +899,6 @@ void airflow( unsigned int x, unsigned int y )
 
 		weatherGrid[weatherGridI].dp += ((- 1 * (weatherGrid[ neighbourD ].velocityX - weatherGrid[ weatherGridI ].velocityX )) >> (baseBlockageRatio) )   ; // A difference in speed creates pressure.
 		weatherGrid[weatherGridI].dx += ((- 1 * (weatherGrid[ neighbourD ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (baseBlockageRatio) )   ; // A difference in pressure creates movement.
-
-
 
 		// mix heat and velocity from far away. This is a key component of turbulent behavior in the sim, and produces a billowing effect that looks very realistic. It is prone to great instability.
 		if (weatherUseTake)
@@ -969,37 +920,14 @@ void airflow( unsigned int x, unsigned int y )
 			}
 		}
 	}
-
-
-
 }
-
-
-
-// void doAirflowOnSquare( unsigned int x, unsigned int y )
-// {
-
-// 	if (y == 0 || (y >= weatherGridSizeY - 1)  )
-// 	{
-// 		airflowEdge(x, y);
-// 	}
-// 	else
-// 	{
-// 		airflow(x, y);
-// 	}
-// }
 
 void thread_weather_sector(unsigned int from, unsigned int to)
 {
-
-	
-
 	for (unsigned int y = from; y < to; ++y)
 	{
-
 		for (unsigned int x = 0; x < weatherGridSizeX; ++x)
 		{
-
 			if (y == 0 || (y >= weatherGridSizeY - 1)  )
 			{
 				airflowEdge(x, y);
@@ -1009,100 +937,19 @@ void thread_weather_sector(unsigned int from, unsigned int to)
 				airflow(x, y);
 			}
 		}
-
 	}
-
-
-	// unsigned int y = from;
-
-	// while (true)
-	// {
-
-
-	// 	if (y <= weatherGridSizeY - 1)
-	// 	{
-	// 		unsigned int x = 0;
-	// 		while (true)
-	// 		{
-	// 			if (x <= (weatherGridSizeX - 1))
-	// 			{
-	// 				doAirflowOnSquare( x, y );
-	// 			}
-
-	// 			if (x - 1 <= (weatherGridSizeX - 1))
-	// 			{
-	// 				doAirflowOnSquare(x - 1, y);
-	// 			}
-
-	// 			if (x > (weatherGridSizeX )) { break; }
-
-	// 			x += 2;
-
-	// 		}
-
-	// 	}
-
-
-	// 	if ((y - 1) <= (weatherGridSizeY - 1))
-	// 	{
-	// 		unsigned int x = 0;
-	// 		while (true)
-	// 		{
-	// 			if (x <= (weatherGridSizeX - 1))
-	// 			{
-	// 				doAirflowOnSquare( x, y - 1 );
-	// 			}
-
-	// 			if (x - 1 <= (weatherGridSizeX - 1))
-	// 			{
-	// 				doAirflowOnSquare(x - 1, y - 1);
-	// 			}
-
-	// 			if (x > (weatherGridSizeX )) { break; }
-
-	// 			x += 2;
-
-	// 		}
-
-	// 	}
-
-
-
-
-
-	// 	if (y > weatherGridSizeY) {break;}
-
-
-	// 	y += 2;
-
-	// }
-
-
-
-	// }
 }
-
 
 void thread_weatherUpdate_sector(unsigned int from, unsigned int to)
 {
-
 	for (unsigned int y = from; y < to; ++y)
 	{
-
 		for (unsigned int x = 0; x < weatherGridSizeX; ++x)
 		{
-
-
 			unsigned int weatherGridI = (y * weatherGridSizeX) + x;
-
 			applyAirflowChanges( weatherGridI);
-
 		}
-
 	}
-
-
-
 }
 
 void thread_weather()
@@ -1129,7 +976,6 @@ void thread_weather()
 	t7.join();
 	t8.join();
 
-
 	boost::thread t11{  thread_weatherUpdate_sector, 0   , 1 * (weatherGridSizeY / 8)  } ;
 	boost::thread t21{  thread_weatherUpdate_sector, 1 * (weatherGridSizeY / 8)  , 2 * (weatherGridSizeY / 8)  } ;
 	boost::thread t31{  thread_weatherUpdate_sector, 2 * (weatherGridSizeY / 8)  , 3 * (weatherGridSizeY / 8)  } ;
@@ -1148,14 +994,11 @@ void thread_weather()
 	t71.join();
 	t81.join();
 
-
-
 #ifdef THREAD_TIMING_READOUT
 	auto end = std::chrono::steady_clock::now();
 	auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 	std::cout << "thread_weather " << elapsed.count() << " microseconds." << std::endl;
 #endif
-
 }
 
 struct AnimalSegment
@@ -1231,7 +1074,6 @@ Animal::Animal()
 	this->energyFlags = ENERGYSOURCE_PLANT;
 	this->direction = 4;
 	this->segmentsUsed = 0;
-	// this->muscleMass = 0;
 	this->biggestMuscle = 0;
 	this->biggestEye = 0;
 	this->attack = 0;
