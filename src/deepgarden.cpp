@@ -19,7 +19,7 @@ const bool doWeather = true;
 const bool carnageMode = false;
 const bool normalMaterials = true;
 const bool advanceDay = false;
-const bool weatherUseTake = true;
+const bool weatherUseTake = false;
 
 // preset colors available for painting.
 const Color color_lightblue          = Color( 0.1f, 0.3f, 0.65f, 1.0f );
@@ -784,11 +784,11 @@ void airflowEdge( unsigned int x, unsigned int y )
 
 
 	// smooth the simulation by mixing each cell with the average of its neighbours.
-	int ap = 0;
-	int ax = 0;
-	int ay = 0;
-	int at = 0;
-	int count = 0;
+	int ap = (weatherGrid[ weatherGridI].pressure   ) ;
+	int ax = (weatherGrid[ weatherGridI].velocityX  ) ;
+	int ay = (weatherGrid[ weatherGridI].velocityY  ) ;
+	int at = (weatherGrid[ weatherGridI].temperature) ;
+	int count = 1;
 	for ( int cy = -1; cy < 2; ++cy)
 	{
 		for ( int cx = -1; cx < 2; ++cx)
@@ -812,19 +812,19 @@ void airflowEdge( unsigned int x, unsigned int y )
 		}
 	}
 
-	if (count > 0)
-	{
-		ax = ax / count ;                                                                                              // N_NEIGHBOURS is 8, so you can do the division part of the average by using a bit shift.
-		ay = ay / count ;
-		ap = ap / count ;
-		at = at / count ;
+	// if (count > 0)
+	// {
+	ax = ax / count ;                                                                                              // N_NEIGHBOURS is 8, so you can do the division part of the average by using a bit shift.
+	ay = ay / count ;
+	ap = ap / count ;
+	at = at / count ;
 
-		// unsigned int avgBlock = 8 + (weatherGrid[weatherGridI].airBlockedSquares) ;
-		weatherGrid[weatherGridI].pressure    = ap;
-		weatherGrid[weatherGridI].velocityX   = ax;
-		weatherGrid[weatherGridI].velocityY   = ay;
-		weatherGrid[weatherGridI].temperature = at;
-	}
+	// unsigned int avgBlock = 8 + (weatherGrid[weatherGridI].airBlockedSquares) ;
+	weatherGrid[weatherGridI].pressure    = ap;
+	weatherGrid[weatherGridI].velocityX   = ax;
+	weatherGrid[weatherGridI].velocityY   = ay;
+	weatherGrid[weatherGridI].temperature = at;
+	// }
 
 
 }
@@ -833,14 +833,16 @@ void airflow( unsigned int x, unsigned int y )
 {
 	unsigned int weatherGridI = (y * weatherGridSizeX) + x;
 	unsigned int i = ((y * weatherGridScale) * sizeX) + (x * weatherGridScale);
-	if (i > totalSize) { i = totalSize;}
+	if (i >= totalSize) { i = totalSize - 1;}
 
 	int dp = 0;
 	int dx = 0;
 	int dy = 0;
 	int dt = 0;
 
+	// make sure these are never less than 0! the only reason they are signed integers is so you have a chance to check, instead of suffering an immediate failure.
 	if (weatherGrid[weatherGridI].temperature  < 0) {weatherGrid[weatherGridI].temperature = 0;}
+	if (weatherGrid[weatherGridI].pressure  < 0)    {weatherGrid[weatherGridI].pressure = 0;}
 
 	// couple the material grid temp to the weather grid temp
 	if (grid[i].phase != PHASE_VACUUM)
@@ -859,7 +861,7 @@ void airflow( unsigned int x, unsigned int y )
 	for (unsigned int n = 0; n < N_NEIGHBOURS; ++n)
 	{
 		unsigned int weatherGridNeighbour = weatherGridI + weatherGridOffsets[n] ;
-		if (weatherGridNeighbour >= weatherGridSize ) {weatherGridNeighbour = weatherGridI;}                     // you must add 8 numbers here or later math will break down. if a neighbour is not valid, add your own values instead
+		if (weatherGridNeighbour >= weatherGridSize ) {weatherGridNeighbour = weatherGridI - 1;}                   // you must add 8 numbers here or later math will break down. if a neighbour is not valid, add your own values instead
 		ap += (weatherGrid[ weatherGridNeighbour ].pressure   ) ;
 		ax += (weatherGrid[ weatherGridNeighbour ].velocityX  ) ;
 		ay += (weatherGrid[ weatherGridNeighbour ].velocityY  ) ;
@@ -881,21 +883,28 @@ void airflow( unsigned int x, unsigned int y )
 	// pv interchange
 	unsigned int neighbour;
 
-	neighbour = weatherGridI + weatherGridSizeX ;
-	if (neighbour < weatherGridSize)
-	{
-		unsigned int blockageRatio = ((weatherGrid[weatherGridI].airBlockedSquares + weatherGrid[neighbour].airBlockedSquares) >> 1) + 1;
-		dp += ((1 * (weatherGrid[ neighbour ].velocityY - weatherGrid[ weatherGridI ].velocityY )) >> (blockageRatio))  ;
-		dy += ((1 * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (blockageRatio))  ;
-	}
+	// if (y != weatherGridSizeY - 1)
+	// {
+		neighbour = weatherGridI + weatherGridSizeX ;
+		if (neighbour < weatherGridSize)
+		{
+			unsigned int blockageRatio = ((weatherGrid[weatherGridI].airBlockedSquares + weatherGrid[neighbour].airBlockedSquares) >> 1) + 1;
+			dp += ((1 * (weatherGrid[ neighbour ].velocityY - weatherGrid[ weatherGridI ].velocityY )) >> (blockageRatio))  ;
+			dy += ((1 * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (blockageRatio))  ;
+		}
+	// }
 
-	neighbour = weatherGridI - weatherGridSizeX ;
-	if (neighbour < weatherGridSize)
-	{
-		unsigned int blockageRatio = ((weatherGrid[weatherGridI].airBlockedSquares + weatherGrid[neighbour].airBlockedSquares) >> 1) + 1;
-		dp += ((-1 * (weatherGrid[ neighbour ].velocityY - weatherGrid[ weatherGridI ].velocityY )) >> (blockageRatio))  ;
-		dy += ((-1 * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (blockageRatio))  ;
-	}
+	// if ( y != 0)
+	// {
+		neighbour = weatherGridI - weatherGridSizeX ;
+		if (neighbour < weatherGridSize)
+		{
+			unsigned int blockageRatio = ((weatherGrid[weatherGridI].airBlockedSquares + weatherGrid[neighbour].airBlockedSquares) >> 1) + 1;
+			dp += ((-1 * (weatherGrid[ neighbour ].velocityY - weatherGrid[ weatherGridI ].velocityY )) >> (blockageRatio))  ;
+			dy += ((-1 * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (blockageRatio))  ;
+		}
+	// }
+
 
 	neighbour = weatherGridI + 1 ;
 	if (neighbour < weatherGridSize)
@@ -917,8 +926,6 @@ void airflow( unsigned int x, unsigned int y )
 	// mix heat and velocity from far away. This is a key component of turbulent behavior in the sim, and produces a billowing effect that looks very realistic. It is prone to great instability.
 	if (weatherUseTake)
 	{
-		// int moox = sqrt(dx);
-		// int mooy = sqrt(dy);
 		int takeX = dx >> 1;    // strong mixing here allows the sim to make stunning clouds and air currents, but radiating shockwaves look better when the take component is smaller.
 		int takeY = dy >> 1;
 		takeX = x + takeX  ;                                                                           // the velocity itself is used to find the grid location to take from.
@@ -940,30 +947,18 @@ void airflow( unsigned int x, unsigned int y )
 
 	// interchange temperatue and pressure.
 	int dtp = (dp - dt);
-	dt += (dtp) >> 2;
-	dp -= (dtp) >> 2;
+	dt += (dtp) >> 3;
+	dp -= (dtp) >> 3;
 
 	// dy += dt >> 3;// bouyancy does not need sign applied because it is supposed to only go in one direction!
 
-	// leaving return to zero out on purpose will force you to deal with other physics inconsistencies.
-	// dt += ( (defaultTemperature * temperatureScale) - weatherGrid[weatherGridI].temperature  ) >> 8 ; // return to default temperature
-	// dp += ( defaultPressure - weatherGrid[weatherGridI].pressure ) >> 8;                              // return to normal pressure.
-	// dx -= ( weatherGrid[weatherGridI].velocityX  ) >> 7 ; 	                                         // clear some velocity.
-	// dy -= ( weatherGrid[weatherGridI].velocityY  ) >> 7 ;
+
+	// cancel just a little bit of velocity, because the sim is unstable if it's exactly 1.
 	for (int j = 0; j < weatherGrid[weatherGridI].airBlockedSquares; ++j)
 	{
 		weatherGrid[weatherGridI].velocityX *= 0.995;
 		weatherGrid[weatherGridI].velocityY *= 0.995;
 	}
-	// float amountPerSquare = 1.0/(weatherGridScale*weatherGridScale);
-	// for (int j = 0; j < weatherGrid[weatherGridI].airBlockedSquares; ++j)
-	// {
-
-	// 	dx += (dx - ax )/(weatherGridScale*weatherGridScale);
-	// 	dy += (dy - ay )/(weatherGridScale*weatherGridScale);
-
-	// }
-
 
 	// apply the changes you computed in this turn, and finish.
 	weatherGrid[weatherGridI].pressure    += (dp )   ;
@@ -3543,6 +3538,14 @@ void thread_materialPhysics(  )
 			}
 		}
 	}
+
+	// sometimes there are a few grid lines of materials up the top that don't get processed, use this to knock them loose.
+	for (int i = (totalSize-sizeX); i < totalSize; ++i)
+	{
+		materialPhysics( i, 50000, 2 );
+	}
+
+
 #ifdef THREAD_TIMING_READOUT
 	auto end = std::chrono::steady_clock::now();
 	auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
