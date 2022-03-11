@@ -392,6 +392,11 @@ struct Weather
 	unsigned int lightBlockedSquares;
 	unsigned int airBlockedSquares;
 
+	int dt;
+	int dp;
+	int dx;
+	int dy;
+
 	Weather();
 };
 
@@ -833,16 +838,45 @@ void airflowEdge( unsigned int x, unsigned int y )
 
 }
 
+
+
+void applyAirflowChanges(unsigned int weatherGridI)
+{
+
+
+
+// cancel just a little bit of velocity, because the sim is unstable if it's exactly 1. Cancel more if there is stuff in the way.
+	weatherGrid[weatherGridI].velocityX *= 0.9999;
+	weatherGrid[weatherGridI].velocityY *= 0.9999;
+
+	weatherGrid[weatherGridI].pressure    += (  defaultPressure                        - weatherGrid[weatherGridI].pressure   ) * 0.01;
+	weatherGrid[weatherGridI].temperature += ( (defaultTemperature * temperatureScale) - weatherGrid[weatherGridI].temperature) * 0.001;
+
+
+
+
+
+	weatherGrid[weatherGridI].pressure    += weatherGrid[weatherGridI]. dp   ;
+	weatherGrid[weatherGridI].velocityX   += weatherGrid[weatherGridI]. dx   ;
+	weatherGrid[weatherGridI].velocityY   += weatherGrid[weatherGridI]. dy   ;
+	weatherGrid[weatherGridI].temperature += weatherGrid[weatherGridI]. dt   ;
+
+
+	
+	weatherGrid[weatherGridI]. dp = 0;
+	weatherGrid[weatherGridI]. dx = 0;
+	weatherGrid[weatherGridI]. dy = 0;
+	weatherGrid[weatherGridI]. dt = 0;
+
+}
+
 void airflow( unsigned int x, unsigned int y )
 {
 	unsigned int weatherGridI = (y * weatherGridSizeX) + x;
 	unsigned int i = ((y * weatherGridScale) * sizeX) + (x * weatherGridScale);
 	if (i >= totalSize) { i = totalSize - 1;}
 
-	int dp = 0;
-	int dx = 0;
-	int dy = 0;
-	int dt = 0;
+
 
 	// couple the material grid temp to the weather grid temp
 	if (grid[i].phase != PHASE_VACUUM)
@@ -880,18 +914,18 @@ void airflow( unsigned int x, unsigned int y )
 		ap = ap / count ;
 		at = at / count ;
 
-		dp +=   (ap - weatherGrid[weatherGridI].pressure   ) >> 3;
-		dx +=   (ax - weatherGrid[weatherGridI].velocityX  ) >> 3;
-		dy +=   (ay - weatherGrid[weatherGridI].velocityY  ) >> 3;
-		dt +=   (at - weatherGrid[weatherGridI].temperature) >> 3;
+		weatherGrid[weatherGridI]. dp +=   (ap - weatherGrid[weatherGridI].pressure   ) >> 3;
+		weatherGrid[weatherGridI]. dx +=   (ax - weatherGrid[weatherGridI].velocityX  ) >> 3;
+		weatherGrid[weatherGridI]. dy +=   (ay - weatherGrid[weatherGridI].velocityY  ) >> 3;
+		weatherGrid[weatherGridI]. dt +=   (at - weatherGrid[weatherGridI].temperature) >> 3;
 
 
 
 
 		// pt interchange
-		int dtp = (dt - dp) >> gasLawConstant;
-		dp -= dtp ;
-		dt += dtp;
+		int dtp = (weatherGrid[weatherGridI].dt - weatherGrid[weatherGridI].dp) >> gasLawConstant;
+		weatherGrid[weatherGridI].dp -= dtp ;
+		weatherGrid[weatherGridI].dt += dtp;
 
 
 		// pv interchange
@@ -900,148 +934,175 @@ void airflow( unsigned int x, unsigned int y )
 		unsigned int neighbourC = (weatherGridI + 1               ) % weatherGridSize;
 		unsigned int neighbourD = (weatherGridI - 1               ) % weatherGridSize ;
 
-		unsigned int baseBlockageRatio = 1;
-		dp += ((1 * (weatherGrid[ neighbourA ].velocityY - weatherGrid[ weatherGridI ].velocityY )) >> (baseBlockageRatio))  ;
-		dy += ((1 * (weatherGrid[ neighbourA ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (baseBlockageRatio))  ;
+		unsigned int baseBlockageRatio = 3;
+		weatherGrid[weatherGridI].dp += ((1 * (weatherGrid[ neighbourA ].velocityY - weatherGrid[ weatherGridI ].velocityY )) >> (baseBlockageRatio))  ;
+		weatherGrid[weatherGridI].dy += ((1 * (weatherGrid[ neighbourA ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (baseBlockageRatio))  ;
 
-		dp += ((-1 * (weatherGrid[ neighbourB ].velocityY - weatherGrid[ weatherGridI ].velocityY )) >> (baseBlockageRatio))  ;
-		dy += ((-1 * (weatherGrid[ neighbourB ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (baseBlockageRatio))  ;
+		weatherGrid[weatherGridI].dp += ((-1 * (weatherGrid[ neighbourB ].velocityY - weatherGrid[ weatherGridI ].velocityY )) >> (baseBlockageRatio))  ;
+		weatherGrid[weatherGridI].dy += ((-1 * (weatherGrid[ neighbourB ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (baseBlockageRatio))  ;
 
-		dp += ((1 * (weatherGrid[ neighbourC ].velocityX - weatherGrid[ weatherGridI ].velocityX )) >> (baseBlockageRatio) )   ; // A difference in speed creates pressure.
-		dx += ((1 * (weatherGrid[ neighbourC ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (baseBlockageRatio) )   ; // A difference in pressure creates movement.
+		weatherGrid[weatherGridI].dp += ((1 * (weatherGrid[ neighbourC ].velocityX - weatherGrid[ weatherGridI ].velocityX )) >> (baseBlockageRatio) )   ; // A difference in speed creates pressure.
+		weatherGrid[weatherGridI].dx += ((1 * (weatherGrid[ neighbourC ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (baseBlockageRatio) )   ; // A difference in pressure creates movement.
 
-		dp += ((- 1 * (weatherGrid[ neighbourD ].velocityX - weatherGrid[ weatherGridI ].velocityX )) >> (baseBlockageRatio) )   ; // A difference in speed creates pressure.
-		dx += ((- 1 * (weatherGrid[ neighbourD ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (baseBlockageRatio) )   ; // A difference in pressure creates movement.
+		weatherGrid[weatherGridI].dp += ((- 1 * (weatherGrid[ neighbourD ].velocityX - weatherGrid[ weatherGridI ].velocityX )) >> (baseBlockageRatio) )   ; // A difference in speed creates pressure.
+		weatherGrid[weatherGridI].dx += ((- 1 * (weatherGrid[ neighbourD ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (baseBlockageRatio) )   ; // A difference in pressure creates movement.
 
 
 
 		// mix heat and velocity from far away. This is a key component of turbulent behavior in the sim, and produces a billowing effect that looks very realistic. It is prone to great instability.
 		if (weatherUseTake)
 		{
-			int takeX = dx >> 1;    // strong mixing here allows the sim to make stunning clouds and air currents, but radiating shockwaves look better when the take component is smaller.
-			int takeY = dy >> 1;
+			int takeX = weatherGrid[weatherGridI].dx >> 1;    // strong mixing here allows the sim to make stunning clouds and air currents, but radiating shockwaves look better when the take component is smaller.
+			int takeY = weatherGrid[weatherGridI].dy >> 1;
 			takeX = x + takeX  ;                                                                           // the velocity itself is used to find the grid location to take from.
 			takeY = y + takeY ;                                                          // velocity numbers range greatly and can be very high, use this number to scale them to an appropriate take distance.
 
 			if (takeY >= 0 && takeY < weatherGridSizeY)
 			{
 				int takeI = ((takeY * weatherGridSizeX) + takeX );
-				if (takeI >= 0 && takeI < weatherGridSize ) 
+				if (takeI >= 0 && takeI < weatherGridSize )
 				{
-					dt += (( weatherGrid[takeI].temperature - weatherGrid[weatherGridI].temperature) >> (1  ) );
-					dx += (( weatherGrid[takeI].velocityX   - weatherGrid[weatherGridI].velocityX)   >> (2  ) );                // mix in the velocity contribution from far-away.
-					dy += (( weatherGrid[takeI].velocityY   - weatherGrid[weatherGridI].velocityY)   >> (2  ) );                // adding more looks cool, but makes the fluid explode on touch like nitroglycerin!
+					weatherGrid[weatherGridI].dt += (( weatherGrid[takeI].temperature - weatherGrid[weatherGridI].temperature) >> (1  ) );
+					weatherGrid[weatherGridI].dx += (( weatherGrid[takeI].velocityX   - weatherGrid[weatherGridI].velocityX)   >> (2  ) );                // mix in the velocity contribution from far-away.
+					weatherGrid[weatherGridI].dy += (( weatherGrid[takeI].velocityY   - weatherGrid[weatherGridI].velocityY)   >> (2  ) );                // adding more looks cool, but makes the fluid explode on touch like nitroglycerin!
 				}
 			}
 		}
 	}
 
-	// cancel just a little bit of velocity, because the sim is unstable if it's exactly 1. Cancel more if there is stuff in the way.
-	weatherGrid[weatherGridI].velocityX *= 0.9999;
-	weatherGrid[weatherGridI].velocityY *= 0.9999;
-
-	weatherGrid[weatherGridI].pressure    += (  defaultPressure                        - weatherGrid[weatherGridI].pressure   ) * 0.01;
-	weatherGrid[weatherGridI].temperature += ( (defaultTemperature * temperatureScale) - weatherGrid[weatherGridI].temperature) * 0.001;
 
 
-
-	// apply the changes you computed in this turn, and finish.
-	weatherGrid[weatherGridI].pressure    += (dp )   ;
-	weatherGrid[weatherGridI].velocityX   += (dx )  ;
-	weatherGrid[weatherGridI].velocityY   += (dy )  ;
-	weatherGrid[weatherGridI].temperature += (dt )  ;
 }
 
 
 
-void doAirflowOnSquare( unsigned int x, unsigned int y )
-{
+// void doAirflowOnSquare( unsigned int x, unsigned int y )
+// {
 
-	if (y == 0 || (y >= weatherGridSizeY - 1)  )
-	{
-		airflowEdge(x, y);
-	}
-	else
-	{
-		airflow(x, y);
-	}
-}
+// 	if (y == 0 || (y >= weatherGridSizeY - 1)  )
+// 	{
+// 		airflowEdge(x, y);
+// 	}
+// 	else
+// 	{
+// 		airflow(x, y);
+// 	}
+// }
 
 void thread_weather_sector(unsigned int from, unsigned int to)
 {
 
-	// processing all the squares from 0 to n makes the simulation have a natural asymmetry, so that waves prefer to flow left to right.
-	// interleave the squares you are processing to prevent this.
-	// for (unsigned int y = from; y <= to ; ++y)
-	// {
+	
 
-	unsigned int y = from;
-
-	while (true)
+	for (unsigned int y = from; y < to; ++y)
 	{
 
-
-		if (y <= weatherGridSizeY - 1)
+		for (unsigned int x = 0; x < weatherGridSizeX; ++x)
 		{
-			unsigned int x = 0;
-			while (true)
+
+			if (y == 0 || (y >= weatherGridSizeY - 1)  )
 			{
-				if (x <= (weatherGridSizeX - 1))
-				{
-					doAirflowOnSquare( x, y );
-				}
-
-				if (x - 1 <= (weatherGridSizeX - 1))
-				{
-					doAirflowOnSquare(x - 1, y);
-				}
-
-				if (x > (weatherGridSizeX )) { break; }
-
-				x += 2;
-
+				airflowEdge(x, y);
 			}
-
+			else
+			{
+				airflow(x, y);
+			}
 		}
 
+	}
 
-		if ((y - 1) <= (weatherGridSizeY - 1))
+
+	// unsigned int y = from;
+
+	// while (true)
+	// {
+
+
+	// 	if (y <= weatherGridSizeY - 1)
+	// 	{
+	// 		unsigned int x = 0;
+	// 		while (true)
+	// 		{
+	// 			if (x <= (weatherGridSizeX - 1))
+	// 			{
+	// 				doAirflowOnSquare( x, y );
+	// 			}
+
+	// 			if (x - 1 <= (weatherGridSizeX - 1))
+	// 			{
+	// 				doAirflowOnSquare(x - 1, y);
+	// 			}
+
+	// 			if (x > (weatherGridSizeX )) { break; }
+
+	// 			x += 2;
+
+	// 		}
+
+	// 	}
+
+
+	// 	if ((y - 1) <= (weatherGridSizeY - 1))
+	// 	{
+	// 		unsigned int x = 0;
+	// 		while (true)
+	// 		{
+	// 			if (x <= (weatherGridSizeX - 1))
+	// 			{
+	// 				doAirflowOnSquare( x, y - 1 );
+	// 			}
+
+	// 			if (x - 1 <= (weatherGridSizeX - 1))
+	// 			{
+	// 				doAirflowOnSquare(x - 1, y - 1);
+	// 			}
+
+	// 			if (x > (weatherGridSizeX )) { break; }
+
+	// 			x += 2;
+
+	// 		}
+
+	// 	}
+
+
+
+
+
+	// 	if (y > weatherGridSizeY) {break;}
+
+
+	// 	y += 2;
+
+	// }
+
+
+
+	// }
+}
+
+
+void thread_weatherUpdate_sector(unsigned int from, unsigned int to)
+{
+
+	for (unsigned int y = from; y < to; ++y)
+	{
+
+		for (unsigned int x = 0; x < weatherGridSizeX; ++x)
 		{
-			unsigned int x = 0;
-			while (true)
-			{
-				if (x <= (weatherGridSizeX - 1))
-				{
-					doAirflowOnSquare( x, y - 1 );
-				}
 
-				if (x - 1 <= (weatherGridSizeX - 1))
-				{
-					doAirflowOnSquare(x - 1, y - 1);
-				}
 
-				if (x > (weatherGridSizeX )) { break; }
+			unsigned int weatherGridI = (y * weatherGridSizeX) + x;
 
-				x += 2;
-
-			}
+			applyAirflowChanges( weatherGridI);
 
 		}
-
-
-
-
-
-		if (y > weatherGridSizeY) {break;}
-
-
-		y += 2;
 
 	}
 
 
 
-	// }
 }
 
 void thread_weather()
@@ -1067,6 +1128,27 @@ void thread_weather()
 	t6.join();
 	t7.join();
 	t8.join();
+
+
+	boost::thread t11{  thread_weatherUpdate_sector, 0   , 1 * (weatherGridSizeY / 8)  } ;
+	boost::thread t21{  thread_weatherUpdate_sector, 1 * (weatherGridSizeY / 8)  , 2 * (weatherGridSizeY / 8)  } ;
+	boost::thread t31{  thread_weatherUpdate_sector, 2 * (weatherGridSizeY / 8)  , 3 * (weatherGridSizeY / 8)  } ;
+	boost::thread t41{  thread_weatherUpdate_sector, 3 * (weatherGridSizeY / 8)  , 4 * (weatherGridSizeY / 8)  } ;
+	boost::thread t51{  thread_weatherUpdate_sector, 4 * (weatherGridSizeY / 8)  , 5 * (weatherGridSizeY / 8)  } ;
+	boost::thread t61{  thread_weatherUpdate_sector, 5 * (weatherGridSizeY / 8)  , 6 * (weatherGridSizeY / 8)  } ;
+	boost::thread t71{  thread_weatherUpdate_sector, 6 * (weatherGridSizeY / 8)  , 7 * (weatherGridSizeY / 8)  } ;
+	boost::thread t81{  thread_weatherUpdate_sector, 7 * (weatherGridSizeY / 8)  , (weatherGridSizeY ) } ;
+
+	t11.join();
+	t21.join();
+	t31.join();
+	t41.join();
+	t51.join();
+	t61.join();
+	t71.join();
+	t81.join();
+
+
 
 #ifdef THREAD_TIMING_READOUT
 	auto end = std::chrono::steady_clock::now();
@@ -4114,7 +4196,7 @@ void thread_graphics()
 
 			unsigned int weatherGridI = ((y / weatherGridScale) * weatherGridSizeX + (x / weatherGridScale));
 
-			int itemp = ((weatherGrid[weatherGridI].temperature/temperatureScale) + grid[i].temperature)/2;
+			int itemp = ((weatherGrid[weatherGridI].temperature / temperatureScale) + grid[i].temperature) / 2;
 			float ftemp = itemp;
 			ftemp -= 273;
 			ftemp = ftemp / (100.0f);
