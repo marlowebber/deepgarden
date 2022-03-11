@@ -34,12 +34,7 @@ extern  const unsigned int totalSize;
 #define maxAnimalSegments 26
 #define maxTimesReproduced 5
 
-#define numberOfFairTurnsPerSegment 8
-
 #define temperatureScale 5
-#define pressureVelocityScale 2
-#define materialWindPushScale 0
-
 #define weatherGridScale 2
 
 

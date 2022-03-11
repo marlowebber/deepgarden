@@ -182,16 +182,13 @@ Color animalCursorColor = Color(0.5f, 0.5f, 0.5f, 1.0f);
 
 int defaultTemperature = 300;
 int defaultPressure = 1000;
-int defaultVelocity = 0;
-const int radiantHeatIntensity = 50; // this is a physical constant that determines how much heat radiates from material, and how strongly material heat is coupled to the atmosphere.
-const float combinedGasLawConstant = 0.001f;
+
 unsigned int sunlightBrightness = 50;            // the amount of actual light coming from the emitter. how far it penetrates material.
 unsigned int sunlightTemp = 1000;                // this is not the temperature applied to lit objects, but, the actual color temperature of the emitter.
 Color sunlightColor = color_white_quarterClear;  // this is also the color of the emitter but in an easier to use form.
 unsigned int sunlightDirection = 2;
 float fsundirection = 0.0f;
 float timeOfDay = 0.5f;
-unsigned int nGerminatedSeeds = 0;
 
 // raw energy values are DIVIDED by these numbers to get the result. So more means less.
 const unsigned int lightEfficiency   = 1000;
@@ -225,7 +222,6 @@ unsigned int animationGlobalFrame = FRAME_BODY;
 unsigned int ppPhaseOffset = 0;
 unsigned int photoPhaseOffset = 0;
 const unsigned int ppSkipSize = 10;
-// const unsigned int photoSkipSize = 5;
 
 struct Material
 {
@@ -777,8 +773,8 @@ void airflowEdge( unsigned int x, unsigned int y )
 
 
 	// weatherGrid[weatherGridI].pressure    = defaultPressure ;//+= (defaultPressure - weatherGrid[weatherGridI].pressure)    * 0.5;
-	weatherGrid[weatherGridI].velocityX    -= ( weatherGrid[weatherGridI].velocityX)   * 0.5;
-	weatherGrid[weatherGridI].velocityY    -= ( weatherGrid[weatherGridI].velocityY)   * 0.5;
+	// weatherGrid[weatherGridI].velocityX    -= ( weatherGrid[weatherGridI].velocityX)   * 0.5;
+	// weatherGrid[weatherGridI].velocityY   *= -1 ;//-= ( weatherGrid[weatherGridI].velocityY)   * 0.5;
 	// weatherGrid[weatherGridI].temperature  += (defaultTemperature - weatherGrid[weatherGridI].temperature) * 0.5;
 
 
@@ -887,39 +883,45 @@ void airflow( unsigned int x, unsigned int y )
 	dt +=   (at - weatherGrid[weatherGridI].temperature) >> avgBlock;
 
 	// interchange temperature and pressure, part 1
-	dp += dt >> 2;
+	dp += dt >> 1;
+
+
 
 	// pv interchange
-	unsigned int neighbourA = (weatherGridI + weatherGridSizeX) % weatherGridSize;
-	unsigned int neighbourB = (weatherGridI - weatherGridSizeX) % weatherGridSize ;
-	unsigned int neighbourC = (weatherGridI + 1               ) % weatherGridSize;
-	unsigned int neighbourD = (weatherGridI - 1               ) % weatherGridSize ;
+	if (weatherGrid[weatherGridI].airBlockedSquares < (weatherGridScale*weatherGridScale))
+	{
+		unsigned int neighbourA = (weatherGridI + weatherGridSizeX) % weatherGridSize;
+		unsigned int neighbourB = (weatherGridI - weatherGridSizeX) % weatherGridSize ;
+		unsigned int neighbourC = (weatherGridI + 1               ) % weatherGridSize;
+		unsigned int neighbourD = (weatherGridI - 1               ) % weatherGridSize ;
 
-	// unsigned int mostBlockedSquare = weatherGrid[neighbourA].airBlockedSquares;
-	// if (weatherGrid[neighbourA].airBlockedSquares > mostBlockedSquare) {mostBlockedSquare = weatherGrid[neighbourA].airBlockedSquares;}
-	unsigned int baseBlockageRatio = 1;
-	unsigned int airBlockMultiplier = 2;
-	unsigned int blockageRatioA = (weatherGrid[neighbourA].airBlockedSquares >> airBlockMultiplier) + baseBlockageRatio; // 1 is clearly the most superior option
-	dp += ((1 * (weatherGrid[ neighbourA ].velocityY - weatherGrid[ weatherGridI ].velocityY )) >> (blockageRatioA))  ;
-	dy += ((1 * (weatherGrid[ neighbourA ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (blockageRatioA))  ;
+		// unsigned int mostBlockedSquare = weatherGrid[neighbourA].airBlockedSquares;
+		// if (weatherGrid[neighbourA].airBlockedSquares > mostBlockedSquare) {mostBlockedSquare = weatherGrid[neighbourA].airBlockedSquares;}
+		unsigned int baseBlockageRatio = 1;
+		// unsigned int airBlockMultiplier = 0;//weatherGrid[weatherGridI].airBlockedSquares ;
+		// unsigned int blockageRatioA = (weatherGrid[neighbourA].airBlockedSquares >> airBlockMultiplier) + baseBlockageRatio; // 1 is clearly the most superior option
+		dp += ((1 * (weatherGrid[ neighbourA ].velocityY - weatherGrid[ weatherGridI ].velocityY )) >> (baseBlockageRatio))  ;
+		dy += ((1 * (weatherGrid[ neighbourA ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (baseBlockageRatio))  ;
 
-	// mostBlockedSquare = weatherGrid[neighbourB].airBlockedSquares;
-	// if (weatherGrid[neighbourB].airBlockedSquares > mostBlockedSquare) {mostBlockedSquare = weatherGrid[neighbourB].airBlockedSquares;}
-	unsigned int blockageRatioB = (weatherGrid[neighbourB].airBlockedSquares >> airBlockMultiplier) + baseBlockageRatio;
-	dp += ((-1 * (weatherGrid[ neighbourB ].velocityY - weatherGrid[ weatherGridI ].velocityY )) >> (blockageRatioB))  ;
-	dy += ((-1 * (weatherGrid[ neighbourB ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (blockageRatioB))  ;
+		// mostBlockedSquare = weatherGrid[neighbourB].airBlockedSquares;
+		// if (weatherGrid[neighbourB].airBlockedSquares > mostBlockedSquare) {mostBlockedSquare = weatherGrid[neighbourB].airBlockedSquares;}
+		// unsigned int blockageRatioB = (weatherGrid[weatherGridI].airBlockedSquares >> airBlockMultiplier) + baseBlockageRatio;
+		dp += ((-1 * (weatherGrid[ neighbourB ].velocityY - weatherGrid[ weatherGridI ].velocityY )) >> (baseBlockageRatio))  ;
+		dy += ((-1 * (weatherGrid[ neighbourB ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (baseBlockageRatio))  ;
 
-	// mostBlockedSquare = weatherGrid[neighbourC].airBlockedSquares;
-	// if (weatherGrid[neighbourC].airBlockedSquares > mostBlockedSquare) {mostBlockedSquare = weatherGrid[neighbourC].airBlockedSquares;}
-	unsigned int blockageRatioC = (weatherGrid[neighbourC].airBlockedSquares >> airBlockMultiplier) + baseBlockageRatio;
-	dp += ((1 * (weatherGrid[ neighbourC ].velocityX - weatherGrid[ weatherGridI ].velocityX )) >> (blockageRatioC) )   ; // A difference in speed creates pressure.
-	dx += ((1 * (weatherGrid[ neighbourC ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (blockageRatioC) )   ; // A difference in pressure creates movement.
+		// mostBlockedSquare = weatherGrid[neighbourC].airBlockedSquares;
+		// if (weatherGrid[neighbourC].airBlockedSquares > mostBlockedSquare) {mostBlockedSquare = weatherGrid[neighbourC].airBlockedSquares;}
+		// unsigned int blockageRatioC = (weatherGrid[weatherGridI].airBlockedSquares >> airBlockMultiplier) + baseBlockageRatio;
+		dp += ((1 * (weatherGrid[ neighbourC ].velocityX - weatherGrid[ weatherGridI ].velocityX )) >> (baseBlockageRatio) )   ; // A difference in speed creates pressure.
+		dx += ((1 * (weatherGrid[ neighbourC ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (baseBlockageRatio) )   ; // A difference in pressure creates movement.
 
-	// mostBlockedSquare = weatherGrid[neighbourD].airBlockedSquares;
-	// if (weatherGrid[neighbourD].airBlockedSquares > mostBlockedSquare) {mostBlockedSquare = weatherGrid[neighbourD].airBlockedSquares;}
-	unsigned int blockageRatioD = (weatherGrid[neighbourD].airBlockedSquares >> airBlockMultiplier) + baseBlockageRatio;
-	dp += ((- 1 * (weatherGrid[ neighbourD ].velocityX - weatherGrid[ weatherGridI ].velocityX )) >> (blockageRatioD) )   ; // A difference in speed creates pressure.
-	dx += ((- 1 * (weatherGrid[ neighbourD ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (blockageRatioD) )   ; // A difference in pressure creates movement.
+		// mostBlockedSquare = weatherGrid[neighbourD].airBlockedSquares;
+		// if (weatherGrid[neighbourD].airBlockedSquares > mostBlockedSquare) {mostBlockedSquare = weatherGrid[neighbourD].airBlockedSquares;}
+		// unsigned int blockageRatioD = (weatherGrid[weatherGridI].airBlockedSquares >> airBlockMultiplier) + baseBlockageRatio;
+		dp += ((- 1 * (weatherGrid[ neighbourD ].velocityX - weatherGrid[ weatherGridI ].velocityX )) >> (baseBlockageRatio) )   ; // A difference in speed creates pressure.
+		dx += ((- 1 * (weatherGrid[ neighbourD ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (baseBlockageRatio) )   ; // A difference in pressure creates movement.
+
+	}
 
 	// mix heat and velocity from far away. This is a key component of turbulent behavior in the sim, and produces a billowing effect that looks very realistic. It is prone to great instability.
 	if (weatherUseTake)
@@ -928,19 +930,24 @@ void airflow( unsigned int x, unsigned int y )
 		int takeY = dy >> 1;
 		takeX = x + takeX  ;                                                                           // the velocity itself is used to find the grid location to take from.
 		takeY = y + takeY ;                                                          // velocity numbers range greatly and can be very high, use this number to scale them to an appropriate take distance.
-		if (takeX < 0) {takeX = 0;}                                                      // to prevent wrapping around the edges of the simulation.
-		else if (takeX > weatherGridSizeX - 1) {takeX = weatherGridSizeX - 1;}
-		if (takeY < 0) {takeY = 0;}
-		else if (takeY > weatherGridSizeX - 1) {takeY = weatherGridSizeX - 1;}
-		int takeI = ((takeY * weatherGridSizeX) + takeX );
-		if (takeI < 0) {takeI = 0;}
-		else if (takeI >= weatherGridSize) {takeI = weatherGridSize - 1;}
 
-		unsigned int blockageRatio = (weatherGrid[weatherGridI].airBlockedSquares );
-		if (weatherGrid[takeI].airBlockedSquares > blockageRatio) { blockageRatio = weatherGrid[takeI].airBlockedSquares;}
-		dt += (( weatherGrid[takeI].temperature - weatherGrid[weatherGridI].temperature) >> (1 + blockageRatio ) );
-		dx += (( weatherGrid[takeI].velocityX   - weatherGrid[weatherGridI].velocityX)   >> (2 + blockageRatio ) );                // mix in the velocity contribution from far-away.
-		dy += (( weatherGrid[takeI].velocityY   - weatherGrid[weatherGridI].velocityY)   >> (2 + blockageRatio ) );                // adding more looks cool, but makes the fluid explode on touch like nitroglycerin!
+		// if (takeX < 0) {takeX = 0;}
+		// else if (takeX > weatherGridSizeX - 1) {takeX = weatherGridSizeX - 1;}
+
+		if (takeY >= 0 && takeY < weatherGridSizeY)
+		{
+			int takeI = ((takeY * weatherGridSizeX) + takeX );
+			if (takeI >= 0 && takeI < weatherGridSize ) {
+
+
+
+				unsigned int blockageRatio = (weatherGrid[weatherGridI].airBlockedSquares );
+				if (weatherGrid[takeI].airBlockedSquares > blockageRatio) { blockageRatio = weatherGrid[takeI].airBlockedSquares;}
+				dt += (( weatherGrid[takeI].temperature - weatherGrid[weatherGridI].temperature) >> (1 + blockageRatio ) );
+				dx += (( weatherGrid[takeI].velocityX   - weatherGrid[weatherGridI].velocityX)   >> (2 + blockageRatio ) );                // mix in the velocity contribution from far-away.
+				dy += (( weatherGrid[takeI].velocityY   - weatherGrid[weatherGridI].velocityY)   >> (2 + blockageRatio ) );                // adding more looks cool, but makes the fluid explode on touch like nitroglycerin!
+			}
+		}
 	}
 
 
@@ -955,11 +962,12 @@ void airflow( unsigned int x, unsigned int y )
 	}
 
 
-	// weatherGrid[weatherGridI].pressure += (defaultPressure - weatherGrid[weatherGridI].pressure) * 0.01;
+	weatherGrid[weatherGridI].pressure    += (  defaultPressure                      - weatherGrid[weatherGridI].pressure   ) * 0.01;
+	weatherGrid[weatherGridI].temperature += ( (defaultTemperature*temperatureScale) - weatherGrid[weatherGridI].temperature) * 0.001;
 
 
 	// interchange temperature and pressure, part 2
-	dt += dp >> 2;
+	dt += dp >> 1;
 
 
 	// apply the changes you computed in this turn, and finish.
@@ -2341,15 +2349,46 @@ void floatPhoton( unsigned int weatherGridI ,  Color lightColor,  float lightBri
 			{
 				return;
 			}
-			else { energy = energy / lightBrightness; }
+			else
+			{
+				energy = energy / lightBrightness;
+
+				lightGrid[weatherGridI].r += (lightColor.r   - lightGrid[weatherGridI].r )  *  0.5f;
+				lightGrid[weatherGridI].g += (lightColor.g   - lightGrid[weatherGridI].g )  *  0.5f;
+				lightGrid[weatherGridI].b += (lightColor.b   - lightGrid[weatherGridI].b )  *  0.5f;
+				lightGrid[weatherGridI].a += (energy         - lightGrid[weatherGridI].a )  *  0.5f;
+
+
+
+
+
+				unsigned int amountToBlock = weatherGrid[weatherGridI].saturation;
+				if (amountToBlock < (lightBrightness - blocked))
+				{
+					amountToBlock = (lightBrightness - blocked);
+				}
+
+				weatherGrid[weatherGridI].temperature += amountToBlock * 10;
+
+				blocked += amountToBlock;
+
+				amountToBlock = weatherGrid[weatherGridI].lightBlockedSquares;
+				if (amountToBlock < (lightBrightness - blocked))
+				{
+					amountToBlock = (lightBrightness - blocked);
+				}
+
+				weatherGrid[weatherGridI].temperature += amountToBlock * 10;
+
+				blocked += amountToBlock;
+
+			}
 		}
 
-		lightGrid[weatherGridI].r += (lightColor.r   - lightGrid[weatherGridI].r )  *  0.5f;
-		lightGrid[weatherGridI].g += (lightColor.g   - lightGrid[weatherGridI].g )  *  0.5f;
-		lightGrid[weatherGridI].b += (lightColor.b   - lightGrid[weatherGridI].b )  *  0.5f;
-		lightGrid[weatherGridI].a += (energy         - lightGrid[weatherGridI].a )  *  0.5f;
 
-		blocked += weatherGrid[weatherGridI].lightBlockedSquares;
+
+		// if (weatherGrid[weatherGridI].saturation >  )
+
 	}
 }
 
@@ -3647,16 +3686,16 @@ void materialHeatGlow(unsigned int i, unsigned int weatherGridI)
 			}
 		}
 	}
-	else
-	{
-		int adjustedWeatherTemp = (weatherGrid[weatherGridI].temperature / temperatureScale);
-		if (adjustedWeatherTemp > 600)
-		{
-			unsigned int radiantLightIntensity = ((adjustedWeatherTemp  - 600) >> 4);
-			float fdirection = (RNG() - 0.5f) * 2 * 3.14f;
-			floatPhoton(weatherGridI, blackbodyLookup(adjustedWeatherTemp) , radiantLightIntensity, fdirection);
-		}
-	}
+	// else
+	// {
+	// 	int adjustedWeatherTemp = (weatherGrid[weatherGridI].temperature / temperatureScale);
+	// 	if (adjustedWeatherTemp > 600)
+	// 	{
+	// 		unsigned int radiantLightIntensity = ((adjustedWeatherTemp  - 600) >> 4);
+	// 		float fdirection = (RNG() - 0.5f) * 2 * 3.14f;
+	// 		floatPhoton(weatherGridI, blackbodyLookup(adjustedWeatherTemp) , radiantLightIntensity, fdirection);
+	// 	}
+	// }
 
 
 
@@ -5022,7 +5061,6 @@ void thread_plantDrawing()
 		{
 			drawPlantFromSeed(seedGrid[i].genes, i);
 			clearSeedParticle(i);
-			nGerminatedSeeds ++;
 			continue;
 		}
 	}
