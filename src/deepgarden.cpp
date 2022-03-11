@@ -420,7 +420,7 @@ unsigned int calculateVelocityDirection( int velocityX,  int velocityY)
 {
 	// the game simplifies angle in some cases to a number in the range 0 to 7, which points to one of the 8 neighbours.
 	// this algorithm uses integer comparisons to steer the direction around from a starting angle.
-	int angle = 0;
+	unsigned int angle = 0;
 	int absX = abs( velocityX  );
 	int absY = abs( velocityY  );
 
@@ -450,6 +450,8 @@ unsigned int calculateVelocityDirection( int velocityX,  int velocityY)
 				}
 			}
 		}
+
+		angle -= 2;
 		angle += (extremelyFastNumberFromZeroTo(2) - 1);
 		if (angle >= N_NEIGHBOURS ) { angle = angle % N_NEIGHBOURS; }
 
@@ -479,6 +481,7 @@ unsigned int calculateVelocityDirection( int velocityX,  int velocityY)
 				}
 			}
 		}
+		angle -= 2;
 		angle += (extremelyFastNumberFromZeroTo(2) - 1);
 		if (angle >= N_NEIGHBOURS ) { angle = angle % N_NEIGHBOURS; }
 	}
@@ -876,7 +879,7 @@ void airflow( unsigned int x, unsigned int y )
 	ap = ap / count ;
 	at = at / count ;
 
-	unsigned int avgBlock = weatherGrid[weatherGridI].airBlockedSquares +2 ;
+	unsigned int avgBlock = weatherGrid[weatherGridI].airBlockedSquares + 3 ;
 	// if (avgBlock < 0) {avgBlock = 0;}
 	dp +=   (ap - weatherGrid[weatherGridI].pressure   ) >> avgBlock;
 	dx +=   (ax - weatherGrid[weatherGridI].velocityX  ) >> avgBlock;
@@ -894,25 +897,27 @@ void airflow( unsigned int x, unsigned int y )
 
 	// unsigned int mostBlockedSquare = weatherGrid[neighbourA].airBlockedSquares;
 	// if (weatherGrid[neighbourA].airBlockedSquares > mostBlockedSquare) {mostBlockedSquare = weatherGrid[neighbourA].airBlockedSquares;}
-	unsigned int blockageRatioA = (weatherGrid[neighbourA].airBlockedSquares >> 1) + 1; // 1 is clearly the most superior option
+	unsigned int baseBlockageRatio = 1;
+	unsigned int airBlockMultiplier = 2;
+	unsigned int blockageRatioA = (weatherGrid[neighbourA].airBlockedSquares >> airBlockMultiplier) + baseBlockageRatio; // 1 is clearly the most superior option
 	dp += ((1 * (weatherGrid[ neighbourA ].velocityY - weatherGrid[ weatherGridI ].velocityY )) >> (blockageRatioA))  ;
 	dy += ((1 * (weatherGrid[ neighbourA ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (blockageRatioA))  ;
 
 	// mostBlockedSquare = weatherGrid[neighbourB].airBlockedSquares;
 	// if (weatherGrid[neighbourB].airBlockedSquares > mostBlockedSquare) {mostBlockedSquare = weatherGrid[neighbourB].airBlockedSquares;}
-	unsigned int blockageRatioB = (weatherGrid[neighbourB].airBlockedSquares >> 1) + 1;
+	unsigned int blockageRatioB = (weatherGrid[neighbourB].airBlockedSquares >> airBlockMultiplier) + baseBlockageRatio;
 	dp += ((-1 * (weatherGrid[ neighbourB ].velocityY - weatherGrid[ weatherGridI ].velocityY )) >> (blockageRatioB))  ;
 	dy += ((-1 * (weatherGrid[ neighbourB ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (blockageRatioB))  ;
 
 	// mostBlockedSquare = weatherGrid[neighbourC].airBlockedSquares;
 	// if (weatherGrid[neighbourC].airBlockedSquares > mostBlockedSquare) {mostBlockedSquare = weatherGrid[neighbourC].airBlockedSquares;}
-	unsigned int blockageRatioC = (weatherGrid[neighbourC].airBlockedSquares >> 1) + 1;
+	unsigned int blockageRatioC = (weatherGrid[neighbourC].airBlockedSquares >> airBlockMultiplier) + baseBlockageRatio;
 	dp += ((1 * (weatherGrid[ neighbourC ].velocityX - weatherGrid[ weatherGridI ].velocityX )) >> (blockageRatioC) )   ; // A difference in speed creates pressure.
 	dx += ((1 * (weatherGrid[ neighbourC ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (blockageRatioC) )   ; // A difference in pressure creates movement.
 
 	// mostBlockedSquare = weatherGrid[neighbourD].airBlockedSquares;
 	// if (weatherGrid[neighbourD].airBlockedSquares > mostBlockedSquare) {mostBlockedSquare = weatherGrid[neighbourD].airBlockedSquares;}
-	unsigned int blockageRatioD = (weatherGrid[neighbourD].airBlockedSquares >> 1) + 1;
+	unsigned int blockageRatioD = (weatherGrid[neighbourD].airBlockedSquares >> airBlockMultiplier) + baseBlockageRatio;
 	dp += ((- 1 * (weatherGrid[ neighbourD ].velocityX - weatherGrid[ weatherGridI ].velocityX )) >> (blockageRatioD) )   ; // A difference in speed creates pressure.
 	dx += ((- 1 * (weatherGrid[ neighbourD ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (blockageRatioD) )   ; // A difference in pressure creates movement.
 
@@ -950,7 +955,7 @@ void airflow( unsigned int x, unsigned int y )
 	}
 
 
-	weatherGrid[weatherGridI].pressure += (defaultPressure - weatherGrid[weatherGridI].pressure) * 0.005;
+	// weatherGrid[weatherGridI].pressure += (defaultPressure - weatherGrid[weatherGridI].pressure) * 0.01;
 
 
 	// interchange temperature and pressure, part 2
@@ -984,27 +989,76 @@ void thread_weather_sector(unsigned int from, unsigned int to)
 
 	// processing all the squares from 0 to n makes the simulation have a natural asymmetry, so that waves prefer to flow left to right.
 	// interleave the squares you are processing to prevent this.
-	for (unsigned int y = from; y <= to ; ++y)
+	// for (unsigned int y = from; y <= to ; ++y)
+	// {
+
+	unsigned int y = from;
+
+	while (true)
 	{
-		unsigned int x = 0;
-		while (true)
+
+
+		if (y <= weatherGridSizeY - 1)
 		{
-			if (x <= (weatherGridSizeX - 1))
+			unsigned int x = 0;
+			while (true)
 			{
-				doAirflowOnSquare( x, y );
+				if (x <= (weatherGridSizeX - 1))
+				{
+					doAirflowOnSquare( x, y );
+				}
+
+				if (x - 1 <= (weatherGridSizeX - 1))
+				{
+					doAirflowOnSquare(x - 1, y);
+				}
+
+				if (x > (weatherGridSizeX )) { break; }
+
+				x += 2;
+
 			}
-
-			if (x - 1 <= (weatherGridSizeX - 1))
-			{
-				doAirflowOnSquare(x - 1, y);
-			}
-
-			if (x > (weatherGridSizeX )) { break; }
-
-			x += 2;
 
 		}
+
+
+		if ((y - 1) <= (weatherGridSizeY - 1))
+		{
+			unsigned int x = 0;
+			while (true)
+			{
+				if (x <= (weatherGridSizeX - 1))
+				{
+					doAirflowOnSquare( x, y - 1 );
+				}
+
+				if (x - 1 <= (weatherGridSizeX - 1))
+				{
+					doAirflowOnSquare(x - 1, y - 1);
+				}
+
+				if (x > (weatherGridSizeX )) { break; }
+
+				x += 2;
+
+			}
+
+		}
+
+
+
+
+
+		if (y > weatherGridSizeY) {break;}
+
+
+		y += 2;
+
 	}
+
+
+
+	// }
 }
 
 void thread_weather()
