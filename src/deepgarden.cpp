@@ -19,7 +19,7 @@ const bool doWeather = true;
 const bool carnageMode = false;
 const bool normalMaterials = true;
 const bool advanceDay = false;
-const bool weatherUseTake = false;
+const bool weatherUseTake = true;
 
 // preset colors available for painting.
 const Color color_lightblue          = Color( 0.1f, 0.3f, 0.65f, 1.0f );
@@ -840,9 +840,12 @@ void airflow( unsigned int x, unsigned int y )
 	int dy = 0;
 	int dt = 0;
 
+
+
 	// make sure these are never less than 0! the only reason they are signed integers is so you have a chance to check, instead of suffering an immediate failure.
 	if (weatherGrid[weatherGridI].temperature  < 0) {weatherGrid[weatherGridI].temperature = 0;}
 	if (weatherGrid[weatherGridI].pressure  < 0)    {weatherGrid[weatherGridI].pressure = 0;}
+
 
 	// couple the material grid temp to the weather grid temp
 	if (grid[i].phase != PHASE_VACUUM)
@@ -873,82 +876,73 @@ void airflow( unsigned int x, unsigned int y )
 	ap = ap / count ;
 	at = at / count ;
 
-	unsigned int avgBlock = 8 + (weatherGrid[weatherGridI].airBlockedSquares) ;
+	int avgBlock = 8 - (weatherGrid[weatherGridI].airBlockedSquares) ;
+	if (avgBlock < 0) {avgBlock = 0;}
 	dp +=   (ap - weatherGrid[weatherGridI].pressure   ) >> avgBlock;
 	dx +=   (ax - weatherGrid[weatherGridI].velocityX  ) >> avgBlock;
 	dy +=   (ay - weatherGrid[weatherGridI].velocityY  ) >> avgBlock;
 	dt +=   (at - weatherGrid[weatherGridI].temperature) >> avgBlock;
 
 
+	dp += dt >> 1;
+	
 	// pv interchange
-	unsigned int neighbour;
+	// unsigned int neighbour;
 
-	// if (y != weatherGridSizeY - 1)
-	// {
-		neighbour = weatherGridI + weatherGridSizeX ;
-		if (neighbour < weatherGridSize)
-		{
-			unsigned int blockageRatio = ((weatherGrid[weatherGridI].airBlockedSquares + weatherGrid[neighbour].airBlockedSquares) >> 1) + 1;
-			dp += ((1 * (weatherGrid[ neighbour ].velocityY - weatherGrid[ weatherGridI ].velocityY )) >> (blockageRatio))  ;
-			dy += ((1 * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (blockageRatio))  ;
-		}
-	// }
+	unsigned int neighbourA = weatherGridI + weatherGridSizeX ;
+	unsigned int neighbourB = weatherGridI - weatherGridSizeX ;
+	unsigned int neighbourD = weatherGridI - 1 ;
+	unsigned int neighbourC = weatherGridI + 1 ;
 
-	// if ( y != 0)
-	// {
-		neighbour = weatherGridI - weatherGridSizeX ;
-		if (neighbour < weatherGridSize)
-		{
-			unsigned int blockageRatio = ((weatherGrid[weatherGridI].airBlockedSquares + weatherGrid[neighbour].airBlockedSquares) >> 1) + 1;
-			dp += ((-1 * (weatherGrid[ neighbour ].velocityY - weatherGrid[ weatherGridI ].velocityY )) >> (blockageRatio))  ;
-			dy += ((-1 * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (blockageRatio))  ;
-		}
-	// }
+	if (neighbourA < weatherGridSize &&
+	        neighbourB < weatherGridSize &&
+	        neighbourC < weatherGridSize &&
+	        neighbourD < weatherGridSize
 
-
-	neighbour = weatherGridI + 1 ;
-	if (neighbour < weatherGridSize)
+	   )
 	{
-		unsigned int blockageRatio = ((weatherGrid[weatherGridI].airBlockedSquares + weatherGrid[neighbour].airBlockedSquares) >> 1) + 1;
-		dp += ((1 * (weatherGrid[ neighbour ].velocityX - weatherGrid[ weatherGridI ].velocityX )) >> (blockageRatio) )   ; // A difference in speed creates pressure.
-		dx += ((1 * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (blockageRatio) )   ; // A difference in pressure creates movement.
-	}
+		unsigned int blockageRatioA =1;// ((weatherGrid[weatherGridI].airBlockedSquares + weatherGrid[neighbourA].airBlockedSquares) >> 1) + 1;
+		dp += ((1 * (weatherGrid[ neighbourA ].velocityY - weatherGrid[ weatherGridI ].velocityY )) >> (blockageRatioA))  ;
+		dy += ((1 * (weatherGrid[ neighbourA ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (blockageRatioA))  ;
 
-	neighbour = weatherGridI - 1 ;
-	if (neighbour < weatherGridSize)
-	{
-		unsigned int blockageRatio = ((weatherGrid[weatherGridI].airBlockedSquares + weatherGrid[neighbour].airBlockedSquares) >> 1) + 1;
-		dp += ((-1 * (weatherGrid[ neighbour ].velocityX - weatherGrid[ weatherGridI ].velocityX )) >> (blockageRatio) )   ; // A difference in speed creates pressure.
-		dx += ((-1 * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (blockageRatio) )   ; // A difference in pressure creates movement.
+		unsigned int blockageRatioB = 1;//((weatherGrid[weatherGridI].airBlockedSquares + weatherGrid[neighbourB].airBlockedSquares) >> 1) + 1;
+		dp += ((-1 * (weatherGrid[ neighbourB ].velocityY - weatherGrid[ weatherGridI ].velocityY )) >> (blockageRatioB))  ;
+		dy += ((-1 * (weatherGrid[ neighbourB ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (blockageRatioB))  ;
+
+		unsigned int blockageRatioC = 1;//((weatherGrid[weatherGridI].airBlockedSquares + weatherGrid[neighbourC].airBlockedSquares) >> 1) + 1;
+		dp += ((1 * (weatherGrid[ neighbourC ].velocityX - weatherGrid[ weatherGridI ].velocityX )) >> (blockageRatioC) )   ; // A difference in speed creates pressure.
+		dx += ((1 * (weatherGrid[ neighbourC ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (blockageRatioC) )   ; // A difference in pressure creates movement.
+
+		unsigned int blockageRatioD = 1;//((weatherGrid[weatherGridI].airBlockedSquares + weatherGrid[neighbourD].airBlockedSquares) >> 1) + 1;
+		dp += ((-1 * (weatherGrid[ neighbourD ].velocityX - weatherGrid[ weatherGridI ].velocityX )) >> (blockageRatioD) )   ; // A difference in speed creates pressure.
+		dx += ((-1 * (weatherGrid[ neighbourD ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (blockageRatioD) )   ; // A difference in pressure creates movement.
 	}
 
 
 	// mix heat and velocity from far away. This is a key component of turbulent behavior in the sim, and produces a billowing effect that looks very realistic. It is prone to great instability.
-	if (weatherUseTake)
-	{
-		int takeX = dx >> 1;    // strong mixing here allows the sim to make stunning clouds and air currents, but radiating shockwaves look better when the take component is smaller.
-		int takeY = dy >> 1;
-		takeX = x + takeX  ;                                                                           // the velocity itself is used to find the grid location to take from.
-		takeY = y + takeY ;                                                          // velocity numbers range greatly and can be very high, use this number to scale them to an appropriate take distance.
-		if (takeX < 0) {takeX = 0;}                                                      // to prevent wrapping around the edges of the simulation.
-		else if (takeX > weatherGridSizeX - 1) {takeX = weatherGridSizeX - 1;}
-		if (takeY < 0) {takeY = 0;}
-		else if (takeY > weatherGridSizeX - 1) {takeY = weatherGridSizeX - 1;}
-		int takeI = ((takeY * weatherGridSizeX) + takeX );
-		if (takeI < 0) {takeI = 0;}
-		else if (takeI >= weatherGridSize) {takeI = weatherGridSize - 1;}
+	// if (weatherUseTake)
+	// {
+	// 	int takeX = dx >> 1;    // strong mixing here allows the sim to make stunning clouds and air currents, but radiating shockwaves look better when the take component is smaller.
+	// 	int takeY = dy >> 1;
+	// 	takeX = x + takeX  ;                                                                           // the velocity itself is used to find the grid location to take from.
+	// 	takeY = y + takeY ;                                                          // velocity numbers range greatly and can be very high, use this number to scale them to an appropriate take distance.
+	// 	if (takeX < 0) {takeX = 0;}                                                      // to prevent wrapping around the edges of the simulation.
+	// 	else if (takeX > weatherGridSizeX - 1) {takeX = weatherGridSizeX - 1;}
+	// 	if (takeY < 0) {takeY = 0;}
+	// 	else if (takeY > weatherGridSizeX - 1) {takeY = weatherGridSizeX - 1;}
+	// 	int takeI = ((takeY * weatherGridSizeX) + takeX );
+	// 	if (takeI < 0) {takeI = 0;}
+	// 	else if (takeI >= weatherGridSize) {takeI = weatherGridSize - 1;}
 
-		unsigned int blockageRatio = (weatherGrid[weatherGridI].airBlockedSquares );
-		if (weatherGrid[takeI].airBlockedSquares > blockageRatio) { blockageRatio = weatherGrid[takeI].airBlockedSquares;}
-		dt += (( weatherGrid[takeI].temperature - weatherGrid[weatherGridI].temperature) >> (1 + blockageRatio ) );
-		dx += (( weatherGrid[takeI].velocityX   - weatherGrid[weatherGridI].velocityX)   >> (2 + blockageRatio ) );                // mix in the velocity contribution from far-away.
-		dy += (( weatherGrid[takeI].velocityY   - weatherGrid[weatherGridI].velocityY)   >> (2 + blockageRatio ) );                // adding more looks cool, but makes the fluid explode on touch like nitroglycerin!
-	}
+	// 	unsigned int blockageRatio = (weatherGrid[weatherGridI].airBlockedSquares );
+	// 	if (weatherGrid[takeI].airBlockedSquares > blockageRatio) { blockageRatio = weatherGrid[takeI].airBlockedSquares;}
+	// 	dt += (( weatherGrid[takeI].temperature - weatherGrid[weatherGridI].temperature) >> (1 + blockageRatio ) );
+	// 	dx += (( weatherGrid[takeI].velocityX   - weatherGrid[weatherGridI].velocityX)   >> (2 + blockageRatio ) );                // mix in the velocity contribution from far-away.
+	// 	dy += (( weatherGrid[takeI].velocityY   - weatherGrid[weatherGridI].velocityY)   >> (2 + blockageRatio ) );                // adding more looks cool, but makes the fluid explode on touch like nitroglycerin!
+	// }
 
 	// interchange temperatue and pressure.
-	int dtp = (dp - dt);
-	dt += (dtp) >> 3;
-	dp -= (dtp) >> 3;
+	dt += dp >> 1;
 
 	// dy += dt >> 3;// bouyancy does not need sign applied because it is supposed to only go in one direction!
 
@@ -3540,7 +3534,7 @@ void thread_materialPhysics(  )
 	}
 
 	// sometimes there are a few grid lines of materials up the top that don't get processed, use this to knock them loose.
-	for (int i = (totalSize-sizeX); i < totalSize; ++i)
+	for (int i = (totalSize - sizeX); i < totalSize; ++i)
 	{
 		materialPhysics( i, 50000, 2 );
 	}
