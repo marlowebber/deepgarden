@@ -771,15 +771,62 @@ void airflowEdge( unsigned int x, unsigned int y )
 	if (y > weatherGridSizeY - 1) { return; }
 	unsigned int weatherGridI = (y * weatherGridSizeX) + x;
 
-	if (y == weatherGridSizeY - 1)
+	// if (y == weatherGridSizeY - 1)
+	// {
+	// 	weatherGrid[weatherGridI] = weatherGrid[weatherGridI + weatherGridOffsets[2] ]; //
+	// }
+
+	// else if (y == 0)
+	// {
+	// 	weatherGrid[weatherGridI] = weatherGrid[weatherGridI + weatherGridOffsets[6] ]; // if you are on the bottom row, mirror the square above you
+	// }
+
+
+
+	// smooth the simulation by mixing each cell with the average of its neighbours.
+	int ap = 0;
+	int ax = 0;
+	int ay = 0;
+	int at = 0;
+	int count = 0;
+	for ( int cy = -1; cy < 2; ++cy)
 	{
-		weatherGrid[weatherGridI] = weatherGrid[weatherGridI + weatherGridOffsets[2] ]; //
+		for ( int cx = -1; cx < 2; ++cx)
+		{
+			// unsigned int weatherGridNeighbour = weatherGridI + weatherGridOffsets[n] ;
+			// if (weatherGridNeighbour >= weatherGridSize ) {weatherGridNeighbour = weatherGridI;}                     // you must add 8 numbers here or later math will break down. if a neighbour is not valid, add your own values instead
+
+			int ix = cx + x;
+			int iy = cy + y;
+
+			if (ix >= weatherGridSizeX || ix < 0) { continue; }
+			if (iy >= weatherGridSizeY || iy < 0) { continue; }
+
+			unsigned int weatherGridNeighbour = (iy * weatherGridSizeX) + ix;
+
+			ap += (weatherGrid[ weatherGridNeighbour ].pressure   ) ;
+			ax += (weatherGrid[ weatherGridNeighbour ].velocityX  ) ;
+			ay += (weatherGrid[ weatherGridNeighbour ].velocityY  ) ;
+			at += (weatherGrid[ weatherGridNeighbour ].temperature) ;
+			count++;
+		}
 	}
 
-	else if (y == 0)
+	if (count > 0)
 	{
-		weatherGrid[weatherGridI] = weatherGrid[weatherGridI + weatherGridOffsets[6] ]; // if you are on the bottom row, mirror the square above you
+		ax = ax / count ;                                                                                              // N_NEIGHBOURS is 8, so you can do the division part of the average by using a bit shift.
+		ay = ay / count ;
+		ap = ap / count ;
+		at = at / count ;
+
+		// unsigned int avgBlock = 8 + (weatherGrid[weatherGridI].airBlockedSquares) ;
+		weatherGrid[weatherGridI].pressure    = ap;
+		weatherGrid[weatherGridI].velocityX   = ax;
+		weatherGrid[weatherGridI].velocityY   = ay;
+		weatherGrid[weatherGridI].temperature = at;
 	}
+
+
 }
 
 void airflow( unsigned int x, unsigned int y )
@@ -892,9 +939,9 @@ void airflow( unsigned int x, unsigned int y )
 	}
 
 	// interchange temperatue and pressure.
-	// int dtp = (dp - dt);
-	// dt += (dtp) >> 1;
-	// dp -= (dtp) >> 1;
+	int dtp = (dp - dt);
+	dt += (dtp) >> 2;
+	dp -= (dtp) >> 2;
 
 	// dy += dt >> 3;// bouyancy does not need sign applied because it is supposed to only go in one direction!
 
@@ -903,6 +950,20 @@ void airflow( unsigned int x, unsigned int y )
 	// dp += ( defaultPressure - weatherGrid[weatherGridI].pressure ) >> 8;                              // return to normal pressure.
 	// dx -= ( weatherGrid[weatherGridI].velocityX  ) >> 7 ; 	                                         // clear some velocity.
 	// dy -= ( weatherGrid[weatherGridI].velocityY  ) >> 7 ;
+	for (int j = 0; j < weatherGrid[weatherGridI].airBlockedSquares; ++j)
+	{
+		weatherGrid[weatherGridI].velocityX *= 0.995;
+		weatherGrid[weatherGridI].velocityY *= 0.995;
+	}
+	// float amountPerSquare = 1.0/(weatherGridScale*weatherGridScale);
+	// for (int j = 0; j < weatherGrid[weatherGridI].airBlockedSquares; ++j)
+	// {
+
+	// 	dx += (dx - ax )/(weatherGridScale*weatherGridScale);
+	// 	dy += (dy - ay )/(weatherGridScale*weatherGridScale);
+
+	// }
+
 
 	// apply the changes you computed in this turn, and finish.
 	weatherGrid[weatherGridI].pressure    += (dp )   ;
@@ -929,31 +990,22 @@ void doAirflowOnSquare( unsigned int x, unsigned int y )
 void thread_weather_sector(unsigned int from, unsigned int to)
 {
 
-
-	// for (int count = 0; count < 8; ++count)
-	// {
-
+	// processing all the squares from 0 to n makes the simulation have a natural asymmetry, so that waves prefer to flow left to right.
+	// interleave the squares you are processing to prevent this.
 	for (unsigned int y = from; y <= to ; ++y)
 	{
-		// for (unsigned int x = 0; x < weatherGridSizeX; x += 2)
 		unsigned int x = 0;
-		while(true)
+		while (true)
 		{
-
-			
 			doAirflowOnSquare( x, y );
 			if (x - 1 < totalSize)
 			{
 				doAirflowOnSquare(x - 1, y);
 			}
-
-			x+=2;
-
-			if (x > (weatherGridSizeX-1)) { break; }
+			x += 2;
+			if (x > (weatherGridSizeX - 1)) { break; }
 		}
 	}
-
-	// }
 }
 
 void thread_weather()
