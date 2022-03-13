@@ -61,7 +61,7 @@ const int weatherGridSize = weatherGridSizeX * weatherGridSizeY;
 const unsigned int numberOfFieldsPerVertex = 6; /*  R, G, B, A, X, Y  */
 
 // these offsets can be used to navigate the grids. By choosing one and adding your index, it will give you the address of a neighbouring cell. It has to be sized to match the grid.
-int neighbourOffsets[] =
+const int neighbourOffsets[] =
 {
 	- 1,
 	- sizeX - 1,
@@ -72,7 +72,7 @@ int neighbourOffsets[] =
 	+sizeX,
 	+sizeX - 1
 };
-int spriteNeighbourOffsets[] =
+const int spriteNeighbourOffsets[] =
 {
 	- 1,
 	- sizeAnimalSprite - 1,
@@ -83,7 +83,7 @@ int spriteNeighbourOffsets[] =
 	+sizeAnimalSprite,
 	+sizeAnimalSprite - 1
 };
-int weatherGridOffsets[] =
+const int weatherGridOffsets[] =
 {
 	- 1,
 	- weatherGridSizeX - 1,
@@ -217,7 +217,6 @@ unsigned int animationChangeCount = 0;
 unsigned int animationGlobalFrame = FRAME_BODY;
 
 unsigned int ppPhaseOffset = 0;
-unsigned int photoPhaseOffset = 0;
 const unsigned int ppSkipSize = 10;
 
 struct Material
@@ -392,6 +391,8 @@ struct Weather
 	int dx;
 	int dy;
 
+	Color color; // this is where lighting information for the sim is stored, it is integrated with weather for performance reasons
+
 	Weather();
 };
 
@@ -404,10 +405,11 @@ Weather::Weather()
 	this->saturation = 0;
 	this->airBlockedSquares = 0;
 	this->lightBlockedSquares = 0;
+	this->color = color_clear;
 }
 
 // the light grid holds lighting information. it is not drawn directly but informs what will be drawn on the color grid.
-Color lightGrid[weatherGridSize];
+// Color lightGrid[weatherGridSize];
 Color backgroundStars[totalSize];
 Color backgroundSky  [totalSize];
 
@@ -692,85 +694,86 @@ void conductHeat(unsigned int currentPosition, unsigned int neighbour)
 }
 
 // The classic falling sand physics thread.
-void materialPhysics (unsigned int currentPosition,  unsigned int velocityAbs, unsigned int direction)
+void materialPhysics (unsigned int currentPosition, unsigned int weatherGridI)
 {
-	unsigned int random = extremelyFastNumberFromZeroTo(N_NEIGHBOURS);
 
-	// movement instructions for GASES
-	if (grid[currentPosition].phase == PHASE_GAS)
+	if (grid[currentPosition].phase != PHASE_VACUUM)
 	{
-		unsigned int neighbour = neighbourOffsets[ direction ] + currentPosition;
-		if (neighbour >= totalSize) {neighbour = currentPosition;}
-		conductHeat(currentPosition, neighbour);
-		if (grid[neighbour].phase  == PHASE_VACUUM || (grid[neighbour].phase == PHASE_GAS) )
-		{
-			swapParticle(currentPosition, neighbour);
-		}
-	}
+		unsigned int direction = calculateVelocityDirection( weatherGrid[weatherGridI]. velocityX,  weatherGrid[weatherGridI]. velocityY);
+		unsigned int velocityAbs = abs(weatherGrid[weatherGridI]. velocityX) + abs( weatherGrid[weatherGridI]. velocityY) ;
+		unsigned int random = extremelyFastNumberFromZeroTo(N_NEIGHBOURS);
 
-	// movement instructions for LIQUIDS
-	else if (grid[currentPosition].phase == PHASE_LIQUID)
-	{
-		unsigned int neighbour = neighbourOffsets[ (  0 +  (random >> 1) )  ] + currentPosition;
-		if (velocityAbs > 10000)
+		// movement instructions for GASES
+		if (grid[currentPosition].phase == PHASE_GAS)
 		{
-			neighbour = neighbourOffsets[ direction  ] + currentPosition;
-		}
-		if (neighbour >= totalSize) {neighbour = currentPosition;}
-		conductHeat(currentPosition, neighbour);
-		if ((    grid[neighbour].phase == PHASE_VACUUM) ||
-		        (grid[neighbour].phase == PHASE_GAS)    ||
-		        (grid[neighbour].phase == PHASE_LIQUID)     )
-		{
-			swapParticle(currentPosition, neighbour);
-			currentPosition = neighbour;
-		}
-	}
-
-	// movement instructions for POWDERS
-	else if (grid[currentPosition].phase  == PHASE_POWDER)
-	{
-		unsigned int neighbour = neighbourOffsets[ (  1 +  (random >> 2) )  ] + currentPosition;
-		if (velocityAbs > 20000 )
-		{
-			neighbour = neighbourOffsets[ direction  ] + currentPosition;
-		}
-		if (neighbour >= totalSize) {neighbour = currentPosition;}
-		conductHeat(currentPosition, neighbour);
-		if ((    grid[neighbour].phase == PHASE_VACUUM) ||
-		        (grid[neighbour].phase == PHASE_GAS)    ||
-		        (grid[neighbour].phase == PHASE_LIQUID)  )
-		{
-			swapParticle(currentPosition, neighbour);
-			currentPosition = neighbour;
-		}
-	}
-
-	// movement instructions for SOLIDS
-	else if (grid[currentPosition].phase  == PHASE_SOLID)
-	{
-		unsigned int neighbour = neighbourOffsets[ random  ] + currentPosition;
-		if (neighbour >= totalSize) {neighbour = currentPosition;}
-		conductHeat(currentPosition, neighbour);
-		if (velocityAbs > 50000)
-		{
-			neighbour = neighbourOffsets[ direction  ] + currentPosition;
+			unsigned int neighbour = neighbourOffsets[ direction ] + currentPosition;
 			if (neighbour >= totalSize) {neighbour = currentPosition;}
-			swapParticle(currentPosition, neighbour);
-			currentPosition = neighbour;
+			conductHeat(currentPosition, neighbour);
+			if (grid[neighbour].phase  == PHASE_VACUUM || (grid[neighbour].phase == PHASE_GAS) )
+			{
+				swapParticle(currentPosition, neighbour);
+			}
+		}
+
+		// movement instructions for LIQUIDS
+		else if (grid[currentPosition].phase == PHASE_LIQUID)
+		{
+			unsigned int neighbour = neighbourOffsets[ (  0 +  (random >> 1) )  ] + currentPosition;
+			if (velocityAbs > 10000)
+			{
+				neighbour = neighbourOffsets[ direction  ] + currentPosition;
+			}
+			if (neighbour >= totalSize) {neighbour = currentPosition;}
+			conductHeat(currentPosition, neighbour);
+			if ((    grid[neighbour].phase == PHASE_VACUUM) ||
+			        (grid[neighbour].phase == PHASE_GAS)    ||
+			        (grid[neighbour].phase == PHASE_LIQUID)     )
+			{
+				swapParticle(currentPosition, neighbour);
+				currentPosition = neighbour;
+			}
+		}
+
+		// movement instructions for POWDERS
+		else if (grid[currentPosition].phase  == PHASE_POWDER)
+		{
+			unsigned int neighbour = neighbourOffsets[ (  1 +  (random >> 2) )  ] + currentPosition;
+			if (velocityAbs > 20000 )
+			{
+				neighbour = neighbourOffsets[ direction  ] + currentPosition;
+			}
+			if (neighbour >= totalSize) {neighbour = currentPosition;}
+			conductHeat(currentPosition, neighbour);
+			if ((    grid[neighbour].phase == PHASE_VACUUM) ||
+			        (grid[neighbour].phase == PHASE_GAS)    ||
+			        (grid[neighbour].phase == PHASE_LIQUID)  )
+			{
+				swapParticle(currentPosition, neighbour);
+				currentPosition = neighbour;
+			}
+		}
+
+		// movement instructions for SOLIDS
+		else if (grid[currentPosition].phase  == PHASE_SOLID)
+		{
+			unsigned int neighbour = neighbourOffsets[ random  ] + currentPosition;
+			if (neighbour >= totalSize) {neighbour = currentPosition;}
+			conductHeat(currentPosition, neighbour);
+			if (velocityAbs > 50000)
+			{
+				neighbour = neighbourOffsets[ direction  ] + currentPosition;
+				if (neighbour >= totalSize) {neighbour = currentPosition;}
+				swapParticle(currentPosition, neighbour);
+				currentPosition = neighbour;
+			}
 		}
 	}
-	return ;
 }
 
 // boundary conditions are one of the trickiest parts to get right.
-// this one simply mirrors the conditions of the cells closest the edge, making the edge itself seem like a one-way trip into empty space.
-void airflowEdge( unsigned int x, unsigned int y )
+// this one simply mirrors the conditions of the cells closest the edge, making the edge itself seem like a one-way trip into a wider sky.
+void airflowEdge(  unsigned int weatherGridI , unsigned int weatherGridX, unsigned int weatherGridY)
 {
-	// make sure parameters are valid
-	if (x > weatherGridSizeX - 1) { return; }
-	if (y > weatherGridSizeY - 1) { return; }
-	unsigned int weatherGridI = (y * weatherGridSizeX) + x;
 
 	// smooth the simulation by mixing each cell with the average of its neighbours.
 	int ap = (weatherGrid[ weatherGridI].pressure   ) ;
@@ -782,8 +785,8 @@ void airflowEdge( unsigned int x, unsigned int y )
 	{
 		for ( int cx = -1; cx < 2; ++cx)
 		{
-			int ix = cx + x;
-			int iy = cy + y;
+			int ix = cx + weatherGridX;
+			int iy = cy + weatherGridY;
 
 			if (ix >= weatherGridSizeX || ix < 0) { continue; }
 			if (iy >= weatherGridSizeY || iy < 0) { continue; }
@@ -829,18 +832,14 @@ void applyAirflowChanges(unsigned int weatherGridI)
 	weatherGrid[weatherGridI]. dt = 0;
 }
 
-void airflow( unsigned int x, unsigned int y )
+void airflow( unsigned int currentPosition, unsigned int weatherGridI, unsigned int weatherGridX, unsigned int weatherGridY)
 {
-	unsigned int weatherGridI = (y * weatherGridSizeX) + x;
-	unsigned int i = ((y * weatherGridScale) * sizeX) + (x * weatherGridScale);
-	if (i >= totalSize) { i = totalSize - 1;}
-
 	// couple the material grid temp to the weather grid temp
-	if (grid[i].phase != PHASE_VACUUM)
+	if (grid[currentPosition].phase != PHASE_VACUUM)
 	{
-		int gridCouplingAmount = ( weatherGrid[weatherGridI].temperature  - (grid[i].temperature * temperatureScale) ) ;
+		int gridCouplingAmount = ( weatherGrid[weatherGridI].temperature  - (grid[currentPosition].temperature * temperatureScale) ) ;
 		const unsigned int heatCouplingConstant = 8;
-		grid[i].temperature += (gridCouplingAmount/temperatureScale)  >> heatCouplingConstant ;
+		grid[currentPosition].temperature += (gridCouplingAmount / temperatureScale)  >> heatCouplingConstant ;
 		weatherGrid[weatherGridI].temperature -= (gridCouplingAmount) >> heatCouplingConstant ;
 	}
 
@@ -887,7 +886,7 @@ void airflow( unsigned int x, unsigned int y )
 		unsigned int neighbourC = (weatherGridI + 1               ) % weatherGridSize;
 		unsigned int neighbourD = (weatherGridI - 1               ) % weatherGridSize ;
 
-		unsigned int baseBlockageRatio = 3;
+		const unsigned int baseBlockageRatio = 3;
 		weatherGrid[weatherGridI].dp += ((1 * (weatherGrid[ neighbourA ].velocityY - weatherGrid[ weatherGridI ].velocityY )) >> (baseBlockageRatio))  ;
 		weatherGrid[weatherGridI].dy += ((1 * (weatherGrid[ neighbourA ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (baseBlockageRatio))  ;
 
@@ -905,8 +904,8 @@ void airflow( unsigned int x, unsigned int y )
 		{
 			int takeX = weatherGrid[weatherGridI].dx >> 1;    // strong mixing here allows the sim to make stunning clouds and air currents, but radiating shockwaves look better when the take component is smaller.
 			int takeY = weatherGrid[weatherGridI].dy >> 1;
-			takeX = x + takeX  ;                                                                           // the velocity itself is used to find the grid location to take from.
-			takeY = y + takeY ;                                                          // velocity numbers range greatly and can be very high, use this number to scale them to an appropriate take distance.
+			takeX = weatherGridX + takeX  ;                                                                           // the velocity itself is used to find the grid location to take from.
+			takeY = weatherGridY + takeY ;                                                          // velocity numbers range greatly and can be very high, use this number to scale them to an appropriate take distance.
 
 			if (takeY >= 0 && takeY < weatherGridSizeY)
 			{
@@ -922,50 +921,364 @@ void airflow( unsigned int x, unsigned int y )
 	}
 }
 
-void thread_weather_sector(unsigned int from, unsigned int to)
+void floatPhoton( unsigned int weatherGridI ,  Color lightColor,  float lightBrightness,  float lightDirection)
 {
-	for (unsigned int y = from; y < to; ++y)
+	if (weatherGridI >= weatherGridSize) {return;}
+	float blocked = 0.0f;
+	float positionX = weatherGridI % weatherGridSizeX;
+	float positionY = weatherGridI / weatherGridSizeX;
+	unsigned int wx = positionX;
+	unsigned int wy = positionY;
+	weatherGridI =  (wy * weatherGridSizeX) + wx ;
+
+	float noisyLength = 1.3f           + ((RNG() - 0.5f) * 0.2f) ;                               // the idea is to put some noise to avoid aliasing which creates stripes of light and dark in evenly lit material
+	float noisyAngle  = lightDirection + ((RNG() - 0.5f) * 0.2f) ;
+
+	float incrementX = (noisyLength * cos(noisyAngle));
+	float incrementY = (noisyLength * sin(noisyAngle)) ;
+	while (true)
 	{
-		for (unsigned int x = 0; x < weatherGridSizeX; ++x)
+		positionX += incrementX;
+		positionY += incrementY;
+		wx = positionX;
+		wy = positionY;
+		if (wx == 0 || wy == 0 || wx >= weatherGridSizeX - 1 || wy >= weatherGridSizeY - 1) {return;} // stop when you get to the edge of the map
+		weatherGridI =  (wy * weatherGridSizeX) + wx ;
+		if (weatherGridI >= weatherGridSize) {return;}
+		float energy  = (lightBrightness - blocked );
+		if (energy < 0.0f)
 		{
-			if (y == 0 || (y >= weatherGridSizeY - 1)  )
+			return;
+		}
+		else
+		{
+			energy = energy / lightBrightness;
+
+			weatherGrid[weatherGridI].color.r += (lightColor.r   - weatherGrid[weatherGridI].color.r )  *  0.5f;
+			weatherGrid[weatherGridI].color.g += (lightColor.g   - weatherGrid[weatherGridI].color.g )  *  0.5f;
+			weatherGrid[weatherGridI].color.b += (lightColor.b   - weatherGrid[weatherGridI].color.b )  *  0.5f;
+			weatherGrid[weatherGridI].color.a += (energy         - weatherGrid[weatherGridI].color.a )  *  0.5f;
+
+		}
+	}
+}
+
+void lightPostProcess(unsigned int weatherGridI , unsigned int weatherGridX, unsigned int weatherGridY)
+{
+	// cast sunlight from the edges.
+	if (weatherGridX == 0 || weatherGridY == 0 || weatherGridX == weatherGridSizeX - 1 || weatherGridY == weatherGridSizeY - 1)
+	{
+		floatPhoton(weatherGridI, sunlightColor, sunlightBrightness, fsundirection);
+	}
+
+	// darken the light field over time. This is crucial to refresh it without constantly redrawing the whole thing.
+	weatherGrid[weatherGridI].color.r += (color_nightLight.r - weatherGrid[weatherGridI].color.r) * 0.2f ;
+	weatherGrid[weatherGridI].color.g += (color_nightLight.g - weatherGrid[weatherGridI].color.g) * 0.2f ;
+	weatherGrid[weatherGridI].color.b += (color_nightLight.b - weatherGrid[weatherGridI].color.b) * 0.2f ;
+	weatherGrid[weatherGridI].color.a += (color_nightLight.a - weatherGrid[weatherGridI].color.a) * 0.2f ;
+}
+
+const Color color_blackbody_772      = Color(0.16f, 0.0f, 0.0f, 0.03f);
+const Color color_blackbody_852      = Color(0.33f, 0.0f, 0.0f, 0.11f);
+const Color color_blackbody_908   = Color(0.5f, 0.0f, 0.0f, 0.20f);
+
+Color blackbodyLookup( unsigned int temperature )
+{
+	if (temperature > 0 && temperature < 600 )
+	{
+		return color_clear;;
+	}
+	else if (temperature < 772) // faint red
+	{
+		return color_blackbody_772;
+	}
+	else if (temperature < 852) // blood red
+	{
+		return  color_blackbody_852;
+	}
+	else if (temperature < 908) // dark cherry
+	{
+		return color_blackbody_908;
+	}
+	else if (temperature < 963) // medium cherry
+	{
+		return Color(0.66f, 0.0f, 0.0f, 0.27f);
+	}
+	else if (temperature < 1019) // cherry
+	{
+		return Color(0.833f, 0.0f, 0.0f, 0.36f);
+	}
+	else if (temperature < 1060) // bright cherry
+	{
+		return  Color(1.0f, 0.0f, 0.0f, 0.45f);
+	}
+	else if (temperature < 1116) // salmon (??)
+	{
+		return  Color(1.0f, 0.25f, 0.0f, 0.53f);
+	}
+	else if (temperature < 1188) // dark orange
+	{
+		return Color(1.0f, 0.5f, 0.0f, 0.61f);
+	}
+	else if (temperature < 1213) // orange
+	{
+		return Color(1.0f, 0.75f, 0.0f, 0.70f);
+	}
+	else if (temperature < 1272) // lemon
+	{
+		return Color(1.0f, 1.0f, 0.0f, 0.78f);
+	}
+	else if (temperature < 1352) // light yellow
+	{
+		return  Color(1.0f, 1.0f, 0.5f, 0.86f);
+	}
+	else if (temperature < 5000) // white
+	{
+		return  Color(1.0f, 1.0f, 1.0f, 0.91f);
+	}
+	else if (temperature < 10000) // cool white
+	{
+		return  Color(0.95f, 0.95f, 1.0f, 1.0f);
+	}
+	else // blue
+	{
+		return Color(0.9f, 0.9f, 1.0f, 1.0f);
+	}
+}
+
+
+// updates a location on the color grid with a material's new color information, based on phase and temperature.
+void materialPostProcess(unsigned int i, unsigned int weatherGridI, float saturationLimit)
+{
+	if (grid[i].material  < materials.size() && weatherGridI < weatherGridSize)
+	{
+		unsigned int x = i % sizeX;
+		unsigned int y = i / sizeX;
+		unsigned int b_offset = i * numberOfFieldsPerVertex;
+		Color ppColor = color_clear;
+
+		// then, we will do everything which reflects light, but does not emit it.
+		Color materialColor = materials[ grid[i].material ].color ;
+
+		// different shades for material phases, a nice visual detail
+		if (grid[i].phase != PHASE_VACUUM && grid[i].phase != PHASE_GAS)
+		{
+			if (grid[i].phase == PHASE_LIQUID)
+			{	materialColor = addColor(materialColor, phaseTingeLiquid);
+				materialColor.a = 0.65f;
+			}
+			else if (grid[i].phase == PHASE_POWDER)
 			{
-				airflowEdge(x, y);
+				materialColor = addColor(materialColor, phaseTingePowder);
+			}
+			ppColor = filterColor(ppColor, materialColor);
+		}
+
+		// paint in the living plants and their seeds.
+		Color seed_color = color_clear;
+		Color life_color;
+		if (seedGrid[i].stage != STAGE_NULL)
+		{
+			memcpy( &seed_color, &seedColorGrid[ b_offset ] , sizeof(Color) );
+		}
+		memcpy( &life_color, &lifeColorGrid[ b_offset ] , sizeof(Color) );
+		life_color = filterColor( life_color, seed_color );
+		ppColor = filterColor( ppColor, life_color );
+
+		// paint clouds. If there is a lot of gas in an area.
+		if (weatherGrid[weatherGridI].saturation > 0  )
+		{
+			Color cloudTinge = color_clear;
+			cloudTinge = addColor(materialColor, color_white_halfClear);
+			float fsat = weatherGrid[weatherGridI].saturation ;
+			float flim = weatherGridScale * weatherGridScale;
+			cloudTinge.a = (fsat / flim )  ;
+			cloudTinge = clampColor(cloudTinge);
+			ppColor = filterColor(    ppColor , cloudTinge );
+		}
+
+		// diffuse drawing now complete.
+		ppColor = multiplyColor(ppColor, weatherGrid[weatherGridI].color);
+
+		// now we will do the things that emit light.
+
+		// Make hot stuff glow
+		if (grid[i].phase != PHASE_VACUUM)
+		{
+			ppColor = addColor( ppColor, blackbodyLookup( (grid[i].temperature) ) );
+		}
+		ppColor = addColor(ppColor, blackbodyLookup( (weatherGrid[weatherGridI].temperature / temperatureScale  ) ));
+
+		// shine some background stars.
+		if (grid[i].phase != PHASE_SOLID && grid[i].phase != PHASE_POWDER )
+		{
+			Color star = backgroundStars[i];
+			ppColor = filterColor(star, ppColor);
+		}
+
+		// apply changes.
+		colorGrid[ b_offset + 0 ] = ppColor.r;
+		colorGrid[ b_offset + 1 ] = ppColor.g;
+		colorGrid[ b_offset + 2 ] = ppColor.b;
+		colorGrid[ b_offset + 3 ] = ppColor.a;
+	}
+}
+
+void materialHeatGlow(unsigned int i, unsigned int weatherGridI)
+{
+	if (grid[i].phase != PHASE_VACUUM)
+	{
+		if (grid[i].temperature > 600 )
+		{
+			bool edge = false;
+			unsigned int randomDirection = extremelyFastNumberFromZeroTo(N_NEIGHBOURS);
+			unsigned int neighbour = i;
+			for (int j = 0; j < N_NEIGHBOURS; ++j)
+			{
+				randomDirection ++;
+				randomDirection = randomDirection % N_NEIGHBOURS;
+
+				neighbour  = (i + neighbourOffsets[ randomDirection ]);
+				if (neighbour < totalSize)
+				{
+					if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_LIQUID || grid[neighbour].phase == PHASE_GAS)  // but only if it is on the edge of a material, not inside the bulk (which is already painted with glow in a cheaper way)
+					{
+						edge = true;
+						break;
+					}
+				}
+			}
+			if (edge)
+			{
+				unsigned int radiantLightIntensity = ((grid[i].temperature - 600) >> 4);
+				float fdirection = randomDirection;
+				fdirection = ((fdirection / N_NEIGHBOURS) * (6.28f)) - 3.1415f; // radiate in the empty direction. this converts 1-to-8 to radians.
+				fdirection += (RNG() - 0.5f) * (0.75f);                         // add up to 1/8th of a full circles worth of direction noise.. 1/8 of a circle is 0.75 radians
+				floatPhoton(weatherGridI, blackbodyLookup(grid[i].temperature) , radiantLightIntensity, fdirection);
+			}
+		}
+	}
+}
+
+
+void thread_sector( unsigned int from, unsigned int to )
+{
+	int saturation = 0;
+	int lightBlockedSquares = 0;
+	int airBlockedSquares = 0;
+	unsigned int prevWeatherGridI = 0;
+
+	// iterate through cells in the range from..to
+	for (unsigned int currentPosition = from; currentPosition < to; ++currentPosition)
+	{
+		// calculate indexes
+		unsigned int x = currentPosition % sizeX;
+		unsigned int y = currentPosition / sizeX;
+		unsigned int weatherGridX = x / weatherGridScale;
+		unsigned int weatherGridY = y / weatherGridScale;
+		unsigned int weatherGridI = (weatherGridY * weatherGridSizeX) + weatherGridX;
+
+		if (weatherGridI != prevWeatherGridI) // you have entered a weather square that hasn't been updated yet.
+		{
+			weatherGrid[prevWeatherGridI].saturation = saturation;
+			weatherGrid[prevWeatherGridI].lightBlockedSquares = lightBlockedSquares;
+			weatherGrid[prevWeatherGridI].airBlockedSquares = airBlockedSquares;
+			prevWeatherGridI = weatherGridI;
+			saturation = 0;
+			lightBlockedSquares = 0;
+			airBlockedSquares = 0;
+
+			if (weatherGridY == 0 || (weatherGridY >= weatherGridSizeY - 1)  )
+			{
+				airflowEdge(weatherGridI, weatherGridX, weatherGridY);
 			}
 			else
 			{
-				airflow(x, y);
+				airflow( currentPosition, weatherGridI, weatherGridX, weatherGridY);
 			}
+			lightPostProcess( weatherGridI , weatherGridX,  weatherGridY);
 		}
-	}
-}
 
-void thread_weatherUpdate_sector(unsigned int from, unsigned int to)
-{
-	for (unsigned int y = from; y < to; ++y)
-	{
-		for (unsigned int x = 0; x < weatherGridSizeX; ++x)
+		if (currentPosition < totalSize && weatherGridI < weatherGridSize)
 		{
-			unsigned int weatherGridI = (y * weatherGridSizeX) + x;
-			applyAirflowChanges( weatherGridI);
+			// iterate through grid cells. collect saturation information for each weather cell that you are in.
+
+			// when the temperature goes down, the amount of water that the air can hold decreases.
+			// when the temperature goes up, the amount of water that the air can hold increases, until the water boils into gas and mixes with the air completely.
+			// saturation limit = ((difference between current temp and melting) / (total liquid temp range)
+			// * (amount of grid cells per weather cell)) / (ratio of current pressure to default pressure)
+			// produces the amount of cells of a weather grid square that the air can absorb at the current temperature and pressure
+			float adjustedMeltTemp = materials[grid[currentPosition].material].melting * temperatureScale ;
+			float adjustedBoilTemp = materials[grid[currentPosition].material].boiling * temperatureScale ;
+			float saturationLimit =
+			    ((weatherGrid[weatherGridI].temperature - adjustedMeltTemp )
+			     / (adjustedBoilTemp - adjustedMeltTemp) );
+			saturationLimit *= (weatherGridScale * weatherGridScale);
+			saturationLimit = saturationLimit / (weatherGrid[weatherGridI].pressure / 1000);
+
+			materialPhysics( currentPosition , weatherGridI);
+			materialPhaseChange(currentPosition,  saturationLimit - weatherGrid[weatherGridI].saturation  );
+			materialPostProcess(currentPosition, weatherGridI, saturationLimit);
+			materialHeatGlow(currentPosition,  weatherGridI);
+
+			if (grid[currentPosition].phase == PHASE_GAS )
+			{ saturation++; }
+
+			if (grid[currentPosition].phase == PHASE_SOLID || grid[currentPosition].phase ==  PHASE_POWDER )
+			{ lightBlockedSquares++; }
+
+			if (grid[currentPosition].phase == PHASE_SOLID || grid[currentPosition].phase ==  PHASE_POWDER  || grid[currentPosition].phase ==  PHASE_LIQUID )
+			{ airBlockedSquares++; }
 		}
+	}
+
+
+	// iterate over the weather grid parts again to apply the updated changes. Doing this separately to the calculation is vital to the detail and beauty of the simulation.
+	unsigned int fromX = from % sizeX;
+	unsigned int fromY = from / sizeX;
+	unsigned int weatherFromX = fromX / weatherGridScale;
+	unsigned int weatherFromY = fromY / weatherGridScale;
+	unsigned int weatherFromI = ( (weatherFromY) * weatherGridSizeX ) + (weatherFromX) ;
+	unsigned int toX = to % sizeX;
+	unsigned int toY = to / sizeX;
+	unsigned int weatherToX = toX / weatherGridScale;
+	unsigned int weatherToY = toY / weatherGridScale;
+	unsigned int weatherToI = ( (weatherToY) * weatherGridSizeX ) + (weatherToX) ;
+	for (unsigned int weatherGridI = weatherFromI; weatherGridI < weatherToI; ++weatherGridI)
+	{
+		applyAirflowChanges( weatherGridI);
 	}
 }
 
-void thread_weather()
+void updateDaytime()
 {
-#ifdef THREAD_TIMING_READOUT
-	auto start = std::chrono::steady_clock::now();
-#endif
+	if (advanceDay)
+	{
+		timeOfDay += 0.01f;
+	}
+	fsundirection =  1.5 * 3.1415f + (sin(timeOfDay) ) ;
+	int effectiveTemp = sunlightTemp - (sunlightTemp * abs (sin(timeOfDay)) );
+	sunlightColor = blackbodyLookup(effectiveTemp);
 
-	boost::thread t1{  thread_weather_sector, 0   , 1 * (weatherGridSizeY / 8)  } ;
-	boost::thread t2{  thread_weather_sector, 1 * (weatherGridSizeY / 8)  , 2 * (weatherGridSizeY / 8)  } ;
-	boost::thread t3{  thread_weather_sector, 2 * (weatherGridSizeY / 8)  , 3 * (weatherGridSizeY / 8)  } ;
-	boost::thread t4{  thread_weather_sector, 3 * (weatherGridSizeY / 8)  , 4 * (weatherGridSizeY / 8)  } ;
-	boost::thread t5{  thread_weather_sector, 4 * (weatherGridSizeY / 8)  , 5 * (weatherGridSizeY / 8)  } ;
-	boost::thread t6{  thread_weather_sector, 5 * (weatherGridSizeY / 8)  , 6 * (weatherGridSizeY / 8)  } ;
-	boost::thread t7{  thread_weather_sector, 6 * (weatherGridSizeY / 8)  , 7 * (weatherGridSizeY / 8)  } ;
-	boost::thread t8{  thread_weather_sector, 7 * (weatherGridSizeY / 8)  , (weatherGridSizeY ) } ;
+}
+
+// this thread is run once per frame.
+void thread_master()
+{
+	seedExtremelyFastNumberGenerators(); // make sure randomness is really random
+	updateDaytime();
+
+	boost::thread t12 { thread_seeds };
+	boost::thread t11 { thread_life};
+
+	boost::thread t1{  thread_sector, 0   , 1 * (totalSize / 8)  } ;
+	boost::thread t2{  thread_sector, 1 * (totalSize / 8)  , 2 * (totalSize / 8)  } ;
+	boost::thread t3{  thread_sector, 2 * (totalSize / 8)  , 3 * (totalSize / 8)  } ;
+	boost::thread t4{  thread_sector, 3 * (totalSize / 8)  , 4 * (totalSize / 8)  } ;
+	boost::thread t5{  thread_sector, 4 * (totalSize / 8)  , 5 * (totalSize / 8)  } ;
+	boost::thread t6{  thread_sector, 5 * (totalSize / 8)  , 6 * (totalSize / 8)  } ;
+	boost::thread t7{  thread_sector, 6 * (totalSize / 8)  , 7 * (totalSize / 8)  } ;
+	boost::thread t8{  thread_sector, 7 * (totalSize / 8)  , (totalSize ) } ;
 
 	t1.join();
 	t2.join();
@@ -976,29 +1289,8 @@ void thread_weather()
 	t7.join();
 	t8.join();
 
-	boost::thread t11{  thread_weatherUpdate_sector, 0   , 1 * (weatherGridSizeY / 8)  } ;
-	boost::thread t21{  thread_weatherUpdate_sector, 1 * (weatherGridSizeY / 8)  , 2 * (weatherGridSizeY / 8)  } ;
-	boost::thread t31{  thread_weatherUpdate_sector, 2 * (weatherGridSizeY / 8)  , 3 * (weatherGridSizeY / 8)  } ;
-	boost::thread t41{  thread_weatherUpdate_sector, 3 * (weatherGridSizeY / 8)  , 4 * (weatherGridSizeY / 8)  } ;
-	boost::thread t51{  thread_weatherUpdate_sector, 4 * (weatherGridSizeY / 8)  , 5 * (weatherGridSizeY / 8)  } ;
-	boost::thread t61{  thread_weatherUpdate_sector, 5 * (weatherGridSizeY / 8)  , 6 * (weatherGridSizeY / 8)  } ;
-	boost::thread t71{  thread_weatherUpdate_sector, 6 * (weatherGridSizeY / 8)  , 7 * (weatherGridSizeY / 8)  } ;
-	boost::thread t81{  thread_weatherUpdate_sector, 7 * (weatherGridSizeY / 8)  , (weatherGridSizeY ) } ;
-
+	t12.join();
 	t11.join();
-	t21.join();
-	t31.join();
-	t41.join();
-	t51.join();
-	t61.join();
-	t71.join();
-	t81.join();
-
-#ifdef THREAD_TIMING_READOUT
-	auto end = std::chrono::steady_clock::now();
-	auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-	std::cout << "thread_weather " << elapsed.count() << " microseconds." << std::endl;
-#endif
 }
 
 struct AnimalSegment
@@ -2216,52 +2508,7 @@ void swapSeedParticle(unsigned int a, unsigned int b)
 	memcpy( &seedColorGrid[ a_offset ], temp_color,                     sizeof(Color) );
 }
 
-void floatPhoton( unsigned int weatherGridI ,  Color lightColor,  float lightBrightness,  float lightDirection)
-{
-	if (weatherGridI >= weatherGridSize) {return;}
-	float blocked = 0.0f;
-	float positionX = weatherGridI % weatherGridSizeX;
-	float positionY = weatherGridI / weatherGridSizeX;
-	unsigned int wx = positionX;
-	unsigned int wy = positionY;
-	weatherGridI =  (wy * weatherGridSizeX) + wx ;
 
-	float noisyLength = 1.3f           + ((RNG() - 0.5f) * 0.2f) ;                               // the idea is to put some noise to avoid aliasing which creates stripes of light and dark in evenly lit material
-	float noisyAngle  = lightDirection + ((RNG() - 0.5f) * 0.2f) ;
-
-	float incrementX = (noisyLength * cos(noisyAngle));
-	float incrementY = (noisyLength * sin(noisyAngle)) ;
-	while (true)
-	{
-		positionX += incrementX;
-		positionY += incrementY;
-		wx = positionX;
-		wy = positionY;
-		if (wx == 0 || wy == 0 || wx >= weatherGridSizeX - 1 || wy >= weatherGridSizeY - 1) {return;}
-		weatherGridI =  (wy * weatherGridSizeX) + wx ;
-		if (weatherGridI >= weatherGridSize) {return;}
-		float energy  = 0.0f;
-		if (lightBrightness > 0.0f)
-		{
-			energy = (lightBrightness - blocked );
-			if (energy < 0.0f)
-			{
-				return;
-			}
-			else
-			{
-				energy = energy / lightBrightness;
-
-				lightGrid[weatherGridI].r += (lightColor.r   - lightGrid[weatherGridI].r )  *  0.5f;
-				lightGrid[weatherGridI].g += (lightColor.g   - lightGrid[weatherGridI].g )  *  0.5f;
-				lightGrid[weatherGridI].b += (lightColor.b   - lightGrid[weatherGridI].b )  *  0.5f;
-				lightGrid[weatherGridI].a += (energy         - lightGrid[weatherGridI].a )  *  0.5f;
-
-			}
-		}
-
-	}
-}
 
 void setAnimal(unsigned int i, std::string genes)
 {
@@ -2672,7 +2919,7 @@ void clearColorGrids(unsigned int i)
 	seedColorGrid[     a_offset + 0] = 0.0f;
 	seedColorGrid[     a_offset + 1] = 0.0f;
 	seedColorGrid[     a_offset + 2] = 0.0f;
-	seedColorGrid[     a_offset + 3] = 0.5f;
+	seedColorGrid[     a_offset + 3] = 0.0f;
 	seedColorGrid[     a_offset + 4] = fx;
 	seedColorGrid[     a_offset + 5] = fy;
 }
@@ -2739,73 +2986,6 @@ void paintMaterialCircle(unsigned int k, unsigned int radius, unsigned int mater
 	}
 }
 
-const Color color_blackbody_772      = Color(0.16f, 0.0f, 0.0f, 0.03f);
-const Color color_blackbody_852      = Color(0.33f, 0.0f, 0.0f, 0.11f);
-const Color color_blackbody_908   = Color(0.5f, 0.0f, 0.0f, 0.20f);
-
-Color blackbodyLookup( unsigned int temperature )
-{
-	if (temperature > 0 && temperature < 600 )
-	{
-		return color_clear;;
-	}
-	else if (temperature < 772) // faint red
-	{
-		return color_blackbody_772;
-	}
-	else if (temperature < 852) // blood red
-	{
-		return  color_blackbody_852;
-	}
-	else if (temperature < 908) // dark cherry
-	{
-		return color_blackbody_908;
-	}
-	else if (temperature < 963) // medium cherry
-	{
-		return Color(0.66f, 0.0f, 0.0f, 0.27f);
-	}
-	else if (temperature < 1019) // cherry
-	{
-		return Color(0.833f, 0.0f, 0.0f, 0.36f);
-	}
-	else if (temperature < 1060) // bright cherry
-	{
-		return  Color(1.0f, 0.0f, 0.0f, 0.45f);
-	}
-	else if (temperature < 1116) // salmon (??)
-	{
-		return  Color(1.0f, 0.25f, 0.0f, 0.53f);
-	}
-	else if (temperature < 1188) // dark orange
-	{
-		return Color(1.0f, 0.5f, 0.0f, 0.61f);
-	}
-	else if (temperature < 1213) // orange
-	{
-		return Color(1.0f, 0.75f, 0.0f, 0.70f);
-	}
-	else if (temperature < 1272) // lemon
-	{
-		return Color(1.0f, 1.0f, 0.0f, 0.78f);
-	}
-	else if (temperature < 1352) // light yellow
-	{
-		return  Color(1.0f, 1.0f, 0.5f, 0.86f);
-	}
-	else if (temperature < 5000) // white
-	{
-		return  Color(1.0f, 1.0f, 1.0f, 0.91f);
-	}
-	else if (temperature < 10000) // cool white
-	{
-		return  Color(0.95f, 0.95f, 1.0f, 1.0f);
-	}
-	else // blue
-	{
-		return Color(0.9f, 0.9f, 1.0f, 1.0f);
-	}
-}
 
 void createWorld( unsigned int world)
 {
@@ -3376,307 +3556,85 @@ void setExtremeTempPoint (unsigned int x , unsigned  int y)
 	}
 }
 
-// updates a location on the color grid with a material's new color information, based on phase and temperature.
-void materialPostProcess(unsigned int i, unsigned int weatherGridI, float saturationLimit)
+
+
+
+void weatherZeroSquares (unsigned int weatherGridI)
 {
-	if (grid[i].material  < materials.size() && weatherGridI < weatherGridSize)
-	{
-		unsigned int x = i % sizeX;
-		unsigned int y = i / sizeX;
-		unsigned int b_offset = i * numberOfFieldsPerVertex;
-		Color ppColor = color_clear;
-		// memcpy( &ppColor, &backgroundSky[ b_offset ] , sizeof(Color) );
-
-		// then, we will do everything which reflects light, but does not emit it.
-		Color materialColor = materials[ grid[i].material ].color ;
-
-		// different shades for material phases, a nice visual detail
-		if (grid[i].phase != PHASE_VACUUM && grid[i].phase != PHASE_GAS)
-		{
-			if (grid[i].phase == PHASE_LIQUID)
-			{	materialColor = addColor(materialColor, phaseTingeLiquid);
-				materialColor.a = 0.65f;
-			}
-			else if (grid[i].phase == PHASE_POWDER)
-			{
-				materialColor = addColor(materialColor, phaseTingePowder);
-			}
-			ppColor = filterColor(ppColor, materialColor);
-		}
-
-		// paint in the living plants and their seeds.
-		Color seed_color = color_clear;
-		Color life_color;
-		if (seedGrid[i].stage != STAGE_NULL)
-		{
-			memcpy( &seed_color, &seedColorGrid[ b_offset ] , sizeof(Color) );
-		}
-		memcpy( &life_color, &lifeColorGrid[ b_offset ] , sizeof(Color) );
-		life_color = filterColor( life_color, seed_color );
-		ppColor = filterColor( ppColor, life_color );
-
-		// paint clouds. If there is a lot of gas in an area.
-		if (weatherGrid[weatherGridI].saturation > 0  )
-		{
-			Color cloudTinge = color_clear;
-			cloudTinge = addColor(materialColor, color_white_halfClear);
-			float fsat = weatherGrid[weatherGridI].saturation ;
-			float flim = weatherGridScale * weatherGridScale;
-			cloudTinge.a = (fsat / flim )  ;
-			cloudTinge = clampColor(cloudTinge);
-			ppColor = filterColor(    ppColor , cloudTinge );
-		}
-
-		// diffuse drawing now complete.
-		ppColor = multiplyColor(ppColor, lightGrid[weatherGridI]);
-
-		// now we will do the things that emit light.
-
-		// Make hot stuff glow
-		if (grid[i].phase != PHASE_VACUUM)
-		{
-			ppColor = addColor( ppColor, blackbodyLookup( (grid[i].temperature) ) );
-		}
-		ppColor = addColor(ppColor, blackbodyLookup( (weatherGrid[weatherGridI].temperature / temperatureScale  ) ));
-
-		// shine some background stars.
-		// if (ppColor.a < 1.0f)
-		// {
-		if (grid[i].phase != PHASE_SOLID && grid[i].phase != PHASE_POWDER )
-		{
-			Color star = backgroundStars[i];
-			ppColor = filterColor(star, ppColor);
-		}
-
-		// apply changes.
-		colorGrid[ b_offset + 0 ] = ppColor.r;
-		colorGrid[ b_offset + 1 ] = ppColor.g;
-		colorGrid[ b_offset + 2 ] = ppColor.b;
-		colorGrid[ b_offset + 3 ] = ppColor.a;
-	}
+	weatherGrid[weatherGridI].saturation = 0;
+	weatherGrid[weatherGridI].airBlockedSquares = 0;
+	weatherGrid[weatherGridI].lightBlockedSquares = 0;
 }
 
-void thread_materialPhysics(  )
+void weatherSumSquares( unsigned int i, unsigned int weatherGridI )
 {
-#ifdef THREAD_TIMING_READOUT
-	auto start = std::chrono::steady_clock::now();
-#endif
+// #ifdef THREAD_TIMING_READOUT
+// 	auto start = std::chrono::steady_clock::now();
+// #endif
 
-	unsigned int weatherGridI = 0;
-	unsigned int i = 0;
-	for (unsigned int y = 0; y < weatherGridSizeY; ++y)
-	{
-		for (unsigned int x = 0; x < weatherGridSizeX; ++x)
-		{
-			unsigned int i = ((y * weatherGridScale) * sizeX) + (x * weatherGridScale); // in this case, i is the lower left corner of the weathergrid square.
-			if (i < totalSize)
-			{
-				unsigned int weatherGridI = (y * weatherGridSizeX) + x;
-
-				unsigned int direction = calculateVelocityDirection( weatherGrid[weatherGridI]. velocityX,  weatherGrid[weatherGridI]. velocityY);
-				unsigned int velocityAbs = abs(weatherGrid[weatherGridI]. velocityX) + abs( weatherGrid[weatherGridI]. velocityY) ;
-
-				unsigned int saturation = 0;
-				unsigned int airBlockedSquares = 0;
-				unsigned int lightBlockedSquares = 0;
-
-				for ( int scaledGridPointY = -(weatherGridScale / 2); scaledGridPointY < (weatherGridScale / 2); ++scaledGridPointY)
-				{
-					for ( int scaledGridPointX = -(weatherGridScale / 2); scaledGridPointX < (weatherGridScale / 2); ++scaledGridPointX)
-					{
-						unsigned int currentPosition =  i + ((scaledGridPointY * sizeX) + scaledGridPointX );
-						if (currentPosition < totalSize)
-						{
-							materialPhysics( currentPosition, velocityAbs, direction );
-
-							if (grid[currentPosition].phase == PHASE_GAS )
-							{ saturation++; }
-
-							if (grid[currentPosition].phase == PHASE_SOLID || grid[currentPosition].phase ==  PHASE_POWDER )
-							{ lightBlockedSquares++; }
-
-							if (grid[currentPosition].phase == PHASE_SOLID || grid[currentPosition].phase ==  PHASE_POWDER  || grid[currentPosition].phase ==  PHASE_LIQUID )
-							{ airBlockedSquares++; }
-						}
-					}
-				}
-				weatherGrid[weatherGridI].saturation = saturation;
-				weatherGrid[weatherGridI].airBlockedSquares = airBlockedSquares;
-				weatherGrid[weatherGridI].lightBlockedSquares = lightBlockedSquares;
-			}
-		}
-	}
-
-	// sometimes there are a few grid lines of materials up the top that don't get processed, use this to knock them loose.
-	for (int i = (totalSize - sizeX); i < totalSize; ++i)
-	{
-		materialPhysics( i, 50000, 2 );
-	}
-
-
-#ifdef THREAD_TIMING_READOUT
-	auto end = std::chrono::steady_clock::now();
-	auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-	std::cout << "thread_materialPhysics " << elapsed.count() << " microseconds." << std::endl;
-#endif
-}
-
-void materialHeatGlow(unsigned int i, unsigned int weatherGridI)
-{
-	if (grid[i].phase != PHASE_VACUUM)
-	{
-		if (grid[i].temperature > 600 )
-		{
-			bool edge = false;
-			unsigned int randomDirection = extremelyFastNumberFromZeroTo(N_NEIGHBOURS);
-			unsigned int neighbour = i;
-
-			for (int j = 0; j < N_NEIGHBOURS; ++j)
-			{
-				randomDirection ++;
-				randomDirection = randomDirection % N_NEIGHBOURS;
-
-				neighbour  = (i + neighbourOffsets[ randomDirection ]);
-				if (neighbour < totalSize)
-				{
-					if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_LIQUID || grid[neighbour].phase == PHASE_GAS)  // but only if it is on the edge of a material, not inside the bulk (which is already painted with glow in a cheaper way)
-					{
-						edge = true;
-						break;
-					}
-				}
-			}
-
-			if (edge)
-			{
-				unsigned int radiantLightIntensity = ((grid[i].temperature - 600) >> 4);
-				float fdirection = randomDirection;
-				fdirection = ((fdirection / N_NEIGHBOURS) * (6.28f)) - 3.1415f; // radiate in the empty direction. this converts 1-to-8 to radians.
-				fdirection += (RNG() - 0.5f) * (0.75f);                         // add up to 1/8th of a full circles worth of direction noise.. 1/8 of a circle is 0.75 radians
-				floatPhoton(weatherGridI, blackbodyLookup(grid[i].temperature) , radiantLightIntensity, fdirection);
-			}
-		}
-	}
-	// else
+	// unsigned int weatherGridI = 0;
+	// unsigned int i = 0;
+	// for (unsigned int y = 0; y < weatherGridSizeY; ++y)
 	// {
-	// 	int adjustedWeatherTemp = (weatherGrid[weatherGridI].temperature / temperatureScale);
-	// 	if (adjustedWeatherTemp > 600)
+	// 	for (unsigned int x = 0; x < weatherGridSizeX; ++x)
 	// 	{
-	// 		unsigned int radiantLightIntensity = ((adjustedWeatherTemp  - 600) >> 4);
-	// 		float fdirection = (RNG() - 0.5f) * 2 * 3.14f;
-	// 		floatPhoton(weatherGridI, blackbodyLookup(adjustedWeatherTemp) , radiantLightIntensity, fdirection);
+	// 		unsigned int i = ((y * weatherGridScale) * sizeX) + (x * weatherGridScale); // in this case, i is the lower left corner of the weathergrid square.
+	// 		if (i < totalSize)
+	// 		{
+	// 			unsigned int weatherGridI = (y * weatherGridSizeX) + x;
+
+
+
+	// for ( int scaledGridPointY = -(weatherGridScale / 2); scaledGridPointY < (weatherGridScale / 2); ++scaledGridPointY)
+	// {
+	// 	for ( int scaledGridPointX = -(weatherGridScale / 2); scaledGridPointX < (weatherGridScale / 2); ++scaledGridPointX)
+	// 	{
+	// 		unsigned int currentPosition =  i + ((scaledGridPointY * sizeX) + scaledGridPointX );
+	// 		if (currentPosition < totalSize)
+	// 		{
+	// 			// materialPhysics( currentPosition, velocityAbs, direction );
+
+	// 			if (grid[currentPosition].phase == PHASE_GAS )
+	// 			{ saturation++; }
+
+	// 			if (grid[currentPosition].phase == PHASE_SOLID || grid[currentPosition].phase ==  PHASE_POWDER )
+	// 			{ lightBlockedSquares++; }
+
+	// 			if (grid[currentPosition].phase == PHASE_SOLID || grid[currentPosition].phase ==  PHASE_POWDER  || grid[currentPosition].phase ==  PHASE_LIQUID )
+	// 			{ airBlockedSquares++; }
+	// 		}
+	// 	}
+	// }
+	// weatherGrid[weatherGridI].saturation = saturation;
+	// weatherGrid[weatherGridI].airBlockedSquares = airBlockedSquares;
+	// weatherGrid[weatherGridI].lightBlockedSquares = lightBlockedSquares;
+
+
+	// }
 	// 	}
 	// }
 
+	// // sometimes there are a few grid lines of materials up the top that don't get processed, use this to knock them loose.
+	// for (int i = (totalSize - sizeX); i < totalSize; ++i)
+	// {
+	// 	materialPhysics( i, 50000, 2 );
+	// }
 
 
+// #ifdef THREAD_TIMING_READOUT
+// 	auto end = std::chrono::steady_clock::now();
+// 	auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+// 	std::cout << "thread_materialPhysics " << elapsed.count() << " microseconds." << std::endl;
+// #endif
 }
 
 
-void weatherPostProcess( unsigned int weatherGridI )
-{
-	unsigned int x = weatherGridI % weatherGridSizeX;
-	unsigned int y = weatherGridI / weatherGridSizeX;
-	unsigned int i = ((y * weatherGridScale) * sizeX) + (x * weatherGridScale);
-	if (i > totalSize) { i = totalSize;}
 
-	// darken the light field over time. This is crucial to refresh it without constantly redrawing the whole thing.
-	lightGrid[weatherGridI].r += (color_nightLight.r - lightGrid[weatherGridI].r) * 0.2f ;
-	lightGrid[weatherGridI].g += (color_nightLight.g - lightGrid[weatherGridI].g) * 0.2f ;
-	lightGrid[weatherGridI].b += (color_nightLight.b - lightGrid[weatherGridI].b) * 0.2f ;
-	lightGrid[weatherGridI].a += (color_nightLight.a - lightGrid[weatherGridI].a) * 0.2f ;
 
-	if (x == 0 || y == 0 || x == weatherGridSizeX - 1 || y == weatherGridSizeY - 1)
-	{
-		floatPhoton(weatherGridI, sunlightColor, sunlightBrightness, fsundirection);
-	}
 
-	// loop through the detailed grid cells contained in this bigger cell, and update and draw them.
-	for ( int scaledGridPointY = -(weatherGridScale / 2); scaledGridPointY < (weatherGridScale / 2); ++scaledGridPointY)
-	{
-		for ( int scaledGridPointX = -(weatherGridScale / 2); scaledGridPointX < (weatherGridScale / 2); ++scaledGridPointX)
-		{
-			unsigned int currentPosition =  i + ((scaledGridPointY * sizeX) + scaledGridPointX );
-			if (currentPosition < totalSize)
-			{
 
-				float saturationLimit = 0.0f;
-				if ( grid[currentPosition].phase == PHASE_GAS)
-				{
-					// when the temperature goes down, the amount of water that the air can hold decreases.
-					// when the temperature goes up, the amount of water that the air can hold increases, until the water boils into gas and mixes with the air completely.
-					// saturation limit = ((difference between current temp and melting) / (total liquid temp range)
-					// * (amount of grid cells per weather cell)) / (ratio of current pressure to default pressure)
-					// produces the amount of cells of a weather grid square that the air can absorb at the current temperature and pressure
-					float adjustedMeltTemp = materials[grid[currentPosition].material].melting * temperatureScale ;
-					float adjustedBoilTemp = materials[grid[currentPosition].material].boiling * temperatureScale ;
-					saturationLimit =
-					    ((weatherGrid[weatherGridI].temperature - adjustedMeltTemp )
-					     / (adjustedBoilTemp - adjustedMeltTemp) );
-					saturationLimit *= (weatherGridScale * weatherGridScale);
-					saturationLimit = saturationLimit / (weatherGrid[weatherGridI].pressure / 1000);
-				}
 
-				materialPostProcess(currentPosition, weatherGridI, saturationLimit);
-				materialHeatGlow(currentPosition,  weatherGridI);
-				materialPhaseChange(currentPosition,  saturationLimit - weatherGrid[weatherGridI].saturation  );
-			}
-		}
-	}
-}
 
-void thread_physics ()
-{
-#ifdef THREAD_TIMING_READOUT
-	auto start = std::chrono::steady_clock::now();
-#endif
-
-	seedExtremelyFastNumberGenerators(); // make sure randomness is really random
-
-	if (advanceDay)
-	{
-		timeOfDay += 0.01f;
-	}
-	fsundirection =  1.5 * 3.1415f + (sin(timeOfDay) ) ;
-	int effectiveTemp = sunlightTemp - (sunlightTemp * abs (sin(timeOfDay)) );
-	sunlightColor = blackbodyLookup(effectiveTemp);
-
-	// Go through and do all the super-detailed stuff for just a fraction of the grid.
-	for (unsigned int weatherGridI = ppPhaseOffset; weatherGridI < weatherGridSize; weatherGridI += ppSkipSize)
-	{
-		// smooth out the light field, just for looks.
-		unsigned int count = 0;
-		for (int j = 0; j < N_NEIGHBOURS; ++j)
-		{
-			unsigned int neighbour = weatherGridI + weatherGridOffsets[j] ;
-			if (neighbour < weatherGridSize)
-			{
-				lightGrid[weatherGridI].r += lightGrid[ neighbour].r;
-				lightGrid[weatherGridI].g += lightGrid[ neighbour].g;
-				lightGrid[weatherGridI].b += lightGrid[ neighbour].b;
-				lightGrid[weatherGridI].a += lightGrid[ neighbour].a;
-				count++;
-			}
-		}
-		lightGrid[weatherGridI].r = lightGrid[weatherGridI].r / (count + 1);
-		lightGrid[weatherGridI].g = lightGrid[weatherGridI].g / (count + 1);
-		lightGrid[weatherGridI].b = lightGrid[weatherGridI].b / (count + 1);
-		lightGrid[weatherGridI].a = lightGrid[weatherGridI].a / (count + 1);
-
-		weatherPostProcess(  weatherGridI );
-	}
-	ppPhaseOffset++;
-	if (ppPhaseOffset % ppSkipSize == 0 )
-	{
-		ppPhaseOffset = 0;
-	}
-
-#ifdef THREAD_TIMING_READOUT
-	auto end = std::chrono::steady_clock::now();
-	auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-	std::cout << "thread_physics " << elapsed.count() << " microseconds." << std::endl;
-#endif
-}
 
 void setPointSize (unsigned int pointSize)
 {
@@ -3967,27 +3925,6 @@ void animalTurn(unsigned int i)
 	}
 }
 
-void thread_animals()
-{
-#ifdef THREAD_TIMING_READOUT
-	auto start = std::chrono::steady_clock::now();
-#endif
-
-	for (unsigned int i = 0; i < totalSize; ++i)
-	{
-		if (seedGrid[i].stage == STAGE_ANIMAL)
-		{
-			animalTurn(i);
-		}
-	}
-
-#ifdef THREAD_TIMING_READOUT
-	auto end = std::chrono::steady_clock::now();
-	auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-	std::cout << "thread_animals " << elapsed.count() << " microseconds." << std::endl;
-#endif
-}
-
 void thread_graphics()
 {
 #ifdef THREAD_TIMING_READOUT
@@ -4150,7 +4087,6 @@ void thread_graphics()
 
 		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, animationGrid, GL_DYNAMIC_DRAW );
 		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
-
 
 		postDraw();
 	}
@@ -4854,7 +4790,7 @@ void thread_life()
 			{
 				if ( lifeGrid[i].energySource == ENERGYSOURCE_LIGHT ) // if the plant is illuminated, it receives energy.
 				{
-					lifeGrid[i].energy += lightGrid[weatherGridI].a / lightEfficiency;
+					lifeGrid[i].energy += weatherGrid[weatherGridI].color.a / lightEfficiency;
 				}
 			}
 
@@ -5193,10 +5129,6 @@ void save ()
 
 	printf("- saved seed gene grid\n");
 
-	// std::ofstream out7(std::string("save/colorGrid").c_str());
-	// out7.write(reinterpret_cast<char*>(& (colorGrid[0]) ), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
-	// out7.close();
-
 	// color grids
 	std::ofstream out3(std::string("save/lifeColorGrid").c_str());
 	out3.write(reinterpret_cast<char*>(& (lifeColorGrid[0]) ), sizeof(float) * numberOfFieldsPerVertex *  totalSize);
@@ -5221,7 +5153,6 @@ void save ()
 	out8579.write(pointer, bytes);
 	out8579.close();
 }
-
 
 void load_materials(unsigned int m)
 {
@@ -5414,9 +5345,8 @@ void eraseAllLife()
 	}
 }
 
-void manualErode ()
+void manualErode ()	// every solid square with a vacuum neighbour is crushed to powder.
 {
-	// remove every cell with a vacuum neighbour.
 	for (int i = 0; i < totalSize; ++i)
 	{
 		for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
@@ -5453,30 +5383,4 @@ void drawAHill(unsigned int hillXIndex, unsigned int hillWidth)
 			swapParticle( indexB, indexC);
 		}
 	}
-}
-
-void drawRandomLandscape()
-{
-	unsigned int randomHillX = extremelyFastNumberFromZeroTo(sizeX);
-	unsigned int randomHillWidth = extremelyFastNumberFromZeroTo(500);
-	for (int i = 0; i < extremelyFastNumberFromZeroTo(500); ++i)
-	{
-		unsigned int hillWidthNoise = (RNG() - 0.5) * 100;
-		drawAHill(randomHillX, randomHillWidth + hillWidthNoise);
-	}
-}
-
-void drawLandscapeFromString(std::string genes)
-{
-	unsigned int i = 0;
-	while (i < genes.length())
-	{
-		char c = genes[i];
-		switch (c)
-		{
-		case 'h': // a hill
-			break;
-		}
-	}
-
 }

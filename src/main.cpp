@@ -109,7 +109,7 @@ void thread_interface()
 				break;
 
 			case SDLK_v:
-				drawRandomLandscape();
+				// drawRandomLandscape();
 				break;
 
 			case SDLK_e:
@@ -202,7 +202,7 @@ int main( int argc, char * argv[] )
 {
 	setupGraphics();
 	initialize();
-	boost::thread t100 { thread_supervisor_plantDrawing};
+	// boost::thread t100 { thread_supervisor_plantDrawing};
 	for ( ;; )
 	{
 		// start all the threads and then wait for them to finish.
@@ -211,24 +211,24 @@ int main( int argc, char * argv[] )
 		{
 			// boost::thread t99{ thread_temperature2 };
 
-			boost::thread t3{ thread_weather };
-			boost::thread t454{ thread_materialPhysics };
-			boost::thread t2{ thread_physics };
-			boost::thread t10 { thread_animals };
+			// boost::thread t3{ thread_weather };
+			// boost::thread t454{ thread_materialPhysics };
+			// boost::thread t2{ thread_physics };
+			// boost::thread t10 { thread_animals };
 			boost::thread t6{ thread_interface };
-			boost::thread t7 { thread_life};
-			boost::thread t8 { thread_seeds};
+			// boost::thread t7 { thread_life};
+			boost::thread t8 { thread_master};
 
 			// graphics only seems to work in this thread, so we can just say that's what this thread is for.
 			thread_graphics();
 
 			t8.join();
-			t7.join();
+			// t7.join();
 			t6.join();
-			t10.join();
-			t2.join();
-			t454.join();
-			t3.join();
+			// t10.join();
+			// t2.join();
+			// t454.join();
+			// t3.join();
 			// t99.join();
 		}
 		else

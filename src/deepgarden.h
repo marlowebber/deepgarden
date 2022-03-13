@@ -233,4 +233,6 @@ void clearAllPressureVelocity();
 void animalCrudOps(unsigned int i);
 bool isAnimal(unsigned int i);
 
+void thread_master();
+
 #endif
