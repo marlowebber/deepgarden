@@ -6,7 +6,7 @@
 #include <fstream>
 #include "main.h"
 
-#define THREAD_TIMING_READOUT 1
+// #define THREAD_TIMING_READOUT 1
 #define DETAIL_TIMING_READOUT 1
 
 // #define PLANT_DRAWING_READOUT 1
@@ -403,7 +403,7 @@ struct Weather
 
 Weather::Weather()
 {
-	this->temperature = defaultTemperature * temperatureScale;
+	this->temperature = defaultTemperature << temperatureScale;
 	this->pressure = defaultPressure;
 	this->velocityX = (RNG() - 0.5f) * 100;
 	this->velocityY = (RNG() - 0.5f) * 100;
@@ -689,14 +689,15 @@ void materialPhaseChange( unsigned int currentPosition,  float saturationDiffere
 
 void conductHeat(unsigned int currentPosition, unsigned int neighbour)
 {
+	// if (grid[neighbour].phase !=)
 	// Exchange heat by conduction.
-	// if (grid[neighbour].phase != PHASE_VACUUM)
-	// {
-	int avgTemp = (((grid[currentPosition].temperature ) - (grid[neighbour].temperature)) ) ;
-	avgTemp = avgTemp >> materials[ grid[neighbour].material ].insulativity;
-	grid[neighbour].temperature += avgTemp;
-	grid[currentPosition].temperature -= avgTemp;
-	// }
+	if (grid[neighbour].phase != PHASE_VACUUM)
+	{
+		int avgTemp = (((grid[currentPosition].temperature ) - (grid[neighbour].temperature)) ) ;
+		avgTemp = avgTemp >> materials[ grid[neighbour].material ].insulativity;
+		grid[neighbour].temperature += avgTemp;
+		grid[currentPosition].temperature -= avgTemp;
+	}
 }
 
 // The classic falling sand physics thread.
@@ -824,11 +825,11 @@ void airflowEdge(  unsigned int weatherGridI , unsigned int weatherGridX, unsign
 void applyAirflowChanges(unsigned int weatherGridI)
 {
 	// cancel just a little bit of velocity, because the sim is unstable if it's exactly 1. Cancel more if there is stuff in the way.
-	weatherGrid[weatherGridI].velocityX *= 0.9999;
-	weatherGrid[weatherGridI].velocityY *= 0.9999;
+	weatherGrid[weatherGridI].velocityX  -= weatherGrid[weatherGridI].velocityX >> 12 ;// *= 0.9999;
+	weatherGrid[weatherGridI].velocityY  -= weatherGrid[weatherGridI].velocityY >> 12 ;// *= 0.9999;
 
-	weatherGrid[weatherGridI].pressure    += (  defaultPressure                        - weatherGrid[weatherGridI].pressure   ) * 0.01;
-	weatherGrid[weatherGridI].temperature += ( (defaultTemperature * temperatureScale) - weatherGrid[weatherGridI].temperature) * 0.001;
+	weatherGrid[weatherGridI].pressure    += (  defaultPressure                        - weatherGrid[weatherGridI].pressure   ) >> 7 ;//* 0.01;
+	weatherGrid[weatherGridI].temperature += ( (defaultTemperature << temperatureScale) - weatherGrid[weatherGridI].temperature)  >> 9 ;//* 0.001;
 
 	weatherGrid[weatherGridI].pressure    += weatherGrid[weatherGridI]. dp   ;
 	weatherGrid[weatherGridI].velocityX   += weatherGrid[weatherGridI]. dx   ;
@@ -845,7 +846,7 @@ void applyAirflowChanges(unsigned int weatherGridI)
 	weatherGrid[weatherGridI]. dt = 0;
 }
 
-void airflow( unsigned int weatherGridI, unsigned int weatherGridX, unsigned int weatherGridY)
+void airflow( unsigned int weatherGridI)
 {
 
 
@@ -910,6 +911,11 @@ void airflow( unsigned int weatherGridI, unsigned int weatherGridX, unsigned int
 		{
 			int takeX = weatherGrid[weatherGridI].dx >> 1;    // strong mixing here allows the sim to make stunning clouds and air currents, but radiating shockwaves look better when the take component is smaller.
 			int takeY = weatherGrid[weatherGridI].dy >> 1;
+
+
+			unsigned int weatherGridX = weatherGridI % weatherGridSizeX;
+			unsigned int weatherGridY = weatherGridI / weatherGridSizeX;
+
 			takeX = weatherGridX + takeX  ;                                                                           // the velocity itself is used to find the grid location to take from.
 			takeY = weatherGridY + takeY ;                                                          // velocity numbers range greatly and can be very high, use this number to scale them to an appropriate take distance.
 
@@ -1110,7 +1116,7 @@ void materialPostProcess(unsigned int i, unsigned int weatherGridI, float satura
 		// {
 		ppColor = addColor( ppColor, blackbodyLookup( (grid[i].temperature) ) );
 		// }
-		ppColor = addColor(ppColor, blackbodyLookup( (weatherGrid[weatherGridI].temperature / temperatureScale  ) ));
+		ppColor = addColor(ppColor, blackbodyLookup( (weatherGrid[weatherGridI].temperature >> temperatureScale  ) ));
 
 		// shine some background stars.
 		if (grid[i].phase != PHASE_SOLID && grid[i].phase != PHASE_POWDER )
@@ -1161,10 +1167,23 @@ void materialHeatGlow(unsigned int i, unsigned int weatherGridI)
 }
 
 
+void weatherHeatGlow(unsigned int weatherGridI)
+{
+	if (weatherGrid[weatherGridI].temperature > (600 << temperatureScale) )
+	{
+
+		unsigned int radiantLightIntensity = ((weatherGrid[weatherGridI].temperature - 600) >> 4);
+		float fdirection = RNG() * 2 * 3.141f;
+		// fdirection = ((fdirection / N_NEIGHBOURS) * (6.28f)) - 3.1415f; // radiate in the empty direction. this converts 1-to-8 to radians.
+		// fdirection += (RNG() - 0.5f) * (0.75f);                         // add up to 1/8th of a full circles worth of direction noise.. 1/8 of a circle is 0.75 radians
+		floatPhoton(weatherGridI, blackbodyLookup(weatherGrid[weatherGridI].temperature) , radiantLightIntensity, fdirection);
+	}
+}
+
+
 
 void thread_sector( unsigned int from, unsigned int to )
 {
-
 	unsigned int fromX = from % sizeX;
 	unsigned int fromY = from / sizeX;
 	unsigned int weatherFromX = fromX / weatherGridScale;
@@ -1180,49 +1199,88 @@ void thread_sector( unsigned int from, unsigned int to )
 	// cast sunlight from the edges.
 	if (fromY == 0)
 	{
-		// for (unsigned int weatherGridX = 0; weatherGridX < weatherGridSizeX; ++weatherGridX)
-		// {
-		// 	unsigned int weatherGridI = (fromY * weatherGridSizeX) + weatherGridX;
-		// 	airflowEdge(weatherGridI, weatherGridX, fromY);
-		// }
 		fromY = 1;
 	}
 
 	if (toY >= weatherGridSizeY - 1)
 	{
-		// toY = weatherGridSizeY -1;
-		// for (unsigned int weatherGridX = 0; weatherGridX < weatherGridSizeX; ++weatherGridX)
-		// {
-		// 	unsigned int weatherGridI = (toY * weatherGridSizeX) + weatherGridX;
-		// 	airflowEdge(weatherGridI, weatherGridX, toY);
-		// 	floatPhoton(weatherGridI, sunlightColor, sunlightBrightness, fsundirection);
-		// }
 		toY = weatherGridSizeY - 2;
 	}
 
 	int saturation = 0;
 	int lightBlockedSquares = 0;
 	int airBlockedSquares = 0;
-	unsigned int prevWeatherGridI = 0;
+	// unsigned int prevWeatherGridI = 0;
+
+
+
+
+
 
 	// iterate through selected WEATHER cells
+#ifdef DETAIL_TIMING_READOUT
+	auto start1 = std::chrono::steady_clock::now();
+#endif
+
 	for (unsigned int weatherGridI = weatherFromI; weatherGridI < weatherToI; ++weatherGridI)
 	{
 
-		unsigned int weatherGridX = weatherGridI % weatherGridSizeX;
-		unsigned int weatherGridY = weatherGridI / weatherGridSizeX;
+		if (weatherGridI > 0)
+		{
+			weatherGrid[weatherGridI-1].saturation = saturation;
+			weatherGrid[weatherGridI-1].lightBlockedSquares = lightBlockedSquares;
+			weatherGrid[weatherGridI-1].airBlockedSquares = airBlockedSquares;
+			// prevWeatherGridI = weatherGridI;
+			saturation = 0;
+			lightBlockedSquares = 0;
+			airBlockedSquares = 0;
+		}
 
-		weatherGrid[prevWeatherGridI].saturation = saturation;
-		weatherGrid[prevWeatherGridI].lightBlockedSquares = lightBlockedSquares;
-		weatherGrid[prevWeatherGridI].airBlockedSquares = airBlockedSquares;
-		prevWeatherGridI = weatherGridI;
-		saturation = 0;
-		lightBlockedSquares = 0;
-		airBlockedSquares = 0;
-		airflow(weatherGridI, weatherGridX, weatherGridY);
-
+		airflow(weatherGridI);
 		darkenLightfield( weatherGridI );
 	}
+#ifdef DETAIL_TIMING_READOUT
+	auto end1 = std::chrono::steady_clock::now();
+	auto elapsed1 = std::chrono::duration_cast<std::chrono::microseconds>(end1 - start1);
+	std::cout << "subthread weather 1 " << elapsed1.count() << " microseconds." << std::endl;
+#endif
+
+
+
+
+
+
+
+
+	// iterate through selected WEATHER cells
+#ifdef DETAIL_TIMING_READOUT
+	auto start9 = std::chrono::steady_clock::now();
+#endif
+
+
+	for (unsigned int weatherGridI = weatherFromI + ppPhaseOffset; weatherGridI < weatherToI; weatherGridI += ppSkipSize)
+	{
+		weatherHeatGlow(weatherGridI);
+
+	}
+#ifdef DETAIL_TIMING_READOUT
+	auto end9 = std::chrono::steady_clock::now();
+	auto elapsed9 = std::chrono::duration_cast<std::chrono::microseconds>(end9 - start9);
+	std::cout << "subthread fine weather 9 " << elapsed9.count() << " microseconds." << std::endl;
+#endif
+
+
+
+
+
+
+
+
+
+#ifdef DETAIL_TIMING_READOUT
+	auto start2 = std::chrono::steady_clock::now();
+#endif
+
 
 	// iterate over the weather grid parts again to apply the updated changes. Doing this separately to the calculation is vital to the detail and beauty of the simulation.
 	for (unsigned int weatherGridI = weatherFromI; weatherGridI < weatherToI; ++weatherGridI)
@@ -1230,9 +1288,18 @@ void thread_sector( unsigned int from, unsigned int to )
 		applyAirflowChanges( weatherGridI);
 	}
 
+#ifdef DETAIL_TIMING_READOUT
+	auto end2 = std::chrono::steady_clock::now();
+	auto elapsed2 = std::chrono::duration_cast<std::chrono::microseconds>(end2 - start2);
+	std::cout << "subthread airflowchanges 2 " << elapsed2.count() << " microseconds." << std::endl;
+#endif
 
 
 
+
+#ifdef DETAIL_TIMING_READOUT
+	auto start3 = std::chrono::steady_clock::now();
+#endif
 
 
 
@@ -1282,6 +1349,17 @@ void thread_sector( unsigned int from, unsigned int to )
 
 		}
 	}
+#ifdef DETAIL_TIMING_READOUT
+	auto end3 = std::chrono::steady_clock::now();
+	auto elapsed3 = std::chrono::duration_cast<std::chrono::microseconds>(end3 - start3);
+	std::cout << "subthread coarse grid 3 " << elapsed3.count() << " microseconds." << std::endl;
+#endif
+
+
+
+#ifdef DETAIL_TIMING_READOUT
+	auto start4 = std::chrono::steady_clock::now();
+#endif
 
 	//FINE iterate through selected cells
 	for (unsigned int currentPosition = (from + ppPhaseOffset); currentPosition < to; currentPosition += ppSkipSize)
@@ -1299,12 +1377,21 @@ void thread_sector( unsigned int from, unsigned int to )
 		// couple the material grid temp to the weather grid temp
 		if (grid[currentPosition].phase != PHASE_VACUUM)
 		{
-			int gridCouplingAmount = ( weatherGrid[weatherGridI].temperature  - (grid[currentPosition].temperature * temperatureScale) ) ;
+			int gridCouplingAmount = ( weatherGrid[weatherGridI].temperature  - (grid[currentPosition].temperature << temperatureScale) ) ;
 			const unsigned int heatCouplingConstant = 4;
-			grid[currentPosition].temperature += (gridCouplingAmount / temperatureScale)  >> heatCouplingConstant ;
+			grid[currentPosition].temperature += (gridCouplingAmount >> temperatureScale)  >> heatCouplingConstant ;
 			weatherGrid[weatherGridI].temperature -= (gridCouplingAmount) >> heatCouplingConstant ;
 		}
 	}
+
+
+#ifdef DETAIL_TIMING_READOUT
+	auto end4 = std::chrono::steady_clock::now();
+	auto elapsed4 = std::chrono::duration_cast<std::chrono::microseconds>(end4 - start4);
+	std::cout << "subthread fineweather 4 " << elapsed4.count() << " microseconds." << std::endl;
+#endif
+
+
 }
 
 void updateDaytime()
@@ -1327,33 +1414,32 @@ void thread_handleEdges()
 
 
 
+#ifdef THREAD_TIMING_READOUT
+	auto start = std::chrono::steady_clock::now();
+#endif
 
-		// for the airflow simulation, detect edges and execute them in advance, so normal run is not interrupted.
-	// cast sunlight from the edges.
-	// if (fromY == 0)
-	// {
-		unsigned int fromY = 0;
-		for (unsigned int weatherGridX = 0; weatherGridX < weatherGridSizeX; ++weatherGridX)
-		{
+	unsigned int fromY = 0;
+	for (unsigned int weatherGridX = 0; weatherGridX < weatherGridSizeX; ++weatherGridX)
+	{
 
-			unsigned int weatherGridI = (fromY * weatherGridSizeX) + weatherGridX;
-			airflowEdge(weatherGridI, weatherGridX, fromY);
-		}
-	// 	fromY = 1;
-	// }
+		unsigned int weatherGridI = (fromY * weatherGridSizeX) + weatherGridX;
+		airflowEdge(weatherGridI, weatherGridX, fromY);
+	}
 
-	// if (toY >= weatherGridSizeY - 1)
-	// {
-	// 	// toY = weatherGridSizeY -1;
-		unsigned int toY = weatherGridSizeY - 1;
-		for (unsigned int weatherGridX = 0; weatherGridX < weatherGridSizeX; ++weatherGridX)
-		{
-			unsigned int weatherGridI = (toY * weatherGridSizeX) + weatherGridX;
-			airflowEdge(weatherGridI, weatherGridX, toY);
-			floatPhoton(weatherGridI, sunlightColor, sunlightBrightness, fsundirection);
-		}
-	// 	toY = weatherGridSizeY - 2;
-	// }
+	unsigned int toY = weatherGridSizeY - 1;
+	for (unsigned int weatherGridX = 0; weatherGridX < weatherGridSizeX; ++weatherGridX)
+	{
+		unsigned int weatherGridI = (toY * weatherGridSizeX) + weatherGridX;
+		airflowEdge(weatherGridI, weatherGridX, toY);
+		floatPhoton(weatherGridI, sunlightColor, sunlightBrightness, fsundirection);
+	}
+#ifdef THREAD_TIMING_READOUT
+	auto end = std::chrono::steady_clock::now();
+	auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+	std::cout << "thread_handleEdges " << elapsed.count() << " microseconds." << std::endl;
+#endif
+
+
 
 
 }
@@ -1388,9 +1474,9 @@ void thread_master()
 	boost::thread t12 { thread_seeds };
 	boost::thread t11 { thread_life};
 
-boost::thread t811{  thread_handleEdges } ;
+	boost::thread t811{  thread_handleEdges } ;
 
-	
+
 
 
 
@@ -1398,7 +1484,7 @@ boost::thread t811{  thread_handleEdges } ;
 
 
 	t11.join();
-	
+
 	t12.join();
 
 
@@ -3673,7 +3759,7 @@ void clearAllPressureVelocity()
 		weatherGrid[weatherGridI].velocityX = 0;
 		weatherGrid[weatherGridI].velocityY = 0;
 		weatherGrid[weatherGridI].pressure = defaultPressure;
-		weatherGrid[weatherGridI].temperature = defaultTemperature * temperatureScale;
+		weatherGrid[weatherGridI].temperature = defaultTemperature << temperatureScale;
 	}
 }
 
@@ -4052,7 +4138,7 @@ void thread_graphics()
 
 			unsigned int weatherGridI = ((y / weatherGridScale) * weatherGridSizeX + (x / weatherGridScale));
 
-			int itemp = ((weatherGrid[weatherGridI].temperature / temperatureScale) + grid[i].temperature) / 2;
+			int itemp = ((weatherGrid[weatherGridI].temperature >> temperatureScale) + grid[i].temperature) >> 1;
 			float ftemp = itemp;
 			ftemp -= 273;
 			ftemp = ftemp / (100.0f);

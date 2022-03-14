@@ -34,7 +34,7 @@ extern  const unsigned int totalSize;
 #define maxAnimalSegments 26
 #define maxTimesReproduced 5
 
-#define temperatureScale 5
+#define temperatureScale 2
 #define weatherGridScale 2
 
 
