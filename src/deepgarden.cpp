@@ -941,15 +941,10 @@ void airflow( unsigned int weatherGridI)
 					// weatherGrid[takeI].dt += takeTemperature;
 					// weatherGrid[takeI].dx += takeVelocityX;                // mix in the velocity contribution from far-away.
 					// weatherGrid[takeI].dy += takeVelocityY;                // adding more looks cool, but makes the fluid explode on touch like nitroglycerin!
-				
+
 					weatherGrid[weatherGridI].dt -= takeTemperature;
 					weatherGrid[weatherGridI].dx -= takeVelocityX;                // mix in the velocity contribution from far-away.
 					weatherGrid[weatherGridI].dy -= takeVelocityY;                // adding more looks cool, but makes the fluid explode on touch like nitroglycerin!
-				
-
-					// weatherGrid[]
-
-
 				}
 			}
 		}
@@ -1123,7 +1118,7 @@ void materialPostProcess(unsigned int i, unsigned int weatherGridI, float satura
 			Color cloudTinge = color_clear;
 			cloudTinge = addColor(materialColor, color_white_halfClear);
 			float fsat = weatherGrid[weatherGridI].saturation ;
-			float flim = weatherGridScale * weatherGridScale;
+			float flim = saturationLimit;
 			cloudTinge.a = (fsat / flim )  ;
 			cloudTinge = clampColor(cloudTinge);
 			ppColor = filterColor(    ppColor , cloudTinge );
@@ -1193,7 +1188,7 @@ void weatherHeatGlow(unsigned int weatherGridI)
 {
 	if (weatherGrid[weatherGridI].temperature > (600 << temperatureScale) )
 	{
-		unsigned int radiantLightIntensity = ((weatherGrid[weatherGridI].temperature - 600) >> 4);
+		unsigned int radiantLightIntensity = (((weatherGrid[weatherGridI].temperature >> temperatureScale) - 600) >> 4);
 		float fdirection = RNG() * const_tau;
 		floatPhoton(weatherGridI, blackbodyLookup(weatherGrid[weatherGridI].temperature) , radiantLightIntensity, fdirection);
 	}
@@ -1386,15 +1381,22 @@ void thread_sector( unsigned int from, unsigned int to )
 			int saturationLimit = 0;
 			if (adjustedBoiling > 0)
 			{
-				saturationLimit  = ( weatherGrid[weatherGridI].temperature  / adjustedBoiling) * (weatherGridSquareScale);
+				saturationLimit  = ( weatherGrid[weatherGridI].temperature  / adjustedBoiling) * (weatherGridSquareScale / 2);
 			}
+
+			if (weatherGrid[weatherGridI].pressure > 0)
+			{
+				saturationLimit  *= (  1000 / ( weatherGrid[weatherGridI].pressure)   );
+			}
+
 			if (saturationLimit > (weatherGridSquareScale)) {saturationLimit = weatherGridSquareScale;}
 
 
 
+
 			materialHeatGlow(    currentPosition, weatherGridI);
-			materialPhaseChange( currentPosition,  0  );
-			materialPostProcess( currentPosition, weatherGridI, 4);
+			materialPhaseChange( currentPosition,   saturationLimit - weatherGrid[weatherGridI].saturation  );
+			materialPostProcess( currentPosition, weatherGridI, saturationLimit);
 
 
 
@@ -2629,6 +2631,11 @@ void setAnimalSpritePixel ( unsigned int animalIndex, unsigned int segmentIndex,
 	int worldX = segmentX + pixelX;
 	int worldY = segmentY + pixelY;
 	int worldI = ((worldY * sizeX) + worldX ) % totalSize;
+	int weatherGridX = worldX / weatherGridScale;
+	int weatherGridY = worldY / weatherGridScale;
+	int weatherGridI = (weatherGridY * weatherGridSizeX) + weatherGridX;
+
+
 	int j__color_offset = (worldI * numberOfFieldsPerVertex) ;
 
 	unsigned int pixelOrgan =  animals[animalIndex].segments[segmentIndex].frames[
@@ -2638,6 +2645,9 @@ void setAnimalSpritePixel ( unsigned int animalIndex, unsigned int segmentIndex,
 	if ( pixelOrgan != ORGAN_NOTHING)
 	{
 		Color organColor = organColorLookup(  pixelOrgan     );
+
+		organColor = multiplyColor( organColor, weatherGrid[weatherGridI].color );
+
 		memcpy( &animationGrid[ j__color_offset], &(    organColor )  ,     sizeof(Color) );
 
 		// also, leave a pheromone trail for others to follow!
