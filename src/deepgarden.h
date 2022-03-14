@@ -35,8 +35,8 @@ extern  const unsigned int totalSize;
 #define maxTimesReproduced 5
 
 #define temperatureScale 2
-#define weatherGridScale 2
-
+#define weatherGridScale 3
+#define weatherGridSquareScale 9
 
 #define NUMBER_OF_FRAMES     1
 

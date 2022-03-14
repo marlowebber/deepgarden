@@ -193,7 +193,6 @@ float timeOfDay = 0.5f;
 
 const unsigned int gasLawConstant = 2;
 
-
 // raw energy values are DIVIDED by these numbers to get the result. So more means less.
 const unsigned int lightEfficiency   = 1000;
 const float movementEfficiency = 5000.0f;
@@ -718,11 +717,6 @@ void conductHeat(unsigned int currentPosition, unsigned int neighbour)
 // The classic falling sand physics thread.
 void materialPhysics (unsigned int currentPosition, unsigned int weatherGridI)
 {
-
-	// if (grid[currentPosition].phase != PHASE_VACUUM)
-	// {
-	// unsigned int direction = calculateVelocityDirection( weatherGrid[weatherGridI]. velocityX,  weatherGrid[weatherGridI]. velocityY);
-	// unsigned int velocityAbs = abs(weatherGrid[weatherGridI]. velocityX) + abs( weatherGrid[weatherGridI]. velocityY) ;
 	unsigned int random = extremelyFastNumberFromZeroTo(N_NEIGHBOURS);
 
 	// movement instructions for GASES
@@ -789,7 +783,6 @@ void materialPhysics (unsigned int currentPosition, unsigned int weatherGridI)
 			currentPosition = neighbour;
 		}
 	}
-	// }
 }
 
 // boundary conditions are one of the trickiest parts to get right.
@@ -873,11 +866,10 @@ void airflow( unsigned int weatherGridI)
 	if (weatherGrid[weatherGridI].airBlockedSquares < (weatherGridScale * weatherGridScale))
 	{
 		// smooth the simulation by mixing each cell with the average of its neighbours.
-		int ap = 0;//weatherGrid[weatherGridI].pressure;
-		int ax = 0;//weatherGrid[weatherGridI].velocityX;
-		int ay = 0;//weatherGrid[weatherGridI].velocityY;
-		int at = 0;//weatherGrid[weatherGridI].temperature;
-		// int count = 1;
+		int ap = 0;
+		int ax = 0;
+		int ay = 0;
+		int at = 0;
 		for (unsigned int n = 0; n < N_NEIGHBOURS; ++n)
 		{
 			unsigned int weatherGridNeighbour = (weatherGridI + weatherGridOffsets[n] )  ;//% weatherGridSize;
@@ -886,12 +878,11 @@ void airflow( unsigned int weatherGridI)
 			ax += (weatherGrid[ weatherGridNeighbour ].velocityX  ) ;
 			ay += (weatherGrid[ weatherGridNeighbour ].velocityY  ) ;
 			at += (weatherGrid[ weatherGridNeighbour ].temperature) ;
-			// count++;
 		}
-		ax = ax >> 3;/// count ;                                                                                              // N_NEIGHBOURS is 8, so you can do the division part of the average by using a bit shift.
-		ay = ay >> 3;/// count ;
-		ap = ap >> 3;/// count ;
-		at = at >> 3;/// count ;
+		ax = ax >> 3;                                                                                              // N_NEIGHBOURS is 8, so you can do the division part of the average by using a bit shift.
+		ay = ay >> 3;
+		ap = ap >> 3;
+		at = at >> 3;
 
 		weatherGrid[weatherGridI]. dp +=   (ap - weatherGrid[weatherGridI].pressure   ) >> 3;
 		weatherGrid[weatherGridI]. dx +=   (ax - weatherGrid[weatherGridI].velocityX  ) >> 3;
@@ -904,26 +895,7 @@ void airflow( unsigned int weatherGridI)
 		weatherGrid[weatherGridI].dt += dtp;
 
 		// pv interchange
-		// unsigned int neighbourA = (weatherGridI + weatherGridSizeX) % weatherGridSize;
-		// unsigned int neighbourB = (weatherGridI - weatherGridSizeX) % weatherGridSize ;
-		// unsigned int neighbourC = (weatherGridI + 1               ) % weatherGridSize;
-		// unsigned int neighbourD = (weatherGridI - 1               ) % weatherGridSize ;
-
 		const unsigned int baseBlockageRatio = 3;
-		// weatherGrid[weatherGridI].dp += ((1 * (weatherGrid[ neighbourA ].velocityY - weatherGrid[ weatherGridI ].velocityY )) >> (baseBlockageRatio))  ;
-		// weatherGrid[weatherGridI].dy += ((1 * (weatherGrid[ neighbourA ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (baseBlockageRatio))  ;
-
-		// weatherGrid[weatherGridI].dp += ((-1 * (weatherGrid[ neighbourB ].velocityY - weatherGrid[ weatherGridI ].velocityY )) >> (baseBlockageRatio))  ;
-		// weatherGrid[weatherGridI].dy += ((-1 * (weatherGrid[ neighbourB ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (baseBlockageRatio))  ;
-
-		// weatherGrid[weatherGridI].dp += ((1 * (weatherGrid[ neighbourC ].velocityX - weatherGrid[ weatherGridI ].velocityX )) >> (baseBlockageRatio) )   ; // A difference in speed creates pressure.
-		// weatherGrid[weatherGridI].dx += ((1 * (weatherGrid[ neighbourC ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (baseBlockageRatio) )   ; // A difference in pressure creates movement.
-
-		// weatherGrid[weatherGridI].dp += ((- 1 * (weatherGrid[ neighbourD ].velocityX - weatherGrid[ weatherGridI ].velocityX )) >> (baseBlockageRatio) )   ; // A difference in speed creates pressure.
-		// weatherGrid[weatherGridI].dx += ((- 1 * (weatherGrid[ neighbourD ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (baseBlockageRatio) )   ; // A difference in pressure creates movement.
-
-
-
 		for (unsigned int direction = 0; direction < N_NEIGHBOURS; direction += 2)
 		{
 			unsigned int neighbour = weatherGridI + weatherGridOffsets[direction];
@@ -942,14 +914,11 @@ void airflow( unsigned int weatherGridI)
 			}
 		}
 
-
-
 		// mix heat and velocity from far away. This is a key component of turbulent behavior in the sim, and produces a billowing effect that looks very realistic. It is prone to great instability.
 		if (weatherUseTake)
 		{
 			int takeX = weatherGrid[weatherGridI].dx >> 1;    // strong mixing here allows the sim to make stunning clouds and air currents, but radiating shockwaves look better when the take component is smaller.
 			int takeY = weatherGrid[weatherGridI].dy >> 1;
-
 
 			unsigned int weatherGridX = weatherGridI % weatherGridSizeX;
 			unsigned int weatherGridY = weatherGridI / weatherGridSizeX;
@@ -962,9 +931,25 @@ void airflow( unsigned int weatherGridI)
 				int takeI = ((takeY * weatherGridSizeX) + takeX );
 				if (takeI >= 0 && takeI < weatherGridSize )
 				{
-					weatherGrid[weatherGridI].dt += (( weatherGrid[takeI].temperature - weatherGrid[weatherGridI].temperature) >> (1  ) );
-					weatherGrid[weatherGridI].dx += (( weatherGrid[takeI].velocityX   - weatherGrid[weatherGridI].velocityX)   >> (2  ) );                // mix in the velocity contribution from far-away.
-					weatherGrid[weatherGridI].dy += (( weatherGrid[takeI].velocityY   - weatherGrid[weatherGridI].velocityY)   >> (2  ) );                // adding more looks cool, but makes the fluid explode on touch like nitroglycerin!
+
+
+
+					int takeTemperature = (( weatherGrid[weatherGridI].temperature - weatherGrid[takeI].temperature ) >> (2  ) );
+					int takeVelocityX   = (( weatherGrid[weatherGridI].velocityX   - weatherGrid[takeI].velocityX   ) >> (3  ) );
+					int takeVelocityY   = (( weatherGrid[weatherGridI].velocityY   - weatherGrid[takeI].velocityY   ) >> (3  ) );
+
+					// weatherGrid[takeI].dt += takeTemperature;
+					// weatherGrid[takeI].dx += takeVelocityX;                // mix in the velocity contribution from far-away.
+					// weatherGrid[takeI].dy += takeVelocityY;                // adding more looks cool, but makes the fluid explode on touch like nitroglycerin!
+				
+					weatherGrid[weatherGridI].dt -= takeTemperature;
+					weatherGrid[weatherGridI].dx -= takeVelocityX;                // mix in the velocity contribution from far-away.
+					weatherGrid[weatherGridI].dy -= takeVelocityY;                // adding more looks cool, but makes the fluid explode on touch like nitroglycerin!
+				
+
+					// weatherGrid[]
+
+
 				}
 			}
 		}
@@ -973,7 +958,6 @@ void airflow( unsigned int weatherGridI)
 
 void floatPhoton( unsigned int weatherGridI ,  Color lightColor,  float lightBrightness,  float lightDirection)
 {
-	// if (weatherGridI >= weatherGridSize) {return;}
 	float blocked = 0.0f;
 	float positionX = weatherGridI % weatherGridSizeX;
 	float positionY = weatherGridI / weatherGridSizeX;
@@ -1010,9 +994,12 @@ void floatPhoton( unsigned int weatherGridI ,  Color lightColor,  float lightBri
 			appliedColor.a = energy / 1000;
 
 			weatherGrid[weatherGridI].color = addColor(weatherGrid[weatherGridI].color, appliedColor);
-		}
 
-		blocked += weatherGrid[weatherGridI].lightBlockedSquares;
+		}
+		if (weatherGrid[weatherGridI].lightBlockedSquares > 0)
+		{
+			blocked += weatherGrid[weatherGridI].lightBlockedSquares;
+		}
 	}
 }
 
@@ -1099,8 +1086,6 @@ void materialPostProcess(unsigned int i, unsigned int weatherGridI, float satura
 {
 	if (grid[i].material  < materials.size() && weatherGridI < weatherGridSize)
 	{
-		// unsigned int x = i % sizeX;
-		// unsigned int y = i / sizeX;
 		unsigned int b_offset = i * numberOfFieldsPerVertex;
 		Color ppColor = color_clear;
 
@@ -1150,10 +1135,10 @@ void materialPostProcess(unsigned int i, unsigned int weatherGridI, float satura
 		// now we will do the things that emit light.
 
 		// Make hot stuff glow
-		// if (grid[i].phase != PHASE_VACUUM)
-		// {
-		ppColor = addColor( ppColor, blackbodyLookup( (grid[i].temperature) ) );
-		// }
+		if (grid[i].phase != PHASE_VACUUM)
+		{
+			ppColor = addColor( ppColor, blackbodyLookup( (grid[i].temperature) ) );
+		}
 		ppColor = addColor(ppColor, blackbodyLookup( (weatherGrid[weatherGridI].temperature >> temperatureScale  ) ));
 
 		// shine some background stars.
@@ -1204,21 +1189,15 @@ void materialHeatGlow(unsigned int i, unsigned int weatherGridI)
 	}
 }
 
-
 void weatherHeatGlow(unsigned int weatherGridI)
 {
 	if (weatherGrid[weatherGridI].temperature > (600 << temperatureScale) )
 	{
-
 		unsigned int radiantLightIntensity = ((weatherGrid[weatherGridI].temperature - 600) >> 4);
 		float fdirection = RNG() * const_tau;
-		// fdirection = ((fdirection / N_NEIGHBOURS) * (6.28f)) - 3.1415f; // radiate in the empty direction. this converts 1-to-8 to radians.
-		// fdirection += (RNG() - 0.5f) * (0.75f);                         // add up to 1/8th of a full circles worth of direction noise.. 1/8 of a circle is 0.75 radians
 		floatPhoton(weatherGridI, blackbodyLookup(weatherGrid[weatherGridI].temperature) , radiantLightIntensity, fdirection);
 	}
 }
-
-
 
 void thread_sector( unsigned int from, unsigned int to )
 {
@@ -1246,14 +1225,6 @@ void thread_sector( unsigned int from, unsigned int to )
 		toY = weatherGridSizeY - 2;
 	}
 
-
-	// unsigned int prevWeatherGridI = 0;
-
-
-
-
-
-
 	// iterate through selected WEATHER cells
 #ifdef DETAIL_TIMING_READOUT
 	auto start1 = std::chrono::steady_clock::now();
@@ -1261,21 +1232,6 @@ void thread_sector( unsigned int from, unsigned int to )
 
 	for (unsigned int weatherGridI = weatherFromI; weatherGridI < weatherToI; ++weatherGridI)
 	{
-
-		// if (weatherGridI > 0)
-		// {
-		// 	weatherGrid[weatherGridI].saturation          = 0;//saturation;
-		// 	weatherGrid[weatherGridI].lightBlockedSquares = 0;//lightBlockedSquares;
-		// 	weatherGrid[weatherGridI].airBlockedSquares   = 0;//airBlockedSquares;
-		// 	// prevWeatherGridI = weatherGridI;
-		// 	// saturation = 0;
-		// 	// lightBlockedSquares = 0;
-		// 	// airBlockedSquares = 0;
-
-
-
-		// }
-
 		airflow(weatherGridI);
 		darkenLightfield( weatherGridI );
 	}
@@ -1284,9 +1240,6 @@ void thread_sector( unsigned int from, unsigned int to )
 	auto elapsed1 = std::chrono::duration_cast<std::chrono::microseconds>(end1 - start1);
 	std::cout << "subthread weather 1 " << elapsed1.count() << " microseconds." << std::endl;
 #endif
-
-
-
 
 
 
@@ -1356,15 +1309,6 @@ void thread_sector( unsigned int from, unsigned int to )
 //  COARSE iterate through cells in the range from..to
 	for (unsigned int currentPosition = from; currentPosition < to; ++currentPosition)
 	{
-
-		// printf("fromX %u fromY %u toX %u toY %u \n", fromX, fromY, toX, toY );
-		// for (unsigned int y = fromY; y < toY; ++y)
-		// {
-		// 	for (unsigned int x = fromX; x < toX; ++x)
-		// 	{
-
-
-
 		// calculate indexes
 		unsigned int x = currentPosition % sizeX;
 		unsigned int y = currentPosition / sizeX;
@@ -1397,22 +1341,10 @@ void thread_sector( unsigned int from, unsigned int to )
 				materialPhysics( currentPosition , weatherGridI);
 
 
-
-
-				// else
-				// {
-
-
-				// // }
-
-
-
 			}
 
 
 		}
-
-		// }
 	}
 
 
@@ -1437,68 +1369,72 @@ void thread_sector( unsigned int from, unsigned int to )
 		unsigned int weatherGridX = x / weatherGridScale;
 		unsigned int weatherGridY = y / weatherGridScale;
 		unsigned int weatherGridI = (weatherGridY * weatherGridSizeX) + weatherGridX;
-		materialHeatGlow(    currentPosition, weatherGridI);
-		materialPhaseChange( currentPosition,  0  );
-		materialPostProcess( currentPosition, weatherGridI, 4);
 
 
 
-
-
-
-
-
-		// couple the material grid temp to the weather grid temp
-		if (grid[currentPosition].phase != PHASE_VACUUM)
+		if (weatherGridI < weatherGridSize)
 		{
-			int gridCouplingAmount = ( weatherGrid[weatherGridI].temperature  - (grid[currentPosition].temperature << temperatureScale) ) ;
-			const unsigned int heatCouplingConstant = 4;
-			grid[currentPosition].temperature += (gridCouplingAmount >> temperatureScale)  >> heatCouplingConstant ;
-			weatherGrid[weatherGridI].temperature -= (gridCouplingAmount) >> heatCouplingConstant ;
 
 
+			// calculate the saturation limit
 
+			// lower pressure air can absorb more, higher temperature air can absorb more
 
+			// first, find out where the temperature lies in the material's liquid range
 
-			if (grid[currentPosition].phase == PHASE_GAS )
+			int adjustedBoiling = materials[grid[currentPosition].material].boiling << temperatureScale;
+			int saturationLimit = 0;
+			if (adjustedBoiling > 0)
 			{
-				weatherGrid[weatherGridI].newsaturation++;
+				saturationLimit  = ( weatherGrid[weatherGridI].temperature  / adjustedBoiling) * (weatherGridSquareScale);
 			}
+			if (saturationLimit > (weatherGridSquareScale)) {saturationLimit = weatherGridSquareScale;}
 
-			else if (grid[currentPosition].phase == PHASE_SOLID || grid[currentPosition].phase ==  PHASE_POWDER )
+
+
+			materialHeatGlow(    currentPosition, weatherGridI);
+			materialPhaseChange( currentPosition,  0  );
+			materialPostProcess( currentPosition, weatherGridI, 4);
+
+
+
+
+
+
+
+
+			// couple the material grid temp to the weather grid temp
+			if (grid[currentPosition].phase != PHASE_VACUUM)
 			{
-				weatherGrid[weatherGridI].newlightBlockedSquares++;
-				weatherGrid[weatherGridI].newairBlockedSquares++;
+				int gridCouplingAmount = ( weatherGrid[weatherGridI].temperature  - (grid[currentPosition].temperature << temperatureScale) ) ;
+				const unsigned int heatCouplingConstant = 4;
+				grid[currentPosition].temperature += (gridCouplingAmount >> temperatureScale)  >> heatCouplingConstant ;
+				weatherGrid[weatherGridI].temperature -= (gridCouplingAmount) >> heatCouplingConstant ;
+
+
+
+
+
+				if (grid[currentPosition].phase == PHASE_GAS )
+				{
+					weatherGrid[weatherGridI].newsaturation++;
+				}
+
+				else if (grid[currentPosition].phase == PHASE_SOLID || grid[currentPosition].phase ==  PHASE_POWDER )
+				{
+					weatherGrid[weatherGridI].newlightBlockedSquares++;
+					weatherGrid[weatherGridI].newairBlockedSquares++;
+				}
+
+				else if (grid[currentPosition].phase ==  PHASE_LIQUID )
+				{
+					weatherGrid[weatherGridI].newairBlockedSquares++;
+				}
+
+
 			}
-
-			else if (grid[currentPosition].phase ==  PHASE_LIQUID )
-			{
-				weatherGrid[weatherGridI].newairBlockedSquares++;
-			}
-
-
-
-			// if (ppPhaseOffset == 0)
-			// {
-
-			// 	weatherGrid[weatherGridI].saturation          = weatherGrid[weatherGridI].newsaturation ;
-			// 	weatherGrid[weatherGridI].lightBlockedSquares = weatherGrid[weatherGridI].newlightBlockedSquares ;
-			// 	weatherGrid[weatherGridI].airBlockedSquares   = weatherGrid[weatherGridI].newairBlockedSquares ;
-
-			// 	// weatherGrid[weatherGridI].newsaturation          = 0;
-			// 	// weatherGrid[weatherGridI].newlightBlockedSquares = 0;
-			// 	// weatherGrid[weatherGridI].newairBlockedSquares   = 0;
-
-
-
-			// }
-
-
-
-
 		}
 	}
-
 
 #ifdef DETAIL_TIMING_READOUT
 	auto end4 = std::chrono::steady_clock::now();
@@ -1602,8 +1538,6 @@ void thread_master()
 
 	t12.join();
 
-
-// void thread_handleEdges()
 
 
 	t8.join();
@@ -3445,16 +3379,16 @@ void createWorld( unsigned int world)
 			}
 
 			// drop boiling lava in it
-			if ((i > (100 * sizeX)) && (i < (200 * sizeX)) )
-			{
-				unsigned int x = i % sizeX;
-				if (x > 500 && x < 600)
-				{
-					setParticle(5, i);
-					grid[i].phase = PHASE_SOLID;
-					grid[i].temperature = 2000;
-				}
-			}
+			// if ((i > (100 * sizeX)) && (i < (200 * sizeX)) )
+			// {
+			// 	unsigned int x = i % sizeX;
+			// 	if (x > 500 && x < 600)
+			// 	{
+			// 		setParticle(5, i);
+			// 		grid[i].phase = PHASE_SOLID;
+			// 		grid[i].temperature = 2000;
+			// 	}
+			// }
 		}
 		break;
 	}
