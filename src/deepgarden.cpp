@@ -103,6 +103,10 @@ float * lifeColorGrid      = new float[totalSize * numberOfFieldsPerVertex];    
 float * animationGrid      = new float[totalSize * numberOfFieldsPerVertex];        //  for the sprites of animals.
 float * seedColorGrid      = new float[totalSize * numberOfFieldsPerVertex];        //  for the colors of seeds and falling photons.
 
+
+const float const_tau = 6.28f;
+const float const_pi  = 3.14f;
+
 // PLANT DRAWING
 unsigned int recursion_level = 0;
 const unsigned int recursion_limit = 4;
@@ -110,7 +114,7 @@ unsigned int extrusion_level = 0;
 const unsigned int extrusion_limit = 13;
 unsigned int drawActions = 0;
 const unsigned int drawActionlimit = 200;
-float accumulatedRotation = (0.5 * 3.1415);
+float accumulatedRotation = (0.5 * const_pi);
 float scalingFactor = 1.0f;
 vec_u2 cursor_grid = vec_u2(0, 0);
 vec_u2 prevCursor_grid = vec_u2(0, 0);
@@ -188,6 +192,7 @@ float fsundirection = 0.0f;
 float timeOfDay = 0.5f;
 
 const unsigned int gasLawConstant = 2;
+
 
 // raw energy values are DIVIDED by these numbers to get the result. So more means less.
 const unsigned int lightEfficiency   = 1000;
@@ -858,24 +863,25 @@ void airflow( unsigned int weatherGridI)
 	if (weatherGrid[weatherGridI].airBlockedSquares < (weatherGridScale * weatherGridScale))
 	{
 		// smooth the simulation by mixing each cell with the average of its neighbours.
-		int ap = weatherGrid[weatherGridI].pressure;
-		int ax = weatherGrid[weatherGridI].velocityX;
-		int ay = weatherGrid[weatherGridI].velocityY;
-		int at = weatherGrid[weatherGridI].temperature;
-		int count = 1;
+		int ap = 0;//weatherGrid[weatherGridI].pressure;
+		int ax = 0;//weatherGrid[weatherGridI].velocityX;
+		int ay = 0;//weatherGrid[weatherGridI].velocityY;
+		int at = 0;//weatherGrid[weatherGridI].temperature;
+		// int count = 1;
 		for (unsigned int n = 0; n < N_NEIGHBOURS; ++n)
 		{
-			unsigned int weatherGridNeighbour = (weatherGridI + weatherGridOffsets[n] )  % weatherGridSize;
+			unsigned int weatherGridNeighbour = (weatherGridI + weatherGridOffsets[n] )  ;//% weatherGridSize;
+			if (weatherGridNeighbour > weatherGridSize) {weatherGridNeighbour = weatherGridI;}
 			ap += (weatherGrid[ weatherGridNeighbour ].pressure   ) ;
 			ax += (weatherGrid[ weatherGridNeighbour ].velocityX  ) ;
 			ay += (weatherGrid[ weatherGridNeighbour ].velocityY  ) ;
 			at += (weatherGrid[ weatherGridNeighbour ].temperature) ;
-			count++;
+			// count++;
 		}
-		ax = ax / count ;                                                                                              // N_NEIGHBOURS is 8, so you can do the division part of the average by using a bit shift.
-		ay = ay / count ;
-		ap = ap / count ;
-		at = at / count ;
+		ax = ax >> 3;/// count ;                                                                                              // N_NEIGHBOURS is 8, so you can do the division part of the average by using a bit shift.
+		ay = ay >> 3;/// count ;
+		ap = ap >> 3;/// count ;
+		at = at >> 3;/// count ;
 
 		weatherGrid[weatherGridI]. dp +=   (ap - weatherGrid[weatherGridI].pressure   ) >> 3;
 		weatherGrid[weatherGridI]. dx +=   (ax - weatherGrid[weatherGridI].velocityX  ) >> 3;
@@ -1083,8 +1089,8 @@ void materialPostProcess(unsigned int i, unsigned int weatherGridI, float satura
 {
 	if (grid[i].material  < materials.size() && weatherGridI < weatherGridSize)
 	{
-		unsigned int x = i % sizeX;
-		unsigned int y = i / sizeX;
+		// unsigned int x = i % sizeX;
+		// unsigned int y = i / sizeX;
 		unsigned int b_offset = i * numberOfFieldsPerVertex;
 		Color ppColor = color_clear;
 
@@ -1181,7 +1187,7 @@ void materialHeatGlow(unsigned int i, unsigned int weatherGridI)
 		{
 			unsigned int radiantLightIntensity = ((grid[i].temperature - 600) >> 4);
 			float fdirection = randomDirection;
-			fdirection = ((fdirection / N_NEIGHBOURS) * (6.28f)) - 3.1415f; // radiate in the empty direction. this converts 1-to-8 to radians.
+			fdirection = ((fdirection / N_NEIGHBOURS) * (const_tau)) - const_pi; // radiate in the empty direction. this converts 1-to-8 to radians.
 			fdirection += (RNG() - 0.5f) * (0.75f);                         // add up to 1/8th of a full circles worth of direction noise.. 1/8 of a circle is 0.75 radians
 			floatPhoton(weatherGridI, blackbodyLookup(grid[i].temperature) , radiantLightIntensity, fdirection);
 		}
@@ -1195,7 +1201,7 @@ void weatherHeatGlow(unsigned int weatherGridI)
 	{
 
 		unsigned int radiantLightIntensity = ((weatherGrid[weatherGridI].temperature - 600) >> 4);
-		float fdirection = RNG() * 2 * 3.141f;
+		float fdirection = RNG() * const_tau;
 		// fdirection = ((fdirection / N_NEIGHBOURS) * (6.28f)) - 3.1415f; // radiate in the empty direction. this converts 1-to-8 to radians.
 		// fdirection += (RNG() - 0.5f) * (0.75f);                         // add up to 1/8th of a full circles worth of direction noise.. 1/8 of a circle is 0.75 radians
 		floatPhoton(weatherGridI, blackbodyLookup(weatherGrid[weatherGridI].temperature) , radiantLightIntensity, fdirection);
@@ -1437,7 +1443,7 @@ void updateDaytime()
 	{
 		timeOfDay += 0.01f;
 	}
-	fsundirection =  1.5 * 3.1415f + (sin(timeOfDay) ) ;
+	fsundirection =  1.5 * const_pi + (sin(timeOfDay) ) ;
 	int effectiveTemp = sunlightTemp - (sunlightTemp * abs (sin(timeOfDay)) );
 	sunlightColor = blackbodyLookup(effectiveTemp);
 
@@ -3447,8 +3453,8 @@ unsigned int getRelativeDirection (unsigned int a, unsigned int b)
 	float fdiffX = diffX;
 	float fdiffY = diffY;
 	float angle = atan2(fdiffY, fdiffX);
-	angle += ( 3.1415f);
-	angle = angle / (2 * 3.1415f);
+	angle += const_pi;
+	angle = angle / const_tau;
 	angle *= 8.0f;
 	result = angle;
 	if (result == 8) {result = 0;}
@@ -4361,7 +4367,7 @@ int drawCharacter ( std::string genes , unsigned int identity)
 		cursor_string++; if (cursor_string > genesize) {return -1;}
 		float numberModifier = 0.0f;
 		while (!numberModifier) {    numberModifier = alphanumeric( genes[cursor_string] ); cursor_string++; if (cursor_string > genesize) {return -1;} }
-		float branchRotation = ((numberModifier - 13.0f) / 13.0f) * 3.14159f;
+		float branchRotation = ((numberModifier - 13.0f) / 13.0f) * const_pi;
 #ifdef PLANT_DRAWING_READOUT
 		printf("branch with angle %f\n", branchRotation);
 #endif
@@ -4404,7 +4410,7 @@ int drawCharacter ( std::string genes , unsigned int identity)
 		// rotationIncrement describes what fraction of the whole circle the array occupies.
 		float arrayTotalAngle =  numberModifier;
 		arrayTotalAngle = arrayTotalAngle / 26;
-		arrayTotalAngle = arrayTotalAngle * 2 * 3.1415;
+		arrayTotalAngle = arrayTotalAngle * const_tau;
 
 		numberModifier = 0;
 		while (!numberModifier) {    numberModifier = alphanumeric( genes[cursor_string] ); cursor_string++; if (cursor_string > genesize) {return -1;} }
@@ -4459,7 +4465,7 @@ int drawCharacter ( std::string genes , unsigned int identity)
 
 		// rotationIncrement describes what fraction of the whole circle the array occupies.
 		float repeats =  numberModifier;
-		float rotationIncrement = (2 * 3.1415) / repeats;
+		float rotationIncrement = (const_tau) / repeats;
 
 #ifdef PLANT_DRAWING_READOUT
 		printf("rosette, divided %f \n", repeats);
@@ -4865,7 +4871,7 @@ int drawCharacter ( std::string genes , unsigned int identity)
 	{
 		cursor_string++; if (cursor_string > genesize) {return -1;}
 		float numberModifier = alphanumeric( genes[cursor_string] );
-		numberModifier = ((numberModifier - 13) / 13) * 3.1415 * 0.5;
+		numberModifier = ((numberModifier - 13) / 13) * const_pi * 0.5;
 #ifdef PLANT_DRAWING_READOUT
 		printf("modify angle %f char '%c'\n", numberModifier,  genes[cursor_string]);
 #endif
@@ -4899,7 +4905,7 @@ void drawPlantFromSeed( std::string genes, unsigned int i )
 	cursor_grid = vec_u2(x, y);
 	origin = cursor_grid;
 	prevCursor_grid = cursor_grid;
-	accumulatedRotation = (0.5 * 3.1415);
+	accumulatedRotation = (0.5 * const_pi);
 	cursor_germinationMaterial =  0;
 	cursor_energySource = ENERGYSOURCE_LIGHT;
 
