@@ -393,6 +393,10 @@ struct Weather
 	unsigned int lightBlockedSquares;
 	unsigned int airBlockedSquares;
 
+	int          newsaturation;
+	unsigned int newlightBlockedSquares;
+	unsigned int newairBlockedSquares;
+
 	int dt;
 	int dp;
 	int dx;
@@ -417,6 +421,12 @@ Weather::Weather()
 	this->lightBlockedSquares = 0;
 	this->color = color_clear;
 	this->direction = 2;
+
+
+	this-> newsaturation          = 0;
+	this-> newlightBlockedSquares = 0;
+	this-> newairBlockedSquares   = 0;
+
 }
 
 // the light grid holds lighting information. it is not drawn directly but informs what will be drawn on the color grid.
@@ -1236,9 +1246,7 @@ void thread_sector( unsigned int from, unsigned int to )
 		toY = weatherGridSizeY - 2;
 	}
 
-	int saturation = 0;
-	int lightBlockedSquares = 0;
-	int airBlockedSquares = 0;
+
 	// unsigned int prevWeatherGridI = 0;
 
 
@@ -1254,16 +1262,19 @@ void thread_sector( unsigned int from, unsigned int to )
 	for (unsigned int weatherGridI = weatherFromI; weatherGridI < weatherToI; ++weatherGridI)
 	{
 
-		if (weatherGridI > 0)
-		{
-			weatherGrid[weatherGridI - 1].saturation = saturation;
-			weatherGrid[weatherGridI - 1].lightBlockedSquares = lightBlockedSquares;
-			weatherGrid[weatherGridI - 1].airBlockedSquares = airBlockedSquares;
-			// prevWeatherGridI = weatherGridI;
-			saturation = 0;
-			lightBlockedSquares = 0;
-			airBlockedSquares = 0;
-		}
+		// if (weatherGridI > 0)
+		// {
+		// 	weatherGrid[weatherGridI].saturation          = 0;//saturation;
+		// 	weatherGrid[weatherGridI].lightBlockedSquares = 0;//lightBlockedSquares;
+		// 	weatherGrid[weatherGridI].airBlockedSquares   = 0;//airBlockedSquares;
+		// 	// prevWeatherGridI = weatherGridI;
+		// 	// saturation = 0;
+		// 	// lightBlockedSquares = 0;
+		// 	// airBlockedSquares = 0;
+
+
+
+		// }
 
 		airflow(weatherGridI);
 		darkenLightfield( weatherGridI );
@@ -1290,6 +1301,16 @@ void thread_sector( unsigned int from, unsigned int to )
 	for (unsigned int weatherGridI = weatherFromI + ppPhaseOffset; weatherGridI < weatherToI; weatherGridI += ppSkipSize)
 	{
 		weatherHeatGlow(weatherGridI);
+
+
+		weatherGrid[weatherGridI].saturation = weatherGrid[weatherGridI].newsaturation;
+		weatherGrid[weatherGridI].lightBlockedSquares = weatherGrid[weatherGridI].newlightBlockedSquares;
+		weatherGrid[weatherGridI].airBlockedSquares = weatherGrid[weatherGridI].newairBlockedSquares;
+
+
+		weatherGrid[weatherGridI].newsaturation          = 0;
+		weatherGrid[weatherGridI].newlightBlockedSquares = 0;
+		weatherGrid[weatherGridI].newairBlockedSquares   = 0 ;
 
 	}
 #ifdef DETAIL_TIMING_READOUT
@@ -1355,7 +1376,7 @@ void thread_sector( unsigned int from, unsigned int to )
 
 		if (weatherGridI < weatherGridSize)
 		{
-			float saturationLimit = 0.0f;
+			// float saturationLimit = 0.0f;
 			if (grid[currentPosition].phase != PHASE_VACUUM)
 			{
 				// iterate through grid cells. collect saturation information for each weather cell that you are in.
@@ -1375,14 +1396,17 @@ void thread_sector( unsigned int from, unsigned int to )
 
 				materialPhysics( currentPosition , weatherGridI);
 
-				if (grid[currentPosition].phase == PHASE_GAS )
-				{ saturation++; }
 
-				if (grid[currentPosition].phase == PHASE_SOLID || grid[currentPosition].phase ==  PHASE_POWDER )
-				{ lightBlockedSquares++; }
 
-				if (grid[currentPosition].phase == PHASE_SOLID || grid[currentPosition].phase ==  PHASE_POWDER  || grid[currentPosition].phase ==  PHASE_LIQUID )
-				{ airBlockedSquares++; }
+
+				// else
+				// {
+
+
+				// // }
+
+
+
 			}
 
 
@@ -1417,6 +1441,13 @@ void thread_sector( unsigned int from, unsigned int to )
 		materialPhaseChange( currentPosition,  0  );
 		materialPostProcess( currentPosition, weatherGridI, 4);
 
+
+
+
+
+
+
+
 		// couple the material grid temp to the weather grid temp
 		if (grid[currentPosition].phase != PHASE_VACUUM)
 		{
@@ -1424,6 +1455,47 @@ void thread_sector( unsigned int from, unsigned int to )
 			const unsigned int heatCouplingConstant = 4;
 			grid[currentPosition].temperature += (gridCouplingAmount >> temperatureScale)  >> heatCouplingConstant ;
 			weatherGrid[weatherGridI].temperature -= (gridCouplingAmount) >> heatCouplingConstant ;
+
+
+
+
+
+			if (grid[currentPosition].phase == PHASE_GAS )
+			{
+				weatherGrid[weatherGridI].newsaturation++;
+			}
+
+			else if (grid[currentPosition].phase == PHASE_SOLID || grid[currentPosition].phase ==  PHASE_POWDER )
+			{
+				weatherGrid[weatherGridI].newlightBlockedSquares++;
+				weatherGrid[weatherGridI].newairBlockedSquares++;
+			}
+
+			else if (grid[currentPosition].phase ==  PHASE_LIQUID )
+			{
+				weatherGrid[weatherGridI].newairBlockedSquares++;
+			}
+
+
+
+			// if (ppPhaseOffset == 0)
+			// {
+
+			// 	weatherGrid[weatherGridI].saturation          = weatherGrid[weatherGridI].newsaturation ;
+			// 	weatherGrid[weatherGridI].lightBlockedSquares = weatherGrid[weatherGridI].newlightBlockedSquares ;
+			// 	weatherGrid[weatherGridI].airBlockedSquares   = weatherGrid[weatherGridI].newairBlockedSquares ;
+
+			// 	// weatherGrid[weatherGridI].newsaturation          = 0;
+			// 	// weatherGrid[weatherGridI].newlightBlockedSquares = 0;
+			// 	// weatherGrid[weatherGridI].newairBlockedSquares   = 0;
+
+
+
+			// }
+
+
+
+
 		}
 	}
 
