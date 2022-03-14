@@ -7,6 +7,8 @@
 #include "main.h"
 
 #define THREAD_TIMING_READOUT 1
+#define DETAIL_TIMING_READOUT 1
+
 // #define PLANT_DRAWING_READOUT 1
 // #define ANIMAL_DRAWING_READOUT 1
 // #define ANIMAL_BEHAVIOR_READOUT 1
@@ -843,16 +845,9 @@ void applyAirflowChanges(unsigned int weatherGridI)
 	weatherGrid[weatherGridI]. dt = 0;
 }
 
-void airflow( unsigned int currentPosition, unsigned int weatherGridI, unsigned int weatherGridX, unsigned int weatherGridY)
+void airflow( unsigned int weatherGridI, unsigned int weatherGridX, unsigned int weatherGridY)
 {
-	// couple the material grid temp to the weather grid temp
-	if (grid[currentPosition].phase != PHASE_VACUUM)
-	{
-		int gridCouplingAmount = ( weatherGrid[weatherGridI].temperature  - (grid[currentPosition].temperature * temperatureScale) ) ;
-		const unsigned int heatCouplingConstant = 8;
-		grid[currentPosition].temperature += (gridCouplingAmount / temperatureScale)  >> heatCouplingConstant ;
-		weatherGrid[weatherGridI].temperature -= (gridCouplingAmount) >> heatCouplingConstant ;
-	}
+
 
 	// make sure these are never less than 1! the only reason they are signed integers is so you have a chance to check, instead of suffering an immediate failure.
 	if (weatherGrid[weatherGridI].temperature  < 1) {weatherGrid[weatherGridI].temperature = 1;}
@@ -958,6 +953,7 @@ void floatPhoton( unsigned int weatherGridI ,  Color lightColor,  float lightBri
 
 		weatherGridI =  (wy * weatherGridSizeX) + wx ;
 		if (weatherGridI >= weatherGridSize) {return;}
+
 		float energy  = (lightBrightness - blocked );
 		if (energy < 0.0f)
 		{
@@ -965,7 +961,7 @@ void floatPhoton( unsigned int weatherGridI ,  Color lightColor,  float lightBri
 		}
 		else
 		{
-	
+
 			Color appliedColor = lightColor;
 			appliedColor.a = energy / 1000;
 
@@ -976,7 +972,7 @@ void floatPhoton( unsigned int weatherGridI ,  Color lightColor,  float lightBri
 	}
 }
 
-void lightPostProcess(unsigned int weatherGridI , unsigned int weatherGridX, unsigned int weatherGridY)
+void darkenLightfield(unsigned int weatherGridI )
 {
 	// darken the light field over time. This is crucial to refresh it without constantly redrawing the whole thing.
 	weatherGrid[weatherGridI].color.r += (color_nightLight.r - weatherGrid[weatherGridI].color.r) * 0.2f ;
@@ -1133,49 +1129,114 @@ void materialPostProcess(unsigned int i, unsigned int weatherGridI, float satura
 
 void materialHeatGlow(unsigned int i, unsigned int weatherGridI)
 {
-	if (grid[i].phase != PHASE_VACUUM)
+	if (grid[i].temperature > 600 )
 	{
-		if (grid[i].temperature > 600 )
+		bool edge = false;
+		unsigned int randomDirection = extremelyFastNumberFromZeroTo(N_NEIGHBOURS);
+		unsigned int neighbour = i;
+		for (int j = 0; j < N_NEIGHBOURS; ++j)
 		{
-			bool edge = false;
-			unsigned int randomDirection = extremelyFastNumberFromZeroTo(N_NEIGHBOURS);
-			unsigned int neighbour = i;
-			for (int j = 0; j < N_NEIGHBOURS; ++j)
-			{
-				randomDirection ++;
-				randomDirection = randomDirection % N_NEIGHBOURS;
+			randomDirection ++;
+			randomDirection = randomDirection % N_NEIGHBOURS;
 
-				neighbour  = (i + neighbourOffsets[ randomDirection ]);
-				if (neighbour < totalSize)
+			neighbour  = (i + neighbourOffsets[ randomDirection ]);
+			if (neighbour < totalSize)
+			{
+				if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_LIQUID || grid[neighbour].phase == PHASE_GAS)  // but only if it is on the edge of a material, not inside the bulk (which is already painted with glow in a cheaper way)
 				{
-					if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_LIQUID || grid[neighbour].phase == PHASE_GAS)  // but only if it is on the edge of a material, not inside the bulk (which is already painted with glow in a cheaper way)
-					{
-						edge = true;
-						break;
-					}
+					edge = true;
+					break;
 				}
 			}
-			if (edge)
-			{
-				unsigned int radiantLightIntensity = ((grid[i].temperature - 600) >> 4);
-				float fdirection = randomDirection;
-				fdirection = ((fdirection / N_NEIGHBOURS) * (6.28f)) - 3.1415f; // radiate in the empty direction. this converts 1-to-8 to radians.
-				fdirection += (RNG() - 0.5f) * (0.75f);                         // add up to 1/8th of a full circles worth of direction noise.. 1/8 of a circle is 0.75 radians
-				floatPhoton(weatherGridI, blackbodyLookup(grid[i].temperature) , radiantLightIntensity, fdirection);
-			}
+		}
+		if (edge)
+		{
+			unsigned int radiantLightIntensity = ((grid[i].temperature - 600) >> 4);
+			float fdirection = randomDirection;
+			fdirection = ((fdirection / N_NEIGHBOURS) * (6.28f)) - 3.1415f; // radiate in the empty direction. this converts 1-to-8 to radians.
+			fdirection += (RNG() - 0.5f) * (0.75f);                         // add up to 1/8th of a full circles worth of direction noise.. 1/8 of a circle is 0.75 radians
+			floatPhoton(weatherGridI, blackbodyLookup(grid[i].temperature) , radiantLightIntensity, fdirection);
 		}
 	}
 }
 
 
+
 void thread_sector( unsigned int from, unsigned int to )
 {
+
+	unsigned int fromX = from % sizeX;
+	unsigned int fromY = from / sizeX;
+	unsigned int weatherFromX = fromX / weatherGridScale;
+	unsigned int weatherFromY = fromY / weatherGridScale;
+	unsigned int weatherFromI = ( (weatherFromY) * weatherGridSizeX ) + (weatherFromX) ;
+	unsigned int toX = to % sizeX;
+	unsigned int toY = to / sizeX;
+	unsigned int weatherToX = toX / weatherGridScale;
+	unsigned int weatherToY = toY / weatherGridScale;
+	unsigned int weatherToI = ( (weatherToY) * weatherGridSizeX ) + (weatherToX) ;
+
+	// for the airflow simulation, detect edges and execute them in advance, so normal run is not interrupted.
+	// cast sunlight from the edges.
+	if (fromY == 0)
+	{
+		// for (unsigned int weatherGridX = 0; weatherGridX < weatherGridSizeX; ++weatherGridX)
+		// {
+		// 	unsigned int weatherGridI = (fromY * weatherGridSizeX) + weatherGridX;
+		// 	airflowEdge(weatherGridI, weatherGridX, fromY);
+		// }
+		fromY = 1;
+	}
+
+	if (toY >= weatherGridSizeY - 1)
+	{
+		// toY = weatherGridSizeY -1;
+		// for (unsigned int weatherGridX = 0; weatherGridX < weatherGridSizeX; ++weatherGridX)
+		// {
+		// 	unsigned int weatherGridI = (toY * weatherGridSizeX) + weatherGridX;
+		// 	airflowEdge(weatherGridI, weatherGridX, toY);
+		// 	floatPhoton(weatherGridI, sunlightColor, sunlightBrightness, fsundirection);
+		// }
+		toY = weatherGridSizeY - 2;
+	}
+
 	int saturation = 0;
 	int lightBlockedSquares = 0;
 	int airBlockedSquares = 0;
 	unsigned int prevWeatherGridI = 0;
 
-	// iterate through cells in the range from..to
+	// iterate through selected WEATHER cells
+	for (unsigned int weatherGridI = weatherFromI; weatherGridI < weatherToI; ++weatherGridI)
+	{
+
+		unsigned int weatherGridX = weatherGridI % weatherGridSizeX;
+		unsigned int weatherGridY = weatherGridI / weatherGridSizeX;
+
+		weatherGrid[prevWeatherGridI].saturation = saturation;
+		weatherGrid[prevWeatherGridI].lightBlockedSquares = lightBlockedSquares;
+		weatherGrid[prevWeatherGridI].airBlockedSquares = airBlockedSquares;
+		prevWeatherGridI = weatherGridI;
+		saturation = 0;
+		lightBlockedSquares = 0;
+		airBlockedSquares = 0;
+		airflow(weatherGridI, weatherGridX, weatherGridY);
+
+		darkenLightfield( weatherGridI );
+	}
+
+	// iterate over the weather grid parts again to apply the updated changes. Doing this separately to the calculation is vital to the detail and beauty of the simulation.
+	for (unsigned int weatherGridI = weatherFromI; weatherGridI < weatherToI; ++weatherGridI)
+	{
+		applyAirflowChanges( weatherGridI);
+	}
+
+
+
+
+
+
+
+//  COARSE iterate through cells in the range from..to
 	for (unsigned int currentPosition = from; currentPosition < to; ++currentPosition)
 	{
 		// calculate indexes
@@ -1185,43 +1246,8 @@ void thread_sector( unsigned int from, unsigned int to )
 		unsigned int weatherGridY = y / weatherGridScale;
 		unsigned int weatherGridI = (weatherGridY * weatherGridSizeX) + weatherGridX;
 
-		bool readyForDetailUpdate = false;
-		if ((currentPosition + ppPhaseOffset)  % ppSkipSize == 0)
-		{
-			readyForDetailUpdate = true;
-		}
 
-		if (weatherGridI != prevWeatherGridI) // you have entered a weather square that hasn't been updated yet.
-		{
-			weatherGrid[prevWeatherGridI].saturation = saturation;
-			weatherGrid[prevWeatherGridI].lightBlockedSquares = lightBlockedSquares;
-			weatherGrid[prevWeatherGridI].airBlockedSquares = airBlockedSquares;
-			prevWeatherGridI = weatherGridI;
-			saturation = 0;
-			lightBlockedSquares = 0;
-			airBlockedSquares = 0;
-
-			if (weatherGridY == 0 || (weatherGridY >= weatherGridSizeY - 1)  )
-			{
-				airflowEdge(weatherGridI, weatherGridX, weatherGridY);
-			}
-			else
-			{
-				airflow( currentPosition, weatherGridI, weatherGridX, weatherGridY);
-			}
-
-			if (readyForDetailUpdate)
-			{
-				// cast sunlight from the edges.
-				if (weatherGridX == 0 || weatherGridY == 0 || weatherGridX == weatherGridSizeX - 1 || weatherGridY == weatherGridSizeY - 1)
-				{
-					floatPhoton(weatherGridI, sunlightColor, sunlightBrightness, fsundirection);
-				}
-				lightPostProcess( weatherGridI , weatherGridX,  weatherGridY);
-			}
-		}
-
-		if (currentPosition < totalSize && weatherGridI < weatherGridSize)
+		if (weatherGridI < weatherGridSize)
 		{
 			float saturationLimit = 0.0f;
 			if (grid[currentPosition].phase != PHASE_VACUUM)
@@ -1243,12 +1269,6 @@ void thread_sector( unsigned int from, unsigned int to )
 
 				materialPhysics( currentPosition , weatherGridI);
 
-				if ( readyForDetailUpdate)
-				{
-					materialPhaseChange(currentPosition,  saturationLimit - weatherGrid[weatherGridI].saturation  );
-					materialHeatGlow(currentPosition,  weatherGridI);
-				}
-
 				if (grid[currentPosition].phase == PHASE_GAS )
 				{ saturation++; }
 
@@ -1259,28 +1279,31 @@ void thread_sector( unsigned int from, unsigned int to )
 				{ airBlockedSquares++; }
 			}
 
-			if ( readyForDetailUpdate)
-			{
-				materialPostProcess(currentPosition, weatherGridI, saturationLimit);
-			}
+
 		}
 	}
 
-
-	// iterate over the weather grid parts again to apply the updated changes. Doing this separately to the calculation is vital to the detail and beauty of the simulation.
-	unsigned int fromX = from % sizeX;
-	unsigned int fromY = from / sizeX;
-	unsigned int weatherFromX = fromX / weatherGridScale;
-	unsigned int weatherFromY = fromY / weatherGridScale;
-	unsigned int weatherFromI = ( (weatherFromY) * weatherGridSizeX ) + (weatherFromX) ;
-	unsigned int toX = to % sizeX;
-	unsigned int toY = to / sizeX;
-	unsigned int weatherToX = toX / weatherGridScale;
-	unsigned int weatherToY = toY / weatherGridScale;
-	unsigned int weatherToI = ( (weatherToY) * weatherGridSizeX ) + (weatherToX) ;
-	for (unsigned int weatherGridI = weatherFromI; weatherGridI < weatherToI; ++weatherGridI)
+	//FINE iterate through selected cells
+	for (unsigned int currentPosition = (from + ppPhaseOffset); currentPosition < to; currentPosition += ppSkipSize)
 	{
-		applyAirflowChanges( weatherGridI);
+		// calculate indexes
+		unsigned int x = currentPosition % sizeX;
+		unsigned int y = currentPosition / sizeX;
+		unsigned int weatherGridX = x / weatherGridScale;
+		unsigned int weatherGridY = y / weatherGridScale;
+		unsigned int weatherGridI = (weatherGridY * weatherGridSizeX) + weatherGridX;
+		materialHeatGlow(    currentPosition, weatherGridI);
+		materialPhaseChange( currentPosition,  0  );
+		materialPostProcess( currentPosition, weatherGridI, 4);
+
+		// couple the material grid temp to the weather grid temp
+		if (grid[currentPosition].phase != PHASE_VACUUM)
+		{
+			int gridCouplingAmount = ( weatherGrid[weatherGridI].temperature  - (grid[currentPosition].temperature * temperatureScale) ) ;
+			const unsigned int heatCouplingConstant = 4;
+			grid[currentPosition].temperature += (gridCouplingAmount / temperatureScale)  >> heatCouplingConstant ;
+			weatherGrid[weatherGridI].temperature -= (gridCouplingAmount) >> heatCouplingConstant ;
+		}
 	}
 }
 
@@ -1296,19 +1319,59 @@ void updateDaytime()
 
 }
 
+
+
+
+void thread_handleEdges()
+{
+
+
+
+
+		// for the airflow simulation, detect edges and execute them in advance, so normal run is not interrupted.
+	// cast sunlight from the edges.
+	// if (fromY == 0)
+	// {
+		unsigned int fromY = 0;
+		for (unsigned int weatherGridX = 0; weatherGridX < weatherGridSizeX; ++weatherGridX)
+		{
+
+			unsigned int weatherGridI = (fromY * weatherGridSizeX) + weatherGridX;
+			airflowEdge(weatherGridI, weatherGridX, fromY);
+		}
+	// 	fromY = 1;
+	// }
+
+	// if (toY >= weatherGridSizeY - 1)
+	// {
+	// 	// toY = weatherGridSizeY -1;
+		unsigned int toY = weatherGridSizeY - 1;
+		for (unsigned int weatherGridX = 0; weatherGridX < weatherGridSizeX; ++weatherGridX)
+		{
+			unsigned int weatherGridI = (toY * weatherGridSizeX) + weatherGridX;
+			airflowEdge(weatherGridI, weatherGridX, toY);
+			floatPhoton(weatherGridI, sunlightColor, sunlightBrightness, fsundirection);
+		}
+	// 	toY = weatherGridSizeY - 2;
+	// }
+
+
+}
+
+
+
 // this thread is run once per frame.
 void thread_master()
 {
 	seedExtremelyFastNumberGenerators(); // make sure randomness is really random
 	updateDaytime();
 
-	boost::thread t12 { thread_seeds };
-	boost::thread t11 { thread_life};
 
 
 #ifdef THREAD_TIMING_READOUT
 	auto start = std::chrono::steady_clock::now();
 #endif
+
 
 
 
@@ -1321,16 +1384,42 @@ void thread_master()
 	boost::thread t7{  thread_sector, 6 * (totalSize / 8)  , (7 * (totalSize / 8))  } ;
 	boost::thread t8{  thread_sector, 7 * (totalSize / 8)  , ((totalSize )       )  } ;
 
-	ppPhaseOffset ++;
+
+	boost::thread t12 { thread_seeds };
+	boost::thread t11 { thread_life};
+
+boost::thread t811{  thread_handleEdges } ;
+
+	
+
+
+
+	t811.join();
+
+
+	t11.join();
+	
+	t12.join();
+
+
+// void thread_handleEdges()
+
+
+	t8.join();
+
+	t7.join();
+
+	t6.join();
+
+	t5.join();
+
+	t4.join();
+
+	t3.join();
+
+	t2.join();
 
 	t1.join();
-	t2.join();
-	t3.join();
-	t4.join();
-	t5.join();
-	t6.join();
-	t7.join();
-	t8.join();
 
 #ifdef THREAD_TIMING_READOUT
 	auto end = std::chrono::steady_clock::now();
@@ -1338,8 +1427,22 @@ void thread_master()
 	std::cout << "thread_sector x8 " << elapsed.count() << " microseconds." << std::endl;
 #endif
 
-	t12.join();
-	t11.join();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	ppPhaseOffset++;
+	if (ppPhaseOffset == ppSkipSize) { ppPhaseOffset = 0;}
 }
 
 struct AnimalSegment
