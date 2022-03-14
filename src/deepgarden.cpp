@@ -393,6 +393,9 @@ struct Weather
 
 	Color color; // this is where lighting information for the sim is stored, it is integrated with weather for performance reasons
 
+	unsigned int direction;
+	unsigned int velocityAbs;
+
 	Weather();
 };
 
@@ -406,6 +409,7 @@ Weather::Weather()
 	this->airBlockedSquares = 0;
 	this->lightBlockedSquares = 0;
 	this->color = color_clear;
+	this->direction = 2;
 }
 
 // the light grid holds lighting information. it is not drawn directly but informs what will be drawn on the color grid.
@@ -684,90 +688,90 @@ void materialPhaseChange( unsigned int currentPosition,  float saturationDiffere
 void conductHeat(unsigned int currentPosition, unsigned int neighbour)
 {
 	// Exchange heat by conduction.
-	if (grid[neighbour].phase != PHASE_VACUUM)
-	{
-		int avgTemp = (((grid[currentPosition].temperature ) - (grid[neighbour].temperature)) ) ;
-		avgTemp = avgTemp >> materials[ grid[neighbour].material ].insulativity;
-		grid[neighbour].temperature += avgTemp;
-		grid[currentPosition].temperature -= avgTemp;
-	}
+	// if (grid[neighbour].phase != PHASE_VACUUM)
+	// {
+	int avgTemp = (((grid[currentPosition].temperature ) - (grid[neighbour].temperature)) ) ;
+	avgTemp = avgTemp >> materials[ grid[neighbour].material ].insulativity;
+	grid[neighbour].temperature += avgTemp;
+	grid[currentPosition].temperature -= avgTemp;
+	// }
 }
 
 // The classic falling sand physics thread.
 void materialPhysics (unsigned int currentPosition, unsigned int weatherGridI)
 {
 
-	if (grid[currentPosition].phase != PHASE_VACUUM)
+	// if (grid[currentPosition].phase != PHASE_VACUUM)
+	// {
+	// unsigned int direction = calculateVelocityDirection( weatherGrid[weatherGridI]. velocityX,  weatherGrid[weatherGridI]. velocityY);
+	// unsigned int velocityAbs = abs(weatherGrid[weatherGridI]. velocityX) + abs( weatherGrid[weatherGridI]. velocityY) ;
+	unsigned int random = extremelyFastNumberFromZeroTo(N_NEIGHBOURS);
+
+	// movement instructions for GASES
+	if (grid[currentPosition].phase == PHASE_GAS)
 	{
-		unsigned int direction = calculateVelocityDirection( weatherGrid[weatherGridI]. velocityX,  weatherGrid[weatherGridI]. velocityY);
-		unsigned int velocityAbs = abs(weatherGrid[weatherGridI]. velocityX) + abs( weatherGrid[weatherGridI]. velocityY) ;
-		unsigned int random = extremelyFastNumberFromZeroTo(N_NEIGHBOURS);
-
-		// movement instructions for GASES
-		if (grid[currentPosition].phase == PHASE_GAS)
+		unsigned int neighbour = neighbourOffsets[ weatherGrid[weatherGridI].direction ] + currentPosition;
+		if (neighbour >= totalSize) {neighbour = currentPosition;}
+		conductHeat(currentPosition, neighbour);
+		if (grid[neighbour].phase  == PHASE_VACUUM || (grid[neighbour].phase == PHASE_GAS) )
 		{
-			unsigned int neighbour = neighbourOffsets[ direction ] + currentPosition;
-			if (neighbour >= totalSize) {neighbour = currentPosition;}
-			conductHeat(currentPosition, neighbour);
-			if (grid[neighbour].phase  == PHASE_VACUUM || (grid[neighbour].phase == PHASE_GAS) )
-			{
-				swapParticle(currentPosition, neighbour);
-			}
-		}
-
-		// movement instructions for LIQUIDS
-		else if (grid[currentPosition].phase == PHASE_LIQUID)
-		{
-			unsigned int neighbour = neighbourOffsets[ (  0 +  (random >> 1) )  ] + currentPosition;
-			if (velocityAbs > 10000)
-			{
-				neighbour = neighbourOffsets[ direction  ] + currentPosition;
-			}
-			if (neighbour >= totalSize) {neighbour = currentPosition;}
-			conductHeat(currentPosition, neighbour);
-			if ((    grid[neighbour].phase == PHASE_VACUUM) ||
-			        (grid[neighbour].phase == PHASE_GAS)    ||
-			        (grid[neighbour].phase == PHASE_LIQUID)     )
-			{
-				swapParticle(currentPosition, neighbour);
-				currentPosition = neighbour;
-			}
-		}
-
-		// movement instructions for POWDERS
-		else if (grid[currentPosition].phase  == PHASE_POWDER)
-		{
-			unsigned int neighbour = neighbourOffsets[ (  1 +  (random >> 2) )  ] + currentPosition;
-			if (velocityAbs > 20000 )
-			{
-				neighbour = neighbourOffsets[ direction  ] + currentPosition;
-			}
-			if (neighbour >= totalSize) {neighbour = currentPosition;}
-			conductHeat(currentPosition, neighbour);
-			if ((    grid[neighbour].phase == PHASE_VACUUM) ||
-			        (grid[neighbour].phase == PHASE_GAS)    ||
-			        (grid[neighbour].phase == PHASE_LIQUID)  )
-			{
-				swapParticle(currentPosition, neighbour);
-				currentPosition = neighbour;
-			}
-		}
-
-		// movement instructions for SOLIDS
-		else if (grid[currentPosition].phase  == PHASE_SOLID)
-		{
-			unsigned int neighbour = neighbourOffsets[ random  ] + currentPosition;
-			if (neighbour >= totalSize) {neighbour = currentPosition;}
-			conductHeat(currentPosition, neighbour);
-			if (velocityAbs > 50000)
-			{
-				neighbour = neighbourOffsets[ direction  ] + currentPosition;
-				if (neighbour >= totalSize) {neighbour = currentPosition;}
-				swapParticle(currentPosition, neighbour);
-				currentPosition = neighbour;
-			}
+			swapParticle(currentPosition, neighbour);
 		}
 	}
+
+	// movement instructions for LIQUIDS
+	else if (grid[currentPosition].phase == PHASE_LIQUID)
+	{
+		unsigned int neighbour = neighbourOffsets[ (  0 +  (random >> 1) )  ] + currentPosition;
+		if (weatherGrid[weatherGridI].velocityAbs > 10000)
+		{
+			neighbour = neighbourOffsets[ weatherGrid[weatherGridI].direction  ] + currentPosition;
+		}
+		if (neighbour >= totalSize) {neighbour = currentPosition;}
+		conductHeat(currentPosition, neighbour);
+		if ((    grid[neighbour].phase == PHASE_VACUUM) ||
+		        (grid[neighbour].phase == PHASE_GAS)    ||
+		        (grid[neighbour].phase == PHASE_LIQUID)     )
+		{
+			swapParticle(currentPosition, neighbour);
+			currentPosition = neighbour;
+		}
+	}
+
+	// movement instructions for POWDERS
+	else if (grid[currentPosition].phase  == PHASE_POWDER)
+	{
+		unsigned int neighbour = neighbourOffsets[ (  1 +  (random >> 2) )  ] + currentPosition;
+		if (weatherGrid[weatherGridI].velocityAbs > 20000 )
+		{
+			neighbour = neighbourOffsets[ weatherGrid[weatherGridI].direction  ] + currentPosition;
+		}
+		if (neighbour >= totalSize) {neighbour = currentPosition;}
+		conductHeat(currentPosition, neighbour);
+		if ((    grid[neighbour].phase == PHASE_VACUUM) ||
+		        (grid[neighbour].phase == PHASE_GAS)    ||
+		        (grid[neighbour].phase == PHASE_LIQUID)  )
+		{
+			swapParticle(currentPosition, neighbour);
+			currentPosition = neighbour;
+		}
+	}
+
+	// movement instructions for SOLIDS
+	else if (grid[currentPosition].phase  == PHASE_SOLID)
+	{
+		unsigned int neighbour = neighbourOffsets[ random ] + currentPosition;
+		if (neighbour >= totalSize) {neighbour = currentPosition;}
+		conductHeat(currentPosition, neighbour);
+		if (weatherGrid[weatherGridI].velocityAbs > 50000)
+		{
+			neighbour = neighbourOffsets[ weatherGrid[weatherGridI].direction  ] + currentPosition;
+			if (neighbour >= totalSize) {neighbour = currentPosition;}
+			swapParticle(currentPosition, neighbour);
+			currentPosition = neighbour;
+		}
+	}
+	// }
 }
 
 // boundary conditions are one of the trickiest parts to get right.
@@ -810,6 +814,9 @@ void airflowEdge(  unsigned int weatherGridI , unsigned int weatherGridX, unsign
 	weatherGrid[weatherGridI].velocityX   = ax;
 	weatherGrid[weatherGridI].velocityY   = ay;
 	weatherGrid[weatherGridI].temperature = at;
+
+	weatherGrid[weatherGridI].direction = calculateVelocityDirection( weatherGrid[weatherGridI]. velocityX,  weatherGrid[weatherGridI]. velocityY);
+	weatherGrid[weatherGridI].velocityAbs = abs(weatherGrid[weatherGridI]. velocityX) +  abs( weatherGrid[weatherGridI]. velocityY);
 }
 
 void applyAirflowChanges(unsigned int weatherGridI)
@@ -824,6 +831,10 @@ void applyAirflowChanges(unsigned int weatherGridI)
 	weatherGrid[weatherGridI].pressure    += weatherGrid[weatherGridI]. dp   ;
 	weatherGrid[weatherGridI].velocityX   += weatherGrid[weatherGridI]. dx   ;
 	weatherGrid[weatherGridI].velocityY   += weatherGrid[weatherGridI]. dy   ;
+
+	weatherGrid[weatherGridI].direction = calculateVelocityDirection( weatherGrid[weatherGridI]. velocityX,  weatherGrid[weatherGridI]. velocityY);
+	weatherGrid[weatherGridI].velocityAbs = abs(weatherGrid[weatherGridI]. velocityX) +  abs( weatherGrid[weatherGridI]. velocityY);
+
 	weatherGrid[weatherGridI].temperature += weatherGrid[weatherGridI]. dt   ;
 
 	weatherGrid[weatherGridI]. dp = 0;
@@ -923,7 +934,7 @@ void airflow( unsigned int currentPosition, unsigned int weatherGridI, unsigned 
 
 void floatPhoton( unsigned int weatherGridI ,  Color lightColor,  float lightBrightness,  float lightDirection)
 {
-	if (weatherGridI >= weatherGridSize) {return;}
+	// if (weatherGridI >= weatherGridSize) {return;}
 	float blocked = 0.0f;
 	float positionX = weatherGridI % weatherGridSizeX;
 	float positionY = weatherGridI / weatherGridSizeX;
@@ -942,7 +953,9 @@ void floatPhoton( unsigned int weatherGridI ,  Color lightColor,  float lightBri
 		positionY += incrementY;
 		wx = positionX;
 		wy = positionY;
+
 		if (wx == 0 || wy == 0 || wx >= weatherGridSizeX - 1 || wy >= weatherGridSizeY - 1) {return;} // stop when you get to the edge of the map
+
 		weatherGridI =  (wy * weatherGridSizeX) + wx ;
 		if (weatherGridI >= weatherGridSize) {return;}
 		float energy  = (lightBrightness - blocked );
@@ -952,25 +965,19 @@ void floatPhoton( unsigned int weatherGridI ,  Color lightColor,  float lightBri
 		}
 		else
 		{
-			energy = energy / lightBrightness;
+	
+			Color appliedColor = lightColor;
+			appliedColor.a = energy / 1000;
 
-			weatherGrid[weatherGridI].color.r += (lightColor.r   - weatherGrid[weatherGridI].color.r )  *  0.5f;
-			weatherGrid[weatherGridI].color.g += (lightColor.g   - weatherGrid[weatherGridI].color.g )  *  0.5f;
-			weatherGrid[weatherGridI].color.b += (lightColor.b   - weatherGrid[weatherGridI].color.b )  *  0.5f;
-			weatherGrid[weatherGridI].color.a += (energy         - weatherGrid[weatherGridI].color.a )  *  0.5f;
-
+			weatherGrid[weatherGridI].color = addColor(weatherGrid[weatherGridI].color, appliedColor);
 		}
+
+		blocked += weatherGrid[weatherGridI].lightBlockedSquares;
 	}
 }
 
 void lightPostProcess(unsigned int weatherGridI , unsigned int weatherGridX, unsigned int weatherGridY)
 {
-	// cast sunlight from the edges.
-	if (weatherGridX == 0 || weatherGridY == 0 || weatherGridX == weatherGridSizeX - 1 || weatherGridY == weatherGridSizeY - 1)
-	{
-		floatPhoton(weatherGridI, sunlightColor, sunlightBrightness, fsundirection);
-	}
-
 	// darken the light field over time. This is crucial to refresh it without constantly redrawing the whole thing.
 	weatherGrid[weatherGridI].color.r += (color_nightLight.r - weatherGrid[weatherGridI].color.r) * 0.2f ;
 	weatherGrid[weatherGridI].color.g += (color_nightLight.g - weatherGrid[weatherGridI].color.g) * 0.2f ;
@@ -1061,7 +1068,7 @@ void materialPostProcess(unsigned int i, unsigned int weatherGridI, float satura
 		Color materialColor = materials[ grid[i].material ].color ;
 
 		// different shades for material phases, a nice visual detail
-		if (grid[i].phase != PHASE_VACUUM && grid[i].phase != PHASE_GAS)
+		if (grid[i].phase != PHASE_GAS)
 		{
 			if (grid[i].phase == PHASE_LIQUID)
 			{	materialColor = addColor(materialColor, phaseTingeLiquid);
@@ -1103,10 +1110,10 @@ void materialPostProcess(unsigned int i, unsigned int weatherGridI, float satura
 		// now we will do the things that emit light.
 
 		// Make hot stuff glow
-		if (grid[i].phase != PHASE_VACUUM)
-		{
-			ppColor = addColor( ppColor, blackbodyLookup( (grid[i].temperature) ) );
-		}
+		// if (grid[i].phase != PHASE_VACUUM)
+		// {
+		ppColor = addColor( ppColor, blackbodyLookup( (grid[i].temperature) ) );
+		// }
 		ppColor = addColor(ppColor, blackbodyLookup( (weatherGrid[weatherGridI].temperature / temperatureScale  ) ));
 
 		// shine some background stars.
@@ -1178,6 +1185,12 @@ void thread_sector( unsigned int from, unsigned int to )
 		unsigned int weatherGridY = y / weatherGridScale;
 		unsigned int weatherGridI = (weatherGridY * weatherGridSizeX) + weatherGridX;
 
+		bool readyForDetailUpdate = false;
+		if ((currentPosition + ppPhaseOffset)  % ppSkipSize == 0)
+		{
+			readyForDetailUpdate = true;
+		}
+
 		if (weatherGridI != prevWeatherGridI) // you have entered a weather square that hasn't been updated yet.
 		{
 			weatherGrid[prevWeatherGridI].saturation = saturation;
@@ -1196,39 +1209,60 @@ void thread_sector( unsigned int from, unsigned int to )
 			{
 				airflow( currentPosition, weatherGridI, weatherGridX, weatherGridY);
 			}
-			lightPostProcess( weatherGridI , weatherGridX,  weatherGridY);
+
+			if (readyForDetailUpdate)
+			{
+				// cast sunlight from the edges.
+				if (weatherGridX == 0 || weatherGridY == 0 || weatherGridX == weatherGridSizeX - 1 || weatherGridY == weatherGridSizeY - 1)
+				{
+					floatPhoton(weatherGridI, sunlightColor, sunlightBrightness, fsundirection);
+				}
+				lightPostProcess( weatherGridI , weatherGridX,  weatherGridY);
+			}
 		}
 
 		if (currentPosition < totalSize && weatherGridI < weatherGridSize)
 		{
-			// iterate through grid cells. collect saturation information for each weather cell that you are in.
+			float saturationLimit = 0.0f;
+			if (grid[currentPosition].phase != PHASE_VACUUM)
+			{
+				// iterate through grid cells. collect saturation information for each weather cell that you are in.
 
-			// when the temperature goes down, the amount of water that the air can hold decreases.
-			// when the temperature goes up, the amount of water that the air can hold increases, until the water boils into gas and mixes with the air completely.
-			// saturation limit = ((difference between current temp and melting) / (total liquid temp range)
-			// * (amount of grid cells per weather cell)) / (ratio of current pressure to default pressure)
-			// produces the amount of cells of a weather grid square that the air can absorb at the current temperature and pressure
-			float adjustedMeltTemp = materials[grid[currentPosition].material].melting * temperatureScale ;
-			float adjustedBoilTemp = materials[grid[currentPosition].material].boiling * temperatureScale ;
-			float saturationLimit =
-			    ((weatherGrid[weatherGridI].temperature - adjustedMeltTemp )
-			     / (adjustedBoilTemp - adjustedMeltTemp) );
-			saturationLimit *= (weatherGridScale * weatherGridScale);
-			saturationLimit = saturationLimit / (weatherGrid[weatherGridI].pressure / 1000);
+				// when the temperature goes down, the amount of water that the air can hold decreases.
+				// when the temperature goes up, the amount of water that the air can hold increases, until the water boils into gas and mixes with the air completely.
+				// saturation limit = ((difference between current temp and melting) / (total liquid temp range)
+				// * (amount of grid cells per weather cell)) / (ratio of current pressure to default pressure)
+				// produces the amount of cells of a weather grid square that the air can absorb at the current temperature and pressure
+				// float adjustedMeltTemp = materials[grid[currentPosition].material].melting * temperatureScale ;
+				// float adjustedBoilTemp = materials[grid[currentPosition].material].boiling * temperatureScale ;
+				// saturationLimit =
+				//     ((weatherGrid[weatherGridI].temperature - adjustedMeltTemp )
+				//      / (adjustedBoilTemp - adjustedMeltTemp) );
+				// saturationLimit *= (weatherGridScale * weatherGridScale);
+				// saturationLimit = saturationLimit / (weatherGrid[weatherGridI].pressure / 1000);
 
-			materialPhysics( currentPosition , weatherGridI);
-			materialPhaseChange(currentPosition,  saturationLimit - weatherGrid[weatherGridI].saturation  );
-			materialPostProcess(currentPosition, weatherGridI, saturationLimit);
-			materialHeatGlow(currentPosition,  weatherGridI);
+				materialPhysics( currentPosition , weatherGridI);
 
-			if (grid[currentPosition].phase == PHASE_GAS )
-			{ saturation++; }
+				if ( readyForDetailUpdate)
+				{
+					materialPhaseChange(currentPosition,  saturationLimit - weatherGrid[weatherGridI].saturation  );
+					materialHeatGlow(currentPosition,  weatherGridI);
+				}
 
-			if (grid[currentPosition].phase == PHASE_SOLID || grid[currentPosition].phase ==  PHASE_POWDER )
-			{ lightBlockedSquares++; }
+				if (grid[currentPosition].phase == PHASE_GAS )
+				{ saturation++; }
 
-			if (grid[currentPosition].phase == PHASE_SOLID || grid[currentPosition].phase ==  PHASE_POWDER  || grid[currentPosition].phase ==  PHASE_LIQUID )
-			{ airBlockedSquares++; }
+				if (grid[currentPosition].phase == PHASE_SOLID || grid[currentPosition].phase ==  PHASE_POWDER )
+				{ lightBlockedSquares++; }
+
+				if (grid[currentPosition].phase == PHASE_SOLID || grid[currentPosition].phase ==  PHASE_POWDER  || grid[currentPosition].phase ==  PHASE_LIQUID )
+				{ airBlockedSquares++; }
+			}
+
+			if ( readyForDetailUpdate)
+			{
+				materialPostProcess(currentPosition, weatherGridI, saturationLimit);
+			}
 		}
 	}
 
@@ -1271,14 +1305,23 @@ void thread_master()
 	boost::thread t12 { thread_seeds };
 	boost::thread t11 { thread_life};
 
-	boost::thread t1{  thread_sector, 0   , 1 * (totalSize / 8)  } ;
-	boost::thread t2{  thread_sector, 1 * (totalSize / 8)  , 2 * (totalSize / 8)  } ;
-	boost::thread t3{  thread_sector, 2 * (totalSize / 8)  , 3 * (totalSize / 8)  } ;
-	boost::thread t4{  thread_sector, 3 * (totalSize / 8)  , 4 * (totalSize / 8)  } ;
-	boost::thread t5{  thread_sector, 4 * (totalSize / 8)  , 5 * (totalSize / 8)  } ;
-	boost::thread t6{  thread_sector, 5 * (totalSize / 8)  , 6 * (totalSize / 8)  } ;
-	boost::thread t7{  thread_sector, 6 * (totalSize / 8)  , 7 * (totalSize / 8)  } ;
-	boost::thread t8{  thread_sector, 7 * (totalSize / 8)  , (totalSize ) } ;
+
+#ifdef THREAD_TIMING_READOUT
+	auto start = std::chrono::steady_clock::now();
+#endif
+
+
+
+	boost::thread t1{  thread_sector, 0                    , (1 * (totalSize / 8))  } ;
+	boost::thread t2{  thread_sector, 1 * (totalSize / 8)  , (2 * (totalSize / 8))  } ;
+	boost::thread t3{  thread_sector, 2 * (totalSize / 8)  , (3 * (totalSize / 8))  } ;
+	boost::thread t4{  thread_sector, 3 * (totalSize / 8)  , (4 * (totalSize / 8))  } ;
+	boost::thread t5{  thread_sector, 4 * (totalSize / 8)  , (5 * (totalSize / 8))  } ;
+	boost::thread t6{  thread_sector, 5 * (totalSize / 8)  , (6 * (totalSize / 8))  } ;
+	boost::thread t7{  thread_sector, 6 * (totalSize / 8)  , (7 * (totalSize / 8))  } ;
+	boost::thread t8{  thread_sector, 7 * (totalSize / 8)  , ((totalSize )       )  } ;
+
+	ppPhaseOffset ++;
 
 	t1.join();
 	t2.join();
@@ -1288,6 +1331,12 @@ void thread_master()
 	t6.join();
 	t7.join();
 	t8.join();
+
+#ifdef THREAD_TIMING_READOUT
+	auto end = std::chrono::steady_clock::now();
+	auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+	std::cout << "thread_sector x8 " << elapsed.count() << " microseconds." << std::endl;
+#endif
 
 	t12.join();
 	t11.join();
@@ -3555,81 +3604,6 @@ void setExtremeTempPoint (unsigned int x , unsigned  int y)
 		weatherGrid[ weatherGridI].pressure += 1000000;
 	}
 }
-
-
-
-
-void weatherZeroSquares (unsigned int weatherGridI)
-{
-	weatherGrid[weatherGridI].saturation = 0;
-	weatherGrid[weatherGridI].airBlockedSquares = 0;
-	weatherGrid[weatherGridI].lightBlockedSquares = 0;
-}
-
-void weatherSumSquares( unsigned int i, unsigned int weatherGridI )
-{
-// #ifdef THREAD_TIMING_READOUT
-// 	auto start = std::chrono::steady_clock::now();
-// #endif
-
-	// unsigned int weatherGridI = 0;
-	// unsigned int i = 0;
-	// for (unsigned int y = 0; y < weatherGridSizeY; ++y)
-	// {
-	// 	for (unsigned int x = 0; x < weatherGridSizeX; ++x)
-	// 	{
-	// 		unsigned int i = ((y * weatherGridScale) * sizeX) + (x * weatherGridScale); // in this case, i is the lower left corner of the weathergrid square.
-	// 		if (i < totalSize)
-	// 		{
-	// 			unsigned int weatherGridI = (y * weatherGridSizeX) + x;
-
-
-
-	// for ( int scaledGridPointY = -(weatherGridScale / 2); scaledGridPointY < (weatherGridScale / 2); ++scaledGridPointY)
-	// {
-	// 	for ( int scaledGridPointX = -(weatherGridScale / 2); scaledGridPointX < (weatherGridScale / 2); ++scaledGridPointX)
-	// 	{
-	// 		unsigned int currentPosition =  i + ((scaledGridPointY * sizeX) + scaledGridPointX );
-	// 		if (currentPosition < totalSize)
-	// 		{
-	// 			// materialPhysics( currentPosition, velocityAbs, direction );
-
-	// 			if (grid[currentPosition].phase == PHASE_GAS )
-	// 			{ saturation++; }
-
-	// 			if (grid[currentPosition].phase == PHASE_SOLID || grid[currentPosition].phase ==  PHASE_POWDER )
-	// 			{ lightBlockedSquares++; }
-
-	// 			if (grid[currentPosition].phase == PHASE_SOLID || grid[currentPosition].phase ==  PHASE_POWDER  || grid[currentPosition].phase ==  PHASE_LIQUID )
-	// 			{ airBlockedSquares++; }
-	// 		}
-	// 	}
-	// }
-	// weatherGrid[weatherGridI].saturation = saturation;
-	// weatherGrid[weatherGridI].airBlockedSquares = airBlockedSquares;
-	// weatherGrid[weatherGridI].lightBlockedSquares = lightBlockedSquares;
-
-
-	// }
-	// 	}
-	// }
-
-	// // sometimes there are a few grid lines of materials up the top that don't get processed, use this to knock them loose.
-	// for (int i = (totalSize - sizeX); i < totalSize; ++i)
-	// {
-	// 	materialPhysics( i, 50000, 2 );
-	// }
-
-
-// #ifdef THREAD_TIMING_READOUT
-// 	auto end = std::chrono::steady_clock::now();
-// 	auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-// 	std::cout << "thread_materialPhysics " << elapsed.count() << " microseconds." << std::endl;
-// #endif
-}
-
-
-
 
 
 
