@@ -76,6 +76,7 @@ extern const unsigned int MATERIAL_VACUUM ;
 #define STAGE_ANIMAL         6
 #define STAGE_PLAYER		 7
 #define STAGE_ERODINGRAIN    8
+#define STAGE_GPLANTSHOOT    9
 
 // Energysource is the diet of a plant or animal.
 #define ENERGYSOURCE_LIGHT   1

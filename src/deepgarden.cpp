@@ -167,6 +167,22 @@ ProposedLifeParticle::ProposedLifeParticle(Color color, vec_u2 position, unsigne
 	this->energySource = energySource;
 }
 
+
+
+
+
+// GPLANTS "growing plants"
+std::string exampleGplant = std::string("");
+
+
+
+
+
+
+
+
+
+
 // ANIMAL DRAWING
 std::string exampleAnimal = std::string(" uaiajbcmemjccded ");
 unsigned int animalCursorFrame = FRAME_BODY;
@@ -965,6 +981,10 @@ void floatPhoton( unsigned int weatherGridI ,  Color lightColor,  float lightBri
 
 	float incrementX = (noisyLength * cos(noisyAngle));
 	float incrementY = (noisyLength * sin(noisyAngle)) ;
+
+
+	weatherGrid[weatherGridI].temperature -= lightBrightness;
+
 	while (true)
 	{
 		positionX += incrementX;
@@ -991,10 +1011,20 @@ void floatPhoton( unsigned int weatherGridI ,  Color lightColor,  float lightBri
 			weatherGrid[weatherGridI].color = addColor(weatherGrid[weatherGridI].color, appliedColor);
 
 		}
-		if (weatherGrid[weatherGridI].lightBlockedSquares > 0)
-		{
-			blocked += weatherGrid[weatherGridI].lightBlockedSquares;
-		}
+		// if (weatherGrid[weatherGridI].lightBlockedSquares > 0)
+		// {
+
+		 int amountToBlock  = weatherGrid[weatherGridI].lightBlockedSquares + weatherGrid[weatherGridI].saturation;
+
+			// blocked += amountToBlock;
+			// weatherGrid[weatherGridI].temperature +=  amountToBlock * (energy / 10;// ( () -  weatherGrid[weatherGridI].temperature  );  
+		// }
+
+		// if (weatherGrid[weatherGridI].saturation > 0)
+		// {
+			blocked +=amountToBlock ;
+			weatherGrid[weatherGridI].temperature += amountToBlock *( energy / 100);// ( () -  weatherGrid[weatherGridI].temperature  );  
+		// }
 	}
 }
 
@@ -1377,20 +1407,21 @@ void thread_sector( unsigned int from, unsigned int to )
 
 			// first, find out where the temperature lies in the material's liquid range
 
-			int adjustedBoiling = materials[grid[currentPosition].material].boiling << temperatureScale;
-			int saturationLimit = 0;
-			if (adjustedBoiling > 0)
-			{
-				saturationLimit  = ( weatherGrid[weatherGridI].temperature  / adjustedBoiling) * (weatherGridSquareScale / 2);
-			}
+			// int adjustedBoiling = materials[grid[currentPosition].material].boiling << temperatureScale;
+			// int saturationLimit = 0;
+			// if (adjustedBoiling > 0)
+			// {
+			// 	saturationLimit  = ( weatherGrid[weatherGridI].temperature  / adjustedBoiling) * (weatherGridSquareScale / 2);
+			// }
 
-			if (weatherGrid[weatherGridI].pressure > 0)
-			{
-				saturationLimit  *= (  1000 / ( weatherGrid[weatherGridI].pressure)   );
-			}
+			// if (weatherGrid[weatherGridI].pressure > 0)
+			// {
+			// 	saturationLimit  *= (  1000 / ( weatherGrid[weatherGridI].pressure)   );
+			// }
 
-			if (saturationLimit > (weatherGridSquareScale)) {saturationLimit = weatherGridSquareScale;}
+			// if (saturationLimit > (weatherGridSquareScale)) {saturationLimit = weatherGridSquareScale;}
 
+			const int saturationLimit = 1;//(weatherGridSquareScale)/2;
 
 
 
@@ -3828,6 +3859,11 @@ void setNeutralTemp ()
 	{
 		grid[i].temperature = 300;
 	}
+
+	for (unsigned int weatherGridI = 0; weatherGridI < weatherGridSize; ++weatherGridI)
+	{
+		weatherGrid[weatherGridI].temperature = 300 << temperatureScale;
+	}
 }
 
 void setExtremeTempPoint (unsigned int x , unsigned  int y)
@@ -4903,6 +4939,57 @@ int drawCharacter ( std::string genes , unsigned int identity)
 	return 0;
 }
 
+
+void drawGplantFromChar()
+{
+// gplant gene codes :
+
+// extrude (grow) the tissue that the growing point sits in
+
+// grow tissues immediately around the growing point
+
+// 
+
+// set crystal n
+
+// set crystal condition
+
+// set tissue type to create
+
+// set tissue type color r
+// set tissue type color g
+// set tissue type color b
+
+// move the growing point in direction
+
+
+
+
+// the possible tissues are:
+	// wood, transports energy, strong and inedible, does not photosynthesize
+	// leaf, transports and produces energy, edible by predators
+	// flower, colorful
+	// seed, falls off the plant to make new plants. 
+	// growing point
+
+
+}
+
+void drawGplant( unsigned int i )
+{
+
+	// this is a gplant.
+
+	// gplants use the crystal rules to grow, making complex shapes from simple rules.
+
+	// they grow over time instead of instantly.
+
+	// emplace tissue of that type
+
+}
+
+
+
 void drawPlantFromSeed( std::string genes, unsigned int i )
 {
 	while (crudOps) {;}
@@ -5158,6 +5245,11 @@ void thread_seeds()
 			animalTurn(i);
 			continue;
 		}
+		else if (seedGrid[i].stage == STAGE_GPLANTSHOOT)
+		{
+			drawGplant(i);
+		}
+
 		else
 		{
 			continue;
