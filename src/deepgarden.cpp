@@ -7,7 +7,7 @@
 #include "main.h"
 
 // #define THREAD_TIMING_READOUT 1
-#define DETAIL_TIMING_READOUT 1
+// #define DETAIL_TIMING_READOUT 1
 
 // #define PLANT_DRAWING_READOUT 1
 // #define ANIMAL_DRAWING_READOUT 1
@@ -106,6 +106,12 @@ float * seedColorGrid      = new float[totalSize * numberOfFieldsPerVertex];    
 
 const float const_tau = 6.28f;
 const float const_pi  = 3.14f;
+
+
+unsigned int photonsIssuedThisTurn = 0;
+const unsigned int photonIdealNumber = 2 * sizeX;
+// unsigned int photonChance = 1;
+
 
 // PLANT DRAWING
 unsigned int recursion_level = 0;
@@ -231,7 +237,6 @@ unsigned int visualizer = VISUALIZE_MATERIAL;
 
 unsigned int identityCursor = 0;
 
-std::vector<unsigned int> animal_identities;
 
 std::list<vec_u2> v_seeds;
 
@@ -271,7 +276,7 @@ struct Particle
 {
 	unsigned int material;
 	unsigned int phase;
-	unsigned int temperature;
+	int temperature;
 	Particle();
 };
 
@@ -407,18 +412,14 @@ struct Weather
 	int saturation;
 	unsigned int lightBlockedSquares;
 	unsigned int airBlockedSquares;
-
 	int          newsaturation;
 	unsigned int newlightBlockedSquares;
 	unsigned int newairBlockedSquares;
-
 	int dt;
 	int dp;
 	int dx;
 	int dy;
-
 	Color color; // this is where lighting information for the sim is stored, it is integrated with weather for performance reasons
-
 	unsigned int direction;
 	unsigned int velocityAbs;
 
@@ -436,7 +437,12 @@ Weather::Weather()
 	this->lightBlockedSquares = 0;
 	this->color = color_clear;
 	this->direction = 2;
+	this->velocityAbs = 0;
 
+	this->dt = 0;
+	this->dp = 0;
+	this->dx = 0;
+	this->dy = 0;
 
 	this-> newsaturation          = 0;
 	this-> newlightBlockedSquares = 0;
@@ -969,6 +975,9 @@ void airflow( unsigned int weatherGridI)
 
 void floatPhoton( unsigned int weatherGridI ,  Color lightColor,  float lightBrightness,  float lightDirection)
 {
+	// if (extremelyFastNumberFromZeroTo( photonChance ) == 0 )
+	// {
+
 	float blocked = 0.0f;
 	float positionX = weatherGridI % weatherGridSizeX;
 	float positionY = weatherGridI / weatherGridSizeX;
@@ -982,8 +991,10 @@ void floatPhoton( unsigned int weatherGridI ,  Color lightColor,  float lightBri
 	float incrementX = (noisyLength * cos(noisyAngle));
 	float incrementY = (noisyLength * sin(noisyAngle)) ;
 
+	int ibrightness = lightBrightness;
+	weatherGrid[weatherGridI].temperature -= ibrightness;
 
-	weatherGrid[weatherGridI].temperature -= lightBrightness;
+	photonsIssuedThisTurn ++;
 
 	while (true)
 	{
@@ -1014,18 +1025,19 @@ void floatPhoton( unsigned int weatherGridI ,  Color lightColor,  float lightBri
 		// if (weatherGrid[weatherGridI].lightBlockedSquares > 0)
 		// {
 
-		 int amountToBlock  = weatherGrid[weatherGridI].lightBlockedSquares + weatherGrid[weatherGridI].saturation;
+		int amountToBlock  = weatherGrid[weatherGridI].lightBlockedSquares + weatherGrid[weatherGridI].saturation;
 
-			// blocked += amountToBlock;
-			// weatherGrid[weatherGridI].temperature +=  amountToBlock * (energy / 10;// ( () -  weatherGrid[weatherGridI].temperature  );  
+		// blocked += amountToBlock;
+		// weatherGrid[weatherGridI].temperature +=  amountToBlock * (energy / 10;// ( () -  weatherGrid[weatherGridI].temperature  );
 		// }
 
 		// if (weatherGrid[weatherGridI].saturation > 0)
 		// {
-			blocked +=amountToBlock ;
-			weatherGrid[weatherGridI].temperature += amountToBlock *( energy / 50);// ( () -  weatherGrid[weatherGridI].temperature  );  
+		blocked += amountToBlock ;
+		weatherGrid[weatherGridI].temperature += amountToBlock * ( energy / 50); // ( () -  weatherGrid[weatherGridI].temperature  );
 		// }
 	}
+	// }
 }
 
 void darkenLightfield(unsigned int weatherGridI )
@@ -1041,7 +1053,7 @@ const Color color_blackbody_772      = Color(0.16f, 0.0f, 0.0f, 0.03f);
 const Color color_blackbody_852      = Color(0.33f, 0.0f, 0.0f, 0.11f);
 const Color color_blackbody_908   = Color(0.5f, 0.0f, 0.0f, 0.20f);
 
-Color blackbodyLookup( unsigned int temperature )
+Color blackbodyLookup(  int temperature )
 {
 	if (temperature > 0 && temperature < 600 )
 	{
@@ -1205,7 +1217,7 @@ void materialHeatGlow(unsigned int i, unsigned int weatherGridI)
 		}
 		if (edge)
 		{
-			unsigned int radiantLightIntensity = ((grid[i].temperature - 600) >> 4);
+			float radiantLightIntensity = ((grid[i].temperature - 600) >> 4);
 			float fdirection = randomDirection;
 			fdirection = ((fdirection / N_NEIGHBOURS) * (const_tau)) - const_pi; // radiate in the empty direction. this converts 1-to-8 to radians.
 			fdirection += (RNG() - 0.5f) * (0.75f);                         // add up to 1/8th of a full circles worth of direction noise.. 1/8 of a circle is 0.75 radians
@@ -1218,7 +1230,7 @@ void weatherHeatGlow(unsigned int weatherGridI)
 {
 	if (weatherGrid[weatherGridI].temperature > (600 << temperatureScale) )
 	{
-		unsigned int radiantLightIntensity = (((weatherGrid[weatherGridI].temperature >> temperatureScale) - 600) >> 4);
+		float radiantLightIntensity = (((weatherGrid[weatherGridI].temperature >> temperatureScale) - 600) >> 4);
 		float fdirection = RNG() * const_tau;
 		floatPhoton(weatherGridI, blackbodyLookup(weatherGrid[weatherGridI].temperature) , radiantLightIntensity, fdirection);
 	}
@@ -1255,7 +1267,7 @@ void thread_sector( unsigned int from, unsigned int to )
 	auto start1 = std::chrono::steady_clock::now();
 #endif
 
-	for (unsigned int weatherGridI = weatherFromI; weatherGridI < weatherToI; ++weatherGridI)
+	for (unsigned int weatherGridI = weatherFromI; weatherGridI <= weatherToI; ++weatherGridI)
 	{
 		airflow(weatherGridI);
 		darkenLightfield( weatherGridI );
@@ -1278,9 +1290,10 @@ void thread_sector( unsigned int from, unsigned int to )
 
 	for (unsigned int weatherGridI = weatherFromI + ppPhaseOffset; weatherGridI < weatherToI; weatherGridI += ppSkipSize)
 	{
-		weatherHeatGlow(weatherGridI);
-
-
+		if (photonsIssuedThisTurn < photonIdealNumber)
+		{
+			weatherHeatGlow(weatherGridI);
+		}
 		weatherGrid[weatherGridI].saturation = weatherGrid[weatherGridI].newsaturation;
 		weatherGrid[weatherGridI].lightBlockedSquares = weatherGrid[weatherGridI].newlightBlockedSquares;
 		weatherGrid[weatherGridI].airBlockedSquares = weatherGrid[weatherGridI].newairBlockedSquares;
@@ -1399,42 +1412,14 @@ void thread_sector( unsigned int from, unsigned int to )
 
 		if (weatherGridI < weatherGridSize)
 		{
+			const int saturationLimit = 1;
 
-
-			// calculate the saturation limit
-
-			// lower pressure air can absorb more, higher temperature air can absorb more
-
-			// first, find out where the temperature lies in the material's liquid range
-
-			// int adjustedBoiling = materials[grid[currentPosition].material].boiling << temperatureScale;
-			// int saturationLimit = 0;
-			// if (adjustedBoiling > 0)
-			// {
-			// 	saturationLimit  = ( weatherGrid[weatherGridI].temperature  / adjustedBoiling) * (weatherGridSquareScale / 2);
-			// }
-
-			// if (weatherGrid[weatherGridI].pressure > 0)
-			// {
-			// 	saturationLimit  *= (  1000 / ( weatherGrid[weatherGridI].pressure)   );
-			// }
-
-			// if (saturationLimit > (weatherGridSquareScale)) {saturationLimit = weatherGridSquareScale;}
-
-			const int saturationLimit = 1;//(weatherGridSquareScale)/2;
-
-
-
-			materialHeatGlow(    currentPosition, weatherGridI);
+			if (photonsIssuedThisTurn < photonIdealNumber)
+			{
+				materialHeatGlow(    currentPosition, weatherGridI);
+			}
 			materialPhaseChange( currentPosition,   saturationLimit - weatherGrid[weatherGridI].saturation  );
 			materialPostProcess( currentPosition, weatherGridI, saturationLimit);
-
-
-
-
-
-
-
 
 			// couple the material grid temp to the weather grid temp
 			if (grid[currentPosition].phase != PHASE_VACUUM)
@@ -1443,9 +1428,6 @@ void thread_sector( unsigned int from, unsigned int to )
 				const unsigned int heatCouplingConstant = 4;
 				grid[currentPosition].temperature += (gridCouplingAmount >> temperatureScale)  >> heatCouplingConstant ;
 				weatherGrid[weatherGridI].temperature -= (gridCouplingAmount) >> heatCouplingConstant ;
-
-
-
 
 
 				if (grid[currentPosition].phase == PHASE_GAS )
@@ -1463,8 +1445,6 @@ void thread_sector( unsigned int from, unsigned int to )
 				{
 					weatherGrid[weatherGridI].newairBlockedSquares++;
 				}
-
-
 			}
 		}
 	}
@@ -1507,7 +1487,7 @@ void thread_handleEdges()
 	{
 
 		unsigned int weatherGridI = (fromY * weatherGridSizeX) + weatherGridX;
-		airflowEdge(weatherGridI, weatherGridX, fromY);
+		// airflowEdge(weatherGridI, weatherGridX, fromY);
 	}
 
 	unsigned int toY = weatherGridSizeY - 1;
@@ -1517,6 +1497,25 @@ void thread_handleEdges()
 		airflowEdge(weatherGridI, weatherGridX, toY);
 		floatPhoton(weatherGridI, sunlightColor, sunlightBrightness, fsundirection);
 	}
+
+	// unsigned int toY = weatherGridSizeY - 1;
+// 	for (unsigned int currentPosition = (totalSize-sizeX); currentPosition < totalSize; ++currentPosition)
+// 	{
+
+// 		unsigned int x = currentPosition % sizeX;
+// 		unsigned int y = currentPosition / sizeX;
+// 		unsigned int weatherGridX = x / weatherGridScale;
+// 		unsigned int weatherGridY = y / weatherGridScale;
+// 		unsigned int weatherGridI = (weatherGridY * weatherGridSizeX) + weatherGridX;
+
+// if ( (currentPosition+sizeX+1) >= totalSize || (weatherGridI+weatherGridSizeX+1) >= weatherGridSize) {continue;}
+// 					materialPhysics( currentPosition , weatherGridI);
+
+
+// 	}
+
+
+
 #ifdef THREAD_TIMING_READOUT
 	auto end = std::chrono::steady_clock::now();
 	auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
@@ -1537,6 +1536,7 @@ void thread_master()
 	updateDaytime();
 
 
+	photonsIssuedThisTurn = 0;
 
 #ifdef THREAD_TIMING_READOUT
 	auto start = std::chrono::steady_clock::now();
@@ -1602,10 +1602,12 @@ void thread_master()
 
 
 
-
-
-
-
+	// if too many photons were issued, the photon chance should be lowered.
+	// if (photonIdealNumber > 0)
+	// {
+	// photonChance =  ((  photonsIssuedThisTurn / photonIdealNumber ) * 5);
+	// }
+	// printf("photonsIssuedThisTurn %u , photonChance %u , photonIdealNumber %u \n", photonsIssuedThisTurn, photonChance, photonIdealNumber);
 
 
 
@@ -1677,8 +1679,6 @@ struct Animal
 
 	Animal();
 };
-
-std::vector<Animal> animals;
 
 Animal::Animal()
 {
@@ -1784,6 +1784,10 @@ std::list<ProposedLifeParticle> EFLA_E(vec_i2 start, vec_i2 end)
 	}
 	return v;
 }
+
+
+std::vector<Animal> animals;
+
 
 // prints the animal to the terminal!
 void catScan(unsigned int animalIndex)
@@ -2721,6 +2725,8 @@ void drawAnimalFromSeed(unsigned int i)
 
 	bool foundAnID = false;
 
+	printf("animals size %lu\n", animals.size());
+
 	for (unsigned int animal = 0; animal < animals.size(); ++animal)
 	{
 		if (animals[animal].retired)
@@ -2741,9 +2747,10 @@ void drawAnimalFromSeed(unsigned int i)
 		Animal newAnimal = Animal();
 
 
-		std::vector<Animal>::iterator it;
-		it = animals.end();
-		animals.insert(it, newAnimal);
+		// std::vector<Animal>::iterator it;
+		// it = animals.end();
+		// animals.insert(it, newAnimal);
+		animals.push_back(newAnimal);
 		animalIndex = animals.size() - 1;
 
 		// instead of push_back, use an iterator to insert
@@ -2754,6 +2761,7 @@ void drawAnimalFromSeed(unsigned int i)
 		printf("New animal with ID %u \n", animalIndex);
 #endif
 	}
+
 
 	seedGrid[i].parentIdentity = animalIndex;
 
@@ -3028,7 +3036,7 @@ void incrementAnimalSegmentPositions (unsigned int animalIndex, unsigned int i)
 }
 
 // these materials are expected by the game, so they must be loaded in every situation.
-void resetMaterials()
+void resetMaterials(unsigned int materialsList)
 {
 	materials.clear();
 
@@ -3063,112 +3071,94 @@ void resetMaterials()
 	bone.boiling = 2200;
 	bone.insulativity = 3;
 	materials.push_back(bone);
-}
 
-void standardMaterials()
-{
-	Material rock1 = Material();
-	rock1.color = color_lightgrey;
-	rock1.melting = 600;
-	rock1.boiling = 1800;
-	rock1.insulativity = 3;
-	rock1.crystal_n = extremelyFastNumberFromZeroTo(4);
-	unsigned int randomCondition =  extremelyFastNumberFromZeroTo(6);
-	if (randomCondition == 0)      {rock1.crystal_condition = CONDITION_GREATERTHAN; }
-	else if (randomCondition == 1) {rock1.crystal_condition = CONDITION_EQUAL; }
-	else if (randomCondition == 2) {rock1.crystal_condition = CONDITION_LESSTHAN; }
-	// else if (randomCondition == 3) {newMaterial.crystal_condition = CONDITION_EVENNUMBER; }
-	// else if (randomCondition == 4) {newMaterial.crystal_condition = CONDITION_ODDNUMBER; }
-	else if (randomCondition == 3) {rock1.crystal_condition = CONDITION_EDGE; }
-	else if (randomCondition == 4) {rock1.crystal_condition = CONDITION_CORNER; }
-	else if (randomCondition == 5) {rock1.crystal_condition = CONDITION_ROW; }
-	// else if (randomCondition == 8) {newMaterial.crystal_condition = CONDITION_LEFTN; }
-	else if (randomCondition == 6) {rock1.crystal_condition = CONDITION_NOTLEFTRIGHTN; }
-	// else if (randomCondition == 10) {newMaterial.crystal_condition = CONDITION_NOTLRNEIGHBOURS; }
-	materials.push_back(rock1);
 
-	Material rock2 = Material();
-	rock2.color = color_grey;
-	rock2.melting = 800;
-	rock2.boiling = 2000;
-	rock2.insulativity = 2;
-	rock2.crystal_n = extremelyFastNumberFromZeroTo(4);
-	// unsigned int
-	randomCondition =  extremelyFastNumberFromZeroTo(6);
-	if (randomCondition == 0)      {rock2.crystal_condition = CONDITION_GREATERTHAN; }
-	else if (randomCondition == 1) {rock2.crystal_condition = CONDITION_EQUAL; }
-	else if (randomCondition == 2) {rock2.crystal_condition = CONDITION_LESSTHAN; }
-	// else if (randomCondition == 3) {newMaterial.crystal_condition = CONDITION_EVENNUMBER; }
-	// else if (randomCondition == 4) {newMaterial.crystal_condition = CONDITION_ODDNUMBER; }
-	else if (randomCondition == 3) {rock2.crystal_condition = CONDITION_EDGE; }
-	else if (randomCondition == 4) {rock2.crystal_condition = CONDITION_CORNER; }
-	else if (randomCondition == 5) {rock2.crystal_condition = CONDITION_ROW; }
-	// else if (randomCondition == 8) {newMaterial.crystal_condition = CONDITION_LEFTN; }
-	else if (randomCondition == 6) {rock2.crystal_condition = CONDITION_NOTLEFTRIGHTN; }
-	// else if (randomCondition == 10) {newMaterial.crystal_condition = CONDITION_NOTLRNEIGHBOURS; }
-	materials.push_back(rock2);
-
-	Material rock3 = Material();
-	rock3.color = color_darkgrey;
-	rock3.melting = 1000;
-	rock3.boiling = 2400;
-	rock3.insulativity = 1;
-	rock3.crystal_n = extremelyFastNumberFromZeroTo(4);
-	// unsigned int
-	randomCondition =  extremelyFastNumberFromZeroTo(6);
-	if (randomCondition == 0)      {rock3.crystal_condition = CONDITION_GREATERTHAN; }
-	else if (randomCondition == 1) {rock3.crystal_condition = CONDITION_EQUAL; }
-	else if (randomCondition == 2) {rock3.crystal_condition = CONDITION_LESSTHAN; }
-	// else if (randomCondition == 3) {newMaterial.crystal_condition = CONDITION_EVENNUMBER; }
-	// else if (randomCondition == 4) {newMaterial.crystal_condition = CONDITION_ODDNUMBER; }
-	else if (randomCondition == 3) {rock3.crystal_condition = CONDITION_EDGE; }
-	else if (randomCondition == 4) {rock3.crystal_condition = CONDITION_CORNER; }
-	else if (randomCondition == 5) {rock3.crystal_condition = CONDITION_ROW; }
-	// else if (randomCondition == 8) {newMaterial.crystal_condition = CONDITION_LEFTN; }
-	else if (randomCondition == 6) {rock3.crystal_condition = CONDITION_NOTLEFTRIGHTN; }
-	// else if (randomCondition == 10) {newMaterial.crystal_condition = CONDITION_NOTLRNEIGHBOURS; }
-	materials.push_back(rock3);
-}
-
-void randomMaterials()
-{
-	unsigned int nNewMaterials = 5;
-	for (unsigned int k = 0; k < nNewMaterials; ++k)
+	if (materialsList == MATERIALS_RANDOM)
 	{
-		Material newMaterial = Material();
-		newMaterial.boiling = RNG() * 3000;
-		newMaterial.melting = RNG() * newMaterial.boiling;
-		newMaterial.crystal_n = extremelyFastNumberFromZeroTo(4);
+		// wacky alien goo.
+		const unsigned int nNewMaterials = 5;
+		for (unsigned int k = 0; k < nNewMaterials; ++k)
+		{
+			Material newMaterial = Material();
+			newMaterial.boiling = RNG() * 2500;
+			newMaterial.melting = RNG() * newMaterial.boiling;
+			newMaterial.crystal_n = 1 + extremelyFastNumberFromZeroTo(4);
+			unsigned int randomCondition =  extremelyFastNumberFromZeroTo(7);
+			if (randomCondition == 0) {newMaterial.crystal_condition = CONDITION_GREATERTHAN; }
+			else if (randomCondition == 1) {newMaterial.crystal_condition = CONDITION_EQUAL; }
+			else if (randomCondition == 2) {newMaterial.crystal_condition = CONDITION_LESSTHAN; }
+			else if (randomCondition == 3) {newMaterial.crystal_condition = CONDITION_EVENNUMBER; }
+			else if (randomCondition == 4) {newMaterial.crystal_condition = CONDITION_ODDNUMBER; }
+			else if (randomCondition == 5) {newMaterial.crystal_condition = CONDITION_EDGE; }
+			else if (randomCondition == 6) {newMaterial.crystal_condition = CONDITION_CORNER; }
+			else if (randomCondition == 7) {newMaterial.crystal_condition = CONDITION_NOTLEFTRIGHTN; }
+			newMaterial . color = color_grey;
+			newMaterial.color.r = RNG();
+			newMaterial.color.g = RNG();
+			newMaterial.color.b = RNG();
+			materials.push_back(newMaterial);
+		}
 
-		unsigned int randomCondition =  extremelyFastNumberFromZeroTo(4);
-		if (randomCondition == 0) {newMaterial.crystal_condition = CONDITION_GREATERTHAN; }
-		else if (randomCondition == 1) {newMaterial.crystal_condition = CONDITION_EQUAL; }
-		// else if (randomCondition == 2) {newMaterial.crystal_condition = CONDITION_LESSTHAN; }
-		// else if (randomCondition == 3) {newMaterial.crystal_condition = CONDITION_EVENNUMBER; }
-		// else if (randomCondition == 4) {newMaterial.crystal_condition = CONDITION_ODDNUMBER; }
-		else if (randomCondition == 2) {newMaterial.crystal_condition = CONDITION_EDGE; }
-		else if (randomCondition == 3) {newMaterial.crystal_condition = CONDITION_CORNER; }
-		// else if (randomCondition == 7) {newMaterial.crystal_condition = CONDITION_ROW; }
-		// else if (randomCondition == 8) {newMaterial.crystal_condition = CONDITION_LEFTN; }
-		else if (randomCondition == 4) {newMaterial.crystal_condition = CONDITION_NOTLEFTRIGHTN; }
-		// else if (randomCondition == 10) {newMaterial.crystal_condition = CONDITION_NOTLRNEIGHBOURS; }
 
-		newMaterial . color = color_grey;
-		newMaterial.color.r = RNG();
-		newMaterial.color.g = RNG();
-		newMaterial.color.b = RNG();
-
-		materials.push_back(newMaterial);
 	}
 
-	// a change to the materials list is dramatic. The material of a grid square is used as an array index to look up a material which may not exist.
-	// this function fills the entire grid with vacuum. it is better than segfault.
-	for (int i = 0; i < totalSize; ++i)
+
+	else if (materialsList == MATERIALS_TEMPLE)
 	{
-		setParticle(MATERIAL_VACUUM,  i);
-		grid[i].phase = PHASE_VACUUM;
+		Material redWater = water;
+		redWater.color = color_brightred;
+		materials.push_back(redWater);
+
+		Material goldWater = water;
+		goldWater.color = color_yellow;
+		materials.push_back(goldWater);
+
+		Material redStone = Material();
+		redStone.color = color_brightred;
+		redStone.melting = 1000;
+		redStone.boiling = 2400;
+		redStone.insulativity = 1;
+		redStone.crystal_n = 4;
+		redStone.crystal_condition = CONDITION_GREATERTHAN;
+		materials.push_back(redStone);
+
 	}
+
+
+	else if (materialsList == MATERIALS_STANDARD)
+	{
+		// earth rocks.
+		Material granite = Material();
+		granite.color = color_lightgrey;
+		granite.melting = 600;
+		granite.boiling = 1800;
+		granite.insulativity = 3;
+		granite.crystal_n = 2;
+		granite.crystal_condition = CONDITION_GREATERTHAN;
+		materials.push_back(granite);
+
+		Material amphibole = Material();
+		amphibole.color = color_grey;
+		amphibole.melting = 800;
+		amphibole.boiling = 2000;
+		amphibole.insulativity = 2;
+		amphibole.crystal_n = 3;
+		amphibole.crystal_condition = CONDITION_GREATERTHAN;
+		materials.push_back(amphibole);
+
+		Material olivine = Material();
+		olivine.color = color_darkgrey;
+		olivine.melting = 1000;
+		olivine.boiling = 2400;
+		olivine.insulativity = 1;
+		olivine.crystal_n = 4;
+		olivine.crystal_condition = CONDITION_GREATERTHAN;
+		materials.push_back(olivine);
+	}
+
 }
+
+
 
 void setLifeParticle( std::string genes, unsigned int identity, unsigned int i, Color color, unsigned int energySource)
 {
@@ -3293,6 +3283,9 @@ void clearGrids()
 	{
 		weatherGrid [ i ] = Weather();
 	}
+
+
+
 }
 
 void paintMaterialCircle(unsigned int k, unsigned int radius, unsigned int material, unsigned int temperature)
@@ -3318,14 +3311,16 @@ void paintMaterialCircle(unsigned int k, unsigned int radius, unsigned int mater
 void createWorld( unsigned int world)
 {
 	clearGrids();
-	resetMaterials();
+
+	animals.clear();
 
 	switch (world)
 	{
 
 	case WORLD_CATUN:
 	{
-		standardMaterials();
+
+		resetMaterials(MATERIALS_STANDARD);
 		sunlightTemp = 2000;
 		sunlightBrightness = 50;
 		defaultTemperature = 200;
@@ -3334,24 +3329,24 @@ void createWorld( unsigned int world)
 		for (int i = 0; i < totalSize; ++i)
 		{
 			// // a layer of stone on the bottom
-			// if (i > 0 && i < 20 * sizeX)
-			// {
-			// 	setParticle(6, i);
-			// }
+			if (i > 0 && i < 20 * sizeX)
+			{
+				setParticle(6, i);
+			}
 
 			// a dollop of super hot rock
-			// if ((i > (100 * sizeX)) && (i < (200 * sizeX)) )
-			// {
-			// 	unsigned int x = i % sizeX;
+			if ((i > (100 * sizeX)) && (i < (200 * sizeX)) )
+			{
+				unsigned int x = i % sizeX;
 
-			// 	if (x > 500 && x < 600)
-			// 	{
+				if (x > 500 && x < 600)
+				{
 
-			// 		setParticle(5, i);
-			// 		grid[i].phase = PHASE_SOLID;
-			// 		grid[i].temperature = 2000;
-			// 	}
-			// }
+					setParticle(5, i);
+					grid[i].phase = PHASE_SOLID;
+					grid[i].temperature = 2000;
+				}
+			}
 
 			// horizontal monolith
 			if ((i > (200 * sizeX)) && (i < (300 * sizeX)) )
@@ -3365,22 +3360,35 @@ void createWorld( unsigned int world)
 			}
 
 			// vertical monolith
-			// if ((i > (300 * sizeX)) && (i < (1000 * sizeX)) )
-			// {
-			// 	unsigned int x = i % sizeX;
-			// 	if (x > 500 && x < 600)
-			// 	{
-			// 		setParticle(5, i);
-			// 		grid[i].phase = PHASE_SOLID;
-			// 	}
-			// }
+			if ((i > (300 * sizeX)) && (i < (1000 * sizeX)) )
+			{
+				unsigned int x = i % sizeX;
+				if (x > 500 && x < 600)
+				{
+					setParticle(5, i);
+					grid[i].phase = PHASE_SOLID;
+				}
+			}
 		}
+		break;
+	}
+
+
+
+	case WORLD_POOLOFTHESUN:
+	{
+		resetMaterials(MATERIALS_TEMPLE);
+		sunlightTemp = 5900;
+		sunlightBrightness = 100;
+		defaultTemperature = 300;
+		defaultPressure = 1000;
+
 		break;
 	}
 
 	case WORLD_EARTH:
 	{
-		standardMaterials();
+		resetMaterials(MATERIALS_STANDARD);
 		sunlightTemp = 5900;
 		sunlightBrightness = 100;
 		defaultTemperature = 300;
@@ -3407,8 +3415,27 @@ void createWorld( unsigned int world)
 			// ocean
 			if (i > 50 * sizeX && i < 100 * sizeX)
 			{
-				setParticle(1, i);
+
+				unsigned int x = i % sizeX;
+				if (  !( x > 1500 && x < 2500 )  )
+				{
+
+					setParticle(1, i);
+				}
+
 			}
+
+			if (i > 50 * sizeX && i < 120 * sizeX)
+			{
+
+				unsigned int x = i % sizeX;
+				if (  ( x > 1500 && x < 2500 )  )
+				{
+					setParticle(4, i);
+				}
+
+			}
+
 
 			// humidity
 			if (i > 50)
@@ -3436,10 +3463,11 @@ void createWorld( unsigned int world)
 
 	case WORLD_RANDOM:
 	{
+
+		resetMaterials(MATERIALS_RANDOM);
 		sunlightTemp       = RNG() * 10000;
 		defaultTemperature = RNG() * 1000;
 		defaultPressure    = RNG() * 2000;
-		randomMaterials();
 		for (unsigned int k = 0; k < materials.size(); ++k)
 		{
 			materials[k]. availability = extremelyFastNumberFromZeroTo(50);
@@ -3767,9 +3795,7 @@ void initialize ()
 {
 	// https://stackoverflow.com/questions/9459035/why-does-rand-yield-the-same-sequence-of-numbers-on-every-run
 	srand((unsigned int)time(NULL));
-	cursor_seedColor = color_yellow;
 	clearGrids();
-	resetMaterials();
 }
 
 void setEverythingHot()
@@ -4948,7 +4974,7 @@ void drawGplantFromChar()
 
 // grow tissues immediately around the growing point
 
-// 
+//
 
 // set crystal n
 
@@ -4969,7 +4995,7 @@ void drawGplantFromChar()
 	// wood, transports energy, strong and inedible, does not photosynthesize
 	// leaf, transports and produces energy, edible by predators
 	// flower, colorful
-	// seed, falls off the plant to make new plants. 
+	// seed, falls off the plant to make new plants.
 	// growing point
 
 
@@ -5473,7 +5499,8 @@ void load_materials(unsigned int m)
 	// load the materials
 	if (true)
 	{
-		resetMaterials();
+		// resetMaterials();
+		materials.clear();
 		for (int i = 0; i < m; ++i)
 		{
 			materials.push_back(Material());
