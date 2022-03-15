@@ -1023,7 +1023,7 @@ void floatPhoton( unsigned int weatherGridI ,  Color lightColor,  float lightBri
 		// if (weatherGrid[weatherGridI].saturation > 0)
 		// {
 			blocked +=amountToBlock ;
-			weatherGrid[weatherGridI].temperature += amountToBlock *( energy / 100);// ( () -  weatherGrid[weatherGridI].temperature  );  
+			weatherGrid[weatherGridI].temperature += amountToBlock *( energy / 50);// ( () -  weatherGrid[weatherGridI].temperature  );  
 		// }
 	}
 }
