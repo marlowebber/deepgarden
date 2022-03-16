@@ -21,7 +21,7 @@ const bool doWeather = true;
 const bool carnageMode = false;
 const bool normalMaterials = true;
 const bool advanceDay = false;
-const bool weatherUseTake = false;
+const bool weatherUseTake = true;
 
 // preset colors available for painting.
 const Color color_lightblue          = Color( 0.1f, 0.3f, 0.65f, 1.0f );
@@ -245,7 +245,7 @@ unsigned int sunlightDirection = 2;
 float fsundirection = 0.0f;
 float timeOfDay = 0.5f;
 
-const unsigned int gasLawConstant = 2;
+// const unsigned int gasLawConstant = 6;
 
 // raw energy values are DIVIDED by these numbers to get the result. So more means less.
 const unsigned int lightEfficiency   = 1000;
@@ -892,8 +892,8 @@ void applyAirflowChanges(unsigned int weatherGridI)
 	weatherGrid[weatherGridI].velocityY  -= weatherGrid[weatherGridI].velocityY >> 12 ;// *= 0.9999;
 
 	// return to zero just a little bit.
-	// weatherGrid[weatherGridI].dp    += (  defaultPressure                         - weatherGrid[weatherGridI].pressure   )  >> 6 ;
-	// weatherGrid[weatherGridI].dt    += ( (defaultTemperature << temperatureScale) - weatherGrid[weatherGridI].temperature)  >> 7 ;
+	weatherGrid[weatherGridI].dp    += (  defaultPressure                         - weatherGrid[weatherGridI].pressure   )  >> 7 ;
+	weatherGrid[weatherGridI].dt    += ( (defaultTemperature << temperatureScale) - weatherGrid[weatherGridI].temperature)  >> 7 ;
 
 	weatherGrid[weatherGridI].pressure    += weatherGrid[weatherGridI]. dp   ;
 	weatherGrid[weatherGridI].velocityX   += weatherGrid[weatherGridI]. dx   ;
@@ -926,30 +926,41 @@ void airflow( unsigned int weatherGridI)
 		int ax = 0;
 		int ay = 0;
 		int at = 0;
+		int count = 0;
 		for (unsigned int n = 0; n < N_NEIGHBOURS; ++n)
 		{
 			unsigned int weatherGridNeighbour = (weatherGridI + weatherGridOffsets[n] )  ;//% weatherGridSize;
 			if (weatherGridNeighbour > weatherGridSize) {weatherGridNeighbour = weatherGridI;}
-			ap += (weatherGrid[ weatherGridNeighbour ].pressure   ) ;
-			ax += (weatherGrid[ weatherGridNeighbour ].velocityX  ) ;
-			ay += (weatherGrid[ weatherGridNeighbour ].velocityY  ) ;
-			at += (weatherGrid[ weatherGridNeighbour ].temperature) ;
+			if (weatherGrid[weatherGridNeighbour].airBlockedSquares < (weatherGridScale * weatherGridScale)) {
+
+
+				ap += (weatherGrid[ weatherGridNeighbour ].pressure   ) ;
+				ax += (weatherGrid[ weatherGridNeighbour ].velocityX  ) ;
+				ay += (weatherGrid[ weatherGridNeighbour ].velocityY  ) ;
+				at += (weatherGrid[ weatherGridNeighbour ].temperature) ;
+				count++;
+			}
 		}
-		ax = ax >> 3;                                                                                              // N_NEIGHBOURS is 8, so you can do the division part of the average by using a bit shift.
-		ay = ay >> 3;
-		ap = ap >> 3;
-		at = at >> 3;
+		if (count > 0)
+		{
+			ax = ax / count; //>> 3;                                                                                              // N_NEIGHBOURS is 8, so you can do the division part of the average by using a bit shift.
+			ay = ay / count; //>> 3;
+			ap = ap / count; //>> 3;
+			at = at / count; //>> 3;
 
-		weatherGrid[weatherGridI]. dp +=   (ap - weatherGrid[weatherGridI].pressure   ) >> 3;
-		weatherGrid[weatherGridI]. dx +=   (ax - weatherGrid[weatherGridI].velocityX  ) >> 3;
-		weatherGrid[weatherGridI]. dy +=   (ay - weatherGrid[weatherGridI].velocityY  ) >> 3;
-		weatherGrid[weatherGridI]. dt +=   (at - weatherGrid[weatherGridI].temperature) >> 3;
-
+			weatherGrid[weatherGridI]. dp +=   (ap - weatherGrid[weatherGridI].pressure   ) >> 3;
+			weatherGrid[weatherGridI]. dx +=   (ax - weatherGrid[weatherGridI].velocityX  ) >> 3;
+			weatherGrid[weatherGridI]. dy +=   (ay - weatherGrid[weatherGridI].velocityY  ) >> 3;
+			weatherGrid[weatherGridI]. dt +=   (at - weatherGrid[weatherGridI].temperature) >> 3;
+		}
 
 		// pt interchange
-		int dtp = (weatherGrid[weatherGridI].dt - weatherGrid[weatherGridI].dp) >> gasLawConstant;
-		weatherGrid[weatherGridI].dp -= dtp ;
-		weatherGrid[weatherGridI].dt += dtp;
+		// if (weatherGrid[weatherGridI].airBlockedSquares < (weatherGridScale * weatherGridScale))
+		// {
+			int dtp = (weatherGrid[weatherGridI].temperature - weatherGrid[weatherGridI].pressure) >> 9;
+			weatherGrid[weatherGridI].dp -= dtp ;
+			weatherGrid[weatherGridI].dt += dtp;
+		// }
 
 		// pv interchange
 		const unsigned int baseBlockageRatio = 3;
@@ -981,40 +992,50 @@ void airflow( unsigned int weatherGridI)
 
 		}
 
-		// mix heat and velocity from far away. This is a key component of turbulent behavior in the sim, and produces a billowing effect that looks very realistic. It is prone to great instability.
+// mix heat and velocity from far away. This is a key component of turbulent behavior in the sim, and produces a billowing effect that looks very realistic. It is prone to great instability.
 		if (weatherUseTake)
 		{
-			int takeX = weatherGrid[weatherGridI].dx >> 1;    // strong mixing here allows the sim to make stunning clouds and air currents, but radiating shockwaves look better when the take component is smaller.
-			int takeY = weatherGrid[weatherGridI].dy >> 1;
-
-			unsigned int weatherGridX = weatherGridI % weatherGridSizeX;
-			unsigned int weatherGridY = weatherGridI / weatherGridSizeX;
-
-			takeX = weatherGridX + takeX  ;                                                                           // the velocity itself is used to find the grid location to take from.
-			takeY = weatherGridY + takeY ;                                                          // velocity numbers range greatly and can be very high, use this number to scale them to an appropriate take distance.
-
-			if (takeY >= 0 && takeY < weatherGridSizeY)
+			if (weatherGrid[weatherGridI].airBlockedSquares < (weatherGridScale * weatherGridScale))
 			{
-				int takeI = ((takeY * weatherGridSizeX) + takeX );
-				if (takeI >= 0 && takeI < weatherGridSize )
+
+				int takeX = weatherGrid[weatherGridI].dx >> 1;    // strong mixing here allows the sim to make stunning clouds and air currents, but radiating shockwaves look better when the take component is smaller.
+				int takeY = weatherGrid[weatherGridI].dy >> 1;
+
+				unsigned int weatherGridX = weatherGridI % weatherGridSizeX;
+				unsigned int weatherGridY = weatherGridI / weatherGridSizeX;
+
+				takeX = weatherGridX + takeX  ;                                                                           // the velocity itself is used to find the grid location to take from.
+				takeY = weatherGridY + takeY ;                                                          // velocity numbers range greatly and can be very high, use this number to scale them to an appropriate take distance.
+
+				if (takeY >= 0 && takeY < weatherGridSizeY)
 				{
+					int takeI = ((takeY * weatherGridSizeX) + takeX );
+					if (takeI >= 0 && takeI < weatherGridSize )
+					{
 
 
 
-					int takeTemperature = (( weatherGrid[weatherGridI].temperature - weatherGrid[takeI].temperature ) >> (2  ) );
-					int takeVelocityX   = (( weatherGrid[weatherGridI].velocityX   - weatherGrid[takeI].velocityX   ) >> (3  ) );
-					int takeVelocityY   = (( weatherGrid[weatherGridI].velocityY   - weatherGrid[takeI].velocityY   ) >> (3  ) );
+						int takeTemperature = (( weatherGrid[weatherGridI].temperature - weatherGrid[takeI].temperature ) >> (1  ) );
+						int takeVelocityX   = (( weatherGrid[weatherGridI].velocityX   - weatherGrid[takeI].velocityX   ) >> (3  ) );
+						int takeVelocityY   = (( weatherGrid[weatherGridI].velocityY   - weatherGrid[takeI].velocityY   ) >> (3  ) );
 
-					// weatherGrid[takeI].dt += takeTemperature;
-					// weatherGrid[takeI].dx += takeVelocityX;                // mix in the velocity contribution from far-away.
-					// weatherGrid[takeI].dy += takeVelocityY;                // adding more looks cool, but makes the fluid explode on touch like nitroglycerin!
+						// weatherGrid[takeI].dt += takeTemperature;
+						// weatherGrid[takeI].dx += takeVelocityX;                // mix in the velocity contribution from far-away.
+						// weatherGrid[takeI].dy += takeVelocityY;                // adding more looks cool, but makes the fluid explode on touch like nitroglycerin!
 
-					weatherGrid[weatherGridI].dt -= takeTemperature;
-					weatherGrid[weatherGridI].dx -= takeVelocityX;                // mix in the velocity contribution from far-away.
-					weatherGrid[weatherGridI].dy -= takeVelocityY;                // adding more looks cool, but makes the fluid explode on touch like nitroglycerin!
+						weatherGrid[weatherGridI].dt -= takeTemperature;
+						weatherGrid[weatherGridI].dx -= takeVelocityX;                // mix in the velocity contribution from far-away.
+						weatherGrid[weatherGridI].dy -= takeVelocityY;                // adding more looks cool, but makes the fluid explode on touch like nitroglycerin!
+					}
 				}
 			}
 		}
+	}
+
+	else 
+	{
+		weatherGrid[weatherGridI].velocityX = 0;
+		weatherGrid[weatherGridI].velocityY = 0;
 	}
 }
 
@@ -1461,7 +1482,7 @@ void thread_sector( unsigned int from, unsigned int to )
 			if (grid[currentPosition].phase != PHASE_VACUUM)
 			{
 				int gridCouplingAmount = ( weatherGrid[weatherGridI].temperature  - (grid[currentPosition].temperature << temperatureScale) ) ;
-				const unsigned int heatCouplingConstant = 4;
+				const unsigned int heatCouplingConstant = 2;
 				grid[currentPosition].temperature += (gridCouplingAmount >> temperatureScale)  >> heatCouplingConstant ;
 				weatherGrid[weatherGridI].temperature -= (gridCouplingAmount) >> heatCouplingConstant ;
 
@@ -1542,7 +1563,7 @@ void thread_handleEdges()
 		floatPhoton(weatherGridI, sunlightColor, sunlightBrightness, fsundirection);
 
 
-		weatherGrid[weatherGridI].pressure    += (  defaultPressure                         - weatherGrid[weatherGridI].pressure   )  >> 6 ;
+		// weatherGrid[weatherGridI].pressure    += (  defaultPressure                         - weatherGrid[weatherGridI].pressure   )  >> 6 ;
 	}
 
 	// unsigned int toY = weatherGridSizeY - 1;
@@ -4564,12 +4585,15 @@ void thread_graphics()
 
 			unsigned int weatherGridI = ((y / weatherGridScale) * weatherGridSizeX + (x / weatherGridScale));
 
-			int itemp = (weatherGrid[weatherGridI].temperature >> temperatureScale);
+			int itemp = ((weatherGrid[weatherGridI].temperature >> temperatureScale) + grid[i].temperature ) >> 1;
 
-			if ( grid[i].temperature > itemp) { itemp = grid[i].temperature;}
+
+
+
+			// if ( grid[i].temperature > itemp) { itemp = grid[i].temperature;}
 			float ftemp = itemp;
 
-			ftemp -= 273;
+			ftemp -= defaultTemperature;
 			ftemp = ftemp / (200.0f);
 
 			energyColorGrid[ (i * numberOfFieldsPerVertex) + 0 ] = ftemp;
