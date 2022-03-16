@@ -3434,13 +3434,13 @@ void createWorld( unsigned int world)
 			// a monolith in the 0 corner
 			// if ((i > (300 * sizeX)) && (i < (1000 * sizeX)) )
 			// {
-				unsigned int x = i % sizeX;
-				unsigned int y = i / sizeX;
-				if (x < 50 && y < 50)
-				{
-					setParticle(5, i);
-					grid[i].phase = PHASE_SOLID;
-				}
+			unsigned int x = i % sizeX;
+			unsigned int y = i / sizeX;
+			if (x < 50 && y < 50)
+			{
+				setParticle(5, i);
+				grid[i].phase = PHASE_SOLID;
+			}
 			// }
 		}
 		break;
@@ -4019,52 +4019,28 @@ void setNeutralTemp ()
 
 vec_u2 convertScreenToWorld(unsigned int ux, unsigned int uy)
 {
- 
+	int x = ux;
+	int y = uy;
 
+	// step 1 correct the y axis inversion
+	y = 1080 - y;
 
-int x = ux;
-int y = uy;
- 
-	// printf("screen x %u, y %u \n", x, y);
+	// step 2 undo offsets
+    // world coordinates 0,0 is at the center of the screen normally
+	x -= (1920 / 2);
+	y -= (1080 / 2);
+	x += (viewPanSetpointX / (viewZoomSetpoint / 1000) )  ;
+	y += (viewPanSetpointY / (viewZoomSetpoint / 1000) )  ;
 
-	// step 1 undo offsets
-
-
- // world coordinates 0,0 is at the center of the screen normally
-	x -= (1920/2);
-	y -= (1080/2);
-
-	// add the camera panning amount
-	x += (viewPanSetpointX)  ;
-	y += (viewPanSetpointY)  ;
-
-
-	// printf("offsets correct x %u, y %u \n", x, y);
-
-	// step 2 correct the scale
-	// x *= 1.05;
-	// y *= 1.1;
-
-	// x = x*viewZoomSetpoint;
-	// y = y*viewZoomSetpoint;
-
-	// printf("world x %u, y %u \n", x, y);
-
-	// step 3 correct the y axis inversion
-
-	y = sizeY - y;
-	y += sizeY;
-
-
+	// step 3 correct the scale
+	x = x * ( viewZoomSetpoint / 1000  );
+	y = y * ( viewZoomSetpoint / 1000  );
 
 	// step 4 clip to safe settings
 	x = x % sizeX;
 	y = y % sizeY;
 
-
-
 	return vec_u2(x, y);
-
 }
 
 
@@ -5581,7 +5557,7 @@ void insertRandomAnimal ()
 	// 	if (!x) { y = i / sizeX; }
 	// 	if (x == targetX && y == targetY)
 	// 	{
-			setAnimal( i, exampleAnimal );
+	setAnimal( i, exampleAnimal );
 	// 	}
 	// }
 }
@@ -5601,12 +5577,12 @@ void insertPlayer()
 	// 	if (!x) { y = i / sizeX; }
 	// 	if (x == targetX && y == targetY)
 	// 	{
-			setAnimal( i, exampleAnimal );
+	setAnimal( i, exampleAnimal );
 	// 	}
 	// }
 
-			playerPosition = i;
-			firstPerson = true;
+	playerPosition = i;
+	firstPerson = true;
 }
 
 // void increaseLampBrightness ()
