@@ -10,7 +10,7 @@
 // #define DETAIL_TIMING_READOUT 1
 
 // #define PLANT_DRAWING_READOUT 1
-// #define ANIMAL_DRAWING_READOUT 1
+#define ANIMAL_DRAWING_READOUT 1
 // #define ANIMAL_BEHAVIOR_READOUT 1
 // #define MUTATION_READOUT 1
 
@@ -1006,6 +1006,8 @@ void floatPhoton( unsigned int weatherGridI ,  Color lightColor,  float lightBri
 		if (wx == 0 || wy == 0 || wx >= weatherGridSizeX - 1 || wy >= weatherGridSizeY - 1) {return;} // stop when you get to the edge of the map
 
 		weatherGridI =  (wy * weatherGridSizeX) + wx ;
+
+		float appliedEnergy;//  = energy/100;
 		if (weatherGridI >= weatherGridSize) {return;}
 
 		float energy  = (lightBrightness - blocked );
@@ -1015,29 +1017,18 @@ void floatPhoton( unsigned int weatherGridI ,  Color lightColor,  float lightBri
 		}
 		else
 		{
-
 			Color appliedColor = lightColor;
-			appliedColor.a = energy / 1000;
+
+			float appliedEnergy  = energy / 1000;
+			appliedColor.a = appliedEnergy  ;
 
 			weatherGrid[weatherGridI].color = addColor(weatherGrid[weatherGridI].color, appliedColor);
 
 		}
-		// if (weatherGrid[weatherGridI].lightBlockedSquares > 0)
-		// {
-
 		int amountToBlock  = weatherGrid[weatherGridI].lightBlockedSquares + weatherGrid[weatherGridI].saturation;
-
-		// blocked += amountToBlock;
-		// weatherGrid[weatherGridI].temperature +=  amountToBlock * (energy / 10;// ( () -  weatherGrid[weatherGridI].temperature  );
-		// }
-
-		// if (weatherGrid[weatherGridI].saturation > 0)
-		// {
 		blocked += amountToBlock ;
-		weatherGrid[weatherGridI].temperature += amountToBlock * ( energy / 50); // ( () -  weatherGrid[weatherGridI].temperature  );
-		// }
+		weatherGrid[weatherGridI].temperature += amountToBlock * ( appliedEnergy); // ( () -  weatherGrid[weatherGridI].temperature  );
 	}
-	// }
 }
 
 void darkenLightfield(unsigned int weatherGridI )
@@ -1695,7 +1686,7 @@ Animal::Animal()
 	this->maxHitPoints = this->hitPoints;
 	this->steady = false;
 	this->timesReproduced = 0;
-	this->retired = false;
+	this->retired = true; // so IDs get used starting from 0
 	this->partnerGenes = nullptr;
 	this->mated = false;
 	this->totalArea    = 0;
@@ -1786,13 +1777,15 @@ std::list<ProposedLifeParticle> EFLA_E(vec_i2 start, vec_i2 end)
 }
 
 
-std::vector<Animal> animals;
+// std::vector<Animal> animals;
+Animal animals[maxAnimals];
+
 
 
 // prints the animal to the terminal!
 void catScan(unsigned int animalIndex)
 {
-	if (animalIndex > animals.size()) {return;}
+	if (animalIndex > maxAnimals) {return;}
 	printf("\nCAT scan report on animal %u\n", animalIndex);
 	for (unsigned int segmentNumber = 0; segmentNumber < animals[animalIndex].segmentsUsed; ++segmentNumber)
 	{
@@ -1855,7 +1848,7 @@ void catScan(unsigned int animalIndex)
 
 void fillAPolygon(unsigned int animalIndex, unsigned int usegmentNumber, unsigned int frame)
 {
-	if (animalIndex >= animals.size()  ) {return;}
+	if (animalIndex >= maxAnimals  ) {return;}
 	Animal * a  = &(animals[animalIndex]);
 	unsigned int frameOffset = (squareSizeAnimalSprite) * frame;
 	int segmentNumber = usegmentNumber;
@@ -1938,7 +1931,7 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 {
 	if (animalCursorString >= genes.length())           {return -1;}
 	if (animalCursorSegmentNumber >= maxAnimalSegments) {return -1;}
-	if (animalIndex >= animals.size())                {return -1;}
+	if (animalIndex >= maxAnimals)                {return -1;}
 
 	Animal * a = &(animals[animalIndex]);
 
@@ -2460,7 +2453,7 @@ int drawAnimalFromChar (unsigned int i, unsigned int animalIndex, std::string ge
 void measureAnimalQualities(unsigned int currentPosition)
 {
 	unsigned int animalIndex = seedGrid[currentPosition].parentIdentity;
-	if (animalIndex >= animals.size())                {return;}
+	if (animalIndex >= maxAnimals)                {return;}
 
 #ifdef ANIMAL_DRAWING_READOUT
 	printf( "measureAnimalQualities on animal %u \n" , animalIndex );
@@ -2695,7 +2688,7 @@ void setAnimalSpritePixel ( unsigned int animalIndex, unsigned int segmentIndex,
 
 void clearAnimalDrawing(unsigned int i)
 {
-	if (seedGrid[i].parentIdentity < animals.size())
+	if (seedGrid[i].parentIdentity < maxAnimals)
 	{
 		unsigned int animalIndex = seedGrid[i].parentIdentity;
 
@@ -2712,6 +2705,10 @@ void clearAnimalDrawing(unsigned int i)
 // given an animal seed at position i (the method by which they are transported and reproduced), turn it into a complete animal
 void drawAnimalFromSeed(unsigned int i)
 {
+
+
+	seedGrid[i].stage = STAGE_ANIMAL;
+
 	// reset everything to the beginning state
 	animalCursorFrame = 0;
 	animalCursorString = 0;
@@ -2725,53 +2722,73 @@ void drawAnimalFromSeed(unsigned int i)
 
 	bool foundAnID = false;
 
-	printf("animals size %lu\n", animals.size());
+	// printf("animals size %lu\n", maxAnimals);
+	// if (maxAnimals > 0)
+	// {
 
-	for (unsigned int animal = 0; animal < animals.size(); ++animal)
+	// for (animalIndex = 0; animalIndex < 10; ++animalIndex)
+	// {
+
+	// 	printf("animal %u retirement state %u\n", animalIndex, animals[animalIndex].retired);
+	// }
+
+
+
+	for (animalIndex = 0; animalIndex < maxAnimals; ++animalIndex)
 	{
-		if (animals[animal].retired)
+		if (animals[animalIndex].retired)
 		{
+			// printf("animal %u was retired\n", animalIndex);
+			// animalIndex = animal;
 			foundAnID = true;
-			animalIndex = animal;
-			animals[animalIndex] = Animal();
 
 #ifdef ANIMAL_DRAWING_READOUT
-			printf("Recycle animal ID %u\n", animalIndex);
+			printf("Use animal ID %u\n", animalIndex);
 #endif
 			break;
 		}
 	}
+	// }
 
-	if (!foundAnID) // if there was no slot available, make a new one
+	if (!foundAnID)
 	{
-		Animal newAnimal = Animal();
-
-
-		// std::vector<Animal>::iterator it;
-		// it = animals.end();
-		// animals.insert(it, newAnimal);
-		animals.push_back(newAnimal);
-		animalIndex = animals.size() - 1;
-
-		// instead of push_back, use an iterator to insert
-		// https://stackoverflow.com/questions/60393716/segmentation-fault-when-using-vector-push-back-inside-of-certain-loops
-		// it still bugs out with insert if you are adding huge amounts of animals quickly
-
-#ifdef ANIMAL_DRAWING_READOUT
-		printf("New animal with ID %u \n", animalIndex);
-#endif
+		clearSeedParticle(i);
+		return;
 	}
+
+
+		// printf("animal !!!!%u retirement state %u\n", animalIndex, animals[animalIndex].retired);
+	animals[animalIndex].retired = false; // set this after creating Animal(), otherwise it will set back to true
+
+		// printf("animal!!!! %u retirement state %u\n", animalIndex, animals[animalIndex].retired);
+// 		// Animal newAnimal = Animal();
+
+
+// 		std::vector<Animal>::iterator it;
+// 		it = animals.end();
+// 		animals.insert(it, Animal());
+// 		// animals.push_back(newAnimal);
+// 		animalIndex = maxAnimals - 1;
+
+// 		// instead of push_back, use an iterator to insert
+// 		// https://stackoverflow.com/questions/60393716/segmentation-fault-when-using-vector-push-back-inside-of-certain-loops
+// 		// it still bugs out with insert if you are adding huge amounts of animals quickly
+
+// #ifdef ANIMAL_DRAWING_READOUT
+// 		printf("New animal with ID %u \n", animalIndex);
+// #endif
+// 	}
 
 
 	seedGrid[i].parentIdentity = animalIndex;
 
-	if (animalIndex < animals.size() && seedGrid[i].stage == STAGE_ANIMAL)
+	if (animalIndex < maxAnimals && seedGrid[i].stage == STAGE_ANIMAL)
 	{
 		seedGrid[i].drawingInProgress = true;
 
 		// to improve code stability, this operation passes the animal and genome by literal value instead of by reference
 		// it is operated on in a factory-like way and then the original is overwritten with the modified copy
-		animals[animalIndex] = Animal();
+		// animals[animalIndex] = Animal();
 		std::string genome = seedGrid[i].genes;
 
 #ifdef ANIMAL_DRAWING_READOUT
@@ -2849,9 +2866,9 @@ void swapSeedParticle(unsigned int a, unsigned int b)
 void setAnimal(unsigned int i, std::string genes)
 {
 	seedGrid[i].genes = genes;
-	seedGrid[i].stage = STAGE_ANIMAL;
+	seedGrid[i].stage = STAGE_ANIMALEGG;
 	memcpy( (&seedColorGrid[i * numberOfFieldsPerVertex]) ,  &(color_clear),  sizeof(Color) );
-	drawAnimalFromSeed(i);
+
 }
 
 void mutateSentence ( std::string * genes )
@@ -2947,7 +2964,7 @@ void setParticle(unsigned int material, unsigned int i)
 void killAnAnimal(unsigned int i)
 {
 	// delete the animal from the relevant grids, leaving behind a huge mess
-	if (seedGrid[i].parentIdentity >= animals.size())
+	if (seedGrid[i].parentIdentity >= maxAnimals)
 	{
 		return;
 	}
@@ -2995,44 +3012,63 @@ void killAnAnimal(unsigned int i)
 		}
 	}
 
-	animals[animalIndex].retired = true;
+	printf("animal %u died\n", animalIndex);
+
+	// animals[animalIndex].retired = true;
 	clearAnimalDrawing(i);
 	clearSeedParticle(i);
+	animals[animalIndex] = Animal(); // reset to default state.
 }
 
 void incrementAnimalSegmentPositions (unsigned int animalIndex, unsigned int i)
 {
-	if (animalIndex < animals.size())
+	// if (animalIndex < maxAnimals)
+	// {
+
+	// printf("incrementAnimalSegmentPositions ");
+
+	if (animals[animalIndex].segmentsUsed > 0 )
 	{
-		if (animals[animalIndex].segmentsUsed > 0 )
+		// Update animal segment positions. Only do this if the animal has actually moved (otherwise it will pile into one square).
+		if (animals[animalIndex].segments[0].position != i)
 		{
-			// Update animal segment positions. Only do this if the animal has actually moved (otherwise it will pile into one square).
-			if (animals[animalIndex].segments[0].position != i)
+
+
+
+			// clear the old drawing
+			for (  int j = (animals[animalIndex].segmentsUsed - 1); j >= 0; --j) // when using lots of minuses and value comparisons like this its a good idea to use int. this would hang forever if j was unsigned
 			{
-				for (  int j = (animals[animalIndex].segmentsUsed - 1); j >= 0; --j) // when using lots of minuses and value comparisons like this its a good idea to use int. this would hang forever if j was unsigned
+				for (unsigned int k = 0; k < (squareSizeAnimalSprite); ++k)
 				{
-					for (unsigned int k = 0; k < (squareSizeAnimalSprite); ++k)
-					{
-						clearAnimalSpritePixel(animalIndex, j, k);
-					}
-				}
-
-				for (  int j = (animals[animalIndex].segmentsUsed - 1); j > 0; --j)
-				{
-					animals[animalIndex].segments[j].position = animals[animalIndex].segments[j - 1].position;
-				}
-				animals[animalIndex].segments[0].position = i;
-
-				for (  int j = (animals[animalIndex].segmentsUsed - 1); j >= 0; --j)
-				{
-					for (unsigned int k = 0; k < (squareSizeAnimalSprite); ++k)
-					{
-						setAnimalSpritePixel( animalIndex, j, k);
-					}
+					clearAnimalSpritePixel(animalIndex, j, k);
 				}
 			}
+
+			// update the segment positions
+			for (  int j = (animals[animalIndex].segmentsUsed - 1); j > 0; --j)
+			{
+
+				animals[animalIndex].segments[j].position = animals[animalIndex].segments[j - 1].position;
+
+				// printf("seg %i pos %u ", j,  animals[animalIndex].segments[j].position );
+			}
+
+			animals[animalIndex].segments[0].position = i;
+
+			// draw the new drawing
+			for (  int j = (animals[animalIndex].segmentsUsed - 1); j >= 0; --j)
+			{
+				for (unsigned int k = 0; k < (squareSizeAnimalSprite); ++k)
+				{
+					setAnimalSpritePixel( animalIndex, j, k);
+				}
+			}
+
+
+			// printf(" \n " );
 		}
 	}
+	// }
 }
 
 // these materials are expected by the game, so they must be loaded in every situation.
@@ -3308,11 +3344,26 @@ void paintMaterialCircle(unsigned int k, unsigned int radius, unsigned int mater
 }
 
 
+void clearAnimals()
+{
+	for (int i = 0; i < maxAnimals; ++i)
+	{
+		animals[i] = Animal();
+	}
+
+	for (int i = 0; i < totalSize; ++i)
+	{
+		if (seedGrid[i].stage == STAGE_ANIMAL)
+		{
+			clearSeedParticle(i);
+		}
+	}
+}
+
 void createWorld( unsigned int world)
 {
 	clearGrids();
-
-	animals.clear();
+	clearAnimals();
 
 	switch (world)
 	{
@@ -3322,7 +3373,7 @@ void createWorld( unsigned int world)
 
 		resetMaterials(MATERIALS_STANDARD);
 		sunlightTemp = 2000;
-		sunlightBrightness = 50;
+		sunlightBrightness = 300;
 		defaultTemperature = 200;
 		defaultPressure = 1000;
 
@@ -3335,18 +3386,18 @@ void createWorld( unsigned int world)
 			}
 
 			// a dollop of super hot rock
-			if ((i > (100 * sizeX)) && (i < (200 * sizeX)) )
-			{
-				unsigned int x = i % sizeX;
+			// if ((i > (100 * sizeX)) && (i < (200 * sizeX)) )
+			// {
+			// 	unsigned int x = i % sizeX;
 
-				if (x > 500 && x < 600)
-				{
+			// 	if (x > 500 && x < 600)
+			// 	{
 
-					setParticle(5, i);
-					grid[i].phase = PHASE_SOLID;
-					grid[i].temperature = 2000;
-				}
-			}
+			// 		setParticle(5, i);
+			// 		grid[i].phase = PHASE_SOLID;
+			// 		grid[i].temperature = 2000;
+			// 	}
+			// }
 
 			// horizontal monolith
 			if ((i > (200 * sizeX)) && (i < (300 * sizeX)) )
@@ -3379,9 +3430,53 @@ void createWorld( unsigned int world)
 	{
 		resetMaterials(MATERIALS_TEMPLE);
 		sunlightTemp = 5900;
-		sunlightBrightness = 100;
+		sunlightBrightness = 200;
 		defaultTemperature = 300;
 		defaultPressure = 1000;
+
+
+
+		for (int i = 0; i < totalSize; ++i)
+		{
+
+
+			int x = i % sizeX;
+			int y = i / sizeX;
+			int centerX = sizeX / 2;
+			int centerY = sizeY / 2;
+
+			if ( y < (sizeY / 3) )
+			{
+				if ( y < (sizeY / 8) )
+				{
+					setParticle(6, i);
+					grid[i].phase = PHASE_SOLID;
+				}
+
+				if (magnitude_int( ((x) - centerX ) , y - centerY   )  <  (sizeX / 4))
+				{
+					if (magnitude_int( ((x) - centerX  ) , y - centerY  )  > (sizeX / 4.1))
+					{
+						setParticle(6, i);
+						grid[i].phase = PHASE_SOLID;
+					}
+
+					else
+					{
+						if (x > centerX)
+						{
+							setParticle(4, i);
+							grid[i].phase = PHASE_LIQUID;
+						}
+						else
+						{
+							setParticle(5, i);
+							grid[i].phase = PHASE_LIQUID;
+						}
+					}
+				}
+			}
+		}
 
 		break;
 	}
@@ -3390,7 +3485,7 @@ void createWorld( unsigned int world)
 	{
 		resetMaterials(MATERIALS_STANDARD);
 		sunlightTemp = 5900;
-		sunlightBrightness = 100;
+		sunlightBrightness = 200;
 		defaultTemperature = 300;
 		defaultPressure = 1000;
 		for (int i = 0; i < totalSize; ++i)
@@ -3468,6 +3563,10 @@ void createWorld( unsigned int world)
 		sunlightTemp       = RNG() * 10000;
 		defaultTemperature = RNG() * 1000;
 		defaultPressure    = RNG() * 2000;
+
+
+		sunlightBrightness = 100 + (RNG() * 1000 );
+
 		for (unsigned int k = 0; k < materials.size(); ++k)
 		{
 			materials[k]. availability = extremelyFastNumberFromZeroTo(50);
@@ -3540,7 +3639,7 @@ unsigned int getRelativeDirection (unsigned int a, unsigned int b)
 bool animalCanMove(unsigned int i, unsigned int neighbour)
 {
 	unsigned int animalIndex = seedGrid[i].parentIdentity;
-	if (animalIndex < animals.size() && neighbour < totalSize)
+	if (animalIndex < maxAnimals && neighbour < totalSize)
 	{
 		if (  (animals[animalIndex].movementFlags & MOVEMENT_INAIR ) == MOVEMENT_INAIR   )
 		{
@@ -3614,7 +3713,7 @@ bool animalCanMove(unsigned int i, unsigned int neighbour)
 unsigned int getDMostWalkableSquare(unsigned int i, unsigned int animalIndex, unsigned int direction, unsigned int startPosition)
 {
 	unsigned int neighbour = startPosition + neighbourOffsets[ direction ];
-	if (animalIndex < animals.size() && direction < N_NEIGHBOURS )
+	if (animalIndex < maxAnimals && direction < N_NEIGHBOURS )
 	{
 		int sign = 1;                                // sign is inverted after each go, makes the search neighbour flip between left and right.
 		if (extremelyFastNumberFromZeroTo(1) == 0) {sign = -1;}
@@ -3640,7 +3739,7 @@ bool animalEat(unsigned int currentPosition , unsigned int neighbour )
 
 	unsigned int animalIndex  = seedGrid[currentPosition].parentIdentity;
 
-	if (animalIndex > animals.size()) {return false;}
+	if (animalIndex > maxAnimals) {return false;}
 	if (currentPosition == neighbour) {return false;}
 
 	bool eaten = false;
@@ -3711,7 +3810,7 @@ bool animalEat(unsigned int currentPosition , unsigned int neighbour )
 		        carnageMode)
 		{
 			// attack the other animal and either try to kill it or take conquest of it.
-			if (seedGrid[neighbour].parentIdentity < animals.size())
+			if (seedGrid[neighbour].parentIdentity < maxAnimals)
 			{
 				unsigned int animalIndexB = seedGrid[neighbour].parentIdentity ;
 #ifdef ANIMAL_BEHAVIOR_READOUT
@@ -3763,7 +3862,7 @@ bool animalEat(unsigned int currentPosition , unsigned int neighbour )
 void animalFeed(unsigned int i)
 {
 	unsigned int animalIndex = seedGrid[i].parentIdentity;
-	if (animalIndex < animals.size())
+	if (animalIndex < maxAnimals)
 	{
 		for (unsigned int segmentIndex = 0; segmentIndex < animals[animalIndex].segmentsUsed; ++segmentIndex)
 		{
@@ -3796,6 +3895,10 @@ void initialize ()
 	// https://stackoverflow.com/questions/9459035/why-does-rand-yield-the-same-sequence-of-numbers-on-every-run
 	srand((unsigned int)time(NULL));
 	clearGrids();
+	clearAnimals();
+	// animals.push_back(Animal());
+
+	// drawAnimalFromSeed(0);
 }
 
 void setEverythingHot()
@@ -3933,7 +4036,7 @@ void toggleEnergyGridDisplay ()
 bool animalCanEat(unsigned int currentPosition , unsigned int neighbour )
 {
 	unsigned int animalIndex  = seedGrid[currentPosition].parentIdentity;
-	if (animalIndex > animals.size()) {return false;}
+	if (animalIndex > maxAnimals) {return false;}
 	if (currentPosition == neighbour) {return false;}
 
 	if (  (animals[animalIndex].energyFlags & ENERGYSOURCE_SEED ) == ENERGYSOURCE_SEED   )
@@ -3975,7 +4078,7 @@ bool animalCanEat(unsigned int currentPosition , unsigned int neighbour )
 unsigned int animalDirectionFinding (unsigned int i)
 {
 	unsigned int animalIndex = seedGrid[i].parentIdentity;
-	if (animalIndex > animals.size()) { return i;}
+	if (animalIndex > maxAnimals) { return i;}
 	unsigned int decidedLocation;
 	bool decided = false;
 	bool runAway = false;
@@ -3984,7 +4087,7 @@ unsigned int animalDirectionFinding (unsigned int i)
 	{
 		hungry = true;
 	}
-	if (animalIndex < animals.size())
+	if (animalIndex < maxAnimals)
 	{
 		// scan the environment using the animal's perception.
 		// more perception means the coverage of the area will be more complete (more rolls= less missed stuff)
@@ -4073,7 +4176,7 @@ unsigned int animalDirectionFinding (unsigned int i)
 void animalReproduce (unsigned int i)
 {
 	unsigned int animalIndex = seedGrid[i].parentIdentity;
-	if (animalIndex > animals.size()) {return;}
+	if (animalIndex > maxAnimals) {return;}
 
 	unsigned int nSolidNeighbours = 0;
 	for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
@@ -4124,7 +4227,7 @@ void animalReproduce (unsigned int i)
 void animalAllSegmentsFall(unsigned int i)
 {
 	unsigned int animalIndex = seedGrid[i].parentIdentity;
-	if (animalIndex > animals.size()) {return;}
+	if (animalIndex > maxAnimals) {return;}
 	for (unsigned int segmentIndex = 0; segmentIndex < animals[animalIndex].segmentsUsed; ++segmentIndex)
 	{
 		unsigned int squareBelow = (animals[animalIndex].segments[segmentIndex].position - sizeX) % totalSize;
@@ -4141,7 +4244,7 @@ void animalAllSegmentsFall(unsigned int i)
 void animalCrudOps(unsigned int i)
 {
 	unsigned int animalIndex = seedGrid[i].parentIdentity;
-	if (animalIndex > animals.size() ) {return;}
+	if (animalIndex > maxAnimals ) {return;}
 
 	// reproduce
 	if (seedGrid[i].energy > animals[animalIndex].reproductionEnergy && animals[animalIndex].age > (animals[animalIndex].reproductionEnergy + 100)  && animalReproductionEnabled)
@@ -4163,7 +4266,7 @@ void animalCrudOps(unsigned int i)
 void animalTurn(unsigned int i)
 {
 	unsigned int animalIndex = seedGrid[i].parentIdentity;
-	if (animalIndex > animals.size()) {return;}
+	if (animalIndex > maxAnimals) {return;}
 
 	animals[animalIndex].age++;
 
@@ -5271,9 +5374,22 @@ void thread_seeds()
 			animalTurn(i);
 			continue;
 		}
+
+		else if (seedGrid[i].stage == STAGE_ANIMALEGG)
+		{
+			// animalTurn(i);
+			drawAnimalFromSeed(i);
+
+			continue;
+		}
+
+
+
+
 		else if (seedGrid[i].stage == STAGE_GPLANTSHOOT)
 		{
 			drawGplant(i);
+			continue;
 		}
 
 		else
@@ -5379,25 +5495,25 @@ void insertRandomAnimal ()
 	}
 }
 
-void increaseLampBrightness ()
-{
-	sunlightBrightness ++;
-	if (sunlightBrightness > maxLampBrightness) {sunlightBrightness = 0;}
-}
+// void increaseLampBrightness ()
+// {
+// 	sunlightBrightness ++;
+// 	if (sunlightBrightness > maxLampBrightness) {sunlightBrightness = 0;}
+// }
 
-void decreaseLampBrightness ()
-{
-	sunlightBrightness--;
+// void decreaseLampBrightness ()
+// {
+// 	sunlightBrightness--;
 
-	if (sunlightBrightness > maxLampBrightness) {sunlightBrightness = 0;}
-}
+// 	if (sunlightBrightness > maxLampBrightness) {sunlightBrightness = 0;}
+// }
 
 void save ()
 {
 	printf("SAVING GAME\n");
 
 	WorldInformation newWorldInfo;
-	newWorldInfo.nAnimals   = animals.size();
+	newWorldInfo.nAnimals   = maxAnimals;
 	newWorldInfo.nMaterials = materials.size();
 
 	std::ofstream out884(std::string("save/WorldInformation").c_str());
@@ -5489,7 +5605,7 @@ void save ()
 
 	std::ofstream out8579("save/animals");
 	pointer = reinterpret_cast<const char*>(&animals[0]);
-	bytes = animals.size() * sizeof(Animal);
+	bytes = maxAnimals * sizeof(Animal);
 	out8579.write(pointer, bytes);
 	out8579.close();
 }
@@ -5521,11 +5637,11 @@ void load_animals(unsigned int m)
 {
 	if (true)
 	{
-		animals.clear();
-		for (int i = 0; i < m; ++i)
-		{
-			animals.push_back(Animal());
-		}
+		clearAnimals();
+		// for (int i = 0; i < m; ++i)
+		// {
+		// 	animals.push_back(Animal());
+		// }
 		std::ifstream in556(std::string("save/animals").c_str());
 		in556.read( (char *)(&(animals[0])), sizeof(Animal) *  m);
 		in556.close();

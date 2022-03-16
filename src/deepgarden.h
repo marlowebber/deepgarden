@@ -25,7 +25,7 @@ extern  const unsigned int totalSize;
 #define sizeY 512
 #define maxGenomeSize 64
 #define N_NEIGHBOURS 8                 // this is always 8 on a 2D square grid. 
-#define maxLampBrightness 100
+// #define maxLampBrightness 100
 
 #define sizeAnimalSprite 16
 #define squareSizeAnimalSprite 256     // these are here to make lookup fast. so you don't have to calculate them.
@@ -33,6 +33,7 @@ extern  const unsigned int totalSize;
 
 #define maxAnimalSegments 26
 #define maxTimesReproduced 5
+#define maxAnimals 8196
 
 #define temperatureScale 2
 #define weatherGridScale 3
@@ -76,7 +77,7 @@ extern const unsigned int MATERIAL_VACUUM ;
 #define STAGE_FRUIT  		 2
 #define STAGE_SPROUT   		 3
 #define STAGE_PHOTON 		 4
-#define STAGE_ANIMALSEED	 5
+#define STAGE_ANIMALEGG	 5
 #define STAGE_ANIMAL         6
 #define STAGE_PLAYER		 7
 #define STAGE_ERODINGRAIN    8

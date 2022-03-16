@@ -100,13 +100,13 @@ void thread_interface()
 				flagLoad = true;
 				break;
 
-			case SDLK_LEFTBRACKET:
-				increaseLampBrightness();
-				break;
+			// case SDLK_LEFTBRACKET:
+			// 	increaseLampBrightness();
+			// 	break;
 
-			case SDLK_RIGHTBRACKET:
-				decreaseLampBrightness();
-				break;
+			// case SDLK_RIGHTBRACKET:
+			// 	decreaseLampBrightness();
+			// 	break;
 
 			case SDLK_v:
 				// drawRandomLandscape();
@@ -122,7 +122,7 @@ void thread_interface()
 
 			case SDLK_k:
 				// createRandomWorld();
-				createWorld( WORLD_EARTH);
+				createWorld( WORLD_CATUN);
 				break;
 
 			case SDLK_p:
