@@ -11,7 +11,7 @@
 
 // #define PLANT_DRAWING_READOUT 1
 #define ANIMAL_DRAWING_READOUT 1
-// #define ANIMAL_BEHAVIOR_READOUT 1
+#define ANIMAL_BEHAVIOR_READOUT 1
 // #define MUTATION_READOUT 1
 
 // these are used by the developer to turn features on and off.
@@ -120,8 +120,29 @@ bool firstPerson = false;
 unsigned int player = 0;
 unsigned int playerPosition = 0;
 unsigned int playerMouseCursor = 0;
+unsigned int playerDirection = 0;
+unsigned int playerAttacking = false;
 
+void setPlayerDirection( unsigned int direction)
+{
+	playerDirection = direction;
+}
 
+void setPlayerAttacking( bool attack)
+{
+
+// 	if (attack)
+// 	{
+// printf("player attacking!\n");
+// 	}
+// 	else
+// 	{
+
+// printf("player stopped attacking!\n");
+// 	}
+
+	playerAttacking = attack;
+}
 
 
 // PLANT DRAWING
@@ -1670,6 +1691,9 @@ struct Animal
 	std::string * partnerGenes;
 	float partnerReproductiveCost;
 
+	int tempMax;
+	int tempMin;
+
 	unsigned int totalArea ;
 	unsigned int totalMuscle ;
 	unsigned int totalLiver  ;
@@ -1710,6 +1734,9 @@ Animal::Animal()
 	this->totalMouth   = 0;
 	this->totalWeapon  = 0;
 	this->totalVacuole = 0;
+
+	this->tempMax = 373;
+	this->tempMin = 273;
 
 	for (int i = 0; i < maxAnimalSegments; ++i)
 	{
@@ -3840,53 +3867,73 @@ bool animalEat(unsigned int currentPosition , unsigned int neighbour )
 
 	if (seedGrid[neighbour].stage == STAGE_ANIMAL )
 	{
-		if ((animals[animalIndex].personalityFlags & PERSONALITY_AGGRESSIVE ) == PERSONALITY_AGGRESSIVE  ||    // if the animal is aggressive, or
-		        (animals[animalIndex].energyFlags & ENERGYSOURCE_ANIMAL ) == ENERGYSOURCE_ANIMAL ||                // if it eats other animals, or
-		        carnageMode)
+		if ((animals[animalIndex].personalityFlags & PERSONALITY_AGGRESSIVE ) == PERSONALITY_AGGRESSIVE      // if the animal is aggressive,
+		        || (animals[animalIndex].energyFlags & ENERGYSOURCE_ANIMAL ) == ENERGYSOURCE_ANIMAL                 // or if it eats other animals,
+		        || ((animalIndex == player) && playerAttacking && firstPerson)                                      // or it's the player and they are attacking
+		        || carnageMode)                          															// or if it's a free-for-all
 		{
+
+
+
+
+			// if (animalIndex == player)
+			// {
+			// 	printf("moo boi ");
+			// }
+
+			// if (playerAttacking)
+			// {
+			// 	printf(" bonna ");
+			// }
+
+			// if (firstPerson)
+			// {
+			// 	printf(" fagnolotti ");
+			// }
+
+			// 	printf(" \n");
+
+
+
+
 			// attack the other animal and either try to kill it or take conquest of it.
 			if (seedGrid[neighbour].parentIdentity < maxAnimals)
 			{
-				unsigned int animalIndexB = seedGrid[neighbour].parentIdentity ;
-#ifdef ANIMAL_BEHAVIOR_READOUT
-				printf("There was a fight! Animal %u fought animal %u\n" , animalIndex, animalIndexB );
-#endif
-				int damageInflictedB = animals[animalIndex].attack - animals[animalIndexB].defense;
-				if (damageInflictedB < 0) // feed on the pain and misery; grow stronger
+				if (seedGrid[neighbour].parentIdentity != animalIndex)
 				{
-					damageInflictedB = 0;
-				}
+
+
+					unsigned int animalIndexB = seedGrid[neighbour].parentIdentity ;
+#ifdef ANIMAL_BEHAVIOR_READOUT
+					printf("There was a fight! Animal %u fought animal %u\n" , animalIndex, animalIndexB );
+#endif
+					int damageInflictedB = ((animals[animalIndex].attack) + 1 )  - animals[animalIndexB].defense;
+					if (damageInflictedB < 0)
+					{
+						damageInflictedB = 0;
 
 #ifdef ANIMAL_BEHAVIOR_READOUT
-				printf(" Animal %u dealt %i damage to animal %u\n" , animalIndex ,  damageInflictedB, animalIndexB );
+						printf("animal %u parried the blow!\n", animalIndexB );
 #endif
-				animals[animalIndexB].hitPoints -= damageInflictedB;
-				eaten = true;
-				if (animals[animalIndexB].hitPoints < 0) // the adversary is vanquished mortally
-				{
-					// if you are a carnivore, kill the opponent
-					// it will explode into blood particles that you can then consume;
+					}
+
 #ifdef ANIMAL_BEHAVIOR_READOUT
-					printf("animal %u killed animal %u\n", animalIndex, animalIndexB);
+					printf(" Animal %u dealt %i damage to animal %u\n" , animalIndex ,  damageInflictedB, animalIndexB );
 #endif
-					killAnAnimal(neighbour);
-				}
-				else if (animals[animalIndexB].hitPoints < (animals[animalIndexB].maxHitPoints / 3))
-				{
-					// if not a carnivore, force the opponent to bear your offspring
+					animals[animalIndexB].hitPoints -= damageInflictedB;
+					eaten = true;
+
+					if (animals[animalIndexB].hitPoints < (animals[animalIndexB].maxHitPoints / 3))
+					{
+						// if not a carnivore, force the opponent to bear your offspring
 #ifdef ANIMAL_BEHAVIOR_READOUT
-					printf("animal %u subdued %u and impregnated it!\n", animalIndex, animalIndexB );
+						printf("animal %u subdued %u and impregnated it!\n", animalIndex, animalIndexB );
 #endif
-					animals[animalIndexB].hitPoints = 1;
-					animals[animalIndexB].partnerGenes = &(seedGrid[neighbour].genes);
-					animals[animalIndexB].partnerReproductiveCost = animals[animalIndex].reproductionEnergy;
-					animals[animalIndexB].mated = true;
-				}
-				else
-				{
-#ifdef ANIMAL_BEHAVIOR_READOUT
-					printf("animal %u parried the blow!\n", animalIndexB );
-#endif
+						// animals[animalIndexB].hitPoints = 1;
+						animals[animalIndexB].partnerGenes = &(seedGrid[neighbour].genes);
+						animals[animalIndexB].partnerReproductiveCost = animals[animalIndex].reproductionEnergy;
+						animals[animalIndexB].mated = true;
+					}
 				}
 			}
 		}
@@ -4155,64 +4202,79 @@ unsigned int animalDirectionFinding (unsigned int i)
 	unsigned int animalIndex = seedGrid[i].parentIdentity;
 	if (animalIndex > maxAnimals) { return i;}
 
-	// if the animal is the player, just go where the player commands.
-	if (firstPerson)
-	{
-		if (animalIndex == player)
-		{
-			playerPosition = i;
-		}
-	}
 
 	unsigned int decidedLocation;
 	bool decided = false;
 	bool runAway = false;
 	bool hungry = false;
+
+
+	// if the animal is the player, just go where the player commands.
+	if (firstPerson)
+	{
+		if (animalIndex == player)
+		{
+			playerPosition = i; // make the camera follow the player
+
+			// decided = true;
+			// decidedLocation = i + neighbourOffsets[playerDirection];
+
+
+
+			// animals[animalIndex].direction = getRelativeDirection (i, decidedLocation);
+
+			// printf("moving player animal\n");
+
+			unsigned int currentPosition = i;
+			for (unsigned int move = 0; move < animals[animalIndex].mobility; ++move)
+			{
+				currentPosition = getDMostWalkableSquare( i, animalIndex, playerDirection, currentPosition);
+			}
+			return currentPosition;
+
+		}
+	}
+
+
+
+
+	// printf("moving non-player animal\n");
+
 	if (seedGrid[i].energy > (animals[animalIndex].reproductionEnergy / 2))
 	{
 		hungry = true;
 	}
-	if (animalIndex < maxAnimals)
+	// if (animalIndex < maxAnimals)
+	// {
+	// scan the environment using the animal's perception.
+	// more perception means the coverage of the area will be more complete (more rolls= less missed stuff)
+	// but bigger eyes means the coverage is over a wider area
+	for (unsigned int j = 0; j < animals[animalIndex].perception; ++j)
 	{
-		// scan the environment using the animal's perception.
-		// more perception means the coverage of the area will be more complete (more rolls= less missed stuff)
-		// but bigger eyes means the coverage is over a wider area
-		for (unsigned int j = 0; j < animals[animalIndex].perception; ++j)
+		unsigned int animalX =  i % sizeX;
+		unsigned int animalY =  i / sizeX;
+		unsigned int worldRandomX = animalX + (extremelyFastNumberFromZeroTo(animals[animalIndex].biggestEye)) - animals[animalIndex].biggestEye;
+		unsigned int worldRandomY = animalY + (extremelyFastNumberFromZeroTo(animals[animalIndex].biggestEye)) - animals[animalIndex].biggestEye;
+		unsigned int worldRandomI = (((worldRandomY * sizeX) + worldRandomX)) % totalSize;
+
+		// the animal personality types determine how it will react.
+		if (worldRandomI == i) {continue;} // to observe the self is gay
+
+		if (  (animals[animalIndex].personalityFlags & PERSONALITY_COWARDLY ) == PERSONALITY_COWARDLY   )
 		{
-			unsigned int animalX =  i % sizeX;
-			unsigned int animalY =  i / sizeX;
-			unsigned int worldRandomX = animalX + (extremelyFastNumberFromZeroTo(animals[animalIndex].biggestEye)) - animals[animalIndex].biggestEye;
-			unsigned int worldRandomY = animalY + (extremelyFastNumberFromZeroTo(animals[animalIndex].biggestEye)) - animals[animalIndex].biggestEye;
-			unsigned int worldRandomI = (((worldRandomY * sizeX) + worldRandomX)) % totalSize;
-
-			// the animal personality types determine how it will react.
-			if (worldRandomI == i) {continue;} // to observe the self is gay
-
-			if (  (animals[animalIndex].personalityFlags & PERSONALITY_COWARDLY ) == PERSONALITY_COWARDLY   )
+			if (seedGrid[worldRandomI].stage == STAGE_ANIMAL)
 			{
-				if (seedGrid[worldRandomI].stage == STAGE_ANIMAL)
-				{
-					runAway = true;
-					decidedLocation = worldRandomI;
-					decided = true;
-				}
+				runAway = true;
+				decidedLocation = worldRandomI;
+				decided = true;
 			}
+		}
 
-			if (  (animals[animalIndex].personalityFlags & PERSONALITY_FRIENDLY ) == PERSONALITY_FRIENDLY   )
+		if (  (animals[animalIndex].personalityFlags & PERSONALITY_FRIENDLY ) == PERSONALITY_FRIENDLY   )
+		{
+			if (seedGrid[worldRandomI].stage == STAGE_ANIMAL)
 			{
-				if (seedGrid[worldRandomI].stage == STAGE_ANIMAL)
-				{
-					if (!hungry)
-					{
-						decidedLocation = worldRandomI;
-						decided = true;
-					}
-				}
-			}
-
-			if (animalCanEat(i, worldRandomI))
-			{
-				if (hungry)
+				if (!hungry)
 				{
 					decidedLocation = worldRandomI;
 					decided = true;
@@ -4220,42 +4282,53 @@ unsigned int animalDirectionFinding (unsigned int i)
 			}
 		}
 
-		if (decided)
+		if (animalCanEat(i, worldRandomI))
 		{
-			animals[animalIndex].direction = getRelativeDirection (i, decidedLocation);
-
-			if (runAway)
+			if (hungry)
 			{
-				animals[animalIndex].direction = (animals[animalIndex].direction  + (N_NEIGHBOURS / 2)) % N_NEIGHBOURS; // if you're running away, make sure to head in the opposite direction!
-			}
-
-		}
-		else
-		{
-			// check immediate cell neighbours for food
-			for (int j = 0; j < N_NEIGHBOURS; ++j)
-			{
-				unsigned int neighbour = (i + neighbourOffsets[j]) % totalSize;
-				if (animalCanEat(i, neighbour))
-				{
-					animals[animalIndex].direction = j;
-					decided = true;
-					break;
-				}
-			}
-			if (!decided)
-			{
-				animals[animalIndex].direction = extremelyFastNumberFromZeroTo(N_NEIGHBOURS);
+				decidedLocation = worldRandomI;
+				decided = true;
 			}
 		}
-		unsigned int currentPosition = i;
-		for (unsigned int move = 0; move < animals[animalIndex].mobility; ++move)
-		{
-			currentPosition = getDMostWalkableSquare( i, animalIndex, animals[animalIndex]. direction, currentPosition);
-		}
-		return currentPosition;
 	}
-	return 0;
+
+
+	if (decided)
+	{
+		animals[animalIndex].direction = getRelativeDirection (i, decidedLocation);
+
+		if (runAway)
+		{
+			animals[animalIndex].direction = (animals[animalIndex].direction  + (N_NEIGHBOURS / 2)) % N_NEIGHBOURS; // if you're running away, make sure to head in the opposite direction!
+		}
+
+	}
+	else
+	{
+		// check immediate cell neighbours for food
+		for (int j = 0; j < N_NEIGHBOURS; ++j)
+		{
+			unsigned int neighbour = (i + neighbourOffsets[j]) % totalSize;
+			if (animalCanEat(i, neighbour))
+			{
+				animals[animalIndex].direction = j;
+				decided = true;
+				break;
+			}
+		}
+		if (!decided)
+		{
+			animals[animalIndex].direction = extremelyFastNumberFromZeroTo(N_NEIGHBOURS);
+		}
+	}
+	unsigned int currentPosition = i;
+	for (unsigned int move = 0; move < animals[animalIndex].mobility; ++move)
+	{
+		currentPosition = getDMostWalkableSquare( i, animalIndex, animals[animalIndex]. direction, currentPosition);
+	}
+	return currentPosition;
+	// }
+	// return 0;
 }
 
 void animalReproduce (unsigned int i)
@@ -4294,14 +4367,7 @@ void animalReproduce (unsigned int i)
 			printf("animal %u reproduced. Now has energy %f, child energy %f\n ", animalIndex , seedGrid[i].energy, seedGrid[neighbour].energy  );
 #endif
 			animals[animalIndex].timesReproduced++;
-			if (animals[animalIndex].timesReproduced > maxTimesReproduced) // if it hit the limit, kill the animal. this is basically to keep the game moving.
-			{
 
-#ifdef ANIMAL_BEHAVIOR_READOUT
-				printf("animal %u reproduced too many times and was sentenced to death.\n ", animalIndex  );
-#endif
-				killAnAnimal(i);
-			}
 			return;
 			break;
 		}
@@ -4346,6 +4412,27 @@ void animalCrudOps(unsigned int i)
 		killAnAnimal(i);
 		return;
 	}
+
+	// die if appropriate to do so
+	if (animals[animalIndex].hitPoints < 0) // the adversary is vanquished mortally
+	{
+		// if you are a carnivore, kill the opponent
+		// it will explode into blood particles that you can then consume;
+#ifdef ANIMAL_BEHAVIOR_READOUT
+		printf("animal %u died of wounds\n", animalIndex);
+#endif
+		killAnAnimal(i);
+	}
+	if (animals[animalIndex].timesReproduced > maxTimesReproduced) // if it hit the limit, kill the animal. this is basically to keep the game moving.
+	{
+
+#ifdef ANIMAL_BEHAVIOR_READOUT
+		printf("animal %u reproduced too many times and its gonads exploded.\n ", animalIndex  );
+#endif
+		killAnAnimal(i);
+	}
+
+
 }
 
 void animalTurn(unsigned int i)
@@ -4359,6 +4446,12 @@ void animalTurn(unsigned int i)
 	bool moved = false;
 	animals[animalIndex].steady = false;
 	unsigned int recommendedMovePosition = i;
+
+
+
+
+	animalCrudOps( i);
+
 
 	animalFeed(i);
 	unsigned int directionResult = i;

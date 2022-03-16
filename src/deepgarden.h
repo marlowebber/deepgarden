@@ -200,14 +200,15 @@ void setExtremeTempPoint ();
 void sendLifeToBackground ();
 
 void insertRandomSeed();
-
 void insertRandomAnimal ();
-
 void insertPlayer();
-
 void setPlayerMouseCursor(unsigned int x, unsigned int y);
-
 void killSelf();
+void setPlayerDirection( unsigned int direction);
+
+void setPlayerAttacking( bool attack);
+
+
 void toggleEnergyGridDisplay ();
 
 void increaseLampBrightness ();

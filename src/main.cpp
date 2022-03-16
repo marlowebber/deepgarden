@@ -35,11 +35,29 @@ void thread_interface()
 	{
 		switch ( event.type )
 		{
+		case SDL_KEYUP:
+		{
+			switch ( event.key.keysym.sym )
+			{
+			case SDLK_SPACE:
+
+				setPlayerAttacking( false);
+				break;
+			}
+
+			break;
+		}
+
 
 		case SDL_KEYDOWN:
 		{
 			switch ( event.key.keysym.sym )
 			{
+
+			case SDLK_SPACE:
+
+				setPlayerAttacking( true);
+				break;
 
 			case SDLK_LEFT:
 				if (!firstPerson)
@@ -105,7 +123,7 @@ void thread_interface()
 				toggleEnergyGridDisplay();
 				break;
 
-			case SDLK_s:
+			case SDLK_v:
 				flagSave = true;
 				break;
 
@@ -121,17 +139,14 @@ void thread_interface()
 			// 	decreaseLampBrightness();
 			// 	break;
 
-			case SDLK_v:
-				// drawRandomLandscape();
-				break;
+			// case SDLK_v:
+			// 	// drawRandomLandscape();
+			// 	break;
 
 			case SDLK_e:
 				// toggleErodingRain();
 				break;
 
-			case SDLK_x:
-				manualErode();
-				break;
 
 			case SDLK_k:
 				// createRandomWorld();
@@ -171,14 +186,42 @@ void thread_interface()
 				break;
 
 
-			case SDLK_d:
-				killSelf();
-				break;
+
 
 			case SDLK_ESCAPE:
 				quit();
+				break;
+
+
+			case SDLK_w:
+				setPlayerDirection( 6);
+				break;
+
+			case SDLK_a:
+
+				setPlayerDirection( 0);
+				break;
+
+			case SDLK_s:
+
+				setPlayerDirection( 2);
+				break;
+
+			case SDLK_d:
+
+				setPlayerDirection( 4);
+				break;
+
+			case SDLK_x:
+				killSelf();
+				break;
+
+
+				break;
+
 			}
-			break;
+
+
 		}
 
 		case SDL_MOUSEBUTTONDOWN:
@@ -258,13 +301,13 @@ int main( int argc, char * argv[] )
 		}
 
 		// these operations can't be done while threading is happening. wait for the turn to finish, then use them.
-		for (unsigned int i = 0; i < totalSize; ++i)
-		{
-			if (isAnimal(i))
-			{
-				animalCrudOps(i);
-			}
-		}
+		// for (unsigned int i = 0; i < totalSize; ++i)
+		// {
+		// 	if (isAnimal(i))
+		// 	{
+		// 		animalCrudOps(i);
+		// 	}
+		// }
 
 		if (flagSave)
 		{
