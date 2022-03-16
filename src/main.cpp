@@ -82,6 +82,7 @@ void thread_interface()
 
 			case SDLK_r:
 				// sendLifeToBackground();
+				insertPlayer();
 				break;
 
 			case SDLK_n:
@@ -170,8 +171,11 @@ void thread_interface()
 			{
 			case SDL_BUTTON_LEFT:
 			{
-				unsigned int mouseusu = mouseX;
+				unsigned int mouseusu  = mouseX;
 				unsigned int mousewewe = mouseY;
+
+
+
 				setExtremeTempPoint (mouseusu, mousewewe);
 				break;
 			}

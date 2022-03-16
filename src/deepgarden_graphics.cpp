@@ -391,5 +391,12 @@ void postDraw ()
 	viewPanX +=  panResponseX ;
 	viewPanY += panResponseY ;
 
+
+	if (firstPerson)
+	{
+		viewPanSetpointX = playerPosition % sizeX;
+		viewPanSetpointY = playerPosition / sizeY;
+	}
+
 }
 

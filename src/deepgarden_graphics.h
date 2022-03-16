@@ -8,6 +8,7 @@ extern float viewPanSetpointX;
 extern float viewPanSetpointY;
 
 
+
 void setupGraphics() ;
 void shutdownGraphics() ;
 void draw( unsigned int ** grid );

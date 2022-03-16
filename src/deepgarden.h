@@ -41,6 +41,10 @@ extern  const unsigned int totalSize;
 
 #define NUMBER_OF_FRAMES     1
 
+
+extern bool firstPerson;
+extern unsigned int playerPosition;
+
 struct Color
 {
 	float r;
@@ -197,6 +201,8 @@ void sendLifeToBackground ();
 void insertRandomSeed();
 
 void insertRandomAnimal ();
+
+void insertPlayer();
 
 void toggleEnergyGridDisplay ();
 

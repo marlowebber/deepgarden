@@ -113,6 +113,16 @@ const unsigned int photonIdealNumber = 2 * sizeX;
 // unsigned int photonChance = 1;
 
 
+
+
+// PLAYER
+bool firstPerson = false;
+unsigned int playerPosition = 0;
+
+
+
+
+
 // PLANT DRAWING
 unsigned int recursion_level = 0;
 const unsigned int recursion_limit = 4;
@@ -2757,10 +2767,10 @@ void drawAnimalFromSeed(unsigned int i)
 	}
 
 
-		// printf("animal !!!!%u retirement state %u\n", animalIndex, animals[animalIndex].retired);
+	// printf("animal !!!!%u retirement state %u\n", animalIndex, animals[animalIndex].retired);
 	animals[animalIndex].retired = false; // set this after creating Animal(), otherwise it will set back to true
 
-		// printf("animal!!!! %u retirement state %u\n", animalIndex, animals[animalIndex].retired);
+	// printf("animal!!!! %u retirement state %u\n", animalIndex, animals[animalIndex].retired);
 // 		// Animal newAnimal = Animal();
 
 
@@ -3420,6 +3430,18 @@ void createWorld( unsigned int world)
 					grid[i].phase = PHASE_SOLID;
 				}
 			}
+
+			// a monolith in the 0 corner
+			// if ((i > (300 * sizeX)) && (i < (1000 * sizeX)) )
+			// {
+				unsigned int x = i % sizeX;
+				unsigned int y = i / sizeX;
+				if (x < 50 && y < 50)
+				{
+					setParticle(5, i);
+					grid[i].phase = PHASE_SOLID;
+				}
+			// }
 		}
 		break;
 	}
@@ -3995,8 +4017,67 @@ void setNeutralTemp ()
 	}
 }
 
-void setExtremeTempPoint (unsigned int x , unsigned  int y)
+vec_u2 convertScreenToWorld(unsigned int ux, unsigned int uy)
 {
+ 
+
+
+int x = ux;
+int y = uy;
+ 
+	// printf("screen x %u, y %u \n", x, y);
+
+	// step 1 undo offsets
+
+
+ // world coordinates 0,0 is at the center of the screen normally
+	x -= (1920/2);
+	y -= (1080/2);
+
+	// add the camera panning amount
+	x += (viewPanSetpointX)  ;
+	y += (viewPanSetpointY)  ;
+
+
+	// printf("offsets correct x %u, y %u \n", x, y);
+
+	// step 2 correct the scale
+	// x *= 1.05;
+	// y *= 1.1;
+
+	// x = x*viewZoomSetpoint;
+	// y = y*viewZoomSetpoint;
+
+	// printf("world x %u, y %u \n", x, y);
+
+	// step 3 correct the y axis inversion
+
+	y = sizeY - y;
+	y += sizeY;
+
+
+
+	// step 4 clip to safe settings
+	x = x % sizeX;
+	y = y % sizeY;
+
+
+
+	return vec_u2(x, y);
+
+}
+
+
+
+
+
+void setExtremeTempPoint (unsigned int sx , unsigned  int sy)
+{
+
+	vec_u2 worldPos = convertScreenToWorld(sx, sy);
+	unsigned int x = worldPos.x;
+	unsigned int y = worldPos.y;
+
 	int blobesize = 1;
 	for (int i = -blobesize; i < blobesize; ++i)
 	{
@@ -4079,6 +4160,13 @@ unsigned int animalDirectionFinding (unsigned int i)
 {
 	unsigned int animalIndex = seedGrid[i].parentIdentity;
 	if (animalIndex > maxAnimals) { return i;}
+
+	// if the animal is the player, just go where the player commands.
+	if (i == playerPosition)
+	{
+
+	}
+
 	unsigned int decidedLocation;
 	bool decided = false;
 	bool runAway = false;
@@ -4267,6 +4355,7 @@ void animalTurn(unsigned int i)
 {
 	unsigned int animalIndex = seedGrid[i].parentIdentity;
 	if (animalIndex > maxAnimals) {return;}
+	if (animals[animalIndex].retired) {return;}
 
 	animals[animalIndex].age++;
 
@@ -5480,19 +5569,44 @@ void insertRandomSeed()
 
 void insertRandomAnimal ()
 {
-	unsigned int x = 0;
-	unsigned int y = 0;
-	unsigned int targetX = extremelyFastNumberFromZeroTo(sizeX);
-	unsigned int targetY = extremelyFastNumberFromZeroTo(sizeY / 2) + (sizeY / 2);
-	for (unsigned int i = (sizeX + 1); i < (totalSize - (sizeX + 1)); ++i)
-	{
-		x = i % sizeX;
-		if (!x) { y = i / sizeX; }
-		if (x == targetX && y == targetY)
-		{
+	// unsigned int x = 0;
+	// unsigned int y = 0;
+	unsigned int x = extremelyFastNumberFromZeroTo(sizeX);
+	unsigned int y = extremelyFastNumberFromZeroTo(sizeY / 2) + (sizeY / 2);
+	unsigned int i = (y * sizeX ) + x;
+
+	// for (unsigned int i = (sizeX + 1); i < (totalSize - (sizeX + 1)); ++i)
+	// {
+	// 	x = i % sizeX;
+	// 	if (!x) { y = i / sizeX; }
+	// 	if (x == targetX && y == targetY)
+	// 	{
 			setAnimal( i, exampleAnimal );
-		}
-	}
+	// 	}
+	// }
+}
+
+
+void insertPlayer()
+{
+	// unsigned int x = 0;
+	// unsigned int y = 0;
+	unsigned int x = extremelyFastNumberFromZeroTo(sizeX);
+	unsigned int y = extremelyFastNumberFromZeroTo(sizeY / 2) + (sizeY / 2);
+	unsigned int i = (y * sizeX ) + x;
+
+	// for (unsigned int i = (sizeX + 1); i < (totalSize - (sizeX + 1)); ++i)
+	// {
+	// 	x = i % sizeX;
+	// 	if (!x) { y = i / sizeX; }
+	// 	if (x == targetX && y == targetY)
+	// 	{
+			setAnimal( i, exampleAnimal );
+	// 	}
+	// }
+
+			playerPosition = i;
+			firstPerson = true;
 }
 
 // void increaseLampBrightness ()
