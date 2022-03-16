@@ -461,7 +461,7 @@ struct Weather
 
 Weather::Weather()
 {
-	this->temperature = defaultTemperature << temperatureScale;
+	this->temperature = defaultTemperature* temperatureScale;
 	this->pressure = defaultPressure;
 	this->velocityX = (RNG() - 0.5f) * 100;
 	this->velocityY = (RNG() - 0.5f) * 100;
@@ -892,8 +892,8 @@ void applyAirflowChanges(unsigned int weatherGridI)
 	weatherGrid[weatherGridI].velocityY  -= weatherGrid[weatherGridI].velocityY >> 12 ;// *= 0.9999;
 
 	// return to zero just a little bit.
-	weatherGrid[weatherGridI].dp    += (  defaultPressure                         - weatherGrid[weatherGridI].pressure   )  >> 7 ;
-	weatherGrid[weatherGridI].dt    += ( (defaultTemperature << temperatureScale) - weatherGrid[weatherGridI].temperature)  >> 7 ;
+	weatherGrid[weatherGridI].dp    += (  defaultPressure                         - weatherGrid[weatherGridI].pressure   )  / 128 ;
+	weatherGrid[weatherGridI].dt    += ( (defaultTemperature * temperatureScale) - weatherGrid[weatherGridI].temperature)  / 64 ;
 
 	weatherGrid[weatherGridI].pressure    += weatherGrid[weatherGridI]. dp   ;
 	weatherGrid[weatherGridI].velocityX   += weatherGrid[weatherGridI]. dx   ;
@@ -921,7 +921,7 @@ void airflow( unsigned int weatherGridI)
 
 	if (weatherGrid[weatherGridI].airBlockedSquares < (weatherGridScale * weatherGridScale))
 	{
-		// smooth the simulation by mixing each cell with the average of its neighbours.
+		// smooth the simulation by averaging each cell with its neighbours.
 		int ap = 0;
 		int ax = 0;
 		int ay = 0;
@@ -986,7 +986,11 @@ void airflow( unsigned int weatherGridI)
 
 				if (weatherGrid[neighbour].airBlockedSquares < (weatherGridScale * weatherGridScale))
 				{
+
 					weatherGrid[weatherGridI].dy += ((sign * (weatherGrid[ neighbour ].pressure  - weatherGrid[ weatherGridI ].pressure  )) >> (baseBlockageRatio))  ;
+				
+					weatherGrid[weatherGridI].dy += (defaultTemperature-weatherGrid[neighbour].temperature) / 128 ; // buoyancy
+					
 				}
 			}
 
@@ -1233,7 +1237,7 @@ void materialPostProcess(unsigned int i, unsigned int weatherGridI, float satura
 		{
 			ppColor = addColor( ppColor, blackbodyLookup( (grid[i].temperature) ) );
 		}
-		ppColor = addColor(ppColor, blackbodyLookup( (weatherGrid[weatherGridI].temperature >> temperatureScale  ) ));
+		ppColor = addColor(ppColor, blackbodyLookup( (weatherGrid[weatherGridI].temperature / temperatureScale  ) ));
 
 		// shine some background stars.
 		if (grid[i].phase != PHASE_SOLID && grid[i].phase != PHASE_POWDER )
@@ -1285,9 +1289,9 @@ void materialHeatGlow(unsigned int i, unsigned int weatherGridI)
 
 void weatherHeatGlow(unsigned int weatherGridI)
 {
-	if (weatherGrid[weatherGridI].temperature > (600 << temperatureScale) )
+	if (weatherGrid[weatherGridI].temperature > (600 * temperatureScale) )
 	{
-		float radiantLightIntensity = (((weatherGrid[weatherGridI].temperature >> temperatureScale) - 600) >> 4);
+		float radiantLightIntensity = (((weatherGrid[weatherGridI].temperature / temperatureScale) - 600) >> 4);
 		float fdirection = RNG() * const_tau;
 		floatPhoton(weatherGridI, blackbodyLookup(weatherGrid[weatherGridI].temperature) , radiantLightIntensity, fdirection);
 	}
@@ -1481,9 +1485,9 @@ void thread_sector( unsigned int from, unsigned int to )
 			// couple the material grid temp to the weather grid temp
 			if (grid[currentPosition].phase != PHASE_VACUUM)
 			{
-				int gridCouplingAmount = ( weatherGrid[weatherGridI].temperature  - (grid[currentPosition].temperature << temperatureScale) ) ;
+				int gridCouplingAmount = ( weatherGrid[weatherGridI].temperature  - (grid[currentPosition].temperature *temperatureScale) ) ;
 				const unsigned int heatCouplingConstant = 2;
-				grid[currentPosition].temperature += (gridCouplingAmount >> temperatureScale)  >> heatCouplingConstant ;
+				grid[currentPosition].temperature += (gridCouplingAmount / temperatureScale)  >> heatCouplingConstant ;
 				weatherGrid[weatherGridI].temperature -= (gridCouplingAmount) >> heatCouplingConstant ;
 
 
@@ -1546,7 +1550,7 @@ void thread_handleEdges()
 		unsigned int weatherGridI = (fromY * weatherGridSizeX) + weatherGridX;
 		// airflowEdge(weatherGridI, weatherGridX, fromY);
 
-		weatherGrid[weatherGridI].temperature = defaultTemperature << temperatureScale;
+		weatherGrid[weatherGridI].temperature = defaultTemperature * temperatureScale;
 
 	}
 
@@ -1562,6 +1566,7 @@ void thread_handleEdges()
 		airflowEdge(weatherGridI, weatherGridX, toY);
 		floatPhoton(weatherGridI, sunlightColor, sunlightBrightness, fsundirection);
 
+		weatherGrid[weatherGridI].temperature = defaultTemperature * temperatureScale;
 
 		// weatherGrid[weatherGridI].pressure    += (  defaultPressure                         - weatherGrid[weatherGridI].pressure   )  >> 6 ;
 	}
@@ -4104,7 +4109,7 @@ void clearAllPressureVelocity()
 		weatherGrid[weatherGridI].velocityX = 0;
 		weatherGrid[weatherGridI].velocityY = 0;
 		weatherGrid[weatherGridI].pressure = defaultPressure;
-		weatherGrid[weatherGridI].temperature = defaultTemperature << temperatureScale;
+		weatherGrid[weatherGridI].temperature = defaultTemperature * temperatureScale;
 	}
 }
 
@@ -4112,12 +4117,12 @@ void setNeutralTemp ()
 {
 	for (unsigned int i = 0; i < totalSize; ++i)
 	{
-		grid[i].temperature = 300;
+		grid[i].temperature = defaultTemperature;
 	}
 
 	for (unsigned int weatherGridI = 0; weatherGridI < weatherGridSize; ++weatherGridI)
 	{
-		weatherGrid[weatherGridI].temperature = 300 << temperatureScale;
+		weatherGrid[weatherGridI].temperature = defaultTemperature *temperatureScale;
 	}
 }
 
@@ -4585,7 +4590,7 @@ void thread_graphics()
 
 			unsigned int weatherGridI = ((y / weatherGridScale) * weatherGridSizeX + (x / weatherGridScale));
 
-			int itemp = ((weatherGrid[weatherGridI].temperature >> temperatureScale) + grid[i].temperature ) >> 1;
+			int itemp = ((weatherGrid[weatherGridI].temperature / temperatureScale) + grid[i].temperature ) >> 1;
 
 
 
