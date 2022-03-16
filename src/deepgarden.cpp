@@ -117,8 +117,9 @@ const unsigned int photonIdealNumber = 2 * sizeX;
 
 // PLAYER
 bool firstPerson = false;
+unsigned int player = 0;
 unsigned int playerPosition = 0;
-
+unsigned int playerMouseCursor = 0;
 
 
 
@@ -236,7 +237,8 @@ const float seedEfficiency    = 1.0f;
 const float mineralEfficiency = 1.0f;
 const float plantEfficiency   = 1.0f;
 
-vec_u2 playerCursor = vec_u2(0, 0);
+// vec_u2 playerCursor = vec_u2(0, 0);
+
 
 const float maximumDisplayEnergy = 1.0f;
 // const float maximumDisplayTemperature = 100.0f;
@@ -3030,6 +3032,17 @@ void killAnAnimal(unsigned int i)
 	animals[animalIndex] = Animal(); // reset to default state.
 }
 
+void killSelf()
+{
+
+	if (firstPerson)
+	{
+		killAnAnimal(playerPosition);
+		firstPerson = false;
+	}
+
+}
+
 void incrementAnimalSegmentPositions (unsigned int animalIndex, unsigned int i)
 {
 	// if (animalIndex < maxAnimals)
@@ -4017,7 +4030,7 @@ void setNeutralTemp ()
 	}
 }
 
-vec_u2 convertScreenToWorld(unsigned int ux, unsigned int uy)
+unsigned int convertScreenToWorld(unsigned int ux, unsigned int uy)
 {
 	int x = ux;
 	int y = uy;
@@ -4026,7 +4039,7 @@ vec_u2 convertScreenToWorld(unsigned int ux, unsigned int uy)
 	y = 1080 - y;
 
 	// step 2 undo offsets
-    // world coordinates 0,0 is at the center of the screen normally
+	// world coordinates 0,0 is at the center of the screen normally
 	x -= (1920 / 2);
 	y -= (1080 / 2);
 	x += (viewPanSetpointX / (viewZoomSetpoint / 1000) )  ;
@@ -4037,22 +4050,27 @@ vec_u2 convertScreenToWorld(unsigned int ux, unsigned int uy)
 	y = y * ( viewZoomSetpoint / 1000  );
 
 	// step 4 clip to safe settings
-	x = x % sizeX;
-	y = y % sizeY;
+	x = abs(x) % sizeX;
+	y = abs(y) % sizeY;
 
-	return vec_u2(x, y);
+	// return vec_u2(x, y);
+
+	return (y * sizeX) + x;
 }
 
+void setPlayerMouseCursor(unsigned int x, unsigned int y)
+{
+	playerMouseCursor = convertScreenToWorld(x, y);
+}
 
-
-
-
-void setExtremeTempPoint (unsigned int sx , unsigned  int sy)
+void setExtremeTempPoint ()
 {
 
-	vec_u2 worldPos = convertScreenToWorld(sx, sy);
-	unsigned int x = worldPos.x;
-	unsigned int y = worldPos.y;
+	// unsigned int worldPos = convertScreenToWorld(sx, sy);
+
+
+	unsigned int x = playerMouseCursor % sizeX;
+	unsigned int y = playerMouseCursor / sizeX;
 
 	int blobesize = 1;
 	for (int i = -blobesize; i < blobesize; ++i)
@@ -4138,9 +4156,12 @@ unsigned int animalDirectionFinding (unsigned int i)
 	if (animalIndex > maxAnimals) { return i;}
 
 	// if the animal is the player, just go where the player commands.
-	if (i == playerPosition)
+	if (firstPerson)
 	{
-
+		if (animalIndex == player)
+		{
+			playerPosition = i;
+		}
 	}
 
 	unsigned int decidedLocation;
@@ -5931,3 +5952,4 @@ void drawAHill(unsigned int hillXIndex, unsigned int hillWidth)
 		}
 	}
 }
+

@@ -42,16 +42,28 @@ void thread_interface()
 			{
 
 			case SDLK_LEFT:
-				viewPanSetpointX = viewPanSetpointX - (panSpeed * viewZoomSetpoint  );
+				if (!firstPerson)
+				{
+					viewPanSetpointX = viewPanSetpointX - (panSpeed * viewZoomSetpoint  );
+				}
 				break;
 			case SDLK_RIGHT:
-				viewPanSetpointX = viewPanSetpointX + (panSpeed * viewZoomSetpoint  );
+				if (!firstPerson)
+				{
+					viewPanSetpointX = viewPanSetpointX + (panSpeed * viewZoomSetpoint  );
+				}
 				break;
 			case SDLK_UP:
-				viewPanSetpointY = viewPanSetpointY + (panSpeed * viewZoomSetpoint  );
+				if (!firstPerson)
+				{
+					viewPanSetpointY = viewPanSetpointY + (panSpeed * viewZoomSetpoint  );
+				}
 				break;
 			case SDLK_DOWN:
-				viewPanSetpointY = viewPanSetpointY - (panSpeed * viewZoomSetpoint  );
+				if (!firstPerson)
+				{
+					viewPanSetpointY = viewPanSetpointY - (panSpeed * viewZoomSetpoint  );
+				}
 				break;
 			case SDLK_EQUALS:
 				viewZoomSetpoint = viewZoomSetpoint * 0.9f;
@@ -159,6 +171,10 @@ void thread_interface()
 				break;
 
 
+			case SDLK_d:
+				killSelf();
+				break;
+
 			case SDLK_ESCAPE:
 				quit();
 			}
@@ -171,12 +187,8 @@ void thread_interface()
 			{
 			case SDL_BUTTON_LEFT:
 			{
-				unsigned int mouseusu  = mouseX;
-				unsigned int mousewewe = mouseY;
 
-
-
-				setExtremeTempPoint (mouseusu, mousewewe);
+				setExtremeTempPoint ();
 				break;
 			}
 			}
@@ -187,6 +199,9 @@ void thread_interface()
 		{
 			mouseX = event.motion.x;
 			mouseY = event.motion.y;
+
+			// playerMouseCursor =
+			setPlayerMouseCursor(mouseX, mouseY);
 		}
 		}
 	}

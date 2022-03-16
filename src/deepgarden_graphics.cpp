@@ -57,10 +57,10 @@ Color clampColor (Color in)
 Color averageColor (Color a, Color b)
 {
 	Color c;// = Color()
-	c.r = (a.r + b.r)/2;
-	c.g = (a.g + b.g)/2;
-	c.b = (a.b + b.b)/2;
-	c.a = (a.a + b.a)/2;
+	c.r = (a.r + b.r) / 2;
+	c.g = (a.g + b.g) / 2;
+	c.b = (a.b + b.b) / 2;
+	c.a = (a.a + b.a) / 2;
 
 	return clampColor(c);
 }
@@ -73,7 +73,7 @@ Color addColor (Color a, Color b)
 	c.r = (a.r * a.a) + (b.r * b.a);
 	c.g = (a.g * a.a) + (b.g * b.a);
 	c.b = (a.b * a.a) + (b.b * b.a);
-	c.a = a.a + b.a; 
+	c.a = a.a + b.a;
 
 	return clampColor(c);
 }
@@ -101,7 +101,7 @@ Color filterColor( Color a, Color b)
 	c.r = (b.r ) + ((1.0f - (b.a)) * (a.r));
 	c.g = (b.g ) + ((1.0f - (b.a)) * (a.g));
 	c.b = (b.b ) + ((1.0f - (b.a)) * (a.b));
-	c.a = a.a + b.a; 
+	c.a = a.a + b.a;
 
 	return clampColor(c);
 
@@ -384,19 +384,22 @@ void postDraw ()
 	float zoomResponse = (zoomDifference * -1) / cameraTrackingResponse;
 	viewZoom = viewZoom + zoomResponse;
 
+
+
+
+
+	if (firstPerson)
+	{
+		viewPanSetpointX = (playerPosition) % sizeX;
+		viewPanSetpointY = (playerPosition) / sizeX;
+	}
+	
 	float panDifferenceX = (viewPanX - viewPanSetpointX);
 	float panResponseX = (panDifferenceX * -1) / cameraTrackingResponse;
 	float panDifferenceY = (viewPanY - viewPanSetpointY);
 	float panResponseY = (panDifferenceY * -1) / cameraTrackingResponse;
 	viewPanX +=  panResponseX ;
 	viewPanY += panResponseY ;
-
-
-	if (firstPerson)
-	{
-		viewPanSetpointX = playerPosition % sizeX;
-		viewPanSetpointY = playerPosition / sizeY;
-	}
 
 }
 

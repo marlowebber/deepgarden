@@ -44,6 +44,7 @@ extern  const unsigned int totalSize;
 
 extern bool firstPerson;
 extern unsigned int playerPosition;
+// extern unsigned int playerMouseCursor;
 
 struct Color
 {
@@ -195,7 +196,7 @@ void thread_life();
 void thread_seeds();
 
 void thread_materialPhysics(  );
-void setExtremeTempPoint (unsigned int x , unsigned  int y);
+void setExtremeTempPoint ();
 void sendLifeToBackground ();
 
 void insertRandomSeed();
@@ -204,6 +205,9 @@ void insertRandomAnimal ();
 
 void insertPlayer();
 
+void setPlayerMouseCursor(unsigned int x, unsigned int y);
+
+void killSelf();
 void toggleEnergyGridDisplay ();
 
 void increaseLampBrightness ();
