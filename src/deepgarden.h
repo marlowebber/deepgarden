@@ -36,10 +36,10 @@ extern  const unsigned int totalSize;
 #define maxAnimals 8196
 
 #define temperatureScale 2
-#define weatherGridScale 3
-#define weatherGridSquareScale 9
+#define weatherGridScale 4
+#define weatherGridSquareScale 16
 
-#define NUMBER_OF_FRAMES     1
+#define NUMBER_OF_FRAMES     2
 
 
 extern bool firstPerson;
@@ -97,7 +97,8 @@ extern const unsigned int MATERIAL_VACUUM ;
 
 // Frames are the sprites used to animate animals.
 #define FRAME_BODY 0 // the 0th frame is the animal's body and the arrangement of its internal organs.
-
+#define FRAME_ANIM 1 // the animation frame is used bcoz.
+#define FRAME_OUTER 2
 
 
 // Movement controls where an animal is allowed to go. This is a hereditary, mutable quality.
