@@ -251,14 +251,14 @@ void thread_interface()
 }
 
 // plant drawing runs in variable time but is always slower than everything else. this threading arrangement lets it run forever, but at its own pace.
-void thread_supervisor_plantDrawing()
-{
-	while (true)
-	{
-		boost::thread t101 { thread_plantDrawing};
-		t101.join();
-	}
-}
+// void thread_supervisor_plantDrawing()
+// {
+// 	while (true)
+// 	{
+// 		boost::thread t101 { thread_plantDrawing};
+// 		t101.join();
+// 	}
+// }
 
 int main( int argc, char * argv[] )
 {

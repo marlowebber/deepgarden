@@ -148,10 +148,11 @@ extern const unsigned int MATERIAL_VACUUM ;
 // #define ORGAN_CHEMOSENSOR 64 // an organ that can detect smells
 #define ORGAN_HEART   64 // allows the animal to move more often
 #define ORGAN_WEAPON   128 // allows the animal to move more often
+#define ORGAN_GONAD    256 // allows the animal to reproduce more times
 
 #define ORGAN_MARKER_A 1024 // used for the polygon filling algorithm. Do not use in gene codes! must be different to all the other organ codes!
 
-
+#define numberOfJunkGenes 5 // some genes are used so commonly there's no instruction for them; any unused letter will do one of these few things.
 
 
 // worlds are specifications for sets of materials and environment conditions.
