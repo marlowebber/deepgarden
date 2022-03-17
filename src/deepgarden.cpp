@@ -247,6 +247,7 @@ Color sunlightColor = color_white_quarterClear;  // this is also the color of th
 unsigned int sunlightDirection = 2;
 float fsundirection = 0.0f;
 float timeOfDay = 0.5f;
+float backgroundMixRatio = 0.0f;
 
 // const unsigned int gasLawConstant = 6;
 
@@ -1287,7 +1288,7 @@ void materialPostProcess(unsigned int i, unsigned int weatherGridI, float satura
 
 
 
-				ppColor =  mixColor (backgroundSky[i], backgroundStars[i],  0.5f  );
+				ppColor =  mixColor (backgroundStars[i], backgroundSky[i],   backgroundMixRatio  );
 
 
 
@@ -1593,12 +1594,14 @@ void updateDaytime()
 	fsundirection =  1.5 * const_pi + (sin(timeOfDay) * (0.5 * const_pi) ) ;
 
 
-	int effectiveTemp = sunlightTemp - (sunlightTemp *  abs(sin(timeOfDay))    );
-	 sunlightBrightness = starBrightness - ((starBrightness *  abs(sin(timeOfDay))   ));
+	backgroundMixRatio = abs(sin(timeOfDay));
+	int effectiveTemp = sunlightTemp - (sunlightTemp * backgroundMixRatio   );
+	 sunlightBrightness = starBrightness - ((starBrightness * backgroundMixRatio  ));
 
 	// printf("et %i \n",effectiveTemp);
 
 	sunlightColor = blackbodyLookup(effectiveTemp);
+
 
 }
 
@@ -4178,9 +4181,9 @@ void createWorld( unsigned int world)
 
 unsigned int y = i/ sizeX;
 		backgroundSky[i] = Color ( 
-			defaultSkyColor.r + (y * ( ( defaultSkyColor.r) / sizeY )  ) ,
-			defaultSkyColor.g + (y * ( ( defaultSkyColor.g) / sizeY )  ) ,
-			defaultSkyColor.b + (y * ( ( defaultSkyColor.b) / sizeY )  ) ,
+			defaultSkyColor.r + (( (sizeY - y) * ( ( defaultSkyColor.r) / sizeY ) ) ) ,
+			defaultSkyColor.g + (( (sizeY - y) * ( ( defaultSkyColor.g) / sizeY ) ) ) ,
+			defaultSkyColor.b + (( (sizeY - y) * ( ( defaultSkyColor.b) / sizeY ) ) ) ,
 			defaultSkyColor.a
 
 
