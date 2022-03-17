@@ -91,6 +91,16 @@ Color multiplyColor (Color a, Color b)
 	return clampColor(c);
 }
 
+Color multiplyColorByScalar(Color a, float b)
+{
+	Color c;
+	c.r = a.r * b;
+	c.g = a.g * b;
+	c.b = a.b * b;
+	c.a = a.a * b;
+	return clampColor(c);
+}
+
 // allow B to block A.
 // in life, this is like a color image shining through a color window. the image is filtered by the color and opacity of the window.
 Color filterColor( Color a, Color b)

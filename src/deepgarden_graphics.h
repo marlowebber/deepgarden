@@ -33,4 +33,5 @@ Color clampColor (Color in);
 
 Color mixColor (Color a, Color b, float mix);
 
+Color multiplyColorByScalar(Color a, float b);
 #endif

@@ -445,12 +445,12 @@ struct Weather
 	int pressure;
 	int velocityX;
 	int velocityY;
-	int saturation;
-	unsigned int lightBlockedSquares;
-	unsigned int airBlockedSquares;
-	int          newsaturation;
-	unsigned int newlightBlockedSquares;
-	unsigned int newairBlockedSquares;
+	float saturation;
+	float lightBlockedSquares;
+	float airBlockedSquares;
+	float newsaturation;
+	float newlightBlockedSquares;
+	float newairBlockedSquares;
 	int dt;
 	int dp;
 	int dx;
@@ -468,7 +468,7 @@ Weather::Weather()
 	this->pressure = defaultPressure;
 	this->velocityX = (RNG() - 0.5f) * 100;
 	this->velocityY = (RNG() - 0.5f) * 100;
-	this->saturation = 0;
+	this->saturation = 0.0f;
 	this->airBlockedSquares = 0;
 	this->lightBlockedSquares = 0;
 	this->color = color_clear;
@@ -480,9 +480,9 @@ Weather::Weather()
 	this->dx = 0;
 	this->dy = 0;
 
-	this-> newsaturation          = 0;
-	this-> newlightBlockedSquares = 0;
-	this-> newairBlockedSquares   = 0;
+	this-> newsaturation          = 0.0f;
+	this-> newlightBlockedSquares = 0.0f;
+	this-> newairBlockedSquares   = 0.0f;
 
 }
 
@@ -1108,7 +1108,7 @@ void floatPhoton( unsigned int weatherGridI ,  Color lightColor,  float lightBri
 			// weatherGrid[weatherGridI].color = addColor(weatherGrid[weatherGridI].color, appliedColor);
 
 		}
-		int amountToBlock  = weatherGrid[weatherGridI].lightBlockedSquares + weatherGrid[weatherGridI].saturation;
+		float amountToBlock  = weatherGrid[weatherGridI].lightBlockedSquares + weatherGrid[weatherGridI].saturation;
 		blocked += amountToBlock ;
 		if (sunlightDeliversHeat)
 		{
@@ -1230,7 +1230,7 @@ Color blackbodyLookup(  int temperature )
 // }
 
 // updates a location on the color grid with a material's new color information, based on phase and temperature.
-void materialPostProcess(unsigned int i, unsigned int weatherGridI, float saturationLimit)
+void materialPostProcess(unsigned int i, unsigned int x, unsigned int y, unsigned int weatherGridI, float saturationLimit)
 {
 	if (grid[i].material  < materials.size() && weatherGridI < weatherGridSize)
 	{
@@ -1266,21 +1266,67 @@ void materialPostProcess(unsigned int i, unsigned int weatherGridI, float satura
 		ppColor = filterColor( ppColor, life_color );
 
 		// paint clouds. If there is a lot of gas in an area.
-		// if (weatherGrid[weatherGridI].saturation > 0  )
-		// {
-		// 	Color cloudTinge = color_clear;
-		// 	cloudTinge = addColor(materialColor, color_white_halfClear);
-		// 	float fsat = weatherGrid[weatherGridI].saturation ;
-		// 	float flim = saturationLimit;
-		// 	cloudTinge.a = (fsat / flim )  ;
-		// 	cloudTinge = clampColor(cloudTinge);
-		// 	ppColor = filterColor(    ppColor , cloudTinge );
-		// }
+		if (weatherGrid[weatherGridI].saturation > 0.0f  )
+		{
+			Color cloudTinge = color_clear;
+			cloudTinge = addColor(materialColor, color_white_halfClear);
+			// float fsat = weatherGrid[weatherGridI].saturation ;
+			// float flim = saturationLimit;
+			cloudTinge.a = weatherGrid[weatherGridI].saturation ; // (fsat / flim )  ;
+			cloudTinge = clampColor(cloudTinge);
+			ppColor = filterColor(    ppColor , cloudTinge );
+		}
 
 		// diffuse drawing now complete.
 		ppColor = multiplyColor(ppColor, weatherGrid[weatherGridI].color);
 
 		// now we will do the things that emit light.
+
+
+
+
+
+		// if the particle is liquid, get a reflection!
+		if (grid[i].phase == PHASE_LIQUID)
+		{
+			unsigned int currentPosition = i;
+			unsigned int reflectionHeight = 0;
+			while (true)
+			{
+
+				unsigned int neighbour = currentPosition + neighbourOffsets[6];
+
+				if (grid[neighbour].phase != PHASE_LIQUID || neighbour > totalSize)
+				{
+
+					break;
+
+				}
+
+				currentPosition = neighbour;
+				reflectionHeight++;
+			}
+
+
+
+
+			unsigned int reflectedPoint = ( (y + (2 * reflectionHeight) ) * sizeX) + x;
+
+
+			if (reflectedPoint < totalSize)
+			{
+				unsigned int r_offset = ( reflectedPoint )  * numberOfFieldsPerVertex;
+				Color sample ;
+
+				memcpy( &sample, &colorGrid[ r_offset ] , sizeof(Color) );
+
+				ppColor = addColor(ppColor, sample );
+				
+			}
+		}
+
+
+
 
 		// // shine some background stars.
 		if (grid[i].phase == PHASE_VACUUM)
@@ -1288,7 +1334,7 @@ void materialPostProcess(unsigned int i, unsigned int weatherGridI, float satura
 
 
 
-				ppColor =  mixColor (backgroundStars[i], backgroundSky[i],   backgroundMixRatio  );
+			ppColor =  mixColor (backgroundStars[i], backgroundSky[i],   backgroundMixRatio  );
 
 
 
@@ -1420,9 +1466,9 @@ void thread_sector( unsigned int from, unsigned int to )
 		weatherGrid[weatherGridI].airBlockedSquares = weatherGrid[weatherGridI].newairBlockedSquares;
 
 
-		weatherGrid[weatherGridI].newsaturation          = 0;
-		weatherGrid[weatherGridI].newlightBlockedSquares = 0;
-		weatherGrid[weatherGridI].newairBlockedSquares   = 0 ;
+		weatherGrid[weatherGridI].newsaturation          = 0.0f ;
+		weatherGrid[weatherGridI].newlightBlockedSquares = 0.0f ;
+		weatherGrid[weatherGridI].newairBlockedSquares   = 0.0f  ;
 
 	}
 #ifdef DETAIL_TIMING_READOUT
@@ -1533,14 +1579,14 @@ void thread_sector( unsigned int from, unsigned int to )
 
 		if (weatherGridI < weatherGridSize)
 		{
-			const int saturationLimit = 1;
+			const float saturationLimit = 1.0f;
 
 			if (photonsIssuedThisTurn < photonIdealNumber)
 			{
 				materialHeatGlow(    currentPosition, weatherGridI);
 			}
 			materialPhaseChange( currentPosition,   saturationLimit - weatherGrid[weatherGridI].saturation  );
-			materialPostProcess( currentPosition, weatherGridI, saturationLimit);
+			materialPostProcess( currentPosition, x, y, weatherGridI, saturationLimit);
 
 			// couple the material grid temp to the weather grid temp
 			if (grid[currentPosition].phase != PHASE_VACUUM)
@@ -1553,18 +1599,20 @@ void thread_sector( unsigned int from, unsigned int to )
 
 				if (grid[currentPosition].phase == PHASE_GAS )
 				{
-					weatherGrid[weatherGridI].newsaturation++;
+					weatherGrid[weatherGridI].newsaturation += 1.0f ;
 				}
 
 				else if (grid[currentPosition].phase == PHASE_SOLID || grid[currentPosition].phase ==  PHASE_POWDER )
 				{
-					weatherGrid[weatherGridI].newlightBlockedSquares++;
-					weatherGrid[weatherGridI].newairBlockedSquares++;
+					weatherGrid[weatherGridI].newlightBlockedSquares += 1.0f;
+					weatherGrid[weatherGridI].newairBlockedSquares += 1.0f;
 				}
 
 				else if (grid[currentPosition].phase ==  PHASE_LIQUID )
 				{
-					weatherGrid[weatherGridI].newairBlockedSquares++;
+					weatherGrid[weatherGridI].newairBlockedSquares += 1.0f;
+
+					weatherGrid[weatherGridI].newlightBlockedSquares += 0.3f;
 				}
 			}
 		}
@@ -1596,7 +1644,7 @@ void updateDaytime()
 
 	backgroundMixRatio = abs(sin(timeOfDay));
 	int effectiveTemp = sunlightTemp - (sunlightTemp * backgroundMixRatio   );
-	 sunlightBrightness = starBrightness - ((starBrightness * backgroundMixRatio  ));
+	sunlightBrightness = starBrightness - ((starBrightness * backgroundMixRatio  ));
 
 	// printf("et %i \n",effectiveTemp);
 
@@ -4179,17 +4227,17 @@ void createWorld( unsigned int world)
 
 		// compute the background sky.
 
-unsigned int y = i/ sizeX;
-		backgroundSky[i] = Color ( 
-			defaultSkyColor.r + (( (sizeY - y) * ( ( defaultSkyColor.r) / sizeY ) ) ) ,
-			defaultSkyColor.g + (( (sizeY - y) * ( ( defaultSkyColor.g) / sizeY ) ) ) ,
-			defaultSkyColor.b + (( (sizeY - y) * ( ( defaultSkyColor.b) / sizeY ) ) ) ,
-			defaultSkyColor.a
+		unsigned int y = i / sizeX;
+		backgroundSky[i] = Color (
+		                       defaultSkyColor.r + (( (sizeY - y) * ( ( defaultSkyColor.r) / sizeY ) ) ) ,
+		                       defaultSkyColor.g + (( (sizeY - y) * ( ( defaultSkyColor.g) / sizeY ) ) ) ,
+		                       defaultSkyColor.b + (( (sizeY - y) * ( ( defaultSkyColor.b) / sizeY ) ) ) ,
+		                       defaultSkyColor.a
 
 
 
 
-		     );
+		                   );
 
 	}
 }
