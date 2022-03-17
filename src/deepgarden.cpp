@@ -23,6 +23,7 @@ const bool normalMaterials = true;
 const bool advanceDay = true;
 const bool weatherUseTake = true;
 const bool sunlightDeliversHeat = false;
+const bool waterCycle = true;
 
 // preset colors available for painting.
 const Color color_lightblue          = Color( 0.1f, 0.3f, 0.65f, 1.0f );
@@ -240,6 +241,10 @@ int defaultTemperature = 300;
 int defaultPressure = 1000;
 std::string defaultPlant = plant_Primordial;
 Color defaultSkyColor = color_lightblue;
+unsigned int defaultSolvent = MATERIAL_WATER;
+float steamyness = 1.0f;
+float defaultHumidity = 0.0f;
+
 unsigned int starBrightness = 50;            // the amount of actual light coming from the emitter. how far it penetrates material.
 unsigned int sunlightBrightness = 50;	// adjusted for time of day and such.
 unsigned int sunlightTemp = 1000;                // this is not the temperature applied to lit objects, but, the actual color temperature of the emitter.
@@ -247,7 +252,8 @@ Color sunlightColor = color_white_quarterClear;  // this is also the color of th
 unsigned int sunlightDirection = 2;
 float fsundirection = 0.0f;
 float timeOfDay = 0.5f;
-float backgroundMixRatio = 0.0f;
+float backgroundMixRatioSin = 0.0f;
+float backgroundMixRatioCos = 0.0f;
 
 // const unsigned int gasLawConstant = 6;
 
@@ -445,12 +451,12 @@ struct Weather
 	int pressure;
 	int velocityX;
 	int velocityY;
-	float saturation;
 	float lightBlockedSquares;
 	float airBlockedSquares;
-	float newsaturation;
 	float newlightBlockedSquares;
 	float newairBlockedSquares;
+	float saturation ;
+	float dsat;
 	int dt;
 	int dp;
 	int dx;
@@ -468,19 +474,18 @@ Weather::Weather()
 	this->pressure = defaultPressure;
 	this->velocityX = (RNG() - 0.5f) * 100;
 	this->velocityY = (RNG() - 0.5f) * 100;
-	this->saturation = 0.0f;
+	this->saturation = defaultHumidity	;//0.0f;
 	this->airBlockedSquares = 0;
 	this->lightBlockedSquares = 0;
 	this->color = color_clear;
 	this->direction = 2;
 	this->velocityAbs = 0;
-
+	this->dsat = 0.0f;
 	this->dt = 0;
 	this->dp = 0;
 	this->dx = 0;
 	this->dy = 0;
 
-	this-> newsaturation          = 0.0f;
 	this-> newlightBlockedSquares = 0.0f;
 	this-> newairBlockedSquares   = 0.0f;
 
@@ -566,17 +571,32 @@ unsigned int calculateVelocityDirection( int velocityX,  int velocityY)
 	return angle;
 }
 
-void materialPhaseChange( unsigned int currentPosition,  float saturationDifference  )
+void setParticle(unsigned int material, unsigned int i)
 {
+	grid[i].temperature = defaultTemperature;
+	grid[i].material = material;
+	grid[i].phase = PHASE_POWDER;
+	unsigned int a_offset = (i * numberOfFieldsPerVertex);
+	memcpy( &colorGrid[ a_offset ], & (materials[material].color), 16 );
+}
+
+void materialPhaseChange( unsigned int currentPosition,  unsigned int weatherGridI  )
+{
+
+
+
 	if (grid[currentPosition].phase == PHASE_SOLID)
 	{
 		if  (grid[currentPosition].temperature > materials[grid[currentPosition].material].boiling)
 		{
 			grid[currentPosition].phase = PHASE_GAS;
+			return;
 		}
+
 		if  (grid[currentPosition].temperature > materials[grid[currentPosition].material].melting)
 		{
 			grid[currentPosition].phase = PHASE_LIQUID;
+			return;
 		}
 	}
 	else if (grid[currentPosition].phase == PHASE_POWDER)
@@ -584,38 +604,75 @@ void materialPhaseChange( unsigned int currentPosition,  float saturationDiffere
 		if  (grid[currentPosition].temperature > materials[grid[currentPosition].material].melting)
 		{
 			grid[currentPosition].phase = PHASE_LIQUID;
+			return;
 		}
 	}
 	else if (grid[currentPosition].phase == PHASE_LIQUID)
 	{
-		if (grid[currentPosition].temperature > materials[grid[currentPosition].material].boiling)
+
+
+
+
+		if (grid[currentPosition].material == defaultSolvent)
 		{
-			grid[currentPosition].phase = PHASE_GAS;
-		}
-		else if (saturationDifference > 0.0f && grid[currentPosition].temperature > (materials[grid[currentPosition].material].boiling >> 1 ) )
-		{
-			for (unsigned int j = 0; j < N_NEIGHBOURS; ++j)
+			if (waterCycle)
 			{
-				unsigned int neighbour = neighbourOffsets[j] + currentPosition;
-				if (neighbour < totalSize)
+				if ( weatherGrid[weatherGridI].saturation < (defaultHumidity) )
 				{
-					if (grid[neighbour].phase == PHASE_VACUUM )
+					bool edge = false;
+
+					for (int n = 0; n < N_NEIGHBOURS; ++n)
 					{
-						grid[currentPosition].phase = PHASE_GAS;
-						break;
+						unsigned int neighbour = currentPosition +  neighbourOffsets[n];
+
+						if (neighbour < totalSize)
+						{
+							if (grid[neighbour].phase == PHASE_VACUUM)
+							{
+								edge = true;
+								break;
+							}
+						}
 					}
+
+					if (edge)
+					{
+
+						clearParticle(currentPosition);
+						weatherGrid[weatherGridI].saturation += steamyness;
+
+					}
+
+					return;
 				}
 			}
 		}
+
+
+
+
+		if (grid[currentPosition].temperature > materials[grid[currentPosition].material].boiling)
+		{
+
+			grid[currentPosition].phase = PHASE_GAS;
+			return;
+
+
+		}
+
+
+
+
 		else if  (grid[currentPosition].temperature < materials[grid[currentPosition].material].melting)
 		{
 			if  (grid[currentPosition].temperature < ( materials[grid[currentPosition].material].melting >> 1))
 			{
 				grid[currentPosition].phase = PHASE_POWDER;
+				return;
 			}
 
 			// crystallization
-			if (false)
+			if (true)
 			{
 				unsigned int nSolidNeighbours = 0;
 				unsigned int nAttachableNeighbours = 0;
@@ -656,49 +713,49 @@ void materialPhaseChange( unsigned int currentPosition,  float saturationDiffere
 				{
 					if (nSolidNeighbours > materials[grid[currentPosition].material].crystal_n)
 					{
-						if (nAttachableNeighbours > 0) {    grid[currentPosition].phase = PHASE_SOLID; }
+						if (nAttachableNeighbours > 0) {    grid[currentPosition].phase = PHASE_SOLID; return;}
 					}
 				}
 				else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_EQUAL)
 				{
 					if (nSolidNeighbours == materials[grid[currentPosition].material].crystal_n)
 					{
-						if (nAttachableNeighbours > 0) {    grid[currentPosition].phase = PHASE_SOLID; }
+						if (nAttachableNeighbours > 0) {    grid[currentPosition].phase = PHASE_SOLID; return; }
 					}
 				}
 				else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_LESSTHAN)
 				{
 					if (nSolidNeighbours < materials[grid[currentPosition].material].crystal_n)
 					{
-						if (nAttachableNeighbours > 0) {    grid[currentPosition].phase = PHASE_SOLID; }
+						if (nAttachableNeighbours > 0) {    grid[currentPosition].phase = PHASE_SOLID; return; }
 					}
 				}
 				else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_CORNER)
 				{
 					if (longestSolidStreak == 3 && (longestSolidStreakOffset % 2) == 0 )
 					{
-						if (nAttachableNeighbours > 0) {    grid[currentPosition].phase = PHASE_SOLID; }
+						if (nAttachableNeighbours > 0) {    grid[currentPosition].phase = PHASE_SOLID; return;}
 					}
 				}
 				else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_EDGE)
 				{
 					if (longestSolidStreak == 3 && (longestSolidStreakOffset % 2) == 1 )
 					{
-						if (nAttachableNeighbours > 0) {    grid[currentPosition].phase = PHASE_SOLID; }
+						if (nAttachableNeighbours > 0) {    grid[currentPosition].phase = PHASE_SOLID; return;}
 					}
 				}
 				else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_ROW)
 				{
 					if (longestSolidStreak == materials[grid[currentPosition].material].crystal_n )
 					{
-						if (nAttachableNeighbours > 0) {    grid[currentPosition].phase = PHASE_SOLID; }
+						if (nAttachableNeighbours > 0) {    grid[currentPosition].phase = PHASE_SOLID; return;}
 					}
 				}
 				else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_LEFTN)
 				{
 					if (    grid[currentPosition + (materials[grid[currentPosition].material].crystal_n) ].phase == PHASE_SOLID)
 					{
-						if (nAttachableNeighbours > 0) {    grid[currentPosition].phase = PHASE_SOLID; }
+						if (nAttachableNeighbours > 0) {    grid[currentPosition].phase = PHASE_SOLID; return;}
 					}
 				}
 				else if (materials[grid[currentPosition].material].crystal_condition == CONDITION_NOTLEFTRIGHTN)
@@ -708,11 +765,11 @@ void materialPhaseChange( unsigned int currentPosition,  float saturationDiffere
 					    grid[currentPosition - (materials[grid[currentPosition].material].crystal_n) ].phase != PHASE_SOLID
 					)
 					{
-						if (nAttachableNeighbours > 0) {    grid[currentPosition].phase = PHASE_SOLID; }
+						if (nAttachableNeighbours > 0) {    grid[currentPosition].phase = PHASE_SOLID; return;}
 					}
 					else
 					{
-						grid[currentPosition].phase = PHASE_LIQUID;
+						grid[currentPosition].phase = PHASE_LIQUID; return;
 					}
 				}
 
@@ -729,11 +786,11 @@ void materialPhaseChange( unsigned int currentPosition,  float saturationDiffere
 						    grid[currentPosition - (sizeX) - (materials[ grid[currentPosition].material].crystal_n * 2 )].phase != PHASE_SOLID
 						)
 						{
-							if (nAttachableNeighbours > 0) {    grid[currentPosition].phase = PHASE_SOLID; }
+							if (nAttachableNeighbours > 0) {    grid[currentPosition].phase = PHASE_SOLID; return;}
 						}
 						else
 						{
-							grid[currentPosition].phase = PHASE_LIQUID;
+							grid[currentPosition].phase = PHASE_LIQUID; return;
 						}
 					}
 				}
@@ -741,7 +798,7 @@ void materialPhaseChange( unsigned int currentPosition,  float saturationDiffere
 				// small chance to solidify at random and form the nucleus of a new crystal.
 				if (extremelyFastNumberFromZeroTo(10000) == 0)
 				{
-					grid[currentPosition].phase = PHASE_SOLID;
+					grid[currentPosition].phase = PHASE_SOLID; return;
 				}
 			}
 		}
@@ -749,13 +806,52 @@ void materialPhaseChange( unsigned int currentPosition,  float saturationDiffere
 	else if (grid[currentPosition].phase == PHASE_GAS)
 	{
 
-		if (saturationDifference < 0.0f )
+
+
+		if (grid[currentPosition].material == defaultSolvent)
 		{
-			if (grid[currentPosition].temperature < materials[grid[currentPosition].material].boiling)
+			if (waterCycle)
 			{
-				grid[currentPosition].phase = PHASE_LIQUID;
+
+				// if ( weatherGrid[weatherGridI].saturation < steamyness )
+				// {
+				clearParticle(currentPosition);
+				weatherGrid[weatherGridI].saturation += steamyness;
+				return;
+				// }
 			}
 		}
+
+
+		// if (saturationDifference < 0.0f )
+		// {
+		if (grid[currentPosition].temperature < materials[grid[currentPosition].material].boiling)
+		{
+			grid[currentPosition].phase = PHASE_LIQUID; return;
+		}
+		// }
+
+
+
+	}
+
+	else // vacuum 'n shii
+	{
+
+		if (waterCycle)
+		{
+			if ( weatherGrid[weatherGridI]. saturation > (defaultHumidity + steamyness))
+			{
+				weatherGrid[weatherGridI].saturation -= steamyness;
+				setParticle(defaultSolvent, currentPosition);
+				grid[currentPosition].phase = PHASE_LIQUID;
+				grid[currentPosition].temperature = weatherGrid[weatherGridI].temperature / temperatureScale;
+				return;
+
+			}
+		}
+
+
 	}
 }
 
@@ -902,6 +998,16 @@ void applyAirflowChanges(unsigned int weatherGridI)
 	weatherGrid[weatherGridI].velocityX   += weatherGrid[weatherGridI]. dx   ;
 	weatherGrid[weatherGridI].velocityY   += weatherGrid[weatherGridI]. dy   ;
 
+	weatherGrid[weatherGridI].saturation += weatherGrid[weatherGridI]. dsat;
+
+
+	// if (weatherGrid[weatherGridI].saturation < 0.0f)
+	// {
+	// 	weatherGrid[weatherGridI].saturation = 0.0f;
+	// }
+
+
+
 	weatherGrid[weatherGridI].direction = calculateVelocityDirection( weatherGrid[weatherGridI]. velocityX,  weatherGrid[weatherGridI]. velocityY);
 	weatherGrid[weatherGridI].velocityAbs = abs(weatherGrid[weatherGridI]. velocityX) +  abs( weatherGrid[weatherGridI]. velocityY);
 
@@ -911,6 +1017,7 @@ void applyAirflowChanges(unsigned int weatherGridI)
 	weatherGrid[weatherGridI]. dx = 0;
 	weatherGrid[weatherGridI]. dy = 0;
 	weatherGrid[weatherGridI]. dt = 0;
+	weatherGrid[weatherGridI]. dsat = 0.0f;
 }
 
 void airflow( unsigned int weatherGridI)
@@ -929,6 +1036,7 @@ void airflow( unsigned int weatherGridI)
 		int ax = 0;
 		int ay = 0;
 		int at = 0;
+		// float asat = 0.0f;
 		int count = 0;
 		for (unsigned int n = 0; n < N_NEIGHBOURS; ++n)
 		{
@@ -941,6 +1049,7 @@ void airflow( unsigned int weatherGridI)
 				ax += (weatherGrid[ weatherGridNeighbour ].velocityX  ) ;
 				ay += (weatherGrid[ weatherGridNeighbour ].velocityY  ) ;
 				at += (weatherGrid[ weatherGridNeighbour ].temperature) ;
+				// asat += (weatherGrid[ weatherGridNeighbour ].saturation) ;
 				count++;
 			}
 		}
@@ -950,11 +1059,14 @@ void airflow( unsigned int weatherGridI)
 			ay = ay / count; //>> 3;
 			ap = ap / count; //>> 3;
 			at = at / count; //>> 3;
+			// asat = asat / count;
 
 			weatherGrid[weatherGridI]. dp +=   (ap - weatherGrid[weatherGridI].pressure   ) >> 3;
 			weatherGrid[weatherGridI]. dx +=   (ax - weatherGrid[weatherGridI].velocityX  ) >> 3;
 			weatherGrid[weatherGridI]. dy +=   (ay - weatherGrid[weatherGridI].velocityY  ) >> 3;
 			weatherGrid[weatherGridI]. dt +=   (at - weatherGrid[weatherGridI].temperature) >> 3;
+
+			// weatherGrid[weatherGridI]. dsat +=   (asat - weatherGrid[weatherGridI].saturation) * 0.01f;
 		}
 
 		// pt interchange
@@ -1025,7 +1137,7 @@ void airflow( unsigned int weatherGridI)
 						int takeTemperature = (( weatherGrid[weatherGridI].temperature - weatherGrid[takeI].temperature ) >> (1  ) );
 						int takeVelocityX   = (( weatherGrid[weatherGridI].velocityX   - weatherGrid[takeI].velocityX   ) >> (3  ) );
 						int takeVelocityY   = (( weatherGrid[weatherGridI].velocityY   - weatherGrid[takeI].velocityY   ) >> (3  ) );
-
+						float takeSaturation   = (( weatherGrid[weatherGridI].saturation   - weatherGrid[takeI].saturation   ) * 0.5f );
 						// weatherGrid[takeI].dt += takeTemperature;
 						// weatherGrid[takeI].dx += takeVelocityX;                // mix in the velocity contribution from far-away.
 						// weatherGrid[takeI].dy += takeVelocityY;                // adding more looks cool, but makes the fluid explode on touch like nitroglycerin!
@@ -1033,6 +1145,18 @@ void airflow( unsigned int weatherGridI)
 						weatherGrid[weatherGridI].dt -= takeTemperature;
 						weatherGrid[weatherGridI].dx -= takeVelocityX;                // mix in the velocity contribution from far-away.
 						weatherGrid[weatherGridI].dy -= takeVelocityY;                // adding more looks cool, but makes the fluid explode on touch like nitroglycerin!
+
+						// weatherGrid[takeI].dt += takeTemperature;
+						// weatherGrid[takeI].dx += takeVelocityX;                // mix in the velocity contribution from far-away.
+						// weatherGrid[takeI].dy += takeVelocityY;                // adding more looks cool, but makes the fluid explode on touch like nitroglycerin!
+
+						// if (weatherGrid[weatherGridI].saturation < takeSaturation)
+						// {
+						// 	takeSaturation = weatherGrid[weatherGridI].saturation;
+						// }
+						weatherGrid[weatherGridI].dsat -= takeSaturation;
+						// weatherGrid[takeI].dsat += takeSaturation;
+						// }
 					}
 				}
 			}
@@ -1108,7 +1232,7 @@ void floatPhoton( unsigned int weatherGridI ,  Color lightColor,  float lightBri
 			// weatherGrid[weatherGridI].color = addColor(weatherGrid[weatherGridI].color, appliedColor);
 
 		}
-		float amountToBlock  = weatherGrid[weatherGridI].lightBlockedSquares + weatherGrid[weatherGridI].saturation;
+		float amountToBlock  = weatherGrid[weatherGridI].lightBlockedSquares;
 		blocked += amountToBlock ;
 		if (sunlightDeliversHeat)
 		{
@@ -1230,12 +1354,12 @@ Color blackbodyLookup(  int temperature )
 // }
 
 // updates a location on the color grid with a material's new color information, based on phase and temperature.
-void materialPostProcess(unsigned int i, unsigned int x, unsigned int y, unsigned int weatherGridI, float saturationLimit)
+void materialPostProcess(unsigned int i, unsigned int x, unsigned int y, unsigned int weatherGridI)
 {
 	if (grid[i].material  < materials.size() && weatherGridI < weatherGridSize)
 	{
 		unsigned int b_offset = i * numberOfFieldsPerVertex;
-		Color ppColor = color_clear;// backgroundStars[i];
+		Color ppColor = color_clear; //  mixColor( backgroundSky[i], color_clear, abs(cos(timeOfDay)) );// backgroundStars[i];
 
 		// then, we will do everything which reflects light, but does not emit it.
 		Color materialColor = materials[ grid[i].material ].color ;
@@ -1265,22 +1389,34 @@ void materialPostProcess(unsigned int i, unsigned int x, unsigned int y, unsigne
 		life_color = filterColor( life_color, seed_color );
 		ppColor = filterColor( ppColor, life_color );
 
-		// paint clouds. If there is a lot of gas in an area.
-		if (weatherGrid[weatherGridI].saturation > 0.0f  )
-		{
-			Color cloudTinge = color_clear;
-			cloudTinge = addColor(materialColor, color_white_halfClear);
-			// float fsat = weatherGrid[weatherGridI].saturation ;
-			// float flim = saturationLimit;
-			cloudTinge.a = weatherGrid[weatherGridI].saturation ; // (fsat / flim )  ;
-			cloudTinge = clampColor(cloudTinge);
-			ppColor = filterColor(    ppColor , cloudTinge );
-		}
+
+
+
+		//clouds.
+		// float velocityAbs= (abs(weatherGrid[weatherGridI].velocityX) + abs(weatherGrid[weatherGridI].velocityY));
+		// float pressureAbs = abs(weatherGrid[weatherGridI].pressure);
+
+
+
+		// printf("pshabs %f\n", pressureAbs);
+		// ppColor = mixColor(color_white,  ppColor , ((abs(weatherGrid[weatherGridI].saturation ) * 1000.0f ) ) );
+
+
+
+
+
 
 		// diffuse drawing now complete.
 		ppColor = multiplyColor(ppColor, weatherGrid[weatherGridI].color);
 
+
 		// now we will do the things that emit light.
+
+
+		// ppColor =  filterColor (backgroundStars[i], ppColor  );
+
+
+
 
 
 
@@ -1321,26 +1457,98 @@ void materialPostProcess(unsigned int i, unsigned int x, unsigned int y, unsigne
 				memcpy( &sample, &colorGrid[ r_offset ] , sizeof(Color) );
 
 				ppColor = addColor(ppColor, sample );
-				
+
 			}
 		}
 
 
 
 
-		// // shine some background stars.
+
+
+
+
+// // shine some background stars.
 		if (grid[i].phase == PHASE_VACUUM)
 		{
 
 
 
-			ppColor =  mixColor (backgroundStars[i], backgroundSky[i],   backgroundMixRatio  );
+
+
+
+			// printf("pshabs %f\n", pressureAbs);
+
+			float cloudyness =  ((abs(weatherGrid[weatherGridI].saturation ) * 10.0f ) );
+
+			Color cloudColor ;//= color_white;// weatherGrid[weatherGridI].color ;//multiplyColor(color_white, weatherGrid[weatherGridI].color);
+
+			cloudColor.r =  weatherGrid[weatherGridI].color.r * weatherGrid[weatherGridI].color.a;
+			cloudColor.g =  weatherGrid[weatherGridI].color.g * weatherGrid[weatherGridI].color.a;
+			cloudColor.b =  weatherGrid[weatherGridI].color.b * weatherGrid[weatherGridI].color.a;
+
+			cloudColor.a = cloudyness;
+
+			cloudColor = clampColor(cloudColor);
+
+			
+
+
+			Color backgroundColor = mixColor( backgroundStars[i], backgroundSky[i], backgroundMixRatioSin );// backgroundStars[i];
+			// Color skyColor =  mixColor( backgroundSky[i],   color_clear, backgroundMixRatioCos);// backgroundStars[i];
+
+			// Color backgroundColor = filterColor(starColor, skyColor);
+
+			ppColor = filterColor(backgroundColor, ppColor);
+
+
+			// diffuse drawing now complete.
+			// ppColor = filterColor(ppColor, cloudColor);
+
+
+			cloudColor = 
+ppColor = mixColor(cloudColor,  ppColor );
+
+
+
+
+
+
+
+
+
+
+			// paint clouds. If there is a lot of gas in an area.
+			// if (weatherGrid[weatherGridI].saturation > 0.0f  )
+			// {
+			// Color cloudTinge = color_white;
+			// // cloudTinge = addColor(materialColor, color_white_halfClear);
+			// // float fsat = weatherGrid[weatherGridI].saturation ;
+			// // float flim = saturationLimit;
+
+
+
+
+			// cloudTinge.a = abs(weatherGrid[weatherGridI].saturation)   ; // (fsat / flim )  ;
+// 		if (cloudTinge .a < 0.0f) {cloudTinge.a = 0.0f;}
+// 		else if (cloudTinge .a > 1.0f) {cloudTinge.a = 1.0f;}
+
+// 		// printf("cmoud %f  \n", weatherGrid[weatherGridI].saturation );
+// 		// cloudTinge = clampColor(cloudTinge);
+
+// //
+
+
+
+
 
 
 
 
 
 		}
+
+
 
 
 		// Make hot stuff glow (this does not emit photons, but puts color on the screen at that immediate location as well).
@@ -1349,6 +1557,16 @@ void materialPostProcess(unsigned int i, unsigned int x, unsigned int y, unsigne
 			ppColor = addColor( ppColor, blackbodyLookup( (grid[i].temperature) ) );
 		}
 		ppColor = addColor(ppColor, blackbodyLookup( (weatherGrid[weatherGridI].temperature / temperatureScale  ) ));
+
+
+
+
+
+
+
+
+
+		// }
 
 
 
@@ -1461,12 +1679,11 @@ void thread_sector( unsigned int from, unsigned int to )
 		{
 			weatherHeatGlow(weatherGridI);
 		}
-		weatherGrid[weatherGridI].saturation = weatherGrid[weatherGridI].newsaturation;
+
 		weatherGrid[weatherGridI].lightBlockedSquares = weatherGrid[weatherGridI].newlightBlockedSquares;
 		weatherGrid[weatherGridI].airBlockedSquares = weatherGrid[weatherGridI].newairBlockedSquares;
 
 
-		weatherGrid[weatherGridI].newsaturation          = 0.0f ;
 		weatherGrid[weatherGridI].newlightBlockedSquares = 0.0f ;
 		weatherGrid[weatherGridI].newairBlockedSquares   = 0.0f  ;
 
@@ -1579,14 +1796,13 @@ void thread_sector( unsigned int from, unsigned int to )
 
 		if (weatherGridI < weatherGridSize)
 		{
-			const float saturationLimit = 1.0f;
 
 			if (photonsIssuedThisTurn < photonIdealNumber)
 			{
 				materialHeatGlow(    currentPosition, weatherGridI);
 			}
-			materialPhaseChange( currentPosition,   saturationLimit - weatherGrid[weatherGridI].saturation  );
-			materialPostProcess( currentPosition, x, y, weatherGridI, saturationLimit);
+			materialPhaseChange( currentPosition , weatherGridI);
+			materialPostProcess( currentPosition, x, y, weatherGridI);
 
 			// couple the material grid temp to the weather grid temp
 			if (grid[currentPosition].phase != PHASE_VACUUM)
@@ -1599,7 +1815,7 @@ void thread_sector( unsigned int from, unsigned int to )
 
 				if (grid[currentPosition].phase == PHASE_GAS )
 				{
-					weatherGrid[weatherGridI].newsaturation += 1.0f ;
+					weatherGrid[weatherGridI].newlightBlockedSquares += 0.2f;
 				}
 
 				else if (grid[currentPosition].phase == PHASE_SOLID || grid[currentPosition].phase ==  PHASE_POWDER )
@@ -1612,7 +1828,7 @@ void thread_sector( unsigned int from, unsigned int to )
 				{
 					weatherGrid[weatherGridI].newairBlockedSquares += 1.0f;
 
-					weatherGrid[weatherGridI].newlightBlockedSquares += 0.3f;
+					weatherGrid[weatherGridI].newlightBlockedSquares += 0.5f;
 				}
 			}
 		}
@@ -1642,9 +1858,11 @@ void updateDaytime()
 	fsundirection =  1.5 * const_pi + (sin(timeOfDay) * (0.5 * const_pi) ) ;
 
 
-	backgroundMixRatio = abs(sin(timeOfDay));
-	int effectiveTemp = sunlightTemp - (sunlightTemp * backgroundMixRatio   );
-	sunlightBrightness = starBrightness - ((starBrightness * backgroundMixRatio  ));
+	backgroundMixRatioSin = abs(sin(timeOfDay));
+	backgroundMixRatioCos = abs(cos(timeOfDay));
+
+	int effectiveTemp = sunlightTemp - (sunlightTemp * backgroundMixRatioSin   );
+	sunlightBrightness = starBrightness - ((starBrightness * backgroundMixRatioSin  ));
 
 	// printf("et %i \n",effectiveTemp);
 
@@ -1670,10 +1888,10 @@ void thread_handleEdges()
 	{
 
 		unsigned int weatherGridI = (fromY * weatherGridSizeX) + weatherGridX;
-		// airflowEdge(weatherGridI, weatherGridX, fromY);
+		airflowEdge(weatherGridI, weatherGridX, fromY);
 
 		weatherGrid[weatherGridI].temperature = defaultTemperature * temperatureScale;
-
+		weatherGrid[weatherGridI].saturation = defaultHumidity;
 	}
 
 	for (int i = 0; i < sizeX; ++i)
@@ -1689,6 +1907,7 @@ void thread_handleEdges()
 		floatPhoton(weatherGridI, sunlightColor, sunlightBrightness, fsundirection);
 
 		weatherGrid[weatherGridI].temperature = defaultTemperature * temperatureScale;
+		weatherGrid[weatherGridI].saturation = defaultHumidity;
 
 		// weatherGrid[weatherGridI].pressure    += (  defaultPressure                         - weatherGrid[weatherGridI].pressure   )  >> 6 ;
 	}
@@ -3538,14 +3757,7 @@ void mutateSentence ( std::string * genes )
 #endif
 }
 
-void setParticle(unsigned int material, unsigned int i)
-{
-	grid[i].temperature = defaultTemperature;
-	grid[i].material = material;
-	grid[i].phase = PHASE_POWDER;
-	unsigned int a_offset = (i * numberOfFieldsPerVertex);
-	memcpy( &colorGrid[ a_offset ], & (materials[material].color), 16 );
-}
+
 
 void killAnAnimal(unsigned int i)
 {
@@ -4146,14 +4358,14 @@ void createWorld( unsigned int world)
 			}
 
 
-			// humidity
-			if (i > 50)
-			{
-				if (extremelyFastNumberFromZeroTo(weatherGridScale * 20) == 0)
-				{
-					setParticle(1, i);
-				}
-			}
+			// // humidity
+			// if (i > 50)
+			// {
+			// 	if (extremelyFastNumberFromZeroTo(weatherGridScale * 20) == 0)
+			// 	{
+			// 		setParticle(1, i);
+			// 	}
+			// }
 
 			// drop boiling lava in it
 			// if ((i > (100 * sizeX)) && (i < (200 * sizeX)) )
