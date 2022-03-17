@@ -31,4 +31,6 @@ Color filterColor( Color a, Color b);
 
 Color clampColor (Color in);
 
+Color mixColor (Color a, Color b, float mix);
+
 #endif

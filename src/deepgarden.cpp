@@ -11,17 +11,18 @@
 
 // #define PLANT_DRAWING_READOUT 1
 #define ANIMAL_DRAWING_READOUT 1
-#define ANIMAL_BEHAVIOR_READOUT 1
+// #define ANIMAL_BEHAVIOR_READOUT 1
 // #define MUTATION_READOUT 1
 
 // these are used by the developer to turn features on and off.
-const bool useGerminationMaterial = false;
+const bool useGerminationMaterial = true;
 const bool animalReproductionEnabled = true;
 const bool doWeather = true;
 const bool carnageMode = false;
 const bool normalMaterials = true;
-const bool advanceDay = false;
+const bool advanceDay = true;
 const bool weatherUseTake = true;
+const bool sunlightDeliversHeat = false;
 
 // preset colors available for painting.
 const Color color_lightblue          = Color( 0.1f, 0.3f, 0.65f, 1.0f );
@@ -49,7 +50,7 @@ const Color color_brightred          = Color( 0.9f, 0.1f, 0.0f, 1.0f);
 const Color color_darkred            = Color( 0.5f, 0.05f, 0.0f, 1.0f);
 const Color color_brown              = Color(  0.25f, 0.1f, 0.0f, 1.0f );
 
-const Color color_nightLight         = Color(1.0f, 1.0f, 1.0f, 0.55f);
+const Color color_nightLight         = Color(1.0f, 1.0f, 1.0f, 0.3f);
 
 // set the dimensions of the world. totalsize is used for the finely detailed grids
 const unsigned int totalSize = sizeX * sizeY;
@@ -157,7 +158,7 @@ float scalingFactor = 1.0f;
 vec_u2 cursor_grid = vec_u2(0, 0);
 vec_u2 prevCursor_grid = vec_u2(0, 0);
 vec_u2 origin = vec_u2(0, 0);
-unsigned int cursor_germinationMaterial = 0;
+unsigned int cursor_germinationMaterial = 4;
 unsigned int cursor_energySource = ENERGYSOURCE_LIGHT;
 unsigned int cursor_string = 0;
 Color cursor_color = Color(0.1f, 0.1f, 0.1f, 1.0f);
@@ -237,8 +238,10 @@ Color animalCursorColor = Color(0.5f, 0.5f, 0.5f, 1.0f);
 
 int defaultTemperature = 300;
 int defaultPressure = 1000;
-
-unsigned int sunlightBrightness = 50;            // the amount of actual light coming from the emitter. how far it penetrates material.
+std::string defaultPlant = plant_Primordial;
+Color defaultSkyColor = color_lightblue;
+unsigned int starBrightness = 50;            // the amount of actual light coming from the emitter. how far it penetrates material.
+unsigned int sunlightBrightness = 50;	// adjusted for time of day and such.
 unsigned int sunlightTemp = 1000;                // this is not the temperature applied to lit objects, but, the actual color temperature of the emitter.
 Color sunlightColor = color_white_quarterClear;  // this is also the color of the emitter but in an easier to use form.
 unsigned int sunlightDirection = 2;
@@ -247,8 +250,7 @@ float timeOfDay = 0.5f;
 
 // const unsigned int gasLawConstant = 6;
 
-// raw energy values are DIVIDED by these numbers to get the result. So more means less.
-const unsigned int lightEfficiency   = 1000;
+const float  lightEfficiency   = 0.01f;
 const float movementEfficiency = 5000.0f;
 
 // except for these, where the value is what you get from eating a square.
@@ -1062,7 +1064,11 @@ void floatPhoton( unsigned int weatherGridI ,  Color lightColor,  float lightBri
 	float incrementY = (noisyLength * sin(noisyAngle)) ;
 
 	int ibrightness = lightBrightness;
-	weatherGrid[weatherGridI].temperature -= ibrightness;
+	if (sunlightDeliversHeat)
+	{
+		weatherGrid[weatherGridI].temperature -= ibrightness;
+
+	}
 
 	photonsIssuedThisTurn ++;
 
@@ -1103,7 +1109,10 @@ void floatPhoton( unsigned int weatherGridI ,  Color lightColor,  float lightBri
 		}
 		int amountToBlock  = weatherGrid[weatherGridI].lightBlockedSquares + weatherGrid[weatherGridI].saturation;
 		blocked += amountToBlock ;
-		weatherGrid[weatherGridI].temperature += amountToBlock * ( appliedEnergy); // ( () -  weatherGrid[weatherGridI].temperature  );
+		if (sunlightDeliversHeat)
+		{
+			weatherGrid[weatherGridI].temperature += amountToBlock * ( appliedEnergy); // ( () -  weatherGrid[weatherGridI].temperature  );
+		}
 	}
 }
 
@@ -1185,13 +1194,47 @@ Color blackbodyLookup(  int temperature )
 }
 
 
+// void fastPostProcess(unsigned int i)
+// {
+
+
+// 	if (grid[i].material  < materials.size())
+// 	{
+// 		unsigned int b_offset = i * numberOfFieldsPerVertex;
+// 		// Color ppColor = color_clear;
+
+// 		// then, we will do everything which reflects light, but does not emit it.
+// 		Color ppColor = materials[ grid[i].material ].color ;
+
+// 		// paint in the living plants and their seeds.
+// 		Color seed_color = color_clear;
+// 		Color life_color;
+// 		if (seedGrid[i].stage != STAGE_NULL)
+// 		{
+// 			memcpy( &seed_color, &seedColorGrid[ b_offset ] , sizeof(Color) );
+// 		}
+// 		memcpy( &life_color, &lifeColorGrid[ b_offset ] , sizeof(Color) );
+// 		life_color = filterColor( life_color, seed_color );
+// 		ppColor = filterColor( ppColor, life_color );
+
+// 		// apply changes.
+// 		colorGrid[ b_offset + 0 ] = ppColor.r;
+// 		colorGrid[ b_offset + 1 ] = ppColor.g;
+// 		colorGrid[ b_offset + 2 ] = ppColor.b;
+// 		colorGrid[ b_offset + 3 ] =  1.0f; //ppColor.a;
+
+// 	}
+
+
+// }
+
 // updates a location on the color grid with a material's new color information, based on phase and temperature.
 void materialPostProcess(unsigned int i, unsigned int weatherGridI, float saturationLimit)
 {
 	if (grid[i].material  < materials.size() && weatherGridI < weatherGridSize)
 	{
 		unsigned int b_offset = i * numberOfFieldsPerVertex;
-		Color ppColor = color_clear;
+		Color ppColor = color_clear;// backgroundStars[i];
 
 		// then, we will do everything which reflects light, but does not emit it.
 		Color materialColor = materials[ grid[i].material ].color ;
@@ -1222,35 +1265,45 @@ void materialPostProcess(unsigned int i, unsigned int weatherGridI, float satura
 		ppColor = filterColor( ppColor, life_color );
 
 		// paint clouds. If there is a lot of gas in an area.
-		if (weatherGrid[weatherGridI].saturation > 0  )
-		{
-			Color cloudTinge = color_clear;
-			cloudTinge = addColor(materialColor, color_white_halfClear);
-			float fsat = weatherGrid[weatherGridI].saturation ;
-			float flim = saturationLimit;
-			cloudTinge.a = (fsat / flim )  ;
-			cloudTinge = clampColor(cloudTinge);
-			ppColor = filterColor(    ppColor , cloudTinge );
-		}
+		// if (weatherGrid[weatherGridI].saturation > 0  )
+		// {
+		// 	Color cloudTinge = color_clear;
+		// 	cloudTinge = addColor(materialColor, color_white_halfClear);
+		// 	float fsat = weatherGrid[weatherGridI].saturation ;
+		// 	float flim = saturationLimit;
+		// 	cloudTinge.a = (fsat / flim )  ;
+		// 	cloudTinge = clampColor(cloudTinge);
+		// 	ppColor = filterColor(    ppColor , cloudTinge );
+		// }
 
 		// diffuse drawing now complete.
 		ppColor = multiplyColor(ppColor, weatherGrid[weatherGridI].color);
 
 		// now we will do the things that emit light.
 
-		// Make hot stuff glow
+		// // shine some background stars.
+		if (grid[i].phase == PHASE_VACUUM)
+		{
+
+
+
+				ppColor =  mixColor (backgroundSky[i], backgroundStars[i],  0.5f  );
+
+
+
+
+
+		}
+
+
+		// Make hot stuff glow (this does not emit photons, but puts color on the screen at that immediate location as well).
 		if (grid[i].phase != PHASE_VACUUM)
 		{
 			ppColor = addColor( ppColor, blackbodyLookup( (grid[i].temperature) ) );
 		}
 		ppColor = addColor(ppColor, blackbodyLookup( (weatherGrid[weatherGridI].temperature / temperatureScale  ) ));
 
-		// shine some background stars.
-		if (grid[i].phase != PHASE_SOLID && grid[i].phase != PHASE_POWDER )
-		{
-			Color star = backgroundStars[i];
-			ppColor = filterColor(star, ppColor);
-		}
+
 
 		// apply changes.
 		colorGrid[ b_offset + 0 ] = ppColor.r;
@@ -1531,8 +1584,20 @@ void updateDaytime()
 	{
 		timeOfDay += 0.01f;
 	}
-	fsundirection =  1.5 * const_pi + (sin(timeOfDay) ) ;
-	int effectiveTemp = sunlightTemp - (sunlightTemp * abs (sin(timeOfDay)) );
+
+	if (timeOfDay >  const_tau)
+	{
+		timeOfDay = 0.0f;
+	}
+
+	fsundirection =  1.5 * const_pi + (sin(timeOfDay) * (0.5 * const_pi) ) ;
+
+
+	int effectiveTemp = sunlightTemp - (sunlightTemp *  abs(sin(timeOfDay))    );
+	 sunlightBrightness = starBrightness - ((starBrightness *  abs(sin(timeOfDay))   ));
+
+	// printf("et %i \n",effectiveTemp);
+
 	sunlightColor = blackbodyLookup(effectiveTemp);
 
 }
@@ -1607,6 +1672,18 @@ void thread_handleEdges()
 }
 
 
+// // performs some of the duties of thread_sector, for if the physics processing is turned off.
+// void thread_fastUpdate()
+// {
+
+
+// 	// just render the material, seed, and life color grids the way nature intended.
+
+
+
+// }
+
+
 
 // this thread is run once per frame.
 void thread_master()
@@ -1624,19 +1701,48 @@ void thread_master()
 
 
 
-	boost::thread t1{  thread_sector, 0                    , (1 * (totalSize / 8))  } ;
-	boost::thread t2{  thread_sector, 1 * (totalSize / 8)  , (2 * (totalSize / 8))  } ;
-	boost::thread t3{  thread_sector, 2 * (totalSize / 8)  , (3 * (totalSize / 8))  } ;
-	boost::thread t4{  thread_sector, 3 * (totalSize / 8)  , (4 * (totalSize / 8))  } ;
-	boost::thread t5{  thread_sector, 4 * (totalSize / 8)  , (5 * (totalSize / 8))  } ;
-	boost::thread t6{  thread_sector, 5 * (totalSize / 8)  , (6 * (totalSize / 8))  } ;
-	boost::thread t7{  thread_sector, 6 * (totalSize / 8)  , (7 * (totalSize / 8))  } ;
-	boost::thread t8{  thread_sector, 7 * (totalSize / 8)  , ((totalSize )       )  } ;
 
+
+	if (doWeather)
+	{
+
+		boost::thread t1{  thread_sector, 0                    , (1 * (totalSize / 8))  } ;
+		boost::thread t2{  thread_sector, 1 * (totalSize / 8)  , (2 * (totalSize / 8))  } ;
+		boost::thread t3{  thread_sector, 2 * (totalSize / 8)  , (3 * (totalSize / 8))  } ;
+		boost::thread t4{  thread_sector, 3 * (totalSize / 8)  , (4 * (totalSize / 8))  } ;
+		boost::thread t5{  thread_sector, 4 * (totalSize / 8)  , (5 * (totalSize / 8))  } ;
+		boost::thread t6{  thread_sector, 5 * (totalSize / 8)  , (6 * (totalSize / 8))  } ;
+		boost::thread t7{  thread_sector, 6 * (totalSize / 8)  , (7 * (totalSize / 8))  } ;
+		boost::thread t8{  thread_sector, 7 * (totalSize / 8)  , ((totalSize )       )  } ;
+
+		t8.join();
+
+		t7.join();
+
+		t6.join();
+
+		t5.join();
+
+		t4.join();
+
+		t3.join();
+
+		t2.join();
+
+		t1.join();
+
+	}
+// 	else {
+
+// // thread_fastUpdate
+
+// 		boost::thread t123 { thread_fastUpdate };
+// 		t123.join();
+// 	}
 
 	boost::thread t12 { thread_seeds };
 	boost::thread t11 { thread_life};
-	boost::thread t101 { thread_plantDrawing};
+	boost::thread t101 { thread_plantDrawing };
 	t101.join();
 
 	boost::thread t811{  thread_handleEdges } ;
@@ -1654,21 +1760,7 @@ void thread_master()
 
 
 
-	t8.join();
 
-	t7.join();
-
-	t6.join();
-
-	t5.join();
-
-	t4.join();
-
-	t3.join();
-
-	t2.join();
-
-	t1.join();
 
 #ifdef THREAD_TIMING_READOUT
 	auto end = std::chrono::steady_clock::now();
@@ -2977,6 +3069,8 @@ void measureAnimalQualities(unsigned int currentPosition)
 	// some attributes depend on the ratio between body parts, and some are absolute.
 	animals[animalIndex].attack        = (animals[animalIndex].totalWeapon                                 ) * (1.0f + (animals[animalIndex].totalHeart / (animals[animalIndex].totalWeapon + 1.0f)));
 	animals[animalIndex].mobility      = (animals[animalIndex].totalMuscle / animals[animalIndex].totalArea) * (1.0f + (animals[animalIndex].totalHeart / (animals[animalIndex].totalMuscle + 1.0f))); //1 + (mobilityRatio * 2) ; // being about 50% muscle grants you an extra move square
+	if (animals[animalIndex].mobility < 0.1f) { animals[animalIndex].mobility  = 0.1f;}
+
 	animals[animalIndex].hitPoints     = (animals[animalIndex].totalLiver  + 1.0f)                           * (1.0f + (animals[animalIndex].totalHeart / (animals[animalIndex].totalLiver  + 1.0f )));
 	animals[animalIndex].maxHitPoints  =  animals[animalIndex].hitPoints;
 
@@ -3825,16 +3919,18 @@ void createWorld( unsigned int world)
 
 		resetMaterials(MATERIALS_STANDARD);
 		sunlightTemp = 2000;
-		sunlightBrightness = 300;
+		starBrightness = 300;
 		defaultTemperature = 200;
 		defaultPressure = 1000;
+		defaultPlant = plant_Pycad;
+		defaultSkyColor = color_white_halfClear;
 
 		for (int i = 0; i < totalSize; ++i)
 		{
 			// // a layer of stone on the bottom
 			if (i > 0 && i < 20 * sizeX)
 			{
-				setParticle(6, i);
+				setParticle(4, i);
 			}
 
 			// a dollop of super hot rock
@@ -3894,11 +3990,11 @@ void createWorld( unsigned int world)
 	{
 		resetMaterials(MATERIALS_TEMPLE);
 		sunlightTemp = 5900;
-		sunlightBrightness = 200;
+		starBrightness = 200;
 		defaultTemperature = 300;
 		defaultPressure = 1000;
-
-
+		defaultSkyColor = color_darkred;
+		defaultPlant = plant_ParbasarbTree;
 
 		for (int i = 0; i < totalSize; ++i)
 		{
@@ -3949,9 +4045,12 @@ void createWorld( unsigned int world)
 	{
 		resetMaterials(MATERIALS_STANDARD);
 		sunlightTemp = 5900;
-		sunlightBrightness = 200;
+		starBrightness = 200;
 		defaultTemperature = 300;
 		defaultPressure = 1000;
+		defaultPlant = plant_Worrage;
+		defaultSkyColor = color_lightblue;
+
 		for (int i = 0; i < totalSize; ++i)
 		{
 			// mixed rocks
@@ -4027,9 +4126,9 @@ void createWorld( unsigned int world)
 		sunlightTemp       = RNG() * 10000;
 		defaultTemperature = RNG() * 1000;
 		defaultPressure    = RNG() * 2000;
+		defaultSkyColor = Color( RNG(), RNG(), RNG(), RNG() );
 
-
-		sunlightBrightness = 100 + (RNG() * 1000 );
+		starBrightness = 100 + (RNG() * 1000 );
 
 		for (unsigned int k = 0; k < materials.size(); ++k)
 		{
@@ -4072,6 +4171,23 @@ void createWorld( unsigned int world)
 			backgroundStars[i] = randomStarColor;
 			// memcpy( &(backgroundSky[ a_offset ]), &randomStarColor, sizeof(Color) );
 		}
+
+
+
+		// compute the background sky.
+
+unsigned int y = i/ sizeX;
+		backgroundSky[i] = Color ( 
+			defaultSkyColor.r + (y * ( ( defaultSkyColor.r) / sizeY )  ) ,
+			defaultSkyColor.g + (y * ( ( defaultSkyColor.g) / sizeY )  ) ,
+			defaultSkyColor.b + (y * ( ( defaultSkyColor.b) / sizeY )  ) ,
+			defaultSkyColor.a
+
+
+
+
+		     );
+
 	}
 }
 
@@ -4115,11 +4231,44 @@ bool animalCanMove(unsigned int i, unsigned int neighbour)
 		}
 		if (  (animals[animalIndex].movementFlags & MOVEMENT_INPLANTS ) == MOVEMENT_INPLANTS   )
 		{
-			if (lifeGrid[neighbour].identity > 0x00)
+
+			// move only into the same plant you're already on.
+			bool onAPlant = false;
+
+			if (lifeGrid[i].identity > 0x00)
 			{
-				animals[animalIndex].steady  = true;
-				return true;
+				onAPlant = true;
 			}
+
+
+			if (onAPlant)
+			{
+
+				if (lifeGrid[neighbour].identity > 0x00 &&
+				        (lifeGrid[neighbour].identity == lifeGrid[i].identity || extremelyFastNumberFromZeroTo(32) ) // small chance to climb from plant to plant.
+				   )
+				{
+					animals[animalIndex].steady  = true;
+					return true;
+				}
+
+			}
+			else
+			{
+
+
+				if (lifeGrid[neighbour].identity > 0x00 )
+				{
+					animals[animalIndex].steady  = true;
+					return true;
+				}
+
+			}
+
+
+
+
+
 		}
 		if (  (animals[animalIndex].movementFlags & MOVEMENT_INLIQUID ) == MOVEMENT_INLIQUID   )
 		{
@@ -5147,6 +5296,20 @@ void thread_graphics()
 		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, colorGrid, GL_DYNAMIC_DRAW );
 		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
 
+
+		if (!doWeather)
+		{
+
+			glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, lifeColorGrid, GL_DYNAMIC_DRAW );
+			glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
+
+			glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, seedColorGrid, GL_DYNAMIC_DRAW );
+			glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
+
+
+		}
+
+
 		glBufferData( GL_ARRAY_BUFFER, sizeof( float  ) * totalNumberOfFields, animationGrid, GL_DYNAMIC_DRAW );
 		glDrawArrays(GL_POINTS, 0,  nVertsToRenderThisTurn);
 
@@ -5813,7 +5976,7 @@ void drawPlantFromSeed( std::string genes, unsigned int i )
 	origin = cursor_grid;
 	prevCursor_grid = cursor_grid;
 	accumulatedRotation = (0.5 * const_pi);
-	cursor_germinationMaterial =  0;
+	cursor_germinationMaterial =  4;
 	cursor_energySource = ENERGYSOURCE_LIGHT;
 
 	float randomN =  extremelyFastNumberFromZeroTo(100) ;
@@ -5903,7 +6066,7 @@ void thread_life()
 			{
 				if ( lifeGrid[i].energySource == ENERGYSOURCE_LIGHT ) // if the plant is illuminated, it receives energy.
 				{
-					lifeGrid[i].energy += weatherGrid[weatherGridI].color.a / lightEfficiency;
+					lifeGrid[i].energy += weatherGrid[weatherGridI].color.a * lightEfficiency;
 				}
 			}
 
@@ -5999,32 +6162,71 @@ void thread_seeds()
 #endif
 	for (unsigned int i = (sizeX + 1); i < (totalSize - (sizeX + 1)); ++i)
 	{
+		unsigned int currentPosition = i;
+
 		// SEEDS. Some of the particles on the seed grid are seeds that fall downwards.
 		if (seedGrid[i].stage == STAGE_FRUIT)
 		{
-			unsigned int j = extremelyFastNumberFromZeroTo(4);
-			unsigned int neighbour = i + neighbourOffsets[j];
-			if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS  )
+
+
+			// // if ()
+			// unsigned int neighbour = neighbourOffsets[ weatherGrid[weatherGridI].direction ] + currentPosition;
+			// if (neighbour >= totalSize) {neighbour = currentPosition;}
+			// // conductHeat(currentPosition, neighbour);
+			// if (grid[neighbour].phase  == PHASE_VACUUM || (grid[neighbour].phase == PHASE_GAS) || PHASE_LIQUID )
+			// {
+			// 	// swapParticle(currentPosition, neighbour);
+			// 	currentPosition = neighbour;
+			// // }
+
+
+
+			unsigned int j = extremelyFastNumberFromZeroTo(4); // liquid-like motion allows some horizontal travel.
+			unsigned int neighbour = currentPosition + neighbourOffsets[j];
+			if (grid[neighbour].phase == PHASE_VACUUM || grid[neighbour].phase == PHASE_GAS || grid[neighbour].phase == PHASE_LIQUID )
 			{
-				swapSeedParticle( i, neighbour );
-				continue;
+				swapSeedParticle(currentPosition, neighbour );
+				currentPosition = neighbour;
+				// continue;
 			}
+
+
+
 			else if (grid[neighbour].material == seedGrid[i].germinationMaterial  || (!useGerminationMaterial)  )
 			{
 
+
+				bool touchingSomethingSolid = false;
+
+				// search neighbours, plant must be touching something solid if it is to grow
+				for (int k = 0; k < N_NEIGHBOURS; ++k)
+				{
+					unsigned int neighbour2 = currentPosition + neighbourOffsets[k];
+					if (grid[neighbour2].phase == PHASE_SOLID || grid[neighbour2].phase == PHASE_POWDER )
+					{
+						touchingSomethingSolid = true;
+						break;
+					}
+				}
+
+
+				if (touchingSomethingSolid)
+				{
+
 #ifdef PLANT_DRAWING_READOUT
-				printf("germinated\n");
+					printf("germinated\n");
 #endif
-				seedGrid[i].stage = STAGE_SPROUT;
+					seedGrid[currentPosition].stage = STAGE_SPROUT;
+				}
 			}
 			continue;
 		}
 
-		else if (seedGrid[i].stage == STAGE_BUD)
+		else if (seedGrid[currentPosition].stage == STAGE_BUD)
 		{
 			unsigned int j = extremelyFastNumberFromZeroTo(7);
-			unsigned int neighbour = i + neighbourOffsets[j];
-			if (lifeGrid[neighbour].identity == seedGrid[i].parentIdentity)
+			unsigned int neighbour = currentPosition + neighbourOffsets[j];
+			if (lifeGrid[neighbour].identity == seedGrid[currentPosition].parentIdentity)
 			{
 				if (lifeGrid[neighbour].energy > 0)
 				{
@@ -6033,9 +6235,9 @@ void thread_seeds()
 				}
 			}
 
-			if (seedGrid[i].energy >= 0)
+			if (seedGrid[currentPosition].energy >= 0)
 			{
-				seedGrid[i].stage = STAGE_FRUIT;
+				seedGrid[currentPosition].stage = STAGE_FRUIT;
 
 #ifdef PLANT_DRAWING_READOUT
 				printf("fruited\n");
@@ -6044,16 +6246,16 @@ void thread_seeds()
 			continue;
 		}
 
-		else if (seedGrid[i].stage == STAGE_ANIMAL)
+		else if (seedGrid[currentPosition].stage == STAGE_ANIMAL)
 		{
-			animalTurn(i);
+			animalTurn(currentPosition);
 			continue;
 		}
 
-		else if (seedGrid[i].stage == STAGE_ANIMALEGG)
+		else if (seedGrid[currentPosition].stage == STAGE_ANIMALEGG)
 		{
 			// animalTurn(i);
-			drawAnimalFromSeed(i);
+			drawAnimalFromSeed(currentPosition);
 
 			continue;
 		}
@@ -6061,9 +6263,9 @@ void thread_seeds()
 
 
 
-		else if (seedGrid[i].stage == STAGE_GPLANTSHOOT)
+		else if (seedGrid[currentPosition].stage == STAGE_GPLANTSHOOT)
 		{
-			drawGplant(i);
+			drawGplant(currentPosition);
 			continue;
 		}
 
@@ -6094,59 +6296,59 @@ void insertRandomSeed()
 
 		if (x == targetX && y == targetY)
 		{
-			std::string exampleSentence = std::string("");
+			// std::string exampleSentence = std::string("");
 
-			unsigned int randomPlantIndex = extremelyFastNumberFromZeroTo(7);
+			// unsigned int randomPlantIndex = extremelyFastNumberFromZeroTo(7);
 
-			switch (randomPlantIndex)
-			{
-			case 0:
-			{
-				exampleSentence = plant_Pycad;
-				break;
-			}
-			case 1:
-			{
-				exampleSentence = plant_Lomondra;
-				break;
-			}
-			case 2:
-			{
-				exampleSentence = plant_Worrage;
-				break;
-			}
-			case 3:
-			{
-				exampleSentence = plant_MilkWombler;
-				break;
-			}
-			case 4:
-			{
-				exampleSentence = plant_SpleenCoral;
-				break;
-			}
-			case 5:
-			{
-				exampleSentence = plant_ParbasarbTree;
-				break;
-			}
-			case 6:
-			{
-				exampleSentence = plant_LardGrass;
-				break;
-			}
-			case 7:
-			{
-				exampleSentence = plant_Primordial;
-				break;
-			}
-			}
+			// switch (randomPlantIndex)
+			// {
+			// case 0:
+			// {
+			// 	exampleSentence = plant_Pycad;
+			// 	break;
+			// }
+			// case 1:
+			// {
+			// 	exampleSentence = plant_Lomondra;
+			// 	break;
+			// }
+			// case 2:
+			// {
+			// 	exampleSentence = plant_Worrage;
+			// 	break;
+			// }
+			// case 3:
+			// {
+			// 	exampleSentence = plant_MilkWombler;
+			// 	break;
+			// }
+			// case 4:
+			// {
+			// 	exampleSentence = plant_SpleenCoral;
+			// 	break;
+			// }
+			// case 5:
+			// {
+			// 	exampleSentence = plant_ParbasarbTree;
+			// 	break;
+			// }
+			// case 6:
+			// {
+			// 	exampleSentence = plant_LardGrass;
+			// 	break;
+			// }
+			// case 7:
+			// {
+			// 	exampleSentence = plant_Primordial;
+			// 	break;
+			// }
+			// }
 
 			unsigned int randomGerminationMaterial = 0;
 			if (materials.size() > 0)
 			{
 				randomGerminationMaterial = extremelyFastNumberFromZeroTo(materials.size() - 1);
-				setSeedParticle(exampleSentence, newIdentity() , 0, i, randomGerminationMaterial);
+				setSeedParticle(defaultPlant, newIdentity() , 0, i, randomGerminationMaterial);
 				seedGrid[i].stage = STAGE_FRUIT;
 			}
 		}
@@ -6201,8 +6403,8 @@ void insertRandomAnimal ()
 
 	// std::string potato_tornado = randomString(32);
 
-
-	setAnimal( i, randomString(32) );
+	seedGrid[i].genes = randomString(32);
+	setAnimal( i, seedGrid[i].genes );
 	// 	}
 	// }
 }

@@ -69,7 +69,7 @@ Color averageColor (Color a, Color b)
 // in life, this is like two lights shining together. the result is a mix of both, depending on their strengths.
 Color addColor (Color a, Color b)
 {
-	Color c = Color(0.0f, 0.0f, 0.0f, 0.0f);
+	Color c ;//= Color(0.0f, 0.0f, 0.0f, 0.0f);
 	c.r = (a.r * a.a) + (b.r * b.a);
 	c.g = (a.g * a.a) + (b.g * b.a);
 	c.b = (a.b * a.a) + (b.b * b.a);
@@ -83,11 +83,11 @@ Color addColor (Color a, Color b)
 // in life, this is like colored light falling on a colored object. If they are the same color, the result will be brighter.
 Color multiplyColor (Color a, Color b)
 {
-	Color c = Color(0.0f, 0.0f, 0.0f, 0.0f);
+	Color c ;//= Color(0.0f, 0.0f, 0.0f, 0.0f);
 	c.r = (a.r * a.a) * (b.r * b.a);
 	c.g = (a.g * a.a) * (b.g * b.a);
 	c.b = (a.b * a.a) * (b.b * b.a);
-	c.a = b.a ;
+	c.a = a.a * b.a ;
 	return clampColor(c);
 }
 
@@ -96,7 +96,7 @@ Color multiplyColor (Color a, Color b)
 Color filterColor( Color a, Color b)
 {
 
-	Color c = Color(0.0f, 0.0f, 0.0f, 0.0f);
+	Color c ;//= Color(0.0f, 0.0f, 0.0f, 0.0f);
 
 	c.r = (b.r ) + ((1.0f - (b.a)) * (a.r));
 	c.g = (b.g ) + ((1.0f - (b.a)) * (a.g));
@@ -105,6 +105,23 @@ Color filterColor( Color a, Color b)
 
 	return clampColor(c);
 
+}
+
+// mix A and B
+Color mixColor (Color a, Color b, float mix)
+{
+
+	if (mix > 1.0f) {mix = 1.0f;}
+	else if (mix < 0.0f) { mix = 0.0f;}
+
+	Color c;
+
+	c.r = (a.r * mix) + ( b.r * (1.0f - mix) );
+	c.g = (a.g * mix) + ( b.g * (1.0f - mix) );
+	c.b = (a.b * mix) + ( b.b * (1.0f - mix) );
+	c.a = (a.a * mix) + ( b.a * (1.0f - mix) );
+
+	return c;
 }
 
 
@@ -393,7 +410,7 @@ void postDraw ()
 		viewPanSetpointX = (playerPosition) % sizeX;
 		viewPanSetpointY = (playerPosition) / sizeX;
 	}
-	
+
 	float panDifferenceX = (viewPanX - viewPanSetpointX);
 	float panResponseX = (panDifferenceX * -1) / cameraTrackingResponse;
 	float panDifferenceY = (viewPanY - viewPanSetpointY);
