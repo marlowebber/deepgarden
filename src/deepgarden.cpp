@@ -1488,7 +1488,7 @@ void materialPostProcess(unsigned int i, unsigned int x, unsigned int y, unsigne
 		// clouds
 		if (grid[i].phase == PHASE_VACUUM)
 		{
-			float cloudyness =  ((abs(weatherGrid[weatherGridI].saturation ) * 10.0f ) );
+			float cloudyness =  ((abs(weatherGrid[weatherGridI].saturation ) * 10.0f )  );
 			Color cloudColor = color_white;// weatherGrid[weatherGridI].color ;//multiplyColor(color_white, weatherGrid[weatherGridI].color);
 			cloudColor.a = cloudyness;
 			cloudColor = clampColor(cloudColor);
@@ -1820,7 +1820,6 @@ void thread_sector( unsigned int from, unsigned int to )
 
 
 
-			 materialHeatConduct( currentPosition);
 
 
 #ifdef ROUTINE_SUBDIVIDE
@@ -1831,9 +1830,13 @@ void thread_sector( unsigned int from, unsigned int to )
 #endif
 			materialPostProcess( currentPosition, x, y, weatherGridI, weatherGridX, weatherGridY);
 
-			// couple the material grid temp to the weather grid temp
+			// couple the material grid temp to the weather grid temp and perform heat conduction
 			if (grid[currentPosition].phase != PHASE_VACUUM)
 			{
+
+
+				materialHeatConduct( currentPosition);
+
 				int gridCouplingAmount = ( weatherGrid[weatherGridI].temperature  - (grid[currentPosition].temperature * temperatureScale) ) ;
 				const unsigned int heatCouplingConstant = 2;
 				grid[currentPosition].temperature += (gridCouplingAmount / temperatureScale)  >> heatCouplingConstant ;
@@ -4377,7 +4380,7 @@ void createWorld( unsigned int world)
 		starBrightness = 200;
 		defaultTemperature = 300;
 		defaultPressure = 1000;
-		defaultPlant = plant_Worrage;
+		defaultPlant = plant_Primordial;
 		defaultSkyColor = color_lightblue;
 
 		for (int i = 0; i < totalSize; ++i)
