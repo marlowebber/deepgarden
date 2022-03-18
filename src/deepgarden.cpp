@@ -27,7 +27,7 @@ const bool waterCycle = true;
 // const bool subdivide  = false;
 
 
-// #define ROUTINE_SUBDIVIDE
+#define ROUTINE_SUBDIVIDE
 
 // preset colors available for painting.
 const Color color_lightblue          = Color( 0.1f, 0.3f, 0.65f, 1.0f );
@@ -617,6 +617,34 @@ void setParticle(unsigned int material, unsigned int i)
 	memcpy( &colorGrid[ a_offset ], & (materials[material].color), 16 );
 }
 
+
+void conductHeat(unsigned int currentPosition, unsigned int neighbour)
+{
+	// if (grid[neighbour].phase !=)
+	// Exchange heat by conduction.
+	if (grid[neighbour].phase != PHASE_VACUUM)
+	{
+		int avgTemp = (((grid[currentPosition].temperature ) - (grid[neighbour].temperature)) ) ;
+		avgTemp = avgTemp >> materials[ grid[neighbour].material ].insulativity;
+		grid[neighbour].temperature += avgTemp;
+		grid[currentPosition].temperature -= avgTemp;
+	}
+}
+
+void materialHeatConduct(unsigned int currentPosition)
+{
+	for (unsigned int j = 0; j < N_NEIGHBOURS; j += 2)
+	{
+		unsigned int neighbour = currentPosition + neighbourOffsets[j];
+
+		if (neighbour < totalSize)
+		{
+			conductHeat(currentPosition, neighbour);
+		}
+	}
+}
+
+
 void materialPhaseChange( unsigned int currentPosition,  unsigned int weatherGridI  )
 {
 
@@ -892,18 +920,7 @@ void materialPhaseChange( unsigned int currentPosition,  unsigned int weatherGri
 	}
 }
 
-void conductHeat(unsigned int currentPosition, unsigned int neighbour)
-{
-	// if (grid[neighbour].phase !=)
-	// Exchange heat by conduction.
-	if (grid[neighbour].phase != PHASE_VACUUM)
-	{
-		int avgTemp = (((grid[currentPosition].temperature ) - (grid[neighbour].temperature)) ) ;
-		avgTemp = avgTemp >> materials[ grid[neighbour].material ].insulativity;
-		grid[neighbour].temperature += avgTemp;
-		grid[currentPosition].temperature -= avgTemp;
-	}
-}
+
 
 // The classic falling sand physics thread.
 void materialPhysics (unsigned int currentPosition, unsigned int weatherGridI)
@@ -915,7 +932,7 @@ void materialPhysics (unsigned int currentPosition, unsigned int weatherGridI)
 	{
 		unsigned int neighbour = neighbourOffsets[ weatherGrid[weatherGridI].direction ] + currentPosition;
 		if (neighbour >= totalSize) {neighbour = currentPosition;}
-		conductHeat(currentPosition, neighbour);
+		// conductHeat(currentPosition, neighbour);
 		if (grid[neighbour].phase  == PHASE_VACUUM || (grid[neighbour].phase == PHASE_GAS) )
 		{
 			swapParticle(currentPosition, neighbour);
@@ -931,7 +948,7 @@ void materialPhysics (unsigned int currentPosition, unsigned int weatherGridI)
 			neighbour = neighbourOffsets[ weatherGrid[weatherGridI].direction  ] + currentPosition;
 		}
 		if (neighbour >= totalSize) {neighbour = currentPosition;}
-		conductHeat(currentPosition, neighbour);
+		// conductHeat(currentPosition, neighbour);
 		if ((    grid[neighbour].phase == PHASE_VACUUM) ||
 		        (grid[neighbour].phase == PHASE_GAS)    ||
 		        (grid[neighbour].phase == PHASE_LIQUID)     )
@@ -950,7 +967,7 @@ void materialPhysics (unsigned int currentPosition, unsigned int weatherGridI)
 			neighbour = neighbourOffsets[ weatherGrid[weatherGridI].direction  ] + currentPosition;
 		}
 		if (neighbour >= totalSize) {neighbour = currentPosition;}
-		conductHeat(currentPosition, neighbour);
+		// conductHeat(currentPosition, neighbour);
 		if ((    grid[neighbour].phase == PHASE_VACUUM) ||
 		        (grid[neighbour].phase == PHASE_GAS)    ||
 		        (grid[neighbour].phase == PHASE_LIQUID)  )
@@ -965,7 +982,7 @@ void materialPhysics (unsigned int currentPosition, unsigned int weatherGridI)
 	{
 		unsigned int neighbour = neighbourOffsets[ random ] + currentPosition;
 		if (neighbour >= totalSize) {neighbour = currentPosition;}
-		conductHeat(currentPosition, neighbour);
+		// conductHeat(currentPosition, neighbour);
 		if (weatherGrid[weatherGridI].velocityAbs > 50000)
 		{
 			neighbour = neighbourOffsets[ weatherGrid[weatherGridI].direction  ] + currentPosition;
@@ -1755,8 +1772,12 @@ void thread_sector( unsigned int from, unsigned int to )
 				// saturationLimit *= (weatherGridScale * weatherGridScale);
 				// saturationLimit = saturationLimit / (weatherGrid[weatherGridI].pressure / 1000);
 
-				materialPhysics( currentPosition , weatherGridI);
-
+#ifdef ROUTINE_SUBDIVIDE
+				if (weatherGrid[weatherGridI].newbiggestPhase != weatherGridSquareScale)
+				{
+					materialPhysics( currentPosition , weatherGridI);
+				}
+#endif
 
 			}
 
@@ -1796,7 +1817,18 @@ void thread_sector( unsigned int from, unsigned int to )
 			{
 				materialHeatGlow(    currentPosition, weatherGridI);
 			}
-			materialPhaseChange( currentPosition , weatherGridI);
+
+
+
+			 materialHeatConduct( currentPosition);
+
+
+#ifdef ROUTINE_SUBDIVIDE
+			if (weatherGrid[weatherGridI].newbiggestPhase != weatherGridSquareScale)
+			{
+				materialPhaseChange( currentPosition , weatherGridI);
+			}
+#endif
 			materialPostProcess( currentPosition, x, y, weatherGridI, weatherGridX, weatherGridY);
 
 			// couple the material grid temp to the weather grid temp
