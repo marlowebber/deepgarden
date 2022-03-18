@@ -24,6 +24,10 @@ const bool advanceDay = true;
 const bool weatherUseTake = true;
 const bool sunlightDeliversHeat = false;
 const bool waterCycle = true;
+// const bool subdivide  = false;
+
+
+// #define ROUTINE_SUBDIVIDE
 
 // preset colors available for painting.
 const Color color_lightblue          = Color( 0.1f, 0.3f, 0.65f, 1.0f );
@@ -51,7 +55,7 @@ const Color color_brightred          = Color( 0.9f, 0.1f, 0.0f, 1.0f);
 const Color color_darkred            = Color( 0.5f, 0.05f, 0.0f, 1.0f);
 const Color color_brown              = Color(  0.25f, 0.1f, 0.0f, 1.0f );
 
-const Color color_nightLight         = Color(1.0f, 1.0f, 1.0f, 0.3f);
+const Color color_nightLight         = Color(1.0f, 1.0f, 1.0f, 0.15f);
 
 // set the dimensions of the world. totalsize is used for the finely detailed grids
 const unsigned int totalSize = sizeX * sizeY;
@@ -465,6 +469,24 @@ struct Weather
 	unsigned int direction;
 	unsigned int velocityAbs;
 
+
+#ifdef ROUTINE_SUBDIVIDE
+
+	// bool containsDetail;
+	unsigned int biggestMaterial;
+	unsigned int biggestPhase;
+	unsigned int containedMaterial;
+	unsigned int containedPhase ;
+
+
+
+	unsigned int newbiggestMaterial;
+	unsigned int newbiggestPhase;
+	unsigned int newcontainedMaterial;
+	unsigned int newcontainedPhase ;
+
+#endif
+
 	Weather();
 };
 
@@ -489,6 +511,21 @@ Weather::Weather()
 	this-> newlightBlockedSquares = 0.0f;
 	this-> newairBlockedSquares   = 0.0f;
 
+
+	// this->containsDetail = false;
+
+#ifdef ROUTINE_SUBDIVIDE
+	this->biggestMaterial = 0;
+	this->biggestPhase = 0;
+	this->containedMaterial = MATERIAL_VACUUM;
+	this->containedPhase = PHASE_VACUUM;
+
+
+	this->newbiggestMaterial = 0;
+	this->newbiggestPhase = 0;
+	this->newcontainedMaterial = MATERIAL_VACUUM;
+	this->newcontainedPhase = PHASE_VACUUM;
+#endif
 }
 
 // the light grid holds lighting information. it is not drawn directly but informs what will be drawn on the color grid.
@@ -1167,6 +1204,8 @@ void airflow( unsigned int weatherGridI)
 	{
 		weatherGrid[weatherGridI].velocityX = 0;
 		weatherGrid[weatherGridI].velocityY = 0;
+
+		weatherGrid[weatherGridI].saturation = defaultHumidity;
 	}
 }
 
@@ -1354,14 +1393,51 @@ Color blackbodyLookup(  int temperature )
 // }
 
 // updates a location on the color grid with a material's new color information, based on phase and temperature.
-void materialPostProcess(unsigned int i, unsigned int x, unsigned int y, unsigned int weatherGridI)
+void materialPostProcess(unsigned int i, unsigned int x, unsigned int y, unsigned int weatherGridI, unsigned int weatherGridX, unsigned int weatherGridY)
 {
+
+
+
+	// if (subdivide)
+	// {
+
+#ifdef ROUTINE_SUBDIVIDE
+	// if there is just a single contained phase and material, you can skip pretty much this whole step and just copy color from the 1st square in this weather cell.
+	if (weatherGrid[weatherGridI].biggestPhase == (weatherGridSquareScale ) && weatherGrid[weatherGridI].biggestMaterial == (weatherGridSquareScale))
+	{
+		unsigned int cellOriginX = weatherGridX * weatherGridScale;
+		unsigned int cellOriginY = weatherGridY * weatherGridScale;
+		unsigned int cellOriginI = (cellOriginY * sizeX) + cellOriginX; // find the first material square in this weather square and copy it
+		if (! (cellOriginI == i)  ) // if this square is the first, you still have to compute it. If it's not, you can just copy.
+		{
+			unsigned int b_offset = i * numberOfFieldsPerVertex;
+			unsigned int cellOrigin_offset = cellOriginI * numberOfFieldsPerVertex;
+			memcpy( &colorGrid[ b_offset ], &colorGrid[cellOrigin_offset], sizeof(Color) );
+			return;
+		}
+	}
+
+#endif
+
+
 	if (grid[i].material  < materials.size() && weatherGridI < weatherGridSize)
 	{
 		unsigned int b_offset = i * numberOfFieldsPerVertex;
-		Color ppColor = color_clear; //  mixColor( backgroundSky[i], color_clear, abs(cos(timeOfDay)) );// backgroundStars[i];
 
-		// then, we will do everything which reflects light, but does not emit it.
+
+
+
+		// BACKGROUND LIGHT // emitted so its not multiplied, but it is blocked by the subject!
+		Color backgroundColor = mixColor( backgroundStars[i], backgroundSky[i], backgroundMixRatioSin );// backgroundStars[i];
+
+
+
+
+
+
+
+		// DIFFUSE LIGHT
+		Color diffuse = color_clear;
 		Color materialColor = materials[ grid[i].material ].color ;
 
 		// different shades for material phases, a nice visual detail
@@ -1375,7 +1451,7 @@ void materialPostProcess(unsigned int i, unsigned int x, unsigned int y, unsigne
 			{
 				materialColor = addColor(materialColor, phaseTingePowder);
 			}
-			ppColor = filterColor(ppColor, materialColor);
+			diffuse = filterColor(diffuse, materialColor);
 		}
 
 		// paint in the living plants and their seeds.
@@ -1387,77 +1463,55 @@ void materialPostProcess(unsigned int i, unsigned int x, unsigned int y, unsigne
 		}
 		memcpy( &life_color, &lifeColorGrid[ b_offset ] , sizeof(Color) );
 		life_color = filterColor( life_color, seed_color );
-		ppColor = filterColor( ppColor, life_color );
+		diffuse = filterColor( diffuse, life_color );
 
 
 
 
-		//clouds.
-		// float velocityAbs= (abs(weatherGrid[weatherGridI].velocityX) + abs(weatherGrid[weatherGridI].velocityY));
-		// float pressureAbs = abs(weatherGrid[weatherGridI].pressure);
+		// clouds
+		if (grid[i].phase == PHASE_VACUUM)
+		{
+			float cloudyness =  ((abs(weatherGrid[weatherGridI].saturation ) * 10.0f ) );
+			Color cloudColor = color_white;// weatherGrid[weatherGridI].color ;//multiplyColor(color_white, weatherGrid[weatherGridI].color);
+			cloudColor.a = cloudyness;
+			cloudColor = clampColor(cloudColor);
+			diffuse = filterColor(diffuse, cloudColor);
+
+		}
 
 
-
-		// printf("pshabs %f\n", pressureAbs);
-		// ppColor = mixColor(color_white,  ppColor , ((abs(weatherGrid[weatherGridI].saturation ) * 1000.0f ) ) );
-
-
-
-
-
+		float hardAlpha = diffuse.a;
 
 		// diffuse drawing now complete.
-		ppColor = multiplyColor(ppColor, weatherGrid[weatherGridI].color);
+		diffuse = multiplyColor(diffuse, weatherGrid[weatherGridI].color);
 
-
-		// now we will do the things that emit light.
-
-
-		// ppColor =  filterColor (backgroundStars[i], ppColor  );
+		diffuse.a = hardAlpha;
 
 
 
 
 
-
-
-
-		// if the particle is liquid, get a reflection!
+		// REFLECTED LIGHT
+		Color specular = color_clear;
 		if (grid[i].phase == PHASE_LIQUID)
 		{
 			unsigned int currentPosition = i;
 			unsigned int reflectionHeight = 0;
 			while (true)
 			{
-
 				unsigned int neighbour = currentPosition + neighbourOffsets[6];
-
 				if (grid[neighbour].phase != PHASE_LIQUID || neighbour > totalSize)
 				{
-
 					break;
-
 				}
-
 				currentPosition = neighbour;
 				reflectionHeight++;
 			}
-
-
-
-
 			unsigned int reflectedPoint = ( (y + (2 * reflectionHeight) ) * sizeX) + x;
-
-
 			if (reflectedPoint < totalSize)
 			{
 				unsigned int r_offset = ( reflectedPoint )  * numberOfFieldsPerVertex;
-				Color sample ;
-
-				memcpy( &sample, &colorGrid[ r_offset ] , sizeof(Color) );
-
-				ppColor = addColor(ppColor, sample );
-
+				memcpy( &specular, &colorGrid[ r_offset ] , sizeof(Color) );
 			}
 		}
 
@@ -1466,97 +1520,13 @@ void materialPostProcess(unsigned int i, unsigned int x, unsigned int y, unsigne
 
 
 
-
-
-// // shine some background stars.
-		if (grid[i].phase == PHASE_VACUUM)
-		{
-
-
-
-
-
-
-			// printf("pshabs %f\n", pressureAbs);
-
-			float cloudyness =  ((abs(weatherGrid[weatherGridI].saturation ) * 10.0f ) );
-
-			Color cloudColor ;//= color_white;// weatherGrid[weatherGridI].color ;//multiplyColor(color_white, weatherGrid[weatherGridI].color);
-
-			cloudColor.r =  weatherGrid[weatherGridI].color.r * weatherGrid[weatherGridI].color.a;
-			cloudColor.g =  weatherGrid[weatherGridI].color.g * weatherGrid[weatherGridI].color.a;
-			cloudColor.b =  weatherGrid[weatherGridI].color.b * weatherGrid[weatherGridI].color.a;
-
-			cloudColor.a = cloudyness;
-
-			cloudColor = clampColor(cloudColor);
-
-			
-
-
-			Color backgroundColor = mixColor( backgroundStars[i], backgroundSky[i], backgroundMixRatioSin );// backgroundStars[i];
-			// Color skyColor =  mixColor( backgroundSky[i],   color_clear, backgroundMixRatioCos);// backgroundStars[i];
-
-			// Color backgroundColor = filterColor(starColor, skyColor);
-
-			ppColor = filterColor(backgroundColor, ppColor);
-
-
-			// diffuse drawing now complete.
-			// ppColor = filterColor(ppColor, cloudColor);
-
-
-			cloudColor = 
-ppColor = mixColor(cloudColor,  ppColor );
-
-
-
-
-
-
-
-
-
-
-			// paint clouds. If there is a lot of gas in an area.
-			// if (weatherGrid[weatherGridI].saturation > 0.0f  )
-			// {
-			// Color cloudTinge = color_white;
-			// // cloudTinge = addColor(materialColor, color_white_halfClear);
-			// // float fsat = weatherGrid[weatherGridI].saturation ;
-			// // float flim = saturationLimit;
-
-
-
-
-			// cloudTinge.a = abs(weatherGrid[weatherGridI].saturation)   ; // (fsat / flim )  ;
-// 		if (cloudTinge .a < 0.0f) {cloudTinge.a = 0.0f;}
-// 		else if (cloudTinge .a > 1.0f) {cloudTinge.a = 1.0f;}
-
-// 		// printf("cmoud %f  \n", weatherGrid[weatherGridI].saturation );
-// 		// cloudTinge = clampColor(cloudTinge);
-
-// //
-
-
-
-
-
-
-
-
-
-		}
-
-
-
-
+		Color emitted = color_clear;
 		// Make hot stuff glow (this does not emit photons, but puts color on the screen at that immediate location as well).
 		if (grid[i].phase != PHASE_VACUUM)
 		{
-			ppColor = addColor( ppColor, blackbodyLookup( (grid[i].temperature) ) );
+			emitted = addColor( emitted, blackbodyLookup( (grid[i].temperature) ) );
 		}
-		ppColor = addColor(ppColor, blackbodyLookup( (weatherGrid[weatherGridI].temperature / temperatureScale  ) ));
+		emitted = addColor(emitted, blackbodyLookup( (weatherGrid[weatherGridI].temperature / temperatureScale  ) ));
 
 
 
@@ -1564,10 +1534,14 @@ ppColor = mixColor(cloudColor,  ppColor );
 
 
 
+		// add the four light channels together (background, diffuse, specular, emitted)
 
+		Color ppColor = backgroundColor;
+		ppColor = filterColor(ppColor, diffuse );
+		ppColor = addColor(ppColor, specular);
+		ppColor = addColor(ppColor, emitted);
 
-		// }
-
+		ppColor = clampColor(ppColor);
 
 
 		// apply changes.
@@ -1687,6 +1661,27 @@ void thread_sector( unsigned int from, unsigned int to )
 		weatherGrid[weatherGridI].newlightBlockedSquares = 0.0f ;
 		weatherGrid[weatherGridI].newairBlockedSquares   = 0.0f  ;
 
+
+
+
+		// weatherGrid[weatherGridI]. containsDetail = true;
+
+		// if (subdivide)
+		// {
+
+#ifdef ROUTINE_SUBDIVIDE
+		weatherGrid[weatherGridI]. biggestMaterial   =  weatherGrid[weatherGridI].newbiggestMaterial ;//0;;
+		weatherGrid[weatherGridI]. biggestPhase      =  weatherGrid[weatherGridI].newbiggestPhase ;//0;
+		weatherGrid[weatherGridI]. containedMaterial =  weatherGrid[weatherGridI].newcontainedMaterial ;//MATERIAL_VACUUM;
+		weatherGrid[weatherGridI]. containedPhase    =  weatherGrid[weatherGridI].newcontainedPhase ;//PHASE_VACUUM;
+
+		weatherGrid[weatherGridI]. newbiggestMaterial = 0;;
+		weatherGrid[weatherGridI]. newbiggestPhase = 0;
+		weatherGrid[weatherGridI]. newcontainedMaterial = MATERIAL_VACUUM;
+		weatherGrid[weatherGridI]. newcontainedPhase = PHASE_VACUUM;
+		// }
+#endif
+
 	}
 #ifdef DETAIL_TIMING_READOUT
 	auto end9 = std::chrono::steady_clock::now();
@@ -1802,7 +1797,7 @@ void thread_sector( unsigned int from, unsigned int to )
 				materialHeatGlow(    currentPosition, weatherGridI);
 			}
 			materialPhaseChange( currentPosition , weatherGridI);
-			materialPostProcess( currentPosition, x, y, weatherGridI);
+			materialPostProcess( currentPosition, x, y, weatherGridI, weatherGridX, weatherGridY);
 
 			// couple the material grid temp to the weather grid temp
 			if (grid[currentPosition].phase != PHASE_VACUUM)
@@ -1812,6 +1807,43 @@ void thread_sector( unsigned int from, unsigned int to )
 				grid[currentPosition].temperature += (gridCouplingAmount / temperatureScale)  >> heatCouplingConstant ;
 				weatherGrid[weatherGridI].temperature -= (gridCouplingAmount) >> heatCouplingConstant ;
 
+
+
+
+
+
+				// bool containsDetail;
+				// unsigned int biggestMaterial;
+				// unsigned int biggestPhase;
+				// unsigned int containedMaterial;
+				// unsigned int containedPhase ;
+
+				// if biggest material is 0, add the type of material that you have.
+				// if the material is the same type as biggest contained material, 1 is added to biggest contained material. end.
+				// if the material is a different type, do nothing
+
+
+				// if (subdivide)
+				// {
+#ifdef ROUTINE_SUBDIVIDE
+				if (weatherGrid[weatherGridI].newbiggestMaterial == 0)
+				{
+					weatherGrid[weatherGridI].newcontainedMaterial = grid[currentPosition].material;
+				}
+				if   ( weatherGrid[weatherGridI].newcontainedMaterial  ==  grid[currentPosition].material)
+				{
+					weatherGrid[weatherGridI].newbiggestMaterial++;
+				}
+				if (weatherGrid[weatherGridI].newbiggestPhase == 0)
+				{
+					weatherGrid[weatherGridI].newcontainedPhase = grid[currentPosition].phase;
+				}
+				if ( weatherGrid[weatherGridI].newcontainedPhase  == grid[currentPosition].phase)
+				{
+					weatherGrid[weatherGridI].newbiggestPhase++;
+				}
+				// }
+#endif
 
 				if (grid[currentPosition].phase == PHASE_GAS )
 				{
@@ -1861,12 +1893,14 @@ void updateDaytime()
 	backgroundMixRatioSin = abs(sin(timeOfDay));
 	backgroundMixRatioCos = abs(cos(timeOfDay));
 
-	int effectiveTemp = sunlightTemp - (sunlightTemp * backgroundMixRatioSin   );
-	sunlightBrightness = starBrightness - ((starBrightness * backgroundMixRatioSin  ));
+	int effectiveTemp = sunlightTemp - ((sunlightTemp * backgroundMixRatioSin   )  );
 
-	// printf("et %i \n",effectiveTemp);
+	if (effectiveTemp > 0)
+	{
+		sunlightBrightness = starBrightness - ((starBrightness * backgroundMixRatioSin  ));
+		sunlightColor = blackbodyLookup(effectiveTemp);
+	}
 
-	sunlightColor = blackbodyLookup(effectiveTemp);
 
 
 }

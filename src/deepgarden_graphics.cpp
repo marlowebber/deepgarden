@@ -49,6 +49,9 @@ Color clampColor (Color in)
 	if      (out.b > 1.0f) {out.b = 1.0f;}
 	else if (out.b < 0.0f) {out.b = 0.0f;}
 
+	if      (out.a > 1.0f) {out.a = 1.0f;}
+	else if (out.a < 0.0f) {out.a = 0.0f;}
+
 	return out;
 
 }

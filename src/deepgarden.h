@@ -58,7 +58,8 @@ struct Color
 
 
 // Material is what flavor a square can be. It controls color, melting temperature, and phase change rules
-extern const unsigned int MATERIAL_VACUUM ;
+// #define MATERIAL_VACUUM 0
+extern const unsigned int MATERIAL_VACUUM;
 #define MATERIAL_WATER 1
 #define MATERIAL_BLOOD 2
 #define MATERIAL_BONE 3
