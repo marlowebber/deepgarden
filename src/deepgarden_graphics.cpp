@@ -5,9 +5,9 @@ float viewPanX = 0.0f;
 float viewPanY = 0.0f;
 
 
-static const unsigned int nominalFramerate = 60;
-static const unsigned int width = 1920;
-static const unsigned int height = 1080;
+const unsigned int nominalFramerate = 60;
+const unsigned int width = 1920;
+const unsigned int height = 1080;
 
 
 float viewZoomSetpoint = 1000.0f;
@@ -25,7 +25,8 @@ GLuint IndexBufferId;
 
 
 
-color::color(float r, float g, float b, float a)
+
+Color::Color(float r, float g, float b, float a)
 {
 	this->r = r;
 	this->g = g;
@@ -34,8 +35,111 @@ color::color(float r, float g, float b, float a)
 }
 
 
+Color clampColor (Color in)
+{
+
+	Color out = in;
+
+	if      (out.r > 1.0f) {out.r = 1.0f;}
+	else if (out.r < 0.0f) {out.r = 0.0f;}
+
+	if      (out.g > 1.0f) {out.g = 1.0f;}
+	else if (out.g < 0.0f) {out.g = 0.0f;}
+
+	if      (out.b > 1.0f) {out.b = 1.0f;}
+	else if (out.b < 0.0f) {out.b = 0.0f;}
+
+	if      (out.a > 1.0f) {out.a = 1.0f;}
+	else if (out.a < 0.0f) {out.a = 0.0f;}
+
+	return out;
+
+}
+
+
+Color averageColor (Color a, Color b)
+{
+	Color c;// = Color()
+	c.r = (a.r + b.r) / 2;
+	c.g = (a.g + b.g) / 2;
+	c.b = (a.b + b.b) / 2;
+	c.a = (a.a + b.a) / 2;
+
+	return clampColor(c);
+}
+
+// add both colors together.
+// in life, this is like two lights shining together. the result is a mix of both, depending on their strengths.
+Color addColor (Color a, Color b)
+{
+	Color c ;//= Color(0.0f, 0.0f, 0.0f, 0.0f);
+	c.r = (a.r * a.a) + (b.r * b.a);
+	c.g = (a.g * a.a) + (b.g * b.a);
+	c.b = (a.b * a.a) + (b.b * b.a);
+	c.a = a.a + b.a;
+
+	return clampColor(c);
+}
+
+
+// multiply the amount of color in A by the amount of color in B.
+// in life, this is like colored light falling on a colored object. If they are the same color, the result will be brighter.
+Color multiplyColor (Color a, Color b)
+{
+	Color c ;//= Color(0.0f, 0.0f, 0.0f, 0.0f);
+	c.r = (a.r * a.a) * (b.r * b.a);
+	c.g = (a.g * a.a) * (b.g * b.a);
+	c.b = (a.b * a.a) * (b.b * b.a);
+	c.a = a.a * b.a ;
+	return clampColor(c);
+}
+
+Color multiplyColorByScalar(Color a, float b)
+{
+	Color c;
+	c.r = a.r * b;
+	c.g = a.g * b;
+	c.b = a.b * b;
+	c.a = a.a * b;
+	return clampColor(c);
+}
+
+// allow B to block A.
+// in life, this is like a color image shining through a color window. the image is filtered by the color and opacity of the window.
+Color filterColor( Color a, Color b)
+{
+
+	Color c ;//= Color(0.0f, 0.0f, 0.0f, 0.0f);
+
+	c.r = (b.r ) + ((1.0f - (b.a)) * (a.r));
+	c.g = (b.g ) + ((1.0f - (b.a)) * (a.g));
+	c.b = (b.b ) + ((1.0f - (b.a)) * (a.b));
+	c.a = a.a + b.a;
+
+	return clampColor(c);
+
+}
+
+// mix A and B
+Color mixColor (Color a, Color b, float mix)
+{
+
+	if (mix > 1.0f) {mix = 1.0f;}
+	else if (mix < 0.0f) { mix = 0.0f;}
+
+	Color c;
+
+	c.r = (a.r * mix) + ( b.r * (1.0f - mix) );
+	c.g = (a.g * mix) + ( b.g * (1.0f - mix) );
+	c.b = (a.b * mix) + ( b.b * (1.0f - mix) );
+	c.a = (a.a * mix) + ( b.a * (1.0f - mix) );
+
+	return c;
+}
+
+
 static const char * vertex_shader =
-    "#version 130\n"
+    "#version 330\n"
     "in vec2 i_position;\n"
     "in vec4 i_color;\n"
     "out vec4 v_color;\n"
@@ -45,8 +149,12 @@ static const char * vertex_shader =
     "    gl_Position = u_projection_matrix * vec4( i_position, 0.0, 1.0 );\n"
     "}\n";
 
+// static const char * geometry_shader =
+
+
+
 static const char * fragment_shader =
-    "#version 130\n"
+    "#version 330\n"
     "in vec4 v_color;\n"
     "out vec4 o_color;\n"
     "void main() {\n"
@@ -103,6 +211,9 @@ void shutdownGraphics()
 void setupGraphics()
 {
 
+
+	// glPointSize(3);
+
 	// Setup the game window with SDL2
 	SDL_Init( SDL_INIT_VIDEO );
 	SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
@@ -137,6 +248,7 @@ void setupGraphics()
 	 * */
 
 	vs = glCreateShader( GL_VERTEX_SHADER );
+	// gs = glCreateShader( GL_GEOMETRY_SHADER );
 	fs = glCreateShader( GL_FRAGMENT_SHADER );
 
 	int length = strlen( vertex_shader );
@@ -150,6 +262,22 @@ void setupGraphics()
 		fprintf( stderr, "vertex shader compilation failed\n" );
 	}
 
+
+
+	//  length = strlen( geometry_shader );
+	// glShaderSource( gs, 1, ( const GLchar ** )&geometry_shader, &length );
+	// glCompileShader( gs );
+
+	// GLint status;
+	// glGetShaderiv( gs, GL_COMPILE_STATUS, &status );
+	// if ( status == GL_FALSE )
+	// {
+	// 	fprintf( stderr, "geometry shader compilation failed\n" );
+	// }
+
+
+
+
 	length = strlen( fragment_shader );
 	glShaderSource( fs, 1, ( const GLchar ** )&fragment_shader, &length );
 	glCompileShader( fs );
@@ -162,6 +290,7 @@ void setupGraphics()
 
 	program = glCreateProgram();
 	glAttachShader( program, vs );
+	// glAttachShader( program, gs );
 	glAttachShader( program, fs );
 
 	glBindAttribLocation( program, attrib_position, "i_position" );
@@ -180,6 +309,7 @@ void setupGraphics()
 
 	glUseProgram( program );
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IndexBufferId);
+
 	glBindVertexArray( vao );
 	glBindBuffer( GL_ARRAY_BUFFER, vbo );
 
@@ -189,17 +319,31 @@ void setupGraphics()
 	glVertexAttribPointer( attrib_color, 4, GL_FLOAT, GL_FALSE, sizeof( float ) * 6, 0 );
 	glVertexAttribPointer( attrib_position, 2, GL_FLOAT, GL_FALSE, sizeof( float ) * 6, ( void * )(4 * sizeof(float)) );
 
-	glClearColor( 0.1f, 0.1f, 0.1f, 1.0f );
+	// glClearColor( 0.05f, 0.05f, 0.05f, 1.0f );
+
+
+	glClearColor( 0.00f, 0.00f, 0.00f, 1.0f );
+
+
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+
+	glPointSize(3);
 }
 
 void prepareForWorldDraw ()
 {
-	glUseProgram( program );
-	glBindBuffer( GL_ARRAY_BUFFER, vbo );
-	glEnableVertexAttribArray( attrib_position );
-	glEnableVertexAttribArray( attrib_color );
-	glVertexAttribPointer( attrib_color, 4, GL_FLOAT, GL_FALSE, sizeof( float ) * 6, 0 );
-	glVertexAttribPointer( attrib_position, 2, GL_FLOAT, GL_FALSE, sizeof( float ) * 6, ( void * )(4 * sizeof(float)) );
+	// glUseProgram( program );
+	// glBindBuffer( GL_ARRAY_BUFFER, vbo );
+	// glEnableVertexAttribArray( attrib_position );
+	// glEnableVertexAttribArray( attrib_color );
+	// glVertexAttribPointer( attrib_color, 4, GL_FLOAT, GL_FALSE, sizeof( float ) * 6, 0 );
+	// glVertexAttribPointer( attrib_position, 2, GL_FLOAT, GL_FALSE, sizeof( float ) * 6, ( void * )(4 * sizeof(float)) );
+
+
+// unsigned int zoomInt = viewZoom;
+
 
 	// mat4x4_ortho( t_mat4x4 out, float left, float right, float bottom, float top, float znear, float zfar )
 	mat4x4_ortho(
@@ -213,28 +357,24 @@ void prepareForWorldDraw ()
 	);
 	glUniformMatrix4fv( glGetUniformLocation( program, "u_projection_matrix" ), 1, GL_FALSE, projection_matrix );
 
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
-void cleanupAfterWorldDraw ()
-{
-	glDisable(GL_BLEND);
-	glDisableVertexAttribArray(attrib_position);
-	glDisableVertexAttribArray(attrib_color);
-}
+// void cleanupAfterWorldDraw ()
+// {
+// 	glDisable(GL_BLEND);
+// 	glDisableVertexAttribArray(attrib_position);
+// 	glDisableVertexAttribArray(attrib_color);
+// }
 
-
-void vertToBuffer (GLfloat * vertex_buffer_data, unsigned int * cursor, color vert_color, unsigned int x, unsigned int y)
+const unsigned int floats_per_color = 16;
+void vertToBuffer (GLfloat * vertex_buffer_data, unsigned int * cursor, Color vert_color, unsigned int x, unsigned int y)
 {
 	float floatx = x;
 	float floaty = y;
-	vertex_buffer_data[(*cursor) + 0] = vert_color.r;
-	vertex_buffer_data[(*cursor) + 1] = vert_color.g;
-	vertex_buffer_data[(*cursor) + 2] = vert_color.b;
-	vertex_buffer_data[(*cursor) + 3] = vert_color.a;
-	vertex_buffer_data[(*cursor) + 4] = floatx;
-	vertex_buffer_data[(*cursor) + 5] = floaty;
+	unsigned int cursorValue = *(cursor);
+	memcpy((vertex_buffer_data + cursorValue), &vert_color , floats_per_color); // a float is 4 bytes, 4 floats = 16 bytes
+	vertex_buffer_data[cursorValue + 4] = floatx;
+	vertex_buffer_data[cursorValue + 5] = floaty;
 	(*cursor) += 6;
 }
 
@@ -253,11 +393,11 @@ void advanceIndexBuffers (unsigned int * index_buffer_data, unsigned int * index
 
 
 
-void preDraw() 
+void preDraw()
 {
 
 
-   prepareForWorldDraw ();
+	prepareForWorldDraw ();
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -265,14 +405,24 @@ void preDraw()
 }
 
 
-void postDraw () 
+void postDraw ()
 {
-	cleanupAfterWorldDraw();
+	// cleanupAfterWorldDraw();
 
 	SDL_GL_SwapWindow( window );
 	float zoomDifference = (viewZoom - viewZoomSetpoint);
 	float zoomResponse = (zoomDifference * -1) / cameraTrackingResponse;
 	viewZoom = viewZoom + zoomResponse;
+
+
+
+
+
+	if (firstPerson)
+	{
+		viewPanSetpointX = (playerPosition) % sizeX;
+		viewPanSetpointY = (playerPosition) / sizeX;
+	}
 
 	float panDifferenceX = (viewPanX - viewPanSetpointX);
 	float panResponseX = (panDifferenceX * -1) / cameraTrackingResponse;

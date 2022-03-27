@@ -4,4 +4,6 @@
 
 #include "deepgarden.h"
 
+extern bool crudOps;
+
 #endif

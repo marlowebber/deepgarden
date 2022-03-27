@@ -12,7 +12,7 @@ set(CMAKE_CXX_FLAGS "-g")
 find_package(OpenMP REQUIRED)
 find_package(SDL2 REQUIRED)
 find_package(OpenGL REQUIRED)
-find_package(Boost REQUIRED COMPONENTS filesystem)
+find_package(Boost REQUIRED COMPONENTS filesystem thread)
 #find_package(Freetype REQUIRED)
 
 # Define the framework files.
